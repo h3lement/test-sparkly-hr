@@ -52,8 +52,8 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         quiz: {
-          start: "hsl(var(--quiz-gradient-start))",
-          end: "hsl(var(--quiz-gradient-end))",
+          primary: "hsl(var(--quiz-primary))",
+          light: "hsl(var(--quiz-primary-light))",
           glow: "hsl(var(--quiz-glow))",
         },
       },
@@ -80,8 +80,8 @@ export default {
           to: { opacity: "1", transform: "scale(1)" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 20px hsl(var(--quiz-glow) / 0.3)" },
-          "50%": { boxShadow: "0 0 40px hsl(var(--quiz-glow) / 0.5)" },
+          "0%, 100%": { boxShadow: "0 4px 20px hsl(var(--quiz-glow) / 0.2)" },
+          "50%": { boxShadow: "0 4px 30px hsl(var(--quiz-glow) / 0.35)" },
         },
       },
       animation: {
