@@ -1,20 +1,16 @@
 import { Button } from '@/components/ui/button';
 import { useQuiz } from './QuizContext';
 import { Footer } from './Footer';
-import sparklyLogo from '@/assets/sparkly-logo.png';
+import { Logo } from '@/components/Logo';
 
 export function WelcomeScreen() {
   const { setCurrentStep } = useQuiz();
 
   return (
     <div className="animate-fade-in text-center max-w-2xl mx-auto">
-      <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
-        <img 
-          src={sparklyLogo} 
-          alt="Sparkly.hr Logo" 
-          className="h-12 mx-auto mb-10 object-contain hover:opacity-80 transition-opacity cursor-pointer"
-        />
-      </a>
+      <div className="mb-10">
+        <Logo />
+      </div>
       
       <div className="badge-pill inline-flex items-center gap-2 mb-8">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

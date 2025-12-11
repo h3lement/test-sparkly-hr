@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import sparklyLogo from "@/assets/sparkly-logo.png";
+import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -102,13 +102,9 @@ const Auth = () => {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
-              <img 
-                src={sparklyLogo} 
-                alt="Sparkly.hr" 
-                className="h-12 mx-auto mb-6 hover:opacity-80 transition-opacity"
-              />
-            </a>
+            <div className="mb-6">
+              <Logo />
+            </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {isLogin ? "Admin Login" : "Create Account"}
             </h1>

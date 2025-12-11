@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { useQuiz, quizQuestions } from './QuizContext';
 import { useToast } from '@/hooks/use-toast';
 import { Footer } from './Footer';
-import sparklyLogo from '@/assets/sparkly-logo.png';
+import { Logo } from '@/components/Logo';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -133,13 +133,9 @@ export function EmailCapture() {
 
   return (
     <div className="animate-fade-in text-center max-w-xl mx-auto">
-      <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
-        <img 
-          src={sparklyLogo} 
-          alt="Sparkly Logo" 
-          className="w-16 h-16 mx-auto mb-6 object-contain hover:opacity-80 transition-opacity cursor-pointer"
-        />
-      </a>
+      <div className="mb-6">
+        <Logo />
+      </div>
       
       <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
         Your Results Are{' '}
