@@ -39,6 +39,169 @@ const SUPPORTED_LANGUAGES = [
   { code: "uk", name: "Ukrainian" },
 ];
 
+// Email translations for preview
+const emailTranslations: Record<string, {
+  yourResults: string;
+  outOf: string;
+  points: string;
+  keyInsights: string;
+  wantToImprove: string;
+  visitSparkly: string;
+  leadershipOpenMindedness: string;
+  openMindednessOutOf: string;
+}> = {
+  en: {
+    yourResults: "Your Team Performance Results",
+    outOf: "out of",
+    points: "points",
+    keyInsights: "Key Insights",
+    wantToImprove: "Want to improve your team's performance?",
+    visitSparkly: "Visit Sparkly.hr",
+    leadershipOpenMindedness: "Leadership Open-Mindedness",
+    openMindednessOutOf: "out of 4",
+  },
+  et: {
+    yourResults: "Sinu meeskonna tulemuslikkuse tulemused",
+    outOf: "punkti",
+    points: "punktist",
+    keyInsights: "Peamised tähelepanekud",
+    wantToImprove: "Soovid parandada oma meeskonna tulemuslikkust?",
+    visitSparkly: "Külasta Sparkly.hr",
+    leadershipOpenMindedness: "Avatud mõtlemisega juhtimine",
+    openMindednessOutOf: "4-st",
+  },
+  de: {
+    yourResults: "Ihre Team-Leistungsergebnisse",
+    outOf: "von",
+    points: "Punkten",
+    keyInsights: "Wichtige Erkenntnisse",
+    wantToImprove: "Möchten Sie die Leistung Ihres Teams verbessern?",
+    visitSparkly: "Besuchen Sie Sparkly.hr",
+    leadershipOpenMindedness: "Aufgeschlossene Führung",
+    openMindednessOutOf: "von 4",
+  },
+  fr: {
+    yourResults: "Vos résultats de performance d'équipe",
+    outOf: "sur",
+    points: "points",
+    keyInsights: "Points clés",
+    wantToImprove: "Voulez-vous améliorer la performance de votre équipe?",
+    visitSparkly: "Visitez Sparkly.hr",
+    leadershipOpenMindedness: "Leadership ouvert d'esprit",
+    openMindednessOutOf: "sur 4",
+  },
+  es: {
+    yourResults: "Tus resultados de rendimiento del equipo",
+    outOf: "de",
+    points: "puntos",
+    keyInsights: "Puntos clave",
+    wantToImprove: "¿Quieres mejorar el rendimiento de tu equipo?",
+    visitSparkly: "Visita Sparkly.hr",
+    leadershipOpenMindedness: "Liderazgo de mente abierta",
+    openMindednessOutOf: "de 4",
+  },
+  it: {
+    yourResults: "I tuoi risultati di performance del team",
+    outOf: "su",
+    points: "punti",
+    keyInsights: "Punti chiave",
+    wantToImprove: "Vuoi migliorare le prestazioni del tuo team?",
+    visitSparkly: "Visita Sparkly.hr",
+    leadershipOpenMindedness: "Leadership di mentalità aperta",
+    openMindednessOutOf: "su 4",
+  },
+  pt: {
+    yourResults: "Os seus resultados de desempenho da equipa",
+    outOf: "de",
+    points: "pontos",
+    keyInsights: "Pontos-chave",
+    wantToImprove: "Quer melhorar o desempenho da sua equipa?",
+    visitSparkly: "Visite Sparkly.hr",
+    leadershipOpenMindedness: "Liderança de mente aberta",
+    openMindednessOutOf: "de 4",
+  },
+  nl: {
+    yourResults: "Uw teamprestatie resultaten",
+    outOf: "van",
+    points: "punten",
+    keyInsights: "Belangrijke inzichten",
+    wantToImprove: "Wilt u de prestaties van uw team verbeteren?",
+    visitSparkly: "Bezoek Sparkly.hr",
+    leadershipOpenMindedness: "Open-minded leiderschap",
+    openMindednessOutOf: "van 4",
+  },
+  pl: {
+    yourResults: "Twoje wyniki wydajności zespołu",
+    outOf: "z",
+    points: "punktów",
+    keyInsights: "Kluczowe spostrzeżenia",
+    wantToImprove: "Chcesz poprawić wydajność swojego zespołu?",
+    visitSparkly: "Odwiedź Sparkly.hr",
+    leadershipOpenMindedness: "Przywództwo otwarte na innowacje",
+    openMindednessOutOf: "z 4",
+  },
+  ru: {
+    yourResults: "Результаты производительности вашей команды",
+    outOf: "из",
+    points: "баллов",
+    keyInsights: "Ключевые выводы",
+    wantToImprove: "Хотите улучшить производительность вашей команды?",
+    visitSparkly: "Посетите Sparkly.hr",
+    leadershipOpenMindedness: "Открытое лидерство",
+    openMindednessOutOf: "из 4",
+  },
+  sv: {
+    yourResults: "Dina teamprestationsresultat",
+    outOf: "av",
+    points: "poäng",
+    keyInsights: "Viktiga insikter",
+    wantToImprove: "Vill du förbättra ditt teams prestation?",
+    visitSparkly: "Besök Sparkly.hr",
+    leadershipOpenMindedness: "Öppensinnat ledarskap",
+    openMindednessOutOf: "av 4",
+  },
+  no: {
+    yourResults: "Dine teamytelsesresultater",
+    outOf: "av",
+    points: "poeng",
+    keyInsights: "Viktige innsikter",
+    wantToImprove: "Vil du forbedre teamets ytelse?",
+    visitSparkly: "Besøk Sparkly.hr",
+    leadershipOpenMindedness: "Åpent lederskap",
+    openMindednessOutOf: "av 4",
+  },
+  da: {
+    yourResults: "Dine teampræstationsresultater",
+    outOf: "af",
+    points: "point",
+    keyInsights: "Vigtige indsigter",
+    wantToImprove: "Vil du forbedre dit teams præstation?",
+    visitSparkly: "Besøg Sparkly.hr",
+    leadershipOpenMindedness: "Åbensindet lederskab",
+    openMindednessOutOf: "af 4",
+  },
+  fi: {
+    yourResults: "Tiimisuorituksesi tulokset",
+    outOf: "/",
+    points: "pistettä",
+    keyInsights: "Keskeiset oivallukset",
+    wantToImprove: "Haluatko parantaa tiimisi suorituskykyä?",
+    visitSparkly: "Vieraile Sparkly.hr",
+    leadershipOpenMindedness: "Avoimen mielen johtajuus",
+    openMindednessOutOf: "/ 4",
+  },
+  uk: {
+    yourResults: "Результати продуктивності вашої команди",
+    outOf: "з",
+    points: "балів",
+    keyInsights: "Ключові висновки",
+    wantToImprove: "Хочете покращити продуктивність вашої команди?",
+    visitSparkly: "Відвідайте Sparkly.hr",
+    leadershipOpenMindedness: "Відкрите лідерство",
+    openMindednessOutOf: "з 4",
+  },
+};
+
 export function EmailTemplateManager() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -281,7 +444,8 @@ export function EmailTemplateManager() {
   };
 
   const getEmailPreviewHtml = () => {
-    const currentSubject = subjects[testLanguage] || "Your Team Performance Results";
+    const trans = emailTranslations[testLanguage] || emailTranslations.en;
+    const currentSubject = subjects[testLanguage] || trans.yourResults;
     const logoUrl = "/sparkly-logo.png";
     
     return `
@@ -296,12 +460,12 @@ export function EmailTemplateManager() {
               <a href="https://sparkly.hr" target="_blank">
                 <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
               </a>
-              <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">Your Results</h1>
+              <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">${trans.yourResults}</h1>
             </div>
             
             <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
               <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${sampleData.totalScore}</div>
-              <div style="opacity: 0.9;">out of ${sampleData.maxScore} points</div>
+              <div style="opacity: 0.9;">${trans.outOf} ${sampleData.maxScore} ${trans.points}</div>
             </div>
             
             <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${sampleData.resultTitle}</h2>
@@ -309,21 +473,21 @@ export function EmailTemplateManager() {
             <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${sampleData.resultDescription}</p>
             
             <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-              <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px 0;">Leadership Open-Mindedness</h3>
+              <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px 0;">${trans.leadershipOpenMindedness}</h3>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 24px; font-weight: bold; color: #6d28d9;">${sampleData.opennessScore}</span>
-                <span style="color: #6b7280;">out of 4</span>
+                <span style="color: #6b7280;">${trans.openMindednessOutOf}</span>
               </div>
             </div>
             
-            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Key Insights:</h3>
+            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${trans.keyInsights}:</h3>
             <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
               ${sampleData.insights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("")}
             </ul>
             
             <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-              <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">Want to improve your team performance?</p>
-              <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Visit Sparkly.hr</a>
+              <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">${trans.wantToImprove}</p>
+              <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">${trans.visitSparkly}</a>
             </div>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
