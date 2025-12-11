@@ -27,8 +27,9 @@ export const languages: LanguageOption[] = [
 ];
 
 export type TranslationKey = 
-  // Page title
+  // Page title and meta
   | 'pageTitle'
+  | 'metaDescription'
   // Welcome screen
   | 'badge'
   | 'headline'
@@ -124,6 +125,7 @@ export type TranslationKey =
 export const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
     pageTitle: 'Team Performance Assessment | Sparkly.hr',
+    metaDescription: 'Take this 2-minute assessment to discover if employee performance issues are secretly draining your time, energy, and business growth.',
     badge: 'Backed by decades of HR Experience and Deep Research',
     headline: 'Is Your Team Holding You',
     headlineHighlight: 'Back?',
@@ -229,6 +231,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   et: {
     pageTitle: 'Meeskonna tulemuslikkuse hindamine | Sparkly.hr',
+    metaDescription: 'Tee see 2-minutiline hindamine, et avastada, kas töötajate tulemuslikkuse probleemid kurnavad salaja sinu aega, energiat ja äri kasvu.',
     badge: 'Toetatud aastakümnete pikkuse personalijuhtimise kogemuse ja süvitsi minevate uuringutega',
     headline: 'Kas Sinu meeskond hoiab Sind',
     headlineHighlight: 'tagasi?',
@@ -334,6 +337,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   de: {
     pageTitle: 'Team-Leistungsbewertung | Sparkly.hr',
+    metaDescription: 'Machen Sie diese 2-minütige Bewertung, um herauszufinden, ob Leistungsprobleme Ihrer Mitarbeiter heimlich Ihre Zeit, Energie und Ihr Geschäftswachstum aufzehren.',
     badge: 'Gestützt auf jahrzehntelange HR-Erfahrung und tiefgreifende Forschung',
     headline: 'Hält Ihr Team Sie',
     headlineHighlight: 'zurück?',
@@ -439,6 +443,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   fr: {
     pageTitle: "Évaluation de performance d'équipe | Sparkly.hr",
+    metaDescription: "Faites cette évaluation de 2 minutes pour découvrir si les problèmes de performance des employés drainent secrètement votre temps, votre énergie et la croissance de votre entreprise.",
     badge: "Soutenu par des décennies d'expérience RH et de recherche approfondie",
     headline: 'Votre équipe vous',
     headlineHighlight: 'freine-t-elle?',
@@ -544,6 +549,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   es: {
     pageTitle: 'Evaluación de rendimiento del equipo | Sparkly.hr',
+    metaDescription: 'Realiza esta evaluación de 2 minutos para descubrir si los problemas de rendimiento de los empleados están drenando secretamente tu tiempo, energía y crecimiento empresarial.',
     badge: 'Respaldado por décadas de experiencia en RRHH e investigación profunda',
     headline: '¿Tu equipo te está',
     headlineHighlight: 'frenando?',
@@ -649,6 +655,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   it: {
     pageTitle: 'Valutazione delle prestazioni del team | Sparkly.hr',
+    metaDescription: "Fai questa valutazione di 2 minuti per scoprire se i problemi di performance dei dipendenti stanno segretamente prosciugando il tuo tempo, energia e crescita aziendale.",
     badge: 'Supportato da decenni di esperienza HR e ricerca approfondita',
     headline: 'Il tuo team ti sta',
     headlineHighlight: 'trattenendo?',
@@ -754,6 +761,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   pt: {
     pageTitle: 'Avaliação de desempenho da equipa | Sparkly.hr',
+    metaDescription: 'Faça esta avaliação de 2 minutos para descobrir se problemas de desempenho dos funcionários estão secretamente a drenar o seu tempo, energia e crescimento empresarial.',
     badge: 'Apoiado por décadas de experiência em RH e pesquisa aprofundada',
     headline: 'A sua equipa está a',
     headlineHighlight: 'travá-lo?',
@@ -859,6 +867,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   nl: {
     pageTitle: 'Teamprestatiebeoordeling | Sparkly.hr',
+    metaDescription: 'Doe deze 2-minuten beoordeling om te ontdekken of prestatieproblemen van medewerkers in het geheim uw tijd, energie en bedrijfsgroei weglekken.',
     badge: 'Ondersteund door decennia HR-ervaring en diepgaand onderzoek',
     headline: 'Houdt uw team u',
     headlineHighlight: 'tegen?',
@@ -964,6 +973,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   pl: {
     pageTitle: 'Ocena wydajności zespołu | Sparkly.hr',
+    metaDescription: 'Wykonaj tę 2-minutową ocenę, aby odkryć, czy problemy z wydajnością pracowników potajemnie wyczerpują Twój czas, energię i rozwój biznesu.',
     badge: 'Poparty dziesięcioleciami doświadczenia HR i dogłębnymi badaniami',
     headline: 'Czy Twój zespół Cię',
     headlineHighlight: 'powstrzymuje?',
@@ -1069,6 +1079,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   ru: {
     pageTitle: 'Оценка эффективности команды | Sparkly.hr',
+    metaDescription: 'Пройдите эту 2-минутную оценку, чтобы узнать, не истощают ли проблемы с производительностью сотрудников втайне ваше время, энергию и рост бизнеса.',
     badge: 'Подкреплено десятилетиями опыта в HR и глубокими исследованиями',
     headline: 'Ваша команда',
     headlineHighlight: 'сдерживает вас?',
@@ -1174,6 +1185,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   sv: {
     pageTitle: 'Teamprestandautvärdering | Sparkly.hr',
+    metaDescription: 'Gör denna 2-minuters utvärdering för att upptäcka om anställdas prestationsproblem i hemlighet dränerar din tid, energi och företagstillväxt.',
     badge: 'Stöds av decennier av HR-erfarenhet och djupgående forskning',
     headline: 'Håller ditt team dig',
     headlineHighlight: 'tillbaka?',
@@ -1279,6 +1291,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   no: {
     pageTitle: 'Teamytelsesvurdering | Sparkly.hr',
+    metaDescription: 'Ta denne 2-minutters vurderingen for å oppdage om ansattes ytelsesproblemer i hemmelighet tapper din tid, energi og forretningsvekst.',
     badge: 'Støttet av tiår med HR-erfaring og dyptgående forskning',
     headline: 'Holder teamet ditt deg',
     headlineHighlight: 'tilbake?',
@@ -1384,6 +1397,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   da: {
     pageTitle: 'Teampræstationsvurdering | Sparkly.hr',
+    metaDescription: 'Tag denne 2-minutters vurdering for at opdage, om medarbejdernes præstationsproblemer i hemmelighed dræner din tid, energi og virksomhedsvækst.',
     badge: 'Understøttet af årtiers HR-erfaring og dybdegående forskning',
     headline: 'Holder dit team dig',
     headlineHighlight: 'tilbage?',
@@ -1489,6 +1503,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   fi: {
     pageTitle: 'Tiimin suorituskyvyn arviointi | Sparkly.hr',
+    metaDescription: 'Tee tämä 2 minuutin arviointi selvittääksesi, kuluttavatko työntekijöiden suorituskykyongelmat salaa aikaasi, energiaasi ja liiketoimintasi kasvua.',
     badge: 'Vuosikymmenten HR-kokemuksen ja syvällisen tutkimuksen tukema',
     headline: 'Pidätteleekö tiimisi',
     headlineHighlight: 'sinua?',
@@ -1594,6 +1609,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   uk: {
     pageTitle: 'Оцінка продуктивності команди | Sparkly.hr',
+    metaDescription: 'Пройдіть цю 2-хвилинну оцінку, щоб дізнатися, чи проблеми з продуктивністю співробітників таємно виснажують ваш час, енергію та зростання бізнесу.',
     badge: 'Підкріплено десятиліттями досвіду в HR та глибокими дослідженнями',
     headline: 'Чи стримує вас ваша',
     headlineHighlight: 'команда?',
