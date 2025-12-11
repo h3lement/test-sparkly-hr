@@ -61,16 +61,22 @@ export function OpenMindednessQuestion() {
         {t('openMindedness_question')}
       </h1>
 
+      {/* Keyboard hint */}
+      <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
+        Use Tab to navigate, Space to toggle
+      </p>
+
       {/* Checkbox options */}
-      <fieldset className="space-y-3 mb-8" aria-describedby="mindedness-hint">
+      <fieldset className="space-y-3 mb-8" aria-describedby="mindedness-hint keyboard-hint-multi">
         <legend className="sr-only">{t('openMindedness_question')}</legend>
-        {checkboxOptions.map((option) => {
+        <p id="keyboard-hint-multi" className="sr-only">Use Tab to navigate between options, Space to toggle selection</p>
+        {checkboxOptions.map((option, index) => {
           const isChecked = openMindednessAnswers[option.key];
           return (
             <label
               key={option.key}
               className={cn(
-                'flex items-center gap-4 w-full text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer',
+                'flex items-center gap-4 w-full text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background',
                 isChecked
                   ? 'border-primary bg-primary/5 shadow-lg'
                   : 'border-border bg-card hover:border-primary/50 hover:bg-secondary/50'
@@ -79,10 +85,17 @@ export function OpenMindednessQuestion() {
               <Checkbox
                 checked={isChecked}
                 onCheckedChange={(checked) => handleCheckboxChange(option.key, checked === true)}
-                className="h-6 w-6 rounded border-2"
+                className="h-6 w-6 rounded border-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                 aria-label={t(option.labelKey)}
               />
-              <span className="text-base md:text-lg">{t(option.labelKey)}</span>
+              <span className="text-base md:text-lg flex-1">{t(option.labelKey)}</span>
+              {/* Keyboard number hint */}
+              <kbd 
+                className="hidden sm:flex w-6 h-6 rounded border text-xs font-mono items-center justify-center shrink-0 border-muted-foreground/50 bg-muted/50 text-muted-foreground"
+                aria-hidden="true"
+              >
+                {index + 1}
+              </kbd>
             </label>
           );
         })}
