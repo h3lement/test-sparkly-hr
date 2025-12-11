@@ -39,7 +39,9 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
   const [addingAdmin, setAddingAdmin] = useState(false);
+  const [creatingWithPassword, setCreatingWithPassword] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -286,6 +288,65 @@ const Admin = () => {
     }
   };
 
+  const createAdminWithPassword = async () => {
+    if (!newAdminEmail.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newAdminPassword || newAdminPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCreatingWithPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-admin-user", {
+        body: { 
+          email: newAdminEmail.trim().toLowerCase(), 
+          password: newAdminPassword 
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Admin created",
+        description: `Account created for ${newAdminEmail} with admin access`,
+      });
+
+      setNewAdminEmail("");
+      setNewAdminPassword("");
+      fetchAdmins();
+    } catch (error: any) {
+      console.error("Error creating admin:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create admin account",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingWithPassword(false);
+    }
+  };
+
   const removeAdmin = async (roleId: string, userId: string, email: string) => {
     if (userId === currentUserId) {
       toast({
@@ -526,22 +587,40 @@ const Admin = () => {
 
             <div className="glass rounded-xl p-6 mb-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">Add New Admin</h2>
-              <div className="flex gap-3">
-                <Input
-                  type="email"
-                  placeholder="Enter user email address"
-                  value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  className="flex-1"
-                  onKeyDown={(e) => e.key === "Enter" && addAdmin()}
-                />
-                <Button onClick={addAdmin} disabled={addingAdmin}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {addingAdmin ? "Adding..." : "Add Admin"}
-                </Button>
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter user email address"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button onClick={addAdmin} disabled={addingAdmin || creatingWithPassword}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {addingAdmin ? "Adding..." : "Add/Invite"}
+                  </Button>
+                </div>
+                <div className="flex gap-3">
+                  <Input
+                    type="password"
+                    placeholder="Set password (optional - creates account directly)"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={createAdminWithPassword} 
+                    disabled={addingAdmin || creatingWithPassword || !newAdminPassword}
+                    variant="secondary"
+                  >
+                    {creatingWithPassword ? "Creating..." : "Create with Password"}
+                  </Button>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                If the user hasn't signed up yet, they'll become an admin automatically when they register.
+              <p className="text-sm text-muted-foreground mt-3">
+                <strong>Add/Invite:</strong> If user exists, grants admin. If not, they become admin on signup.<br />
+                <strong>Create with Password:</strong> Creates a new account with admin access immediately.
               </p>
             </div>
 
