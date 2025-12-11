@@ -9,6 +9,51 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const INITIAL_DELAY_MS = 1000; // 1 second
+
+// Helper function to delay execution
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Send email with exponential backoff retry
+async function sendEmailWithRetry(
+  emailParams: {
+    from: string;
+    to: string[];
+    subject: string;
+    html: string;
+  }
+): Promise<{ data: { id: string } | null; error: { message: string } | null; attempts: number }> {
+  let lastError: { message: string } | null = null;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    console.log(`Email send attempt ${attempt}/${MAX_RETRIES} to: ${emailParams.to.join(", ")}`);
+    
+    const response = await resend.emails.send(emailParams);
+    
+    if (!response.error) {
+      console.log(`Email sent successfully on attempt ${attempt}`);
+      return { data: response.data, error: null, attempts: attempt };
+    }
+    
+    lastError = response.error;
+    console.error(`Email send attempt ${attempt} failed:`, response.error.message);
+    
+    // Don't delay after the last attempt
+    if (attempt < MAX_RETRIES) {
+      const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff: 1s, 2s, 4s
+      console.log(`Waiting ${delayMs}ms before retry...`);
+      await delay(delayMs);
+    }
+  }
+  
+  console.error(`All ${MAX_RETRIES} email attempts failed`);
+  return { data: null, error: lastError, attempts: MAX_RETRIES };
+}
+
 // HTML sanitization to prevent injection attacks
 function escapeHtml(text: string): string {
   const htmlEscapes: Record<string, string> = {
@@ -514,10 +559,10 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send to user with dynamic sender config
+    // Send to user with dynamic sender config and retry logic
     console.log("Attempting to send user email to:", email);
     const userEmailSubject = `${emailSubject}: ${safeResultTitle}`;
-    const userEmailResponse = await resend.emails.send({
+    const userEmailResponse = await sendEmailWithRetry({
       from: `${senderName} <${senderEmail}>`,
       to: [email],
       subject: userEmailSubject,
@@ -526,7 +571,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("User email response:", JSON.stringify(userEmailResponse));
     
-    // Log user email to database
+    // Log user email to database with attempt count
     await supabase.from("email_logs").insert({
       email_type: isTest ? "test" : "quiz_result_user",
       recipient_email: email,
@@ -538,10 +583,12 @@ const handler = async (req: Request): Promise<Response> => {
       error_message: userEmailResponse.error?.message || null,
       language: language,
       quiz_lead_id: quizLeadId,
+      resend_attempts: userEmailResponse.attempts,
+      last_attempt_at: new Date().toISOString(),
     });
     
     if (userEmailResponse.error) {
-      console.error("Resend user email error:", userEmailResponse.error);
+      console.error("Resend user email error after all retries:", userEmailResponse.error);
     }
 
     // Skip admin notification for test emails
@@ -597,7 +644,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Attempting to send admin email to: mikk@sparkly.hr");
     const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
-    const adminEmailResponse = await resend.emails.send({
+    const adminEmailResponse = await sendEmailWithRetry({
       from: `${senderName} Quiz <${senderEmail}>`,
       to: ["mikk@sparkly.hr"],
       subject: adminEmailSubject,
@@ -606,7 +653,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Admin email response:", JSON.stringify(adminEmailResponse));
 
-    // Log admin email to database
+    // Log admin email to database with attempt count
     await supabase.from("email_logs").insert({
       email_type: "quiz_result_admin",
       recipient_email: "mikk@sparkly.hr",
@@ -618,10 +665,12 @@ const handler = async (req: Request): Promise<Response> => {
       error_message: adminEmailResponse.error?.message || null,
       language: language,
       quiz_lead_id: quizLeadId,
+      resend_attempts: adminEmailResponse.attempts,
+      last_attempt_at: new Date().toISOString(),
     });
     
     if (adminEmailResponse.error) {
-      console.error("Resend admin email error:", adminEmailResponse.error);
+      console.error("Resend admin email error after all retries:", adminEmailResponse.error);
     }
 
     return new Response(JSON.stringify({ success: true }), {
