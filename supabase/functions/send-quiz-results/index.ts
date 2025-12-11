@@ -174,6 +174,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
+    // Sparkly.hr logo URL (hosted on their website)
+    const logoUrl = "https://sparkly.hr/wp-content/uploads/2024/05/Sparkly-logo.png";
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -184,6 +187,9 @@ const handler = async (req: Request): Promise<Response> => {
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 40px 20px;">
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
           <div style="text-align: center; margin-bottom: 30px;">
+            <a href="https://sparkly.hr" target="_blank">
+              <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
+            </a>
             <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">Your Team Performance Results</h1>
           </div>
           
@@ -207,7 +213,10 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 12px;">© 2025 Sparkly.hr</p>
+            <a href="https://sparkly.hr" target="_blank">
+              <img src="${logoUrl}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
+            </a>
+            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
           </div>
         </div>
       </body>
@@ -224,25 +233,43 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("User email sent:", userEmailResponse);
 
-    // Send copy to Sparkly team
+    // Send copy to admin (mikk@sparkly.hr)
     const adminEmailHtml = `
       <!DOCTYPE html>
       <html>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px;">
-        <h2>New Quiz Submission</h2>
-        <p><strong>User Email:</strong> ${safeEmail}</p>
-        <p><strong>Score:</strong> ${totalScore} / ${maxScore}</p>
-        <p><strong>Result:</strong> ${safeResultTitle}</p>
-        <hr>
-        <h3>Insights:</h3>
-        <ul>${insightsList}</ul>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
+            <h1 style="color: #1f2937; font-size: 24px; margin: 0;">New Quiz Submission</h1>
+          </div>
+          
+          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 8px 0;"><strong>User Email:</strong> ${safeEmail}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Score:</strong> ${totalScore} / ${maxScore}</p>
+            <p style="margin: 0;"><strong>Result Category:</strong> ${safeResultTitle}</p>
+          </div>
+          
+          <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">Key Insights:</h3>
+          <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 20px;">
+            ${insightsList}
+          </ul>
+          
+          <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; font-size: 12px;">© 2025 Sparkly.hr</p>
+          </div>
+        </div>
       </body>
       </html>
     `;
 
     const adminEmailResponse = await resend.emails.send({
       from: "Sparkly.hr Quiz <mikk.orglaan@gmail.com>",
-      to: ["mikk.orglaan@gmail.com"],
+      to: ["mikk@sparkly.hr"],
       subject: `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`,
       html: adminEmailHtml,
     });
