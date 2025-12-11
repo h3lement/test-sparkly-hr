@@ -472,17 +472,20 @@ export function EmailTemplateManager() {
 
     setSendingTest(true);
     try {
-      // Use mock/sample data for test emails that matches what the edge function expects
+      // Get translated sample data for the selected language
+      const trans = emailTranslations[testLanguage] || emailTranslations.en;
+      
+      // Use translated sample data that matches the selected language
       const testData = {
         email: testEmail.trim(),
         totalScore: 18,
         maxScore: 24,
-        resultTitle: "Strong Team Foundation",
-        resultDescription: "Your team shows solid performance indicators with room for growth.",
+        resultTitle: trans.sampleResultTitle,
+        resultDescription: trans.sampleResultDescription,
         insights: [
-          "Your team demonstrates good collaboration patterns",
-          "Consider implementing regular feedback sessions",
-          "Focus on developing leadership skills within the team"
+          trans.sampleInsight1,
+          trans.sampleInsight2,
+          trans.sampleInsight3,
         ],
         language: testLanguage,
         opennessScore: 3,
