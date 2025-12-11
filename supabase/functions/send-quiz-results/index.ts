@@ -316,6 +316,7 @@ interface QuizResultsRequest {
   insights: string[];
   language?: string;
   answers?: Array<{ questionId: number; selectedOption: number }>;
+  opennessScore?: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -353,10 +354,11 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, language = 'en', answers }: QuizResultsRequest = await req.json();
+    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, language = 'en', answers, opennessScore }: QuizResultsRequest = await req.json();
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
+    console.log("Openness Score:", opennessScore);
     console.log("Language:", language);
     console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
 
@@ -374,6 +376,7 @@ const handler = async (req: Request): Promise<Response> => {
       total_questions: maxScore,
       result_category: resultTitle,
       answers: answers || null,
+      openness_score: opennessScore ?? null,
     });
 
     if (insertError) {
