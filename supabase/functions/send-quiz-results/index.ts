@@ -412,15 +412,12 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     // Use template values or fallback to defaults
-    // IMPORTANT: Use onboarding@resend.dev for testing until sparkly.hr domain is verified on Resend
     const senderName = templateData?.sender_name || "Sparkly.hr";
-    const configuredSenderEmail = templateData?.sender_email || "support@sparkly.hr";
-    // Force use of Resend dev email until domain is verified
-    const senderEmail = "onboarding@resend.dev";
+    const senderEmail = templateData?.sender_email || "support@sparkly.hr";
     const templateSubjects = templateData?.subjects as Record<string, string> || {};
     const emailSubject = templateSubjects[language] || trans.subject;
 
-    console.log("Using email config:", { senderName, senderEmail, configuredSenderEmail, subject: emailSubject });
+    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
 
     const { error: insertError } = await supabase.from("quiz_leads").insert({
       email,
