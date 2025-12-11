@@ -12,6 +12,7 @@ export function Footer() {
         >
           Sparkly.hr
         </a>
+        . All rights reserved.
       </p>
     </footer>
   );
