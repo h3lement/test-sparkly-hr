@@ -67,7 +67,25 @@ export function QuizQuestion() {
         {question.answers.map((answer) => (
           <button
             key={answer.id}
-            onClick={() => setSelectedAnswer(answer.id)}
+            onClick={() => {
+              setSelectedAnswer(answer.id);
+              // Auto-advance after selection with small delay for visual feedback
+              setTimeout(() => {
+                const selectedAnswerData = question.answers.find((a) => a.id === answer.id);
+                if (selectedAnswerData) {
+                  addAnswer({
+                    questionId: question.id,
+                    answerId: selectedAnswerData.id,
+                    score: selectedAnswerData.score,
+                  });
+                }
+                if (isLastQuestion) {
+                  setCurrentStep('email');
+                } else {
+                  setCurrentQuestion(currentQuestion + 1);
+                }
+              }, 300);
+            }}
             className={cn(
               'w-full text-left p-5 rounded-xl border-2 transition-all duration-200',
               selectedAnswer === answer.id
