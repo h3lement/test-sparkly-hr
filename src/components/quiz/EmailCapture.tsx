@@ -119,29 +119,34 @@ export function EmailCapture() {
   };
 
   return (
-    <div className="animate-fade-in text-center max-w-xl mx-auto">
+    <main className="animate-fade-in text-center max-w-xl mx-auto" role="main" aria-labelledby="email-heading">
       <div className="mb-6">
         <Logo />
       </div>
       
-      <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
+      <h1 id="email-heading" className="font-heading text-3xl md:text-4xl font-bold mb-4">
         {t('resultsReady')}{' '}
         <span className="gradient-text">{t('resultsReadyHighlight')}</span>
-      </h2>
+      </h1>
       
-      <p className="text-lg text-muted-foreground mb-8">
+      <p className="text-lg text-muted-foreground mb-8" id="email-description">
         {t('emailDescription')}
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" aria-describedby="email-description privacy-notice">
         <div className="glass rounded-2xl p-6">
+          <label htmlFor="email-input" className="sr-only">{t('emailPlaceholder')}</label>
           <Input
+            id="email-input"
             type="email"
             placeholder={t('emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="text-center text-lg h-14 rounded-xl border-2 focus:border-primary"
             required
+            aria-required="true"
+            aria-invalid={email.length > 0 && !emailSchema.safeParse(email).success}
+            autoComplete="email"
           />
         </div>
         
@@ -150,16 +155,18 @@ export function EmailCapture() {
           size="lg"
           disabled={isSubmitting}
           className="w-full gradient-primary text-primary-foreground py-6 text-lg font-semibold rounded-full glow-primary hover:scale-105 transition-transform"
+          aria-busy={isSubmitting}
+          aria-live="polite"
         >
           {isSubmitting ? t('sending') : t('getResults')}
         </Button>
       </form>
 
-      <p className="text-sm text-muted-foreground mt-6">
+      <p id="privacy-notice" className="text-sm text-muted-foreground mt-6">
         {t('privacyNotice')}
       </p>
       
       <Footer />
-    </div>
+    </main>
   );
 }
