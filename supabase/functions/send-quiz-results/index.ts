@@ -9,6 +9,80 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// In-memory rate limiting
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_REQUESTS_PER_WINDOW = 5; // 5 submissions per hour per IP
+
+interface RateLimitEntry {
+  count: number;
+  windowStart: number;
+}
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+function getClientIP(req: Request): string {
+  // Try various headers that might contain the real IP
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+  
+  const realIP = req.headers.get("x-real-ip");
+  if (realIP) {
+    return realIP;
+  }
+  
+  const cfConnectingIP = req.headers.get("cf-connecting-ip");
+  if (cfConnectingIP) {
+    return cfConnectingIP;
+  }
+  
+  return "unknown";
+}
+
+function checkRateLimit(ip: string): { allowed: boolean; remainingRequests: number; resetTime: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  
+  // Clean up old entries periodically
+  if (rateLimitMap.size > 1000) {
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now - value.windowStart > RATE_LIMIT_WINDOW_MS) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+  
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    // New window or expired entry
+    rateLimitMap.set(ip, { count: 1, windowStart: now });
+    return { 
+      allowed: true, 
+      remainingRequests: MAX_REQUESTS_PER_WINDOW - 1,
+      resetTime: now + RATE_LIMIT_WINDOW_MS
+    };
+  }
+  
+  if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
+    const resetTime = entry.windowStart + RATE_LIMIT_WINDOW_MS;
+    return { 
+      allowed: false, 
+      remainingRequests: 0,
+      resetTime
+    };
+  }
+  
+  // Increment counter
+  entry.count++;
+  rateLimitMap.set(ip, entry);
+  
+  return { 
+    allowed: true, 
+    remainingRequests: MAX_REQUESTS_PER_WINDOW - entry.count,
+    resetTime: entry.windowStart + RATE_LIMIT_WINDOW_MS
+  };
+}
+
 interface QuizResultsRequest {
   email: string;
   totalScore: number;
@@ -26,11 +100,39 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Rate limiting check
+  const clientIP = getClientIP(req);
+  console.log("Client IP:", clientIP);
+  
+  const rateLimitResult = checkRateLimit(clientIP);
+  
+  if (!rateLimitResult.allowed) {
+    const resetDate = new Date(rateLimitResult.resetTime);
+    console.log(`Rate limit exceeded for IP: ${clientIP}. Reset at: ${resetDate.toISOString()}`);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: "Too many requests. Please try again later.",
+        resetTime: rateLimitResult.resetTime
+      }),
+      {
+        status: 429,
+        headers: { 
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
+          ...corsHeaders 
+        },
+      }
+    );
+  }
+
   try {
     const { email, totalScore, maxScore, resultTitle, resultDescription, insights, answers }: QuizResultsRequest = await req.json();
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
+    console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
 
     // Save lead to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -130,7 +232,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(),
+        "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
+        ...corsHeaders 
+      },
     });
   } catch (error: any) {
     console.error("Error in send-quiz-results:", error);
