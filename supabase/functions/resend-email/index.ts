@@ -110,7 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 40px 20px;">
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
           <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://wpczgwxsriezaubncuom.lovableproject.com/sparkly-logo.png" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
+            <img src="https://c18acbed-243a-4295-8c8f-1eda868b5853.lovableproject.com/sparkly-logo.png" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
             <h1 style="color: #6d28d9; font-size: 24px; margin: 0;">Email Resent</h1>
           </div>
           
