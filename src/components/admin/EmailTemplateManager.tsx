@@ -282,7 +282,7 @@ export function EmailTemplateManager() {
 
   const getEmailPreviewHtml = () => {
     const currentSubject = subjects[testLanguage] || "Your Team Performance Results";
-    const logoUrl = "https://sparklyhr.app/favicon.png";
+    const logoUrl = "/sparkly-logo.png";
     
     return `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 20px;">
