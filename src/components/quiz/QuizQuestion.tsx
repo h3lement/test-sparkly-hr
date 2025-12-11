@@ -34,9 +34,9 @@ export function QuizQuestion() {
     );
   }, [currentQuestion, answers]);
 
-  const totalQuestions = questionKeys.length;
+  const totalQuestions = 7; // 6 quiz questions + 1 mindedness question
   const progress = ((currentQuestion + 1) / totalQuestions) * 100;
-  const isLastQuestion = currentQuestion === totalQuestions - 1;
+  const isLastQuestion = currentQuestion === questionKeys.length - 1;
 
   const handleNext = () => {
     if (selectedAnswer === null) return;
@@ -48,7 +48,7 @@ export function QuizQuestion() {
     });
 
     if (isLastQuestion) {
-      setCurrentStep('email');
+      setCurrentStep('mindedness');
     } else {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
@@ -110,7 +110,7 @@ export function QuizQuestion() {
                     score: answerId,
                   });
                   if (isLastQuestion) {
-                    setCurrentStep('email');
+                    setCurrentStep('mindedness');
                   } else {
                     setCurrentQuestion(currentQuestion + 1);
                   }

@@ -6,17 +6,28 @@ export interface QuizAnswer {
   score: number;
 }
 
+export interface OpenMindednessAnswers {
+  humans: boolean;
+  aiCalculations: boolean;
+  psychology: boolean;
+  humanDesign: boolean;
+}
+
 interface QuizContextType {
-  currentStep: 'welcome' | 'quiz' | 'email' | 'results';
+  currentStep: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results';
   currentQuestion: number;
   answers: QuizAnswer[];
   email: string;
   totalScore: number;
-  setCurrentStep: (step: 'welcome' | 'quiz' | 'email' | 'results') => void;
+  openMindednessAnswers: OpenMindednessAnswers;
+  openMindednessScore: number;
+  setCurrentStep: (step: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results') => void;
   setCurrentQuestion: (q: number) => void;
   addAnswer: (answer: QuizAnswer) => void;
   setEmail: (email: string) => void;
+  setOpenMindednessAnswers: (answers: OpenMindednessAnswers) => void;
   calculateScore: () => number;
+  calculateOpenMindednessScore: () => number;
   resetQuiz: () => void;
 }
 
@@ -85,11 +96,19 @@ export const quizQuestions = [
   },
 ];
 
+const defaultOpenMindednessAnswers: OpenMindednessAnswers = {
+  humans: false,
+  aiCalculations: false,
+  psychology: false,
+  humanDesign: false,
+};
+
 export function QuizProvider({ children }: { children: ReactNode }) {
-  const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'email' | 'results'>('welcome');
+  const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'mindedness' | 'email' | 'results'>('welcome');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [email, setEmail] = useState('');
+  const [openMindednessAnswers, setOpenMindednessAnswers] = useState<OpenMindednessAnswers>(defaultOpenMindednessAnswers);
 
   const addAnswer = (answer: QuizAnswer) => {
     setAnswers((prev) => {
@@ -107,11 +126,22 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     return answers.reduce((sum, a) => sum + a.score, 0);
   };
 
+  const calculateOpenMindednessScore = () => {
+    const { humans, aiCalculations, psychology, humanDesign } = openMindednessAnswers;
+    let score = 0;
+    if (humans) score++;
+    if (aiCalculations) score++;
+    if (psychology) score++;
+    if (humanDesign) score++;
+    return score;
+  };
+
   const resetQuiz = () => {
     setCurrentStep('welcome');
     setCurrentQuestion(0);
     setAnswers([]);
     setEmail('');
+    setOpenMindednessAnswers(defaultOpenMindednessAnswers);
   };
 
   return (
@@ -122,11 +152,15 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         answers,
         email,
         totalScore: calculateScore(),
+        openMindednessAnswers,
+        openMindednessScore: calculateOpenMindednessScore(),
         setCurrentStep,
         setCurrentQuestion,
         addAnswer,
         setEmail,
+        setOpenMindednessAnswers,
         calculateScore,
+        calculateOpenMindednessScore,
         resetQuiz,
       }}
     >
