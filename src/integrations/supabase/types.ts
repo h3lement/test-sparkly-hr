@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_logs: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          language: string | null
+          quiz_lead_id: string | null
+          recipient_email: string
+          resend_id: string | null
+          sender_email: string
+          sender_name: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          language?: string | null
+          quiz_lead_id?: string | null
+          recipient_email: string
+          resend_id?: string | null
+          sender_email: string
+          sender_name: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          language?: string | null
+          quiz_lead_id?: string | null
+          recipient_email?: string
+          resend_id?: string | null
+          sender_email?: string
+          sender_name?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_quiz_lead_id_fkey"
+            columns: ["quiz_lead_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           created_at: string

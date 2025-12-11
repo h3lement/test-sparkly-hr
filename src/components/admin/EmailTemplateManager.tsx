@@ -486,6 +486,7 @@ export function EmailTemplateManager() {
         ],
         language: testLanguage,
         opennessScore: 3,
+        isTest: true, // Flag to indicate this is a test email
       };
 
       const { error } = await supabase.functions.invoke("send-quiz-results", {
