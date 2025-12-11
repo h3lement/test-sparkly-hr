@@ -96,6 +96,269 @@ function checkRateLimit(ip: string): { allowed: boolean; remainingRequests: numb
   };
 }
 
+// Email translations
+const emailTranslations: Record<string, {
+  subject: string;
+  yourResults: string;
+  outOf: string;
+  points: string;
+  keyInsights: string;
+  wantToImprove: string;
+  visitSparkly: string;
+  newQuizSubmission: string;
+  userEmail: string;
+  score: string;
+  resultCategory: string;
+}> = {
+  en: {
+    subject: 'Your Team Performance Results',
+    yourResults: 'Your Team Performance Results',
+    outOf: 'out of',
+    points: 'points',
+    keyInsights: 'Key Insights',
+    wantToImprove: "Want to improve your team's performance?",
+    visitSparkly: 'Visit Sparkly.hr',
+    newQuizSubmission: 'New Quiz Submission',
+    userEmail: 'User Email',
+    score: 'Score',
+    resultCategory: 'Result Category',
+  },
+  et: {
+    subject: 'Sinu meeskonna tulemuslikkuse tulemused',
+    yourResults: 'Sinu meeskonna tulemuslikkuse tulemused',
+    outOf: 'punkti',
+    points: 'punktist',
+    keyInsights: 'Peamised tähelepanekud',
+    wantToImprove: 'Soovid parandada oma meeskonna tulemuslikkust?',
+    visitSparkly: 'Külasta Sparkly.hr',
+    newQuizSubmission: 'Uus küsitluse vastus',
+    userEmail: 'Kasutaja e-post',
+    score: 'Skoor',
+    resultCategory: 'Tulemuse kategooria',
+  },
+  de: {
+    subject: 'Ihre Team-Leistungsergebnisse',
+    yourResults: 'Ihre Team-Leistungsergebnisse',
+    outOf: 'von',
+    points: 'Punkten',
+    keyInsights: 'Wichtige Erkenntnisse',
+    wantToImprove: 'Möchten Sie die Leistung Ihres Teams verbessern?',
+    visitSparkly: 'Besuchen Sie Sparkly.hr',
+    newQuizSubmission: 'Neue Quiz-Einreichung',
+    userEmail: 'Benutzer-E-Mail',
+    score: 'Punktzahl',
+    resultCategory: 'Ergebniskategorie',
+  },
+  fr: {
+    subject: 'Vos résultats de performance d\'équipe',
+    yourResults: 'Vos résultats de performance d\'équipe',
+    outOf: 'sur',
+    points: 'points',
+    keyInsights: 'Points clés',
+    wantToImprove: 'Voulez-vous améliorer la performance de votre équipe?',
+    visitSparkly: 'Visitez Sparkly.hr',
+    newQuizSubmission: 'Nouvelle soumission de quiz',
+    userEmail: 'E-mail utilisateur',
+    score: 'Score',
+    resultCategory: 'Catégorie de résultat',
+  },
+  es: {
+    subject: 'Tus resultados de rendimiento del equipo',
+    yourResults: 'Tus resultados de rendimiento del equipo',
+    outOf: 'de',
+    points: 'puntos',
+    keyInsights: 'Puntos clave',
+    wantToImprove: '¿Quieres mejorar el rendimiento de tu equipo?',
+    visitSparkly: 'Visita Sparkly.hr',
+    newQuizSubmission: 'Nueva presentación de quiz',
+    userEmail: 'Email del usuario',
+    score: 'Puntuación',
+    resultCategory: 'Categoría de resultado',
+  },
+  it: {
+    subject: 'I tuoi risultati di performance del team',
+    yourResults: 'I tuoi risultati di performance del team',
+    outOf: 'su',
+    points: 'punti',
+    keyInsights: 'Punti chiave',
+    wantToImprove: 'Vuoi migliorare le prestazioni del tuo team?',
+    visitSparkly: 'Visita Sparkly.hr',
+    newQuizSubmission: 'Nuova sottomissione quiz',
+    userEmail: 'Email utente',
+    score: 'Punteggio',
+    resultCategory: 'Categoria risultato',
+  },
+  pt: {
+    subject: 'Os seus resultados de desempenho da equipa',
+    yourResults: 'Os seus resultados de desempenho da equipa',
+    outOf: 'de',
+    points: 'pontos',
+    keyInsights: 'Pontos-chave',
+    wantToImprove: 'Quer melhorar o desempenho da sua equipa?',
+    visitSparkly: 'Visite Sparkly.hr',
+    newQuizSubmission: 'Nova submissão de quiz',
+    userEmail: 'Email do utilizador',
+    score: 'Pontuação',
+    resultCategory: 'Categoria do resultado',
+  },
+  nl: {
+    subject: 'Uw teamprestatie resultaten',
+    yourResults: 'Uw teamprestatie resultaten',
+    outOf: 'van',
+    points: 'punten',
+    keyInsights: 'Belangrijke inzichten',
+    wantToImprove: 'Wilt u de prestaties van uw team verbeteren?',
+    visitSparkly: 'Bezoek Sparkly.hr',
+    newQuizSubmission: 'Nieuwe quiz inzending',
+    userEmail: 'Gebruiker email',
+    score: 'Score',
+    resultCategory: 'Resultaat categorie',
+  },
+  pl: {
+    subject: 'Twoje wyniki wydajności zespołu',
+    yourResults: 'Twoje wyniki wydajności zespołu',
+    outOf: 'z',
+    points: 'punktów',
+    keyInsights: 'Kluczowe spostrzeżenia',
+    wantToImprove: 'Chcesz poprawić wydajność swojego zespołu?',
+    visitSparkly: 'Odwiedź Sparkly.hr',
+    newQuizSubmission: 'Nowe zgłoszenie quizu',
+    userEmail: 'Email użytkownika',
+    score: 'Wynik',
+    resultCategory: 'Kategoria wyniku',
+  },
+  ru: {
+    subject: 'Результаты производительности вашей команды',
+    yourResults: 'Результаты производительности вашей команды',
+    outOf: 'из',
+    points: 'баллов',
+    keyInsights: 'Ключевые выводы',
+    wantToImprove: 'Хотите улучшить производительность вашей команды?',
+    visitSparkly: 'Посетите Sparkly.hr',
+    newQuizSubmission: 'Новая отправка теста',
+    userEmail: 'Email пользователя',
+    score: 'Баллы',
+    resultCategory: 'Категория результата',
+  },
+  zh: {
+    subject: '您的团队绩效结果',
+    yourResults: '您的团队绩效结果',
+    outOf: '满分',
+    points: '分',
+    keyInsights: '关键见解',
+    wantToImprove: '想要提高团队绩效？',
+    visitSparkly: '访问 Sparkly.hr',
+    newQuizSubmission: '新测验提交',
+    userEmail: '用户邮箱',
+    score: '分数',
+    resultCategory: '结果类别',
+  },
+  ja: {
+    subject: 'チームパフォーマンス結果',
+    yourResults: 'チームパフォーマンス結果',
+    outOf: '/',
+    points: 'ポイント',
+    keyInsights: '主要な洞察',
+    wantToImprove: 'チームのパフォーマンスを向上させたいですか？',
+    visitSparkly: 'Sparkly.hrを訪問',
+    newQuizSubmission: '新しいクイズ提出',
+    userEmail: 'ユーザーメール',
+    score: 'スコア',
+    resultCategory: '結果カテゴリ',
+  },
+  ko: {
+    subject: '팀 성과 결과',
+    yourResults: '팀 성과 결과',
+    outOf: '/',
+    points: '점',
+    keyInsights: '주요 인사이트',
+    wantToImprove: '팀 성과를 개선하고 싶으신가요?',
+    visitSparkly: 'Sparkly.hr 방문',
+    newQuizSubmission: '새 퀴즈 제출',
+    userEmail: '사용자 이메일',
+    score: '점수',
+    resultCategory: '결과 카테고리',
+  },
+  ar: {
+    subject: 'نتائج أداء فريقك',
+    yourResults: 'نتائج أداء فريقك',
+    outOf: 'من',
+    points: 'نقطة',
+    keyInsights: 'رؤى رئيسية',
+    wantToImprove: 'هل تريد تحسين أداء فريقك؟',
+    visitSparkly: 'زيارة Sparkly.hr',
+    newQuizSubmission: 'تقديم اختبار جديد',
+    userEmail: 'بريد المستخدم',
+    score: 'النتيجة',
+    resultCategory: 'فئة النتيجة',
+  },
+  hi: {
+    subject: 'आपकी टीम के प्रदर्शन के परिणाम',
+    yourResults: 'आपकी टीम के प्रदर्शन के परिणाम',
+    outOf: 'में से',
+    points: 'अंक',
+    keyInsights: 'मुख्य अंतर्दृष्टि',
+    wantToImprove: 'क्या आप अपनी टीम का प्रदर्शन सुधारना चाहते हैं?',
+    visitSparkly: 'Sparkly.hr पर जाएं',
+    newQuizSubmission: 'नया क्विज़ सबमिशन',
+    userEmail: 'उपयोगकर्ता ईमेल',
+    score: 'स्कोर',
+    resultCategory: 'परिणाम श्रेणी',
+  },
+  sv: {
+    subject: 'Dina teamprestationsresultat',
+    yourResults: 'Dina teamprestationsresultat',
+    outOf: 'av',
+    points: 'poäng',
+    keyInsights: 'Viktiga insikter',
+    wantToImprove: 'Vill du förbättra ditt teams prestation?',
+    visitSparkly: 'Besök Sparkly.hr',
+    newQuizSubmission: 'Ny quiz-inlämning',
+    userEmail: 'Användaremail',
+    score: 'Poäng',
+    resultCategory: 'Resultatkategori',
+  },
+  no: {
+    subject: 'Dine teamytelsesresultater',
+    yourResults: 'Dine teamytelsesresultater',
+    outOf: 'av',
+    points: 'poeng',
+    keyInsights: 'Viktige innsikter',
+    wantToImprove: 'Vil du forbedre teamets ytelse?',
+    visitSparkly: 'Besøk Sparkly.hr',
+    newQuizSubmission: 'Ny quiz-innsending',
+    userEmail: 'Bruker-e-post',
+    score: 'Poengsum',
+    resultCategory: 'Resultatkategori',
+  },
+  da: {
+    subject: 'Dine teampræstationsresultater',
+    yourResults: 'Dine teampræstationsresultater',
+    outOf: 'af',
+    points: 'point',
+    keyInsights: 'Vigtige indsigter',
+    wantToImprove: 'Vil du forbedre dit teams præstation?',
+    visitSparkly: 'Besøg Sparkly.hr',
+    newQuizSubmission: 'Ny quiz-indsendelse',
+    userEmail: 'Bruger-email',
+    score: 'Score',
+    resultCategory: 'Resultatkategori',
+  },
+  fi: {
+    subject: 'Tiimisuorituksesi tulokset',
+    yourResults: 'Tiimisuorituksesi tulokset',
+    outOf: '/',
+    points: 'pistettä',
+    keyInsights: 'Keskeiset oivallukset',
+    wantToImprove: 'Haluatko parantaa tiimisi suorituskykyä?',
+    visitSparkly: 'Vieraile Sparkly.hr',
+    newQuizSubmission: 'Uusi tietovisavastaus',
+    userEmail: 'Käyttäjän sähköposti',
+    score: 'Pisteet',
+    resultCategory: 'Tuloskategoria',
+  },
+};
+
 interface QuizResultsRequest {
   email: string;
   totalScore: number;
@@ -103,6 +366,7 @@ interface QuizResultsRequest {
   resultTitle: string;
   resultDescription: string;
   insights: string[];
+  language?: string;
   answers?: Array<{ questionId: number; selectedOption: number }>;
 }
 
@@ -141,11 +405,15 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, answers }: QuizResultsRequest = await req.json();
+    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, language = 'en', answers }: QuizResultsRequest = await req.json();
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
+    console.log("Language:", language);
     console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
+
+    // Get translations for the language
+    const trans = emailTranslations[language] || emailTranslations.en;
 
     // Save lead to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -190,26 +458,26 @@ const handler = async (req: Request): Promise<Response> => {
             <a href="https://sparkly.hr" target="_blank">
               <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
             </a>
-            <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">Your Team Performance Results</h1>
+            <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">${escapeHtml(trans.yourResults)}</h1>
           </div>
           
           <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
             <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${totalScore}</div>
-            <div style="opacity: 0.9;">out of ${maxScore} points</div>
+            <div style="opacity: 0.9;">${trans.outOf} ${maxScore} ${trans.points}</div>
           </div>
           
           <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${safeResultTitle}</h2>
           
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
           
-          <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Key Insights:</h3>
+          <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${escapeHtml(trans.keyInsights)}:</h3>
           <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
             ${insightsList}
           </ul>
           
           <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">Want to improve your team's performance?</p>
-            <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Visit Sparkly.hr</a>
+            <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">${escapeHtml(trans.wantToImprove)}</p>
+            <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">${escapeHtml(trans.visitSparkly)}</a>
           </div>
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
@@ -227,13 +495,14 @@ const handler = async (req: Request): Promise<Response> => {
     const userEmailResponse = await resend.emails.send({
       from: "Sparkly.hr <mikk.orglaan@gmail.com>",
       to: [email],
-      subject: `Your Team Performance Results: ${safeResultTitle}`,
+      subject: `${trans.subject}: ${safeResultTitle}`,
       html: emailHtml,
     });
 
     console.log("User email sent:", userEmailResponse);
 
-    // Send copy to admin (mikk@sparkly.hr)
+    // Send copy to admin (mikk@sparkly.hr) - always in English for consistency
+    const adminTrans = emailTranslations.en;
     const adminEmailHtml = `
       <!DOCTYPE html>
       <html>
@@ -245,16 +514,17 @@ const handler = async (req: Request): Promise<Response> => {
         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
           <div style="text-align: center; margin-bottom: 30px;">
             <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
-            <h1 style="color: #1f2937; font-size: 24px; margin: 0;">New Quiz Submission</h1>
+            <h1 style="color: #1f2937; font-size: 24px; margin: 0;">${adminTrans.newQuizSubmission}</h1>
           </div>
           
           <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="margin: 0 0 8px 0;"><strong>User Email:</strong> ${safeEmail}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Score:</strong> ${totalScore} / ${maxScore}</p>
-            <p style="margin: 0;"><strong>Result Category:</strong> ${safeResultTitle}</p>
+            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
+            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
+            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitle}</p>
+            <p style="margin: 0;"><strong>Language:</strong> ${language}</p>
           </div>
           
-          <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">Key Insights:</h3>
+          <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">${adminTrans.keyInsights}:</h3>
           <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 20px;">
             ${insightsList}
           </ul>

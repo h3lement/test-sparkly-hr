@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useQuiz, quizQuestions } from './QuizContext';
+import { useQuiz } from './QuizContext';
+import { useLanguage, TranslationKey } from './LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { Footer } from './Footer';
 import { Logo } from '@/components/Logo';
@@ -13,60 +14,45 @@ const emailSchema = z.string().trim().email({ message: "Please enter a valid ema
 interface ResultLevel {
   min: number;
   max: number;
-  title: string;
-  description: string;
-  insights: string[];
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
+  insightKeys: TranslationKey[];
 }
 
 const resultLevels: ResultLevel[] = [
   {
     min: 6,
     max: 10,
-    title: 'High-Performing Team',
-    description: 'Congratulations! Your team is operating at a high level. You\'ve built a solid foundation that allows you to focus on growth.',
-    insights: [
-      'Your delegation skills are strong',
-      'Team members show initiative and ownership',
-      'You have time to focus on strategic priorities',
-    ],
+    titleKey: 'highPerformingTeam',
+    descKey: 'highPerformingDesc',
+    insightKeys: ['highPerformingInsight1', 'highPerformingInsight2', 'highPerformingInsight3'],
   },
   {
     min: 11,
     max: 16,
-    title: 'Room for Improvement',
-    description: 'Your team has potential, but there are clear areas where performance improvements could significantly impact your business.',
-    insights: [
-      'Some tasks take longer than they should',
-      'Communication gaps may be causing delays',
-      'Clearer expectations could boost results',
-    ],
+    titleKey: 'roomForImprovement',
+    descKey: 'roomForImprovementDesc',
+    insightKeys: ['roomForImprovementInsight1', 'roomForImprovementInsight2', 'roomForImprovementInsight3'],
   },
   {
     min: 17,
     max: 20,
-    title: 'Performance Challenges',
-    description: 'You\'re likely spending significant time managing issues rather than growing your business. This is holding you back.',
-    insights: [
-      'You\'re frequently re-doing delegated work',
-      'Employee issues consume your daily focus',
-      'Scaling feels impossible right now',
-    ],
+    titleKey: 'performanceChallenges',
+    descKey: 'performanceChallengesDesc',
+    insightKeys: ['performanceChallengesInsight1', 'performanceChallengesInsight2', 'performanceChallengesInsight3'],
   },
   {
     min: 21,
     max: 24,
-    title: 'Critical Performance Gap',
-    description: 'Your team performance is significantly impacting your ability to run and grow your business. Immediate action is needed.',
-    insights: [
-      'You\'re essentially doing everything yourself',
-      'Taking time off feels impossible',
-      'Employee issues are your biggest bottleneck',
-    ],
+    titleKey: 'criticalPerformanceGap',
+    descKey: 'criticalPerformanceGapDesc',
+    insightKeys: ['criticalPerformanceGapInsight1', 'criticalPerformanceGapInsight2', 'criticalPerformanceGapInsight3'],
   },
 ];
 
 export function EmailCapture() {
   const { email, setEmail, setCurrentStep, totalScore } = useQuiz();
+  const { t, language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -76,7 +62,7 @@ export function EmailCapture() {
     const validation = emailSchema.safeParse(email);
     if (!validation.success) {
       toast({
-        title: 'Invalid email',
+        title: t('invalidEmail'),
         description: validation.error.errors[0]?.message || 'Please enter a valid email address.',
         variant: 'destructive',
       });
@@ -85,7 +71,7 @@ export function EmailCapture() {
 
     setIsSubmitting(true);
 
-    const maxScore = quizQuestions.length * 4;
+    const maxScore = 24; // 6 questions * 4 max points
     const result = resultLevels.find(
       (level) => totalScore >= level.min && totalScore <= level.max
     ) || resultLevels[resultLevels.length - 1];
@@ -96,16 +82,17 @@ export function EmailCapture() {
           email: validation.data,
           totalScore,
           maxScore,
-          resultTitle: result.title,
-          resultDescription: result.description,
-          insights: result.insights,
+          resultTitle: t(result.titleKey),
+          resultDescription: t(result.descKey),
+          insights: result.insightKeys.map(key => t(key)),
+          language,
         },
       });
 
       if (error) {
         console.error('Error sending results:', error);
         toast({
-          title: 'Error',
+          title: t('emailError'),
           description: 'Failed to send results. Please try again.',
           variant: 'destructive',
         });
@@ -114,16 +101,16 @@ export function EmailCapture() {
       }
 
       toast({
-        title: 'Success!',
-        description: 'Your results have been sent to your email.',
+        title: t('emailSuccess'),
+        description: t('emailSuccessDesc'),
       });
 
       setCurrentStep('results');
     } catch (err) {
       console.error('Error:', err);
       toast({
-        title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        title: t('emailError'),
+        description: t('somethingWrong'),
         variant: 'destructive',
       });
     } finally {
@@ -138,20 +125,19 @@ export function EmailCapture() {
       </div>
       
       <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
-        Your Results Are{' '}
-        <span className="gradient-text">Ready!</span>
+        {t('resultsReady')}{' '}
+        <span className="gradient-text">{t('resultsReadyHighlight')}</span>
       </h2>
       
       <p className="text-lg text-muted-foreground mb-8">
-        Enter your email to unlock your personalized performance assessment 
-        and get actionable insights delivered to your inbox.
+        {t('emailDescription')}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="glass rounded-2xl p-6">
           <Input
             type="email"
-            placeholder="your@email.com"
+            placeholder={t('emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="text-center text-lg h-14 rounded-xl border-2 focus:border-primary"
@@ -165,12 +151,12 @@ export function EmailCapture() {
           disabled={isSubmitting}
           className="w-full gradient-primary text-primary-foreground py-6 text-lg font-semibold rounded-full glow-primary hover:scale-105 transition-transform"
         >
-          {isSubmitting ? 'Sending...' : 'Get My Results'}
+          {isSubmitting ? t('sending') : t('getResults')}
         </Button>
       </form>
 
       <p className="text-sm text-muted-foreground mt-6">
-        🔒 We respect your privacy. No spam, ever.
+        {t('privacyNotice')}
       </p>
       
       <Footer />
