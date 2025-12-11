@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useQuiz, quizQuestions } from './QuizContext';
+import { Footer } from './Footer';
 import sparklyLogo from '@/assets/sparkly-logo.png';
 import { cn } from '@/lib/utils';
 
@@ -82,11 +83,13 @@ export function ResultsScreen() {
   return (
     <div className="animate-fade-in max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <img 
-          src={sparklyLogo} 
-          alt="Sparkly Logo" 
-          className="w-16 h-16 mx-auto mb-6 object-contain"
-        />
+        <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
+          <img 
+            src={sparklyLogo} 
+            alt="Sparkly Logo" 
+            className="w-16 h-16 mx-auto mb-6 object-contain hover:opacity-80 transition-opacity cursor-pointer"
+          />
+        </a>
         
         <p className="text-muted-foreground mb-2">Results for {email}</p>
         
@@ -154,6 +157,8 @@ export function ResultsScreen() {
           Take Quiz Again
         </Button>
       </div>
+      
+      <Footer />
     </div>
   );
 }
