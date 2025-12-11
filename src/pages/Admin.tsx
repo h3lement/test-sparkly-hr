@@ -23,6 +23,7 @@ interface AdminUser {
   id: string;
   user_id: string;
   email: string;
+  name: string;
   is_active: boolean;
 }
 
@@ -153,6 +154,7 @@ const Admin = () => {
           id: role.id,
           user_id: role.user_id,
           email: userData?.email || "Unknown",
+          name: userData?.name || "",
           is_active: userData?.is_active ?? true,
         };
       });
@@ -513,9 +515,10 @@ const Admin = () => {
                     <h3 className="font-semibold text-foreground">Admins</h3>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                  <table className="w-full">
                       <thead className="bg-secondary/50">
                         <tr>
+                          <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Name</th>
                           <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
                           <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Status</th>
                           <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
@@ -525,10 +528,13 @@ const Admin = () => {
                         {admins.map((admin) => (
                           <tr key={admin.id} className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}>
                             <td className="px-6 py-4 text-sm text-foreground">
-                              {admin.email}
+                              {admin.name || <span className="text-muted-foreground italic">No name</span>}
                               {admin.user_id === currentUserId && (
                                 <span className="ml-2 text-xs text-muted-foreground">(you)</span>
                               )}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-foreground">
+                              {admin.email}
                             </td>
                             <td className="px-6 py-4">
                               {admin.is_active ? (
@@ -577,7 +583,7 @@ const Admin = () => {
                         ))}
                         {admins.length === 0 && (
                           <tr>
-                            <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">
+                            <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
                               No admins found
                             </td>
                           </tr>

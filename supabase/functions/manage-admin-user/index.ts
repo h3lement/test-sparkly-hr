@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
       console.log(`Fetching status for ${userIds.length} users`);
 
-      const usersData: Record<string, { email: string; is_active: boolean }> = {};
+      const usersData: Record<string, { email: string; name: string; is_active: boolean }> = {};
       
       for (const uid of userIds) {
         try {
@@ -82,16 +82,19 @@ Deno.serve(async (req) => {
             // Check if user is banned by casting to unknown first then to Record
             const userObj = userData.user as unknown as Record<string, unknown>;
             const bannedUntil = userObj.banned_until as string | null;
+            const userMetadata = userData.user.user_metadata as Record<string, unknown> | undefined;
+            const fullName = userMetadata?.full_name as string | undefined;
             usersData[uid] = {
               email: userData.user.email || "Unknown",
+              name: fullName || "",
               is_active: !bannedUntil || new Date(bannedUntil) < new Date(),
             };
           } else {
-            usersData[uid] = { email: "Unknown", is_active: true };
+            usersData[uid] = { email: "Unknown", name: "", is_active: true };
           }
         } catch (e) {
           console.error(`Failed to fetch user ${uid}:`, e);
-          usersData[uid] = { email: "Unknown", is_active: true };
+          usersData[uid] = { email: "Unknown", name: "", is_active: true };
         }
       }
 
