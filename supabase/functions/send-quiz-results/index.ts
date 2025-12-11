@@ -109,6 +109,8 @@ const emailTranslations: Record<string, {
   userEmail: string;
   score: string;
   resultCategory: string;
+  leadershipOpenMindedness: string;
+  openMindednessOutOf: string;
 }> = {
   en: {
     subject: 'Your Team Performance Results',
@@ -122,6 +124,8 @@ const emailTranslations: Record<string, {
     userEmail: 'User Email',
     score: 'Score',
     resultCategory: 'Result Category',
+    leadershipOpenMindedness: 'Leadership Open-Mindedness',
+    openMindednessOutOf: 'out of 4',
   },
   et: {
     subject: 'Sinu meeskonna tulemuslikkuse tulemused',
@@ -135,6 +139,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Kasutaja e-post',
     score: 'Skoor',
     resultCategory: 'Tulemuse kategooria',
+    leadershipOpenMindedness: 'Avatud mõtlemisega juhtimine',
+    openMindednessOutOf: '4-st',
   },
   de: {
     subject: 'Ihre Team-Leistungsergebnisse',
@@ -148,6 +154,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Benutzer-E-Mail',
     score: 'Punktzahl',
     resultCategory: 'Ergebniskategorie',
+    leadershipOpenMindedness: 'Aufgeschlossene Führung',
+    openMindednessOutOf: 'von 4',
   },
   fr: {
     subject: 'Vos résultats de performance d\'équipe',
@@ -161,6 +169,8 @@ const emailTranslations: Record<string, {
     userEmail: 'E-mail utilisateur',
     score: 'Score',
     resultCategory: 'Catégorie de résultat',
+    leadershipOpenMindedness: 'Leadership ouvert d\'esprit',
+    openMindednessOutOf: 'sur 4',
   },
   es: {
     subject: 'Tus resultados de rendimiento del equipo',
@@ -174,6 +184,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Email del usuario',
     score: 'Puntuación',
     resultCategory: 'Categoría de resultado',
+    leadershipOpenMindedness: 'Liderazgo de mente abierta',
+    openMindednessOutOf: 'de 4',
   },
   it: {
     subject: 'I tuoi risultati di performance del team',
@@ -187,6 +199,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Email utente',
     score: 'Punteggio',
     resultCategory: 'Categoria risultato',
+    leadershipOpenMindedness: 'Leadership di mentalità aperta',
+    openMindednessOutOf: 'su 4',
   },
   pt: {
     subject: 'Os seus resultados de desempenho da equipa',
@@ -200,6 +214,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Email do utilizador',
     score: 'Pontuação',
     resultCategory: 'Categoria do resultado',
+    leadershipOpenMindedness: 'Liderança de mente aberta',
+    openMindednessOutOf: 'de 4',
   },
   nl: {
     subject: 'Uw teamprestatie resultaten',
@@ -213,6 +229,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Gebruiker email',
     score: 'Score',
     resultCategory: 'Resultaat categorie',
+    leadershipOpenMindedness: 'Open-minded leiderschap',
+    openMindednessOutOf: 'van 4',
   },
   pl: {
     subject: 'Twoje wyniki wydajności zespołu',
@@ -226,6 +244,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Email użytkownika',
     score: 'Wynik',
     resultCategory: 'Kategoria wyniku',
+    leadershipOpenMindedness: 'Przywództwo otwarte na innowacje',
+    openMindednessOutOf: 'z 4',
   },
   ru: {
     subject: 'Результаты производительности вашей команды',
@@ -239,6 +259,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Email пользователя',
     score: 'Баллы',
     resultCategory: 'Категория результата',
+    leadershipOpenMindedness: 'Открытое лидерство',
+    openMindednessOutOf: 'из 4',
   },
   sv: {
     subject: 'Dina teamprestationsresultat',
@@ -252,6 +274,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Användaremail',
     score: 'Poäng',
     resultCategory: 'Resultatkategori',
+    leadershipOpenMindedness: 'Öppensinnat ledarskap',
+    openMindednessOutOf: 'av 4',
   },
   no: {
     subject: 'Dine teamytelsesresultater',
@@ -265,6 +289,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Bruker-e-post',
     score: 'Poengsum',
     resultCategory: 'Resultatkategori',
+    leadershipOpenMindedness: 'Åpent lederskap',
+    openMindednessOutOf: 'av 4',
   },
   da: {
     subject: 'Dine teampræstationsresultater',
@@ -278,6 +304,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Bruger-email',
     score: 'Score',
     resultCategory: 'Resultatkategori',
+    leadershipOpenMindedness: 'Åbensindet lederskab',
+    openMindednessOutOf: 'af 4',
   },
   fi: {
     subject: 'Tiimisuorituksesi tulokset',
@@ -291,6 +319,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Käyttäjän sähköposti',
     score: 'Pisteet',
     resultCategory: 'Tuloskategoria',
+    leadershipOpenMindedness: 'Avoimen mielen johtajuus',
+    openMindednessOutOf: '/ 4',
   },
   uk: {
     subject: 'Результати продуктивності вашої команди',
@@ -304,6 +334,8 @@ const emailTranslations: Record<string, {
     userEmail: 'Email користувача',
     score: 'Бали',
     resultCategory: 'Категорія результату',
+    leadershipOpenMindedness: 'Відкрите лідерство',
+    openMindednessOutOf: 'з 4',
   },
 };
 
@@ -397,6 +429,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Sparkly.hr logo URL (hosted on their website)
     const logoUrl = "https://sparkly.hr/wp-content/uploads/2024/05/Sparkly-logo.png";
 
+    // Build openness score section if available
+    const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
+          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px 0;">${escapeHtml(trans.leadershipOpenMindedness)}</h3>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 24px; font-weight: bold; color: #6d28d9;">${opennessScore}</span>
+              <span style="color: #6b7280;">${trans.openMindednessOutOf}</span>
+            </div>
+          </div>
+    ` : '';
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -421,6 +464,8 @@ const handler = async (req: Request): Promise<Response> => {
           <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${safeResultTitle}</h2>
           
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
+          
+          ${opennessSection}
           
           <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${escapeHtml(trans.keyInsights)}:</h3>
           <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
@@ -473,7 +518,8 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
             <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
             <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitle}</p>
-            <p style="margin: 0;"><strong>Language:</strong> ${language}</p>
+            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / 4` : 'N/A'}</p>
+            <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
           </div>
           
           <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">${adminTrans.keyInsights}:</h3>
