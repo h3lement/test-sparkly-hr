@@ -55,7 +55,7 @@ const resultLevels: ResultLevel[] = [
 ];
 
 export function ResultsScreen() {
-  const { totalScore, email, resetQuiz } = useQuiz();
+  const { totalScore, email, resetQuiz, openMindednessScore } = useQuiz();
   const { t } = useLanguage();
   
   const result = resultLevels.find(
@@ -64,6 +64,16 @@ export function ResultsScreen() {
 
   const maxScore = 24; // 6 questions * 4 max points
   const percentage = Math.round((totalScore / maxScore) * 100);
+
+  // Get open-mindedness interpretation
+  const getOpenMindednessResult = () => {
+    if (openMindednessScore === 4) return { key: 'openMindednessHigh' as TranslationKey, color: 'from-emerald-500 to-green-600', emoji: '🌟' };
+    if (openMindednessScore >= 2) return { key: 'openMindednessMedium' as TranslationKey, color: 'from-amber-500 to-orange-600', emoji: '⚡' };
+    if (openMindednessScore === 1) return { key: 'openMindednessLow' as TranslationKey, color: 'from-rose-500 to-red-600', emoji: '🔥' };
+    return { key: 'openMindednessNone' as TranslationKey, color: 'from-red-600 to-rose-700', emoji: '🚨' };
+  };
+
+  const openMindednessResult = getOpenMindednessResult();
 
   return (
     <div className="animate-fade-in max-w-2xl mx-auto">
@@ -99,6 +109,29 @@ export function ResultsScreen() {
           <span>{t('best')}</span>
           <span>{t('needsWork')}</span>
         </div>
+      </div>
+
+      {/* Leadership Open-Mindedness */}
+      <div className="glass rounded-2xl p-8 mb-8">
+        <h3 className="font-heading text-xl font-semibold mb-4">
+          {openMindednessResult.emoji} {t('leadershipOpenMindedness')}
+        </h3>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="text-4xl font-bold gradient-text">
+            {openMindednessScore}/4
+          </div>
+          <div className="flex-1">
+            <div className="h-3 bg-secondary rounded-full overflow-hidden">
+              <div 
+                className={cn('h-full bg-gradient-to-r transition-all duration-1000', openMindednessResult.color)}
+                style={{ width: `${(openMindednessScore / 4) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+        <p className="text-muted-foreground">
+          {t(openMindednessResult.key)}
+        </p>
       </div>
 
       {/* Result description */}

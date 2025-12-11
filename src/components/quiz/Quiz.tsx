@@ -1,6 +1,7 @@
 import { QuizProvider, useQuiz } from './QuizContext';
 import { WelcomeScreen } from './WelcomeScreen';
 import { QuizQuestion } from './QuizQuestion';
+import { OpenMindednessQuestion } from './OpenMindednessQuestion';
 import { EmailCapture } from './EmailCapture';
 import { ResultsScreen } from './ResultsScreen';
 
@@ -12,6 +13,7 @@ function QuizContent() {
       <div className="w-full max-w-3xl">
         {currentStep === 'welcome' && <WelcomeScreen />}
         {currentStep === 'quiz' && <QuizQuestion />}
+        {currentStep === 'mindedness' && <OpenMindednessQuestion />}
         {currentStep === 'email' && <EmailCapture />}
         {currentStep === 'results' && <ResultsScreen />}
       </div>
