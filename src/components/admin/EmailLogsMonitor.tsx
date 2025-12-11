@@ -41,7 +41,7 @@ export function EmailLogsMonitor() {
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("quiz_result_user");
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const { toast } = useToast();
