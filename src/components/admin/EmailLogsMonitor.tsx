@@ -351,21 +351,16 @@ export function EmailLogsMonitor() {
                           </Tooltip>
                         </td>
                         <td className="px-4 py-3">
-                          {log.status === "failed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => resendEmail(log.id)}
-                              disabled={resendingId === log.id}
-                              className="gap-1"
-                            >
-                              <RotateCcw className={`w-3 h-3 ${resendingId === log.id ? "animate-spin" : ""}`} />
-                              {resendingId === log.id ? "Sending..." : "Resend"}
-                            </Button>
-                          )}
-                          {log.status === "sent" && log.error_message === null && (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => resendEmail(log.id)}
+                            disabled={resendingId === log.id}
+                            className="gap-1"
+                          >
+                            <RotateCcw className={`w-3 h-3 ${resendingId === log.id ? "animate-spin" : ""}`} />
+                            {resendingId === log.id ? "Sending..." : "Resend"}
+                          </Button>
                         </td>
                       </tr>
                     );
