@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send to user
     const userEmailResponse = await resend.emails.send({
-      from: "Sparkly.hr <onboarding@resend.dev>",
+      from: "Sparkly.hr <mikk.orglaan@gmail.com>",
       to: [email],
       subject: `Your Team Performance Results: ${resultTitle}`,
       html: emailHtml,
@@ -120,8 +120,8 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const adminEmailResponse = await resend.emails.send({
-      from: "Sparkly.hr Quiz <onboarding@resend.dev>",
-      to: ["mikk@sparkly.hr"],
+      from: "Sparkly.hr Quiz <mikk.orglaan@gmail.com>",
+      to: ["mikk.orglaan@gmail.com"],
       subject: `New Quiz Lead: ${email} - ${resultTitle}`,
       html: adminEmailHtml,
     });
