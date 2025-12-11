@@ -571,7 +571,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("User email response:", JSON.stringify(userEmailResponse));
     
-    // Log user email to database with attempt count
+    // Log user email to database with attempt count and HTML body
     await supabase.from("email_logs").insert({
       email_type: isTest ? "test" : "quiz_result_user",
       recipient_email: email,
@@ -585,6 +585,7 @@ const handler = async (req: Request): Promise<Response> => {
       quiz_lead_id: quizLeadId,
       resend_attempts: userEmailResponse.attempts,
       last_attempt_at: new Date().toISOString(),
+      html_body: emailHtml,
     });
     
     if (userEmailResponse.error) {
@@ -653,7 +654,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Admin email response:", JSON.stringify(adminEmailResponse));
 
-    // Log admin email to database with attempt count
+    // Log admin email to database with attempt count and HTML body
     await supabase.from("email_logs").insert({
       email_type: "quiz_result_admin",
       recipient_email: "mikk@sparkly.hr",
@@ -667,6 +668,7 @@ const handler = async (req: Request): Promise<Response> => {
       quiz_lead_id: quizLeadId,
       resend_attempts: adminEmailResponse.attempts,
       last_attempt_at: new Date().toISOString(),
+      html_body: adminEmailHtml,
     });
     
     if (adminEmailResponse.error) {

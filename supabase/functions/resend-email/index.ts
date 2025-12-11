@@ -179,7 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
       })
       .eq("id", logId);
 
-    // Log the new resend as a separate entry
+    // Log the new resend as a separate entry with HTML body
     await supabase.from("email_logs").insert({
       email_type: emailLog.email_type,
       recipient_email: emailLog.recipient_email,
@@ -191,6 +191,7 @@ const handler = async (req: Request): Promise<Response> => {
       language: emailLog.language,
       quiz_lead_id: emailLog.quiz_lead_id,
       original_log_id: logId,
+      html_body: resendHtml,
     });
 
     console.log("Email resent successfully");

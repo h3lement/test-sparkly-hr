@@ -10,7 +10,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RefreshCw, Search, Mail, AlertCircle, CheckCircle2, TestTube, User, Shield, RotateCcw, Info } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RefreshCw, Search, Mail, AlertCircle, CheckCircle2, TestTube, User, Shield, RotateCcw, Info, Eye } from "lucide-react";
 
 interface EmailLog {
   id: string;
@@ -28,6 +34,7 @@ interface EmailLog {
   resend_attempts: number;
   last_attempt_at: string | null;
   original_log_id: string | null;
+  html_body: string | null;
 }
 
 export function EmailLogsMonitor() {
@@ -36,6 +43,7 @@ export function EmailLogsMonitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -309,51 +317,14 @@ export function EmailLogsMonitor() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Info className="w-4 h-4 text-muted-foreground" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-sm p-4 space-y-2">
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Created</p>
-                                <p className="text-sm">{formatFullTimestamp(log.created_at)}</p>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Sender</p>
-                                <p className="text-sm">{log.sender_name} &lt;{log.sender_email}&gt;</p>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Language</p>
-                                <p className="text-sm uppercase">{log.language || "en"}</p>
-                              </div>
-                              {log.resend_id && (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-medium text-muted-foreground">Resend ID</p>
-                                  <p className="text-sm font-mono text-xs">{log.resend_id}</p>
-                                </div>
-                              )}
-                              {log.last_attempt_at && (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-medium text-muted-foreground">Last Resend Attempt</p>
-                                  <p className="text-sm">{formatFullTimestamp(log.last_attempt_at)}</p>
-                                </div>
-                              )}
-                              {log.resend_attempts > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-medium text-muted-foreground">Resend Attempts</p>
-                                  <p className="text-sm">{log.resend_attempts}</p>
-                                </div>
-                              )}
-                              {log.error_message && (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-medium text-red-500">Last Error</p>
-                                  <p className="text-sm text-red-600">{log.error_message}</p>
-                                </div>
-                              )}
-                            </TooltipContent>
-                          </Tooltip>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setSelectedLog(log)}
+                          >
+                            <Eye className="w-4 h-4 text-muted-foreground" />
+                          </Button>
                         </td>
                         <td className="px-4 py-3">
                           <Button
@@ -379,6 +350,81 @@ export function EmailLogsMonitor() {
         <p className="text-xs text-muted-foreground text-center">
           Showing up to 200 most recent email logs
         </p>
+
+        {/* Email Details Dialog */}
+        <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="text-lg">Email Details</DialogTitle>
+            </DialogHeader>
+            {selectedLog && (
+              <div className="flex-1 overflow-y-auto space-y-4">
+                {/* Header Info */}
+                <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">From:</span>
+                    <span>{selectedLog.sender_name} &lt;{selectedLog.sender_email}&gt;</span>
+                  </div>
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">To:</span>
+                    <span>{selectedLog.recipient_email}</span>
+                  </div>
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">Subject:</span>
+                    <span className="font-medium">{selectedLog.subject}</span>
+                  </div>
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">Date:</span>
+                    <span>{formatFullTimestamp(selectedLog.created_at)}</span>
+                  </div>
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">Language:</span>
+                    <span className="uppercase">{selectedLog.language || "en"}</span>
+                  </div>
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">Status:</span>
+                    <span className={selectedLog.status === "sent" ? "text-green-600" : "text-red-600"}>
+                      {selectedLog.status === "sent" ? "Sent" : "Failed"}
+                    </span>
+                  </div>
+                  {selectedLog.resend_id && (
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-muted-foreground font-medium">Resend ID:</span>
+                      <span className="font-mono text-xs">{selectedLog.resend_id}</span>
+                    </div>
+                  )}
+                  {selectedLog.error_message && (
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-red-500 font-medium">Error:</span>
+                      <span className="text-red-600">{selectedLog.error_message}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Email Body */}
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-muted/50 px-4 py-2 border-b">
+                    <span className="text-sm font-medium text-muted-foreground">Email Body</span>
+                  </div>
+                  {selectedLog.html_body ? (
+                    <iframe
+                      srcDoc={selectedLog.html_body}
+                      className="w-full h-[400px] bg-white"
+                      title="Email Preview"
+                      sandbox="allow-same-origin"
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <Mail className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Email body not available</p>
+                      <p className="text-xs mt-1">Older emails may not have body content stored</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
