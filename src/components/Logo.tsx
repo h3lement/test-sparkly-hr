@@ -6,7 +6,7 @@ export function Logo() {
       <img 
         src={sparklyLogo} 
         alt="Sparkly.hr Logo" 
-        className="h-20 sm:h-24 object-contain hover:opacity-80 transition-opacity cursor-pointer"
+        className="h-16 sm:h-[4.5rem] mx-auto object-contain hover:opacity-80 transition-opacity cursor-pointer"
       />
     </a>
   );
