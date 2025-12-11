@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Download, RefreshCw, Trash2, Shield, Clock } from "lucide-react";
+import { LogOut, Download, RefreshCw, Trash2, Shield, Clock, Pencil, Ban, CheckCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
+import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
 
 interface QuizLead {
   id: string;
@@ -22,6 +23,7 @@ interface AdminUser {
   id: string;
   user_id: string;
   email: string;
+  is_active: boolean;
 }
 
 interface PendingAdmin {
@@ -39,6 +41,8 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -144,6 +148,7 @@ const Admin = () => {
           id: role.id,
           user_id: role.user_id,
           email: profile?.email || "Unknown",
+          is_active: true, // Default to active, will be updated if needed
         });
       }
       setAdmins(adminUsers);
@@ -186,6 +191,57 @@ const Admin = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const toggleAdminStatus = async (admin: AdminUser) => {
+    if (admin.user_id === currentUserId) {
+      toast({
+        title: "Cannot modify yourself",
+        description: "You cannot deactivate your own account",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const action = admin.is_active ? "deactivate" : "activate";
+      const { data, error } = await supabase.functions.invoke("manage-admin-user", {
+        body: { action, userId: admin.user_id },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local state
+      setAdmins(admins.map(a => 
+        a.id === admin.id ? { ...a, is_active: !a.is_active } : a
+      ));
+
+      toast({
+        title: admin.is_active ? "Admin deactivated" : "Admin activated",
+        description: `${admin.email} has been ${admin.is_active ? "deactivated" : "activated"}`,
+      });
+    } catch (error: any) {
+      console.error("Error toggling admin status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update admin status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openEditDialog = (admin: AdminUser) => {
+    setEditingAdmin(admin);
+    setEditDialogOpen(true);
   };
 
   const removeAdmin = async (roleId: string, userId: string, email: string) => {
@@ -448,7 +504,7 @@ const Admin = () => {
                 {/* Active Admins */}
                 <div className="glass rounded-xl overflow-hidden mb-6">
                   <div className="px-6 py-4 bg-secondary/30 border-b border-border">
-                    <h3 className="font-semibold text-foreground">Active Admins</h3>
+                    <h3 className="font-semibold text-foreground">Admins</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -461,7 +517,7 @@ const Admin = () => {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {admins.map((admin) => (
-                          <tr key={admin.id} className="hover:bg-secondary/30 transition-colors">
+                          <tr key={admin.id} className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}>
                             <td className="px-6 py-4 text-sm text-foreground">
                               {admin.email}
                               {admin.user_id === currentUserId && (
@@ -469,17 +525,44 @@ const Admin = () => {
                               )}
                             </td>
                             <td className="px-6 py-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                Active
-                              </span>
+                              {admin.is_active ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-600">
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
+                                  Deactivated
+                                </span>
+                              )}
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-6 py-4 text-right space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditDialog(admin)}
+                                title="Edit admin"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleAdminStatus(admin)}
+                                disabled={admin.user_id === currentUserId}
+                                title={admin.is_active ? "Deactivate" : "Activate"}
+                                className={admin.is_active 
+                                  ? "text-orange-600 hover:text-orange-600 hover:bg-orange-500/10" 
+                                  : "text-green-600 hover:text-green-600 hover:bg-green-500/10"}
+                              >
+                                {admin.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
                                 disabled={admin.user_id === currentUserId}
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Remove admin"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -489,7 +572,7 @@ const Admin = () => {
                         {admins.length === 0 && (
                           <tr>
                             <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">
-                              No active admins found
+                              No admins found
                             </td>
                           </tr>
                         )}
@@ -552,6 +635,13 @@ const Admin = () => {
         </Tabs>
       </main>
       <Footer />
+      
+      <EditAdminDialog
+        admin={editingAdmin}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onAdminUpdated={fetchAdmins}
+      />
     </div>
   );
 };
