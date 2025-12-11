@@ -27,6 +27,8 @@ export const languages: LanguageOption[] = [
 ];
 
 export type TranslationKey = 
+  // Page title
+  | 'pageTitle'
   // Welcome screen
   | 'badge'
   | 'headline'
@@ -121,6 +123,7 @@ export type TranslationKey =
 
 export const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
+    pageTitle: 'Team Performance Assessment | Sparkly.hr',
     badge: 'Backed by decades of HR Experience and Deep Research',
     headline: 'Is Your Team Holding You',
     headlineHighlight: 'Back?',
@@ -225,6 +228,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Very rigid - You rely solely on conventional methods',
   },
   et: {
+    pageTitle: 'Meeskonna tulemuslikkuse hindamine | Sparkly.hr',
     badge: 'Toetatud aastakümnete pikkuse personalijuhtimise kogemuse ja süvitsi minevate uuringutega',
     headline: 'Kas Sinu meeskond hoiab Sind',
     headlineHighlight: 'tagasi?',
@@ -329,6 +333,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Väga jäik - tugineb ainult tavapärastele meetoditele',
   },
   de: {
+    pageTitle: 'Team-Leistungsbewertung | Sparkly.hr',
     badge: 'Gestützt auf jahrzehntelange HR-Erfahrung und tiefgreifende Forschung',
     headline: 'Hält Ihr Team Sie',
     headlineHighlight: 'zurück?',
@@ -433,6 +438,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Sehr starr - Sie verlassen sich nur auf konventionelle Methoden',
   },
   fr: {
+    pageTitle: "Évaluation de performance d'équipe | Sparkly.hr",
     badge: "Soutenu par des décennies d'expérience RH et de recherche approfondie",
     headline: 'Votre équipe vous',
     headlineHighlight: 'freine-t-elle?',
@@ -537,6 +543,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Très rigide - Vous comptez uniquement sur les méthodes conventionnelles',
   },
   es: {
+    pageTitle: 'Evaluación de rendimiento del equipo | Sparkly.hr',
     badge: 'Respaldado por décadas de experiencia en RRHH e investigación profunda',
     headline: '¿Tu equipo te está',
     headlineHighlight: 'frenando?',
@@ -641,6 +648,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Muy rígido - Dependes únicamente de métodos convencionales',
   },
   it: {
+    pageTitle: 'Valutazione delle prestazioni del team | Sparkly.hr',
     badge: 'Supportato da decenni di esperienza HR e ricerca approfondita',
     headline: 'Il tuo team ti sta',
     headlineHighlight: 'trattenendo?',
@@ -745,6 +753,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Molto rigido - Ti affidi solo a metodi convenzionali',
   },
   pt: {
+    pageTitle: 'Avaliação de desempenho da equipa | Sparkly.hr',
     badge: 'Apoiado por décadas de experiência em RH e pesquisa aprofundada',
     headline: 'A sua equipa está a',
     headlineHighlight: 'travá-lo?',
@@ -849,6 +858,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Muito rígido - Depende apenas de métodos convencionais',
   },
   nl: {
+    pageTitle: 'Teamprestatiebeoordeling | Sparkly.hr',
     badge: 'Ondersteund door decennia HR-ervaring en diepgaand onderzoek',
     headline: 'Houdt uw team u',
     headlineHighlight: 'tegen?',
@@ -953,6 +963,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Zeer rigide - U vertrouwt alleen op conventionele methoden',
   },
   pl: {
+    pageTitle: 'Ocena wydajności zespołu | Sparkly.hr',
     badge: 'Poparty dziesięcioleciami doświadczenia HR i dogłębnymi badaniami',
     headline: 'Czy Twój zespół Cię',
     headlineHighlight: 'powstrzymuje?',
@@ -1057,6 +1068,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Bardzo sztywny - Polegasz wyłącznie na konwencjonalnych metodach',
   },
   ru: {
+    pageTitle: 'Оценка эффективности команды | Sparkly.hr',
     badge: 'Подкреплено десятилетиями опыта в HR и глубокими исследованиями',
     headline: 'Ваша команда',
     headlineHighlight: 'сдерживает вас?',
@@ -1161,6 +1173,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Очень жесткий - Вы полагаетесь только на традиционные методы',
   },
   sv: {
+    pageTitle: 'Teamprestandautvärdering | Sparkly.hr',
     badge: 'Stöds av decennier av HR-erfarenhet och djupgående forskning',
     headline: 'Håller ditt team dig',
     headlineHighlight: 'tillbaka?',
@@ -1265,6 +1278,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Mycket rigid - Du förlitar dig enbart på konventionella metoder',
   },
   no: {
+    pageTitle: 'Teamytelsesvurdering | Sparkly.hr',
     badge: 'Støttet av tiår med HR-erfaring og dyptgående forskning',
     headline: 'Holder teamet ditt deg',
     headlineHighlight: 'tilbake?',
@@ -1369,6 +1383,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Veldig rigid - Du stoler kun på konvensjonelle metoder',
   },
   da: {
+    pageTitle: 'Teampræstationsvurdering | Sparkly.hr',
     badge: 'Understøttet af årtiers HR-erfaring og dybdegående forskning',
     headline: 'Holder dit team dig',
     headlineHighlight: 'tilbage?',
@@ -1473,6 +1488,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Meget rigid - Du stoler kun på konventionelle metoder',
   },
   fi: {
+    pageTitle: 'Tiimin suorituskyvyn arviointi | Sparkly.hr',
     badge: 'Vuosikymmenten HR-kokemuksen ja syvällisen tutkimuksen tukema',
     headline: 'Pidätteleekö tiimisi',
     headlineHighlight: 'sinua?',
@@ -1577,6 +1593,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessNone: 'Erittäin jäykkä - Luotat vain tavanomaisiin menetelmiin',
   },
   uk: {
+    pageTitle: 'Оцінка продуктивності команди | Sparkly.hr',
     badge: 'Підкріплено десятиліттями досвіду в HR та глибокими дослідженнями',
     headline: 'Чи стримує вас ваша',
     headlineHighlight: 'команда?',
