@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuiz } from './QuizContext';
 import { useLanguage, TranslationKey } from './LanguageContext';
@@ -12,6 +12,9 @@ const questionKeys: { question: TranslationKey; answers: TranslationKey[] }[] = 
   { question: 'q5_question', answers: ['q5_a1', 'q5_a2', 'q5_a3', 'q5_a4'] },
   { question: 'q6_question', answers: ['q6_a1', 'q6_a2', 'q6_a3', 'q6_a4'] },
 ];
+
+// Keyboard shortcuts for answer selection
+const ANSWER_KEYS = ['1', '2', '3', '4'];
 
 export function QuizQuestion() {
   const { currentQuestion, setCurrentQuestion, addAnswer, setCurrentStep, answers } = useQuiz();
@@ -65,6 +68,54 @@ export function QuizQuestion() {
 
   const currentQuestionData = questionKeys[currentQuestion];
 
+  // Handle keyboard shortcuts for answer selection
+  const handleAnswerSelect = useCallback((answerId: number) => {
+    setSelectedAnswer(answerId);
+    setTimeout(() => {
+      addAnswer({
+        questionId: currentQuestion + 1,
+        answerId: answerId,
+        score: answerId,
+      });
+      if (isLastQuestion) {
+        setCurrentStep('mindedness');
+      } else {
+        setCurrentQuestion(currentQuestion + 1);
+      }
+    }, 300);
+  }, [addAnswer, currentQuestion, isLastQuestion, setCurrentQuestion, setCurrentStep]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Number keys 1-4 for answer selection
+      if (ANSWER_KEYS.includes(e.key)) {
+        e.preventDefault();
+        const answerId = parseInt(e.key);
+        handleAnswerSelect(answerId);
+      }
+      // Arrow keys for navigation between answers
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const currentIndex = selectedAnswer ? selectedAnswer - 1 : -1;
+        let newIndex;
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < 3 ? currentIndex + 1 : 0;
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : 3;
+        }
+        setSelectedAnswer(newIndex + 1);
+      }
+      // Enter to confirm and proceed
+      if (e.key === 'Enter' && selectedAnswer !== null) {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleAnswerSelect, selectedAnswer, handleNext]);
+
   return (
     <main className="max-w-2xl mx-auto" role="main" aria-labelledby="question-heading">
       {/* Progress bar */}
@@ -98,45 +149,49 @@ export function QuizQuestion() {
           {t(currentQuestionData.question)}
         </h1>
 
+      {/* Keyboard hint */}
+      <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
+        Press 1-4 to select, ↑↓ to navigate, Enter to confirm
+      </p>
+
       {/* Answers */}
-      <fieldset className="space-y-3 mb-8" role="radiogroup" aria-labelledby="question-heading">
+      <fieldset className="space-y-3 mb-8" role="radiogroup" aria-labelledby="question-heading" aria-describedby="keyboard-hint">
         <legend className="sr-only">{t(currentQuestionData.question)}</legend>
+        <p id="keyboard-hint" className="sr-only">Use number keys 1 through 4 to select an answer, arrow keys to navigate, Enter to confirm</p>
         {currentQuestionData.answers.map((answerKey, index) => {
           const answerId = index + 1;
           const isSelected = selectedAnswer === answerId;
           return (
             <button
               key={answerId}
-              onClick={() => {
-                setSelectedAnswer(answerId);
-                // Auto-advance after selection with small delay for visual feedback
-                setTimeout(() => {
-                  addAnswer({
-                    questionId: currentQuestion + 1,
-                    answerId: answerId,
-                    score: answerId,
-                  });
-                  if (isLastQuestion) {
-                    setCurrentStep('mindedness');
-                  } else {
-                    setCurrentQuestion(currentQuestion + 1);
-                  }
-                }, 300);
-              }}
+              onClick={() => handleAnswerSelect(answerId)}
               role="radio"
               aria-checked={isSelected}
-              aria-label={`${t(answerKey)}${isSelected ? ', selected' : ''}`}
+              aria-label={`Option ${answerId}: ${t(answerKey)}${isSelected ? ', selected' : ''}`}
               className={cn(
-                'w-full text-left p-5 rounded-xl border-2 transition-all duration-200',
+                'w-full text-left p-5 rounded-xl border-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                 isSelected
                   ? 'border-primary bg-primary/5 shadow-lg'
                   : 'border-border bg-card hover:border-primary/50 hover:bg-secondary/50'
               )}
             >
               <div className="flex items-center gap-4">
+                {/* Keyboard shortcut indicator */}
+                <kbd 
+                  className={cn(
+                    'hidden sm:flex w-6 h-6 rounded border text-xs font-mono items-center justify-center shrink-0 transition-all',
+                    isSelected
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-muted-foreground/50 bg-muted/50 text-muted-foreground'
+                  )}
+                  aria-hidden="true"
+                >
+                  {answerId}
+                </kbd>
+                {/* Radio indicator for mobile */}
                 <div 
                   className={cn(
-                    'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                    'sm:hidden w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
                     isSelected
                       ? 'border-primary bg-primary'
                       : 'border-muted-foreground'

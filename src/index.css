@@ -88,6 +88,16 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
+
+  /* Enhanced focus indicators for keyboard accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Skip link focus styles */
+  .sr-only:focus {
+    @apply not-sr-only;
+  }
 }
 
 @layer utilities {
@@ -116,5 +126,15 @@
     padding: 0.5rem 1.25rem;
     font-size: 0.875rem;
     color: hsl(var(--muted-foreground));
+  }
+
+  /* Focus indicator utilities */
+  .focus-ring {
+    @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none;
+  }
+
+  /* Enhanced interactive element focus */
+  .interactive-focus {
+    @apply transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none focus-visible:scale-[1.02];
   }
 }
