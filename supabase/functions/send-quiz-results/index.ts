@@ -583,7 +583,7 @@ const handler = async (req: Request): Promise<Response> => {
       error_message: userEmailResponse.error?.message || null,
       language: language,
       quiz_lead_id: quizLeadId,
-      resend_attempts: userEmailResponse.attempts,
+      resend_attempts: userEmailResponse.attempts - 1,
       last_attempt_at: new Date().toISOString(),
       html_body: emailHtml,
     });
@@ -666,7 +666,7 @@ const handler = async (req: Request): Promise<Response> => {
       error_message: adminEmailResponse.error?.message || null,
       language: language,
       quiz_lead_id: quizLeadId,
-      resend_attempts: adminEmailResponse.attempts,
+      resend_attempts: adminEmailResponse.attempts - 1,
       last_attempt_at: new Date().toISOString(),
       html_body: adminEmailHtml,
     });
