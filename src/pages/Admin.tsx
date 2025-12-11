@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Download, RefreshCw, UserPlus, Trash2, Shield } from "lucide-react";
+import { LogOut, Download, RefreshCw, UserPlus, Trash2, Shield, Clock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,9 +24,16 @@ interface AdminUser {
   email: string;
 }
 
+interface PendingAdmin {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
 const Admin = () => {
   const [leads, setLeads] = useState<QuizLead[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [pendingAdmins, setPendingAdmins] = useState<PendingAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -118,6 +125,7 @@ const Admin = () => {
   const fetchAdmins = async () => {
     setAdminsLoading(true);
     try {
+      // Fetch active admins
       const { data, error } = await supabase
         .from("user_roles")
         .select("id, user_id")
@@ -141,6 +149,15 @@ const Admin = () => {
         });
       }
       setAdmins(adminUsers);
+
+      // Fetch pending admins
+      const { data: pendingData, error: pendingError } = await supabase
+        .from("pending_admin_emails")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (pendingError) throw pendingError;
+      setPendingAdmins(pendingData || []);
     } catch (error: any) {
       console.error("Error fetching admins:", error);
     } finally {
@@ -158,54 +175,77 @@ const Admin = () => {
       return;
     }
 
+    const emailToAdd = newAdminEmail.trim().toLowerCase();
+
     setAddingAdmin(true);
     try {
+      // Check if already a pending admin
+      const { data: existingPending } = await supabase
+        .from("pending_admin_emails")
+        .select("id")
+        .eq("email", emailToAdd)
+        .maybeSingle();
+
+      if (existingPending) {
+        toast({
+          title: "Already pending",
+          description: "This email is already in the pending admin list",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Find user by email in profiles table
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("user_id")
-        .eq("email", newAdminEmail.trim().toLowerCase())
+        .eq("email", emailToAdd)
         .maybeSingle();
 
       if (profileError) throw profileError;
 
-      if (!profile) {
+      if (profile) {
+        // User exists - check if already an admin
+        const { data: existingRole } = await supabase
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", profile.user_id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (existingRole) {
+          toast({
+            title: "Already an admin",
+            description: "This user already has admin privileges",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Add admin role directly
+        const { error: insertError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: profile.user_id, role: "admin" });
+
+        if (insertError) throw insertError;
+
         toast({
-          title: "User not found",
-          description: "No user exists with that email. They must sign up first.",
-          variant: "destructive",
+          title: "Admin added",
+          description: `${emailToAdd} is now an admin`,
         });
-        return;
-      }
+      } else {
+        // User doesn't exist - add to pending list
+        const { error: insertError } = await supabase
+          .from("pending_admin_emails")
+          .insert({ email: emailToAdd });
 
-      // Check if already an admin
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", profile.user_id)
-        .eq("role", "admin")
-        .maybeSingle();
+        if (insertError) throw insertError;
 
-      if (existingRole) {
         toast({
-          title: "Already an admin",
-          description: "This user already has admin privileges",
-          variant: "destructive",
+          title: "Admin invite added",
+          description: `${emailToAdd} will become an admin when they sign up`,
         });
-        return;
       }
-
-      // Add admin role
-      const { error: insertError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: profile.user_id, role: "admin" });
-
-      if (insertError) throw insertError;
-
-      toast({
-        title: "Admin added",
-        description: `${newAdminEmail} is now an admin`,
-      });
 
       setNewAdminEmail("");
       fetchAdmins();
@@ -218,6 +258,31 @@ const Admin = () => {
       });
     } finally {
       setAddingAdmin(false);
+    }
+  };
+
+  const removePendingAdmin = async (id: string, email: string) => {
+    try {
+      const { error } = await supabase
+        .from("pending_admin_emails")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Pending admin removed",
+        description: `${email} removed from pending list`,
+      });
+
+      setPendingAdmins(pendingAdmins.filter(p => p.id !== id));
+    } catch (error: any) {
+      console.error("Error removing pending admin:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove pending admin",
+        variant: "destructive",
+      });
     }
   };
 
@@ -476,7 +541,7 @@ const Admin = () => {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                The user must have signed up before you can add them as an admin.
+                If the user hasn't signed up yet, they'll become an admin automatically when they register.
               </p>
             </div>
 
@@ -486,47 +551,109 @@ const Admin = () => {
                 <p className="text-muted-foreground">Loading admins...</p>
               </div>
             ) : (
-              <div className="glass rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-secondary/50">
-                      <tr>
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Role</th>
-                        <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {admins.map((admin) => (
-                        <tr key={admin.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="px-6 py-4 text-sm text-foreground">
-                            {admin.email}
-                            {admin.user_id === currentUserId && (
-                              <span className="ml-2 text-xs text-muted-foreground">(you)</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              Admin
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
-                              disabled={admin.user_id === currentUserId}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </td>
+              <>
+                {/* Active Admins */}
+                <div className="glass rounded-xl overflow-hidden mb-6">
+                  <div className="px-6 py-4 bg-secondary/30 border-b border-border">
+                    <h3 className="font-semibold text-foreground">Active Admins</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
+                          <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Status</th>
+                          <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {admins.map((admin) => (
+                          <tr key={admin.id} className="hover:bg-secondary/30 transition-colors">
+                            <td className="px-6 py-4 text-sm text-foreground">
+                              {admin.email}
+                              {admin.user_id === currentUserId && (
+                                <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                Active
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
+                                disabled={admin.user_id === currentUserId}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                        {admins.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">
+                              No active admins found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+
+                {/* Pending Admins */}
+                {pendingAdmins.length > 0 && (
+                  <div className="glass rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 bg-secondary/30 border-b border-border">
+                      <h3 className="font-semibold text-foreground flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Pending Admin Invites
+                      </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-secondary/50">
+                          <tr>
+                            <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
+                            <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Status</th>
+                            <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Added</th>
+                            <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {pendingAdmins.map((pending) => (
+                            <tr key={pending.id} className="hover:bg-secondary/30 transition-colors">
+                              <td className="px-6 py-4 text-sm text-foreground">{pending.email}</td>
+                              <td className="px-6 py-4">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-600">
+                                  Pending signup
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-muted-foreground">
+                                {new Date(pending.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removePendingAdmin(pending.id, pending.email)}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         </Tabs>
