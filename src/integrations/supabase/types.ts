@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          is_live: boolean
+          sender_email: string
+          sender_name: string
+          subjects: Json
+          template_type: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          is_live?: boolean
+          sender_email: string
+          sender_name: string
+          subjects?: Json
+          template_type?: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          is_live?: boolean
+          sender_email?: string
+          sender_name?: string
+          subjects?: Json
+          template_type?: string
+          version_number?: number
+        }
+        Relationships: []
+      }
       pending_admin_emails: {
         Row: {
           created_at: string
