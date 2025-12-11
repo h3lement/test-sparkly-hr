@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp } from "lucide-react";
+import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send } from "lucide-react";
 
 interface EmailTemplate {
   id: string;
@@ -51,6 +51,10 @@ export function EmailTemplateManager() {
   const [senderEmail, setSenderEmail] = useState("");
   const [subjects, setSubjects] = useState<Record<string, string>>({});
 
+  // Test email state
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+
   useEffect(() => {
     fetchTemplates();
     fetchCurrentUser();
@@ -60,6 +64,7 @@ export function EmailTemplateManager() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) {
       setCurrentUserEmail(user.email);
+      setTestEmail(user.email);
     }
   };
 
@@ -208,6 +213,62 @@ export function EmailTemplateManager() {
     }));
   };
 
+  const sendTestEmail = async () => {
+    if (!testEmail.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a test email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingTest(true);
+    try {
+      // Fetch the last quiz lead
+      const { data: lastLead, error: leadError } = await supabase
+        .from("quiz_leads")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (leadError || !lastLead) {
+        throw new Error("No quiz submissions found. Complete the quiz first to test email sending.");
+      }
+
+      // Call the send-quiz-results function with test email override
+      const { error } = await supabase.functions.invoke("send-quiz-results", {
+        body: {
+          email: testEmail.trim(),
+          score: lastLead.score,
+          totalQuestions: lastLead.total_questions,
+          resultCategory: lastLead.result_category,
+          opennessScore: lastLead.openness_score,
+          language: lastLead.language || "en",
+          answers: lastLead.answers,
+          isTest: true,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Test email sent",
+        description: `Email sent to ${testEmail} using the last quiz submission`,
+      });
+    } catch (error: any) {
+      console.error("Error sending test email:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-US", {
       month: "short",
@@ -313,6 +374,41 @@ export function EmailTemplateManager() {
             <Button onClick={saveNewVersion} disabled={saving} className="gap-2">
               <Save className="w-4 h-4" />
               {saving ? "Saving..." : "Save as New Version & Set Live"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Send Test Email */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="w-5 h-5" />
+            Send Test Email
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Send a test email using the last quiz submission data and the current live template settings.
+          </p>
+          <div className="flex items-end gap-3">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="testEmail">Recipient Email</Label>
+              <Input
+                id="testEmail"
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="Enter test email address"
+              />
+            </div>
+            <Button 
+              onClick={sendTestEmail} 
+              disabled={sendingTest}
+              className="gap-2"
+            >
+              <Send className="w-4 h-4" />
+              {sendingTest ? "Sending..." : "Send Test"}
             </Button>
           </div>
         </CardContent>
