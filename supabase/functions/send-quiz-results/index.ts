@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -15,6 +16,7 @@ interface QuizResultsRequest {
   resultTitle: string;
   resultDescription: string;
   insights: string[];
+  answers?: Array<{ questionId: number; selectedOption: number }>;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -25,10 +27,29 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, totalScore, maxScore, resultTitle, resultDescription, insights }: QuizResultsRequest = await req.json();
+    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, answers }: QuizResultsRequest = await req.json();
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
+
+    // Save lead to database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { error: insertError } = await supabase.from("quiz_leads").insert({
+      email,
+      score: totalScore,
+      total_questions: maxScore,
+      result_category: resultTitle,
+      answers: answers || null,
+    });
+
+    if (insertError) {
+      console.error("Error saving lead to database:", insertError);
+    } else {
+      console.log("Lead saved to database successfully");
+    }
 
     const insightsList = insights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
