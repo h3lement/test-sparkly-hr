@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuiz, quizQuestions } from './QuizContext';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,20 @@ export function QuizQuestion() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(
     answers.find((a) => a.questionId === quizQuestions[currentQuestion].id)?.answerId ?? null
   );
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const prevQuestion = useRef(currentQuestion);
+
+  useEffect(() => {
+    if (currentQuestion > prevQuestion.current) {
+      setSlideDirection('left');
+    } else if (currentQuestion < prevQuestion.current) {
+      setSlideDirection('right');
+    }
+    prevQuestion.current = currentQuestion;
+    setSelectedAnswer(
+      answers.find((a) => a.questionId === quizQuestions[currentQuestion].id)?.answerId ?? null
+    );
+  }, [currentQuestion, answers]);
 
   const question = quizQuestions[currentQuestion];
   const progress = ((currentQuestion + 1) / quizQuestions.length) * 100;
@@ -42,7 +56,7 @@ export function QuizQuestion() {
   };
 
   return (
-    <div className="animate-fade-in max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
       {/* Progress bar */}
       <div className="mb-8">
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
@@ -57,10 +71,17 @@ export function QuizQuestion() {
         </div>
       </div>
 
-      {/* Question */}
-      <h2 className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
-        {question.question}
-      </h2>
+      {/* Question content with slide animation */}
+      <div 
+        key={currentQuestion}
+        className={cn(
+          slideDirection === 'left' ? 'animate-slide-in-left' : 'animate-slide-in-right'
+        )}
+      >
+        {/* Question */}
+        <h2 className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
+          {question.question}
+        </h2>
 
       {/* Answers */}
       <div className="space-y-3 mb-8">
@@ -110,6 +131,7 @@ export function QuizQuestion() {
             </div>
           </button>
         ))}
+      </div>
       </div>
 
       {/* Navigation */}
