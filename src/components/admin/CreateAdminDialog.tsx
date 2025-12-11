@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { UserPlus } from "lucide-react";
 
 interface CreateAdminDialogProps {
   onAdminCreated: () => void;
@@ -98,7 +98,7 @@ export function CreateAdminDialog({ onAdminCreated }: CreateAdminDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <UserPlus className="w-4 h-4 mr-2" />
-          Create Admin
+          Add Admin
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

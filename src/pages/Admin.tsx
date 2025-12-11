@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Download, RefreshCw, Trash2, Shield, Clock, Pencil, Ban, CheckCircle } from "lucide-react";
+import { Download, RefreshCw, Trash2, Clock, Pencil, Search, UserPlus } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
 import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface QuizLead {
   id: string;
@@ -25,6 +27,7 @@ interface AdminUser {
   email: string;
   name: string;
   is_active: boolean;
+  created_at?: string;
 }
 
 interface PendingAdmin {
@@ -44,6 +47,9 @@ const Admin = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState("leads");
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -128,7 +134,6 @@ const Admin = () => {
   const fetchAdmins = async () => {
     setAdminsLoading(true);
     try {
-      // Fetch admin role entries
       const { data, error } = await supabase
         .from("user_roles")
         .select("id, user_id")
@@ -142,7 +147,6 @@ const Admin = () => {
         return;
       }
 
-      // Get user emails and status from edge function
       const userIds = data.map(role => role.user_id);
       const { data: usersData, error: usersError } = await supabase.functions.invoke("manage-admin-user", {
         body: { action: "get-users-status", userIds },
@@ -156,12 +160,12 @@ const Admin = () => {
           email: userData?.email || "Unknown",
           name: userData?.name || "",
           is_active: userData?.is_active ?? true,
+          created_at: userData?.created_at,
         };
       });
       
       setAdmins(adminUsers);
 
-      // Fetch pending admins
       const { data: pendingData, error: pendingError } = await supabase
         .from("pending_admin_emails")
         .select("*")
@@ -228,7 +232,6 @@ const Admin = () => {
         return;
       }
 
-      // Update local state
       setAdmins(admins.map(a => 
         a.id === admin.id ? { ...a, is_active: !a.is_active } : a
       ));
@@ -351,6 +354,32 @@ const Admin = () => {
     document.body.removeChild(link);
   };
 
+  const getInitials = (name: string, email: string) => {
+    if (name) {
+      return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    return email.slice(0, 2).toUpperCase();
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Filter logic
+  const filteredLeads = leads.filter(lead => 
+    lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredAdmins = admins.filter(admin =>
+    admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    admin.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (checkingRole) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -375,7 +404,6 @@ const Admin = () => {
               You don't have admin privileges to view this page. Please contact the administrator to request access.
             </p>
             <Button onClick={handleLogout} variant="outline">
-              <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
           </div>
@@ -386,89 +414,108 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Logo />
-          <div className="flex items-center gap-3">
-            <Button onClick={fetchLeads} variant="outline" size="sm" disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            <Button onClick={downloadCSV} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Download CSV
-            </Button>
-            <Button onClick={handleLogout} variant="ghost" size="sm">
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex">
+      <AdminSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          setSearchQuery("");
+        }}
+        onLogout={handleLogout}
+      />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
-        <Tabs defaultValue="leads" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="leads">Quiz Leads</TabsTrigger>
-            <TabsTrigger value="admins">
-              <Shield className="w-4 h-4 mr-2" />
-              Manage Admins
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="leads">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-foreground">Quiz Leads</h1>
-              <p className="text-muted-foreground mt-1">
-                {leads.length} submission{leads.length !== 1 ? "s" : ""} total
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading leads...</p>
+      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+        <div className="flex-1 p-8 overflow-auto">
+          {/* Respondents Tab */}
+          {activeTab === "leads" && (
+            <div className="max-w-6xl">
+              <div className="flex items-start justify-between mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Respondents</h1>
+                  <p className="text-muted-foreground mt-1">View quiz submissions</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button onClick={fetchLeads} variant="outline" size="sm" disabled={loading}>
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                    Refresh
+                  </Button>
+                  <Button onClick={downloadCSV} variant="default" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download CSV
+                  </Button>
+                </div>
               </div>
-            ) : leads.length === 0 ? (
-              <div className="text-center py-12 glass rounded-xl">
-                <p className="text-muted-foreground">No quiz submissions yet.</p>
+
+              {/* Search bar */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search by email or category..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-secondary/50 border-border"
+                  />
+                </div>
+                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
+                  {filteredLeads.length} respondent{filteredLeads.length !== 1 ? "s" : ""}
+                </span>
               </div>
-            ) : (
-              <div className="glass rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading respondents...</p>
+                </div>
+              ) : filteredLeads.length === 0 ? (
+                <div className="text-center py-12 bg-card rounded-xl border border-border">
+                  <p className="text-muted-foreground">No submissions found.</p>
+                </div>
+              ) : (
+                <div className="bg-card rounded-xl border border-border overflow-hidden">
                   <table className="w-full">
-                    <thead className="bg-secondary/50">
-                      <tr>
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Score</th>
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Result</th>
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Date</th>
-                        <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
+                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Score</th>
+                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Result</th>
+                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Submitted</th>
+                        <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {leads.map((lead) => (
+                      {filteredLeads.map((lead) => (
                         <tr key={lead.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="px-6 py-4 text-sm text-foreground">{lead.email}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9 bg-secondary">
+                                <AvatarFallback className="text-xs bg-secondary text-foreground">
+                                  {lead.email.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm text-foreground">{lead.email}</span>
+                            </div>
+                          </td>
                           <td className="px-6 py-4 text-sm text-foreground">
                             {lead.score}/{lead.total_questions}
                           </td>
                           <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                               {lead.result_category}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-muted-foreground">
-                            {new Date(lead.created_at).toLocaleDateString()} at{" "}
-                            {new Date(lead.created_at).toLocaleTimeString()}
+                            {formatDate(lead.created_at)}
                           </td>
                           <td className="px-6 py-4 text-right">
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => deleteLead(lead.id, lead.email)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -478,111 +525,121 @@ const Admin = () => {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="admins">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-foreground">Manage Admins</h1>
-              <p className="text-muted-foreground mt-1">
-                Add or remove admin privileges for users
-              </p>
+              )}
             </div>
+          )}
 
-            <div className="glass rounded-xl p-6 mb-6">
-              <div className="flex items-center justify-between">
+          {/* Admins Tab */}
+          {activeTab === "admins" && (
+            <div className="max-w-6xl">
+              <div className="flex items-start justify-between mb-8">
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Add New Admin</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create a new admin account with login credentials
-                  </p>
+                  <h1 className="text-3xl font-bold text-foreground">Admins</h1>
+                  <p className="text-muted-foreground mt-1">Manage admin accounts</p>
                 </div>
                 <CreateAdminDialog onAdminCreated={fetchAdmins} />
               </div>
-            </div>
 
-            {adminsLoading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading admins...</p>
+              {/* Search bar */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-secondary/50 border-border"
+                  />
+                </div>
+                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
+                  {filteredAdmins.length} admin{filteredAdmins.length !== 1 ? "s" : ""}
+                </span>
               </div>
-            ) : (
-              <>
-                {/* Active Admins */}
-                <div className="glass rounded-xl overflow-hidden mb-6">
-                  <div className="px-6 py-4 bg-secondary/30 border-b border-border">
-                    <h3 className="font-semibold text-foreground">Admins</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                  <table className="w-full">
-                      <thead className="bg-secondary/50">
-                        <tr>
-                          <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Name</th>
-                          <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
-                          <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Status</th>
-                          <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
+
+              {adminsLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading admins...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Active Admins */}
+                  <div className="bg-card rounded-xl border border-border overflow-hidden mb-6">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Admin</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Joined</th>
+                          <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {admins.map((admin) => (
-                          <tr key={admin.id} className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}>
-                            <td className="px-6 py-4 text-sm text-foreground">
-                              {admin.name || <span className="text-muted-foreground italic">No name</span>}
-                              {admin.user_id === currentUserId && (
-                                <span className="ml-2 text-xs text-muted-foreground">(you)</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-foreground">
-                              {admin.email}
+                        {filteredAdmins.map((admin) => (
+                          <tr 
+                            key={admin.id} 
+                            className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 bg-secondary">
+                                  <AvatarFallback className="text-xs bg-secondary text-foreground">
+                                    {getInitials(admin.name, admin.email)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">
+                                    {admin.name || <span className="text-muted-foreground italic">No name</span>}
+                                    {admin.user_id === currentUserId && (
+                                      <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">{admin.email}</p>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <button
                                 onClick={() => admin.user_id !== currentUserId && toggleAdminStatus(admin)}
                                 disabled={admin.user_id === currentUserId}
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-opacity ${
+                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-opacity ${
                                   admin.user_id === currentUserId ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-70'
-                                } ${admin.is_active ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}
+                                } ${admin.is_active ? 'bg-green-500/15 text-green-600' : 'bg-red-500/15 text-red-600'}`}
                                 title={admin.user_id === currentUserId ? "Cannot modify yourself" : admin.is_active ? "Click to deactivate" : "Click to activate"}
                               >
-                                {admin.is_active ? "Active" : "Deactivated"}
+                                {admin.is_active ? "Active" : "Inactive"}
                               </button>
                             </td>
-                            <td className="px-6 py-4 text-right space-x-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditDialog(admin)}
-                                title="Edit admin"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleAdminStatus(admin)}
-                                disabled={admin.user_id === currentUserId}
-                                title={admin.is_active ? "Deactivate" : "Activate"}
-                                className={admin.is_active 
-                                  ? "text-orange-600 hover:text-orange-600 hover:bg-orange-500/10" 
-                                  : "text-green-600 hover:text-green-600 hover:bg-green-500/10"}
-                              >
-                                {admin.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
-                                disabled={admin.user_id === currentUserId}
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                title="Remove admin"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">
+                              {admin.created_at ? formatDate(admin.created_at) : "—"}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(admin)}
+                                  className="h-8 w-8"
+                                  title="Edit admin"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
+                                  disabled={admin.user_id === currentUserId}
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Remove admin"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}
-                        {admins.length === 0 && (
+                        {filteredAdmins.length === 0 && (
                           <tr>
                             <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
                               No admins found
@@ -592,45 +649,52 @@ const Admin = () => {
                       </tbody>
                     </table>
                   </div>
-                </div>
 
-                {/* Pending Admins */}
-                {pendingAdmins.length > 0 && (
-                  <div className="glass rounded-xl overflow-hidden">
-                    <div className="px-6 py-4 bg-secondary/30 border-b border-border">
-                      <h3 className="font-semibold text-foreground flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Pending Admin Invites
-                      </h3>
-                    </div>
-                    <div className="overflow-x-auto">
+                  {/* Pending Admins */}
+                  {pendingAdmins.length > 0 && (
+                    <div className="bg-card rounded-xl border border-border overflow-hidden">
+                      <div className="px-6 py-4 border-b border-border bg-secondary/30">
+                        <h3 className="font-semibold text-foreground flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Pending Admin Invites
+                        </h3>
+                      </div>
                       <table className="w-full">
-                        <thead className="bg-secondary/50">
-                          <tr>
-                            <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
-                            <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Status</th>
-                            <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Added</th>
-                            <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
+                            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
+                            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Added</th>
+                            <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {pendingAdmins.map((pending) => (
                             <tr key={pending.id} className="hover:bg-secondary/30 transition-colors">
-                              <td className="px-6 py-4 text-sm text-foreground">{pending.email}</td>
                               <td className="px-6 py-4">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-600">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-9 w-9 bg-secondary">
+                                    <AvatarFallback className="text-xs bg-secondary text-foreground">
+                                      {pending.email.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm text-foreground">{pending.email}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-600">
                                   Pending signup
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm text-muted-foreground">
-                                {new Date(pending.created_at).toLocaleDateString()}
+                                {formatDate(pending.created_at)}
                               </td>
                               <td className="px-6 py-4 text-right">
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={() => removePendingAdmin(pending.id, pending.email)}
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -640,15 +704,14 @@ const Admin = () => {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </main>
-      <Footer />
-      
+
       <EditAdminDialog
         admin={editingAdmin}
         open={editDialogOpen}
