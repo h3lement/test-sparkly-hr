@@ -443,8 +443,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
-    // Sparkly.hr logo URL
-    const logoUrl = "https://sparklyhr.app/favicon.png";
+    // Sparkly.hr logo URL - hosted on the app
+    const logoUrl = "https://wpczgwxsriezaubncuom.lovableproject.com/sparkly-logo.png";
 
     // Build openness score section if available
     const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
