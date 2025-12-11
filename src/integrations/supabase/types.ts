@@ -21,8 +21,11 @@ export type Database = {
           error_message: string | null
           id: string
           language: string | null
+          last_attempt_at: string | null
+          original_log_id: string | null
           quiz_lead_id: string | null
           recipient_email: string
+          resend_attempts: number
           resend_id: string | null
           sender_email: string
           sender_name: string
@@ -35,8 +38,11 @@ export type Database = {
           error_message?: string | null
           id?: string
           language?: string | null
+          last_attempt_at?: string | null
+          original_log_id?: string | null
           quiz_lead_id?: string | null
           recipient_email: string
+          resend_attempts?: number
           resend_id?: string | null
           sender_email: string
           sender_name: string
@@ -49,8 +55,11 @@ export type Database = {
           error_message?: string | null
           id?: string
           language?: string | null
+          last_attempt_at?: string | null
+          original_log_id?: string | null
           quiz_lead_id?: string | null
           recipient_email?: string
+          resend_attempts?: number
           resend_id?: string | null
           sender_email?: string
           sender_name?: string
@@ -58,6 +67,13 @@ export type Database = {
           subject?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "email_logs_original_log_id_fkey"
+            columns: ["original_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_logs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_logs_quiz_lead_id_fkey"
             columns: ["quiz_lead_id"]
