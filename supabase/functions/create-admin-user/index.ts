@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password } = await req.json();
+    const { email, password, name } = await req.json();
     
     if (!email || !password) {
       return new Response(
@@ -73,16 +73,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Creating admin user: ${email}`);
+    console.log(`Creating admin user: ${email}${name ? ` (${name})` : ""}`);
 
     // Create admin client with service role key
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Create the user
+    // Create the user with optional name in metadata
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: email.toLowerCase(),
       password,
-      email_confirm: true, // Auto-confirm the email
+      email_confirm: true,
+      user_metadata: name ? { full_name: name } : undefined,
     });
 
     if (createError) {

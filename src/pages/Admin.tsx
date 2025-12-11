@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Download, RefreshCw, UserPlus, Trash2, Shield, Clock } from "lucide-react";
+import { LogOut, Download, RefreshCw, Trash2, Shield, Clock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
 
 interface QuizLead {
   id: string;
@@ -38,10 +38,6 @@ const Admin = () => {
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [newAdminPassword, setNewAdminPassword] = useState("");
-  const [addingAdmin, setAddingAdmin] = useState(false);
-  const [creatingWithPassword, setCreatingWithPassword] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -167,102 +163,6 @@ const Admin = () => {
     }
   };
 
-  const addAdmin = async () => {
-    if (!newAdminEmail.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const emailToAdd = newAdminEmail.trim().toLowerCase();
-
-    setAddingAdmin(true);
-    try {
-      // Check if already a pending admin
-      const { data: existingPending } = await supabase
-        .from("pending_admin_emails")
-        .select("id")
-        .eq("email", emailToAdd)
-        .maybeSingle();
-
-      if (existingPending) {
-        toast({
-          title: "Already pending",
-          description: "This email is already in the pending admin list",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Find user by email in profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("email", emailToAdd)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-
-      if (profile) {
-        // User exists - check if already an admin
-        const { data: existingRole } = await supabase
-          .from("user_roles")
-          .select("id")
-          .eq("user_id", profile.user_id)
-          .eq("role", "admin")
-          .maybeSingle();
-
-        if (existingRole) {
-          toast({
-            title: "Already an admin",
-            description: "This user already has admin privileges",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Add admin role directly
-        const { error: insertError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: profile.user_id, role: "admin" });
-
-        if (insertError) throw insertError;
-
-        toast({
-          title: "Admin added",
-          description: `${emailToAdd} is now an admin`,
-        });
-      } else {
-        // User doesn't exist - add to pending list
-        const { error: insertError } = await supabase
-          .from("pending_admin_emails")
-          .insert({ email: emailToAdd });
-
-        if (insertError) throw insertError;
-
-        toast({
-          title: "Admin invite added",
-          description: `${emailToAdd} will become an admin when they sign up`,
-        });
-      }
-
-      setNewAdminEmail("");
-      fetchAdmins();
-    } catch (error: any) {
-      console.error("Error adding admin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add admin",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingAdmin(false);
-    }
-  };
-
   const removePendingAdmin = async (id: string, email: string) => {
     try {
       const { error } = await supabase
@@ -285,65 +185,6 @@ const Admin = () => {
         description: "Failed to remove pending admin",
         variant: "destructive",
       });
-    }
-  };
-
-  const createAdminWithPassword = async () => {
-    if (!newAdminEmail.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!newAdminPassword || newAdminPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setCreatingWithPassword(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-admin-user", {
-        body: { 
-          email: newAdminEmail.trim().toLowerCase(), 
-          password: newAdminPassword 
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.error) {
-        toast({
-          title: "Error",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Admin created",
-        description: `Account created for ${newAdminEmail} with admin access`,
-      });
-
-      setNewAdminEmail("");
-      setNewAdminPassword("");
-      fetchAdmins();
-    } catch (error: any) {
-      console.error("Error creating admin:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create admin account",
-        variant: "destructive",
-      });
-    } finally {
-      setCreatingWithPassword(false);
     }
   };
 
@@ -586,42 +427,15 @@ const Admin = () => {
             </div>
 
             <div className="glass rounded-xl p-6 mb-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Add New Admin</h2>
-              <div className="flex flex-col gap-4">
-                <div className="flex gap-3">
-                  <Input
-                    type="email"
-                    placeholder="Enter user email address"
-                    value={newAdminEmail}
-                    onChange={(e) => setNewAdminEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={addAdmin} disabled={addingAdmin || creatingWithPassword}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    {addingAdmin ? "Adding..." : "Add/Invite"}
-                  </Button>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Add New Admin</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Create a new admin account with login credentials
+                  </p>
                 </div>
-                <div className="flex gap-3">
-                  <Input
-                    type="password"
-                    placeholder="Set password (optional - creates account directly)"
-                    value={newAdminPassword}
-                    onChange={(e) => setNewAdminPassword(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={createAdminWithPassword} 
-                    disabled={addingAdmin || creatingWithPassword || !newAdminPassword}
-                    variant="secondary"
-                  >
-                    {creatingWithPassword ? "Creating..." : "Create with Password"}
-                  </Button>
-                </div>
+                <CreateAdminDialog onAdminCreated={fetchAdmins} />
               </div>
-              <p className="text-sm text-muted-foreground mt-3">
-                <strong>Add/Invite:</strong> If user exists, grants admin. If not, they become admin on signup.<br />
-                <strong>Create with Password:</strong> Creates a new account with admin access immediately.
-              </p>
             </div>
 
             {adminsLoading ? (
