@@ -357,6 +357,19 @@ const emailTranslations: Record<string, {
     score: 'Pisteet',
     resultCategory: 'Tuloskategoria',
   },
+  uk: {
+    subject: 'Результати продуктивності вашої команди',
+    yourResults: 'Результати продуктивності вашої команди',
+    outOf: 'з',
+    points: 'балів',
+    keyInsights: 'Ключові висновки',
+    wantToImprove: 'Хочете покращити продуктивність вашої команди?',
+    visitSparkly: 'Відвідайте Sparkly.hr',
+    newQuizSubmission: 'Нове подання тесту',
+    userEmail: 'Email користувача',
+    score: 'Бали',
+    resultCategory: 'Категорія результату',
+  },
 };
 
 interface QuizResultsRequest {
