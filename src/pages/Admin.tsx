@@ -537,15 +537,16 @@ const Admin = () => {
                               {admin.email}
                             </td>
                             <td className="px-6 py-4">
-                              {admin.is_active ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-600">
-                                  Active
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
-                                  Deactivated
-                                </span>
-                              )}
+                              <button
+                                onClick={() => admin.user_id !== currentUserId && toggleAdminStatus(admin)}
+                                disabled={admin.user_id === currentUserId}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-opacity ${
+                                  admin.user_id === currentUserId ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-70'
+                                } ${admin.is_active ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}
+                                title={admin.user_id === currentUserId ? "Cannot modify yourself" : admin.is_active ? "Click to deactivate" : "Click to activate"}
+                              >
+                                {admin.is_active ? "Active" : "Deactivated"}
+                              </button>
                             </td>
                             <td className="px-6 py-4 text-right space-x-1">
                               <Button
