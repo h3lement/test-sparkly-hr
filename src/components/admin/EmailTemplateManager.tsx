@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send } from "lucide-react";
 
 interface EmailTemplate {
@@ -53,6 +54,7 @@ export function EmailTemplateManager() {
 
   // Test email state
   const [testEmail, setTestEmail] = useState("");
+  const [testLanguage, setTestLanguage] = useState("en");
   const [sendingTest, setSendingTest] = useState(false);
 
   useEffect(() => {
@@ -225,37 +227,31 @@ export function EmailTemplateManager() {
 
     setSendingTest(true);
     try {
-      // Fetch the last quiz lead
-      const { data: lastLead, error: leadError } = await supabase
-        .from("quiz_leads")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+      // Use mock/sample data for test emails that matches what the edge function expects
+      const testData = {
+        email: testEmail.trim(),
+        totalScore: 18,
+        maxScore: 24,
+        resultTitle: "Strong Team Foundation",
+        resultDescription: "Your team shows solid performance indicators with room for growth.",
+        insights: [
+          "Your team demonstrates good collaboration patterns",
+          "Consider implementing regular feedback sessions",
+          "Focus on developing leadership skills within the team"
+        ],
+        language: testLanguage,
+        opennessScore: 3,
+      };
 
-      if (leadError || !lastLead) {
-        throw new Error("No quiz submissions found. Complete the quiz first to test email sending.");
-      }
-
-      // Call the send-quiz-results function with test email override
       const { error } = await supabase.functions.invoke("send-quiz-results", {
-        body: {
-          email: testEmail.trim(),
-          score: lastLead.score,
-          totalQuestions: lastLead.total_questions,
-          resultCategory: lastLead.result_category,
-          opennessScore: lastLead.openness_score,
-          language: lastLead.language || "en",
-          answers: lastLead.answers,
-          isTest: true,
-        },
+        body: testData,
       });
 
       if (error) throw error;
 
       toast({
         title: "Test email sent",
-        description: `Email sent to ${testEmail} using the last quiz submission`,
+        description: `Email sent to ${testEmail} in ${SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name || testLanguage}`,
       });
     } catch (error: any) {
       console.error("Error sending test email:", error);
@@ -389,10 +385,10 @@ export function EmailTemplateManager() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Send a test email using the last quiz submission data and the current live template settings.
+            Send a test email using sample quiz data and the current live template settings.
           </p>
-          <div className="flex items-end gap-3">
-            <div className="flex-1 space-y-2">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[200px] space-y-2">
               <Label htmlFor="testEmail">Recipient Email</Label>
               <Input
                 id="testEmail"
@@ -401,6 +397,21 @@ export function EmailTemplateManager() {
                 onChange={(e) => setTestEmail(e.target.value)}
                 placeholder="Enter test email address"
               />
+            </div>
+            <div className="w-[180px] space-y-2">
+              <Label htmlFor="testLanguage">Language</Label>
+              <Select value={testLanguage} onValueChange={setTestLanguage}>
+                <SelectTrigger id="testLanguage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button 
               onClick={sendTestEmail} 
