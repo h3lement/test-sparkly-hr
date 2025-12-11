@@ -53,7 +53,7 @@ export function OpenMindednessQuestion() {
 
       {/* Screen reader announcement */}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        Question 7 of {totalQuestions}, final question
+        {t('finalQuestion').replace('{current}', '7').replace('{total}', String(totalQuestions))}
       </div>
 
       {/* Question */}
@@ -63,13 +63,13 @@ export function OpenMindednessQuestion() {
 
       {/* Keyboard hint */}
       <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
-        Use Tab to navigate, Space to toggle
+        {t('keyboardHint')}
       </p>
 
       {/* Checkbox options */}
       <fieldset className="space-y-3 mb-8" aria-describedby="mindedness-hint keyboard-hint-multi">
         <legend className="sr-only">{t('openMindedness_question')}</legend>
-        <p id="keyboard-hint-multi" className="sr-only">Use Tab to navigate between options, Space to toggle selection</p>
+        <p id="keyboard-hint-multi" className="sr-only">{t('keyboardHint')}</p>
         {checkboxOptions.map((option, index) => {
           const isChecked = openMindednessAnswers[option.key];
           return (

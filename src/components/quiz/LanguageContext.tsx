@@ -69,6 +69,8 @@ export type TranslationKey =
   | 'openMindedness_psychology'
   | 'openMindedness_humanDesign'
   | 'openMindedness_hint'
+  | 'keyboardHint'
+  | 'finalQuestion'
   | 'leadershipOpenMindedness'
   | 'openMindednessHigh'
   | 'openMindednessMedium'
@@ -228,6 +230,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Moderately open-minded - You consider alternative methods',
     openMindednessLow: 'Somewhat rigid - You prefer traditional approaches',
     openMindednessNone: 'Very rigid - You rely solely on conventional methods',
+    keyboardHint: 'Use Tab to navigate, Space to toggle',
+    finalQuestion: 'Question {current} of {total}, final question',
   },
   et: {
     pageTitle: 'Meeskonna tulemuslikkuse hindamine | Sparkly.hr',
@@ -334,6 +338,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Mõõdukalt avatud mõtlemisega - kaalud alternatiivseid meetodeid',
     openMindednessLow: 'Mõnevõrra jäik - eelistad traditsioonilisi lähenemisi',
     openMindednessNone: 'Väga jäik - tugineb ainult tavapärastele meetoditele',
+    keyboardHint: 'Kasuta Tab navigeerimiseks, tühikut valimiseks',
+    finalQuestion: 'Küsimus {current} / {total}, viimane küsimus',
   },
   de: {
     pageTitle: 'Team-Leistungsbewertung | Sparkly.hr',
@@ -440,6 +446,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Mäßig aufgeschlossen - Sie erwägen alternative Methoden',
     openMindednessLow: 'Etwas starr - Sie bevorzugen traditionelle Ansätze',
     openMindednessNone: 'Sehr starr - Sie verlassen sich nur auf konventionelle Methoden',
+    keyboardHint: 'Tab zum Navigieren, Leertaste zum Umschalten',
+    finalQuestion: 'Frage {current} von {total}, letzte Frage',
   },
   fr: {
     pageTitle: "Évaluation de performance d'équipe | Sparkly.hr",
@@ -546,6 +554,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Modérément ouvert d\'esprit - Vous considérez des méthodes alternatives',
     openMindednessLow: 'Quelque peu rigide - Vous préférez les approches traditionnelles',
     openMindednessNone: 'Très rigide - Vous comptez uniquement sur les méthodes conventionnelles',
+    keyboardHint: 'Utilisez Tab pour naviguer, Espace pour basculer',
+    finalQuestion: 'Question {current} sur {total}, dernière question',
   },
   es: {
     pageTitle: 'Evaluación de rendimiento del equipo | Sparkly.hr',
@@ -652,6 +662,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Moderadamente abierto de mente - Consideras métodos alternativos',
     openMindednessLow: 'Algo rígido - Prefieres enfoques tradicionales',
     openMindednessNone: 'Muy rígido - Dependes únicamente de métodos convencionales',
+    keyboardHint: 'Usa Tab para navegar, Espacio para alternar',
+    finalQuestion: 'Pregunta {current} de {total}, pregunta final',
   },
   it: {
     pageTitle: 'Valutazione delle prestazioni del team | Sparkly.hr',
@@ -758,6 +770,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Moderatamente aperto di mente - Consideri metodi alternativi',
     openMindednessLow: 'Qualche rigidità - Preferisci approcci tradizionali',
     openMindednessNone: 'Molto rigido - Ti affidi solo a metodi convenzionali',
+    keyboardHint: 'Usa Tab per navigare, Spazio per selezionare',
+    finalQuestion: 'Domanda {current} di {total}, domanda finale',
   },
   pt: {
     pageTitle: 'Avaliação de desempenho da equipa | Sparkly.hr',
@@ -864,6 +878,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Moderadamente aberto de mente - Considera métodos alternativos',
     openMindednessLow: 'Um pouco rígido - Prefere abordagens tradicionais',
     openMindednessNone: 'Muito rígido - Depende apenas de métodos convencionais',
+    keyboardHint: 'Use Tab para navegar, Espaço para alternar',
+    finalQuestion: 'Pergunta {current} de {total}, pergunta final',
   },
   nl: {
     pageTitle: 'Teamprestatiebeoordeling | Sparkly.hr',
@@ -970,6 +986,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Matig ruimdenkend - U overweegt alternatieve methoden',
     openMindednessLow: 'Enigszins rigide - U geeft de voorkeur aan traditionele benaderingen',
     openMindednessNone: 'Zeer rigide - U vertrouwt alleen op conventionele methoden',
+    keyboardHint: 'Gebruik Tab om te navigeren, Spatie om te schakelen',
+    finalQuestion: 'Vraag {current} van {total}, laatste vraag',
   },
   pl: {
     pageTitle: 'Ocena wydajności zespołu | Sparkly.hr',
@@ -1076,6 +1094,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Umiarkowanie otwarty umysł - Rozważasz alternatywne metody',
     openMindednessLow: 'Nieco sztywny - Wolisz tradycyjne podejścia',
     openMindednessNone: 'Bardzo sztywny - Polegasz wyłącznie na konwencjonalnych metodach',
+    keyboardHint: 'Użyj Tab do nawigacji, Spacja do przełączania',
+    finalQuestion: 'Pytanie {current} z {total}, ostatnie pytanie',
   },
   ru: {
     pageTitle: 'Оценка эффективности команды | Sparkly.hr',
@@ -1182,6 +1202,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Умеренно открытый - Вы рассматриваете альтернативные методы',
     openMindednessLow: 'Несколько жесткий - Вы предпочитаете традиционные подходы',
     openMindednessNone: 'Очень жесткий - Вы полагаетесь только на традиционные методы',
+    keyboardHint: 'Используйте Tab для навигации, Пробел для переключения',
+    finalQuestion: 'Вопрос {current} из {total}, последний вопрос',
   },
   sv: {
     pageTitle: 'Teamprestandautvärdering | Sparkly.hr',
@@ -1288,6 +1310,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Måttligt öppensinnad - Du överväger alternativa metoder',
     openMindednessLow: 'Något rigid - Du föredrar traditionella tillvägagångssätt',
     openMindednessNone: 'Mycket rigid - Du förlitar dig enbart på konventionella metoder',
+    keyboardHint: 'Använd Tab för att navigera, Mellanslag för att växla',
+    finalQuestion: 'Fråga {current} av {total}, sista frågan',
   },
   no: {
     pageTitle: 'Teamytelsesvurdering | Sparkly.hr',
@@ -1394,6 +1418,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Moderat åpensinnet - Du vurderer alternative metoder',
     openMindednessLow: 'Noe rigid - Du foretrekker tradisjonelle tilnærminger',
     openMindednessNone: 'Veldig rigid - Du stoler kun på konvensjonelle metoder',
+    keyboardHint: 'Bruk Tab for å navigere, Mellomrom for å bytte',
+    finalQuestion: 'Spørsmål {current} av {total}, siste spørsmål',
   },
   da: {
     pageTitle: 'Teampræstationsvurdering | Sparkly.hr',
@@ -1500,6 +1526,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Moderat åbensindet - Du overvejer alternative metoder',
     openMindednessLow: 'Noget rigid - Du foretrækker traditionelle tilgange',
     openMindednessNone: 'Meget rigid - Du stoler kun på konventionelle metoder',
+    keyboardHint: 'Brug Tab til at navigere, Mellemrum til at skifte',
+    finalQuestion: 'Spørgsmål {current} af {total}, sidste spørgsmål',
   },
   fi: {
     pageTitle: 'Tiimin suorituskyvyn arviointi | Sparkly.hr',
@@ -1606,6 +1634,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Kohtuullisen avarakatseinen - Harkitset vaihtoehtoisia menetelmiä',
     openMindednessLow: 'Hieman jäykkä - Suosit perinteisiä lähestymistapoja',
     openMindednessNone: 'Erittäin jäykkä - Luotat vain tavanomaisiin menetelmiin',
+    keyboardHint: 'Käytä Tab navigointiin, Välilyönti valitsemiseen',
+    finalQuestion: 'Kysymys {current} / {total}, viimeinen kysymys',
   },
   uk: {
     pageTitle: 'Оцінка продуктивності команди | Sparkly.hr',
@@ -1712,6 +1742,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     openMindednessMedium: 'Помірно відкритий - Ви розглядаєте альтернативні методи',
     openMindednessLow: 'Дещо жорсткий - Ви віддаєте перевагу традиційним підходам',
     openMindednessNone: 'Дуже жорсткий - Ви покладаєтесь лише на традиційні методи',
+    keyboardHint: 'Використовуйте Tab для навігації, Пробіл для перемикання',
+    finalQuestion: 'Питання {current} з {total}, останнє питання',
   },
 };
 
