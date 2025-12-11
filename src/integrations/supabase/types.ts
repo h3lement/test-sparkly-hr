@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           email_type: string
           error_message: string | null
+          html_body: string | null
           id: string
           language: string | null
           last_attempt_at: string | null
@@ -36,6 +37,7 @@ export type Database = {
           created_at?: string
           email_type: string
           error_message?: string | null
+          html_body?: string | null
           id?: string
           language?: string | null
           last_attempt_at?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           created_at?: string
           email_type?: string
           error_message?: string | null
+          html_body?: string | null
           id?: string
           language?: string | null
           last_attempt_at?: string | null
