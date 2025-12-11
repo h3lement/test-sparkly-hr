@@ -255,6 +255,31 @@ const Admin = () => {
     }
   };
 
+  const deleteLead = async (leadId: string, email: string) => {
+    try {
+      const { error } = await supabase
+        .from("quiz_leads")
+        .delete()
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Lead deleted",
+        description: `Removed submission from ${email}`,
+      });
+
+      setLeads(leads.filter(lead => lead.id !== leadId));
+    } catch (error: any) {
+      console.error("Error deleting lead:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete lead",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -388,6 +413,7 @@ const Admin = () => {
                         <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Score</th>
                         <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Result</th>
                         <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Date</th>
+                        <th className="text-right px-6 py-4 text-sm font-semibold text-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -405,6 +431,16 @@ const Admin = () => {
                           <td className="px-6 py-4 text-sm text-muted-foreground">
                             {new Date(lead.created_at).toLocaleDateString()} at{" "}
                             {new Date(lead.created_at).toLocaleTimeString()}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteLead(lead.id, lead.email)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
