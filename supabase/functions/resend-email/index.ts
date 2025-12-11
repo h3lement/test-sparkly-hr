@@ -99,8 +99,8 @@ const handler = async (req: Request): Promise<Response> => {
     const senderName = templateData?.sender_name || emailLog.sender_name || "Sparkly.hr";
     const senderEmail = templateData?.sender_email || emailLog.sender_email || "support@sparkly.hr";
 
-    // Build a simple resend notification email
-    const resendHtml = `
+    // Use the original email HTML body if available, otherwise create a fallback
+    const emailHtml = emailLog.html_body || `
       <!DOCTYPE html>
       <html>
       <head>
@@ -114,11 +114,10 @@ const handler = async (req: Request): Promise<Response> => {
             <h1 style="color: #6d28d9; font-size: 24px; margin: 0;">Email Resent</h1>
           </div>
           
-          <p style="color: #6b7280; line-height: 1.6;">This is a resend of a previous email that failed to deliver.</p>
+          <p style="color: #6b7280; line-height: 1.6;">This is a resend of a previous email.</p>
           
           <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin: 24px 0;">
             <p style="margin: 0 0 8px 0;"><strong>Original Subject:</strong> ${emailLog.subject}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Original Type:</strong> ${emailLog.email_type}</p>
             <p style="margin: 0;"><strong>Language:</strong> ${emailLog.language || 'en'}</p>
           </div>
           
@@ -132,12 +131,12 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send the email
+    // Send the email with original content
     const emailResponse = await resend.emails.send({
       from: `${senderName} <${senderEmail}>`,
       to: [emailLog.recipient_email],
-      subject: `[Resent] ${emailLog.subject}`,
-      html: resendHtml,
+      subject: emailLog.subject,
+      html: emailHtml,
     });
 
     console.log("Resend response:", JSON.stringify(emailResponse));
@@ -185,13 +184,13 @@ const handler = async (req: Request): Promise<Response> => {
       recipient_email: emailLog.recipient_email,
       sender_email: senderEmail,
       sender_name: senderName,
-      subject: `[Resent] ${emailLog.subject}`,
+      subject: emailLog.subject,
       status: "sent",
       resend_id: emailResponse.data?.id || null,
       language: emailLog.language,
       quiz_lead_id: emailLog.quiz_lead_id,
       original_log_id: logId,
-      html_body: resendHtml,
+      html_body: emailHtml,
     });
 
     console.log("Email resent successfully");
