@@ -317,14 +317,19 @@ export function EmailLogsMonitor() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => setSelectedLog(log)}
-                          >
-                            <Eye className="w-4 h-4 text-muted-foreground" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setSelectedLog(log)}
+                            >
+                              <Eye className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(log.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <Button
