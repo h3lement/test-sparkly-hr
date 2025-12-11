@@ -4,6 +4,9 @@ import { Input } from '@/components/ui/input';
 import { useQuiz } from './QuizContext';
 import { useToast } from '@/hooks/use-toast';
 import sparklyLogo from '@/assets/sparkly-logo.png';
+import { z } from 'zod';
+
+const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255, { message: "Email must be less than 255 characters" });
 
 export function EmailCapture() {
   const { email, setEmail, setCurrentStep, totalScore } = useQuiz();
@@ -13,10 +16,11 @@ export function EmailCapture() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !email.includes('@')) {
+    const validation = emailSchema.safeParse(email);
+    if (!validation.success) {
       toast({
         title: 'Invalid email',
-        description: 'Please enter a valid email address.',
+        description: validation.error.errors[0]?.message || 'Please enter a valid email address.',
         variant: 'destructive',
       });
       return;
