@@ -412,12 +412,15 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     // Use template values or fallback to defaults
+    // IMPORTANT: Use onboarding@resend.dev for testing until sparkly.hr domain is verified on Resend
     const senderName = templateData?.sender_name || "Sparkly.hr";
-    const senderEmail = templateData?.sender_email || "support@sparkly.hr";
+    const configuredSenderEmail = templateData?.sender_email || "support@sparkly.hr";
+    // Force use of Resend dev email until domain is verified
+    const senderEmail = "onboarding@resend.dev";
     const templateSubjects = templateData?.subjects as Record<string, string> || {};
     const emailSubject = templateSubjects[language] || trans.subject;
 
-    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
+    console.log("Using email config:", { senderName, senderEmail, configuredSenderEmail, subject: emailSubject });
 
     const { error: insertError } = await supabase.from("quiz_leads").insert({
       email,
@@ -506,6 +509,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send to user with dynamic sender config
+    console.log("Attempting to send user email to:", email);
     const userEmailResponse = await resend.emails.send({
       from: `${senderName} <${senderEmail}>`,
       to: [email],
@@ -513,7 +517,11 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
     });
 
-    console.log("User email sent:", userEmailResponse);
+    console.log("User email response:", JSON.stringify(userEmailResponse));
+    
+    if (userEmailResponse.error) {
+      console.error("Resend user email error:", userEmailResponse.error);
+    }
 
     // Send copy to admin (mikk@sparkly.hr) - always in English for consistency
     const adminTrans = emailTranslations.en;
@@ -552,6 +560,7 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
+    console.log("Attempting to send admin email to: mikk@sparkly.hr");
     const adminEmailResponse = await resend.emails.send({
       from: `${senderName} Quiz <${senderEmail}>`,
       to: ["mikk@sparkly.hr"],
@@ -559,7 +568,11 @@ const handler = async (req: Request): Promise<Response> => {
       html: adminEmailHtml,
     });
 
-    console.log("Admin email sent:", adminEmailResponse);
+    console.log("Admin email response:", JSON.stringify(adminEmailResponse));
+    
+    if (adminEmailResponse.error) {
+      console.error("Resend admin email error:", adminEmailResponse.error);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
