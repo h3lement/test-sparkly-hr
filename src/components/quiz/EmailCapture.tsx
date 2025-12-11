@@ -51,7 +51,7 @@ const resultLevels: ResultLevel[] = [
 ];
 
 export function EmailCapture() {
-  const { email, setEmail, setCurrentStep, totalScore } = useQuiz();
+  const { email, setEmail, setCurrentStep, totalScore, openMindednessScore } = useQuiz();
   const { t, language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -86,6 +86,7 @@ export function EmailCapture() {
           resultDescription: t(result.descKey),
           insights: result.insightKeys.map(key => t(key)),
           language,
+          opennessScore: openMindednessScore,
         },
       });
 
