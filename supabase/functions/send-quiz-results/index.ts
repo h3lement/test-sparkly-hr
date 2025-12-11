@@ -377,6 +377,7 @@ const handler = async (req: Request): Promise<Response> => {
       result_category: resultTitle,
       answers: answers || null,
       openness_score: opennessScore ?? null,
+      language: language,
     });
 
     if (insertError) {

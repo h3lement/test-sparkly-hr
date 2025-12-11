@@ -62,6 +62,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          language: string | null
           openness_score: number | null
           result_category: string
           score: number
@@ -72,6 +73,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          language?: string | null
           openness_score?: number | null
           result_category: string
           score: number
@@ -82,6 +84,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          language?: string | null
           openness_score?: number | null
           result_category?: string
           score?: number

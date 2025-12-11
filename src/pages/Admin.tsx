@@ -20,6 +20,7 @@ interface QuizLead {
   result_category: string;
   created_at: string;
   openness_score: number | null;
+  language: string | null;
 }
 
 interface AdminUser {
@@ -496,6 +497,7 @@ const Admin = () => {
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Score</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Result</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Openness</th>
+                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Lang</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Submitted</th>
                         <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
                       </tr>
@@ -529,6 +531,11 @@ const Admin = () => {
                             ) : (
                               <span className="text-sm text-muted-foreground">—</span>
                             )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-foreground uppercase">
+                              {lead.language || 'en'}
+                            </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-muted-foreground">
                             {formatDate(lead.created_at)}
