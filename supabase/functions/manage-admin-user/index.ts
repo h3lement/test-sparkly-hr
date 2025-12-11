@@ -50,11 +50,61 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { action, userId, email, name, password } = await req.json();
+    const body = await req.json();
+    const { action, userId, userIds, email, name, password } = body;
 
-    if (!action || !userId) {
+    if (!action) {
       return new Response(
-        JSON.stringify({ error: "Action and userId are required" }),
+        JSON.stringify({ error: "Action is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Handle get-users-status action - returns email and active status for multiple users
+    if (action === "get-users-status") {
+      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "userIds array is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Fetching status for ${userIds.length} users`);
+
+      const usersData: Record<string, { email: string; is_active: boolean }> = {};
+      
+      for (const uid of userIds) {
+        try {
+          const { data: userData, error: userFetchError } = await adminClient.auth.admin.getUserById(uid);
+          if (!userFetchError && userData?.user) {
+            // Check if user is banned by casting to unknown first then to Record
+            const userObj = userData.user as unknown as Record<string, unknown>;
+            const bannedUntil = userObj.banned_until as string | null;
+            usersData[uid] = {
+              email: userData.user.email || "Unknown",
+              is_active: !bannedUntil || new Date(bannedUntil) < new Date(),
+            };
+          } else {
+            usersData[uid] = { email: "Unknown", is_active: true };
+          }
+        } catch (e) {
+          console.error(`Failed to fetch user ${uid}:`, e);
+          usersData[uid] = { email: "Unknown", is_active: true };
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, users: usersData }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // All other actions require userId
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "userId is required for this action" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -66,8 +116,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     switch (action) {
       case "update": {

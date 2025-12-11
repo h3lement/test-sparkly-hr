@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// This function creates a new admin user with email, password, and optional name
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -104,6 +106,19 @@ Deno.serve(async (req) => {
     if (roleInsertError) {
       console.error("Failed to add admin role:", roleInsertError);
       // Don't fail the whole operation, the user was still created
+    }
+
+    // Create profile entry for the new admin
+    const { error: profileError } = await adminClient
+      .from("profiles")
+      .insert({ 
+        user_id: newUser.user.id, 
+        email: email.toLowerCase() 
+      });
+
+    if (profileError) {
+      console.error("Failed to create profile:", profileError);
+      // Don't fail the whole operation
     }
 
     // Remove from pending if exists
