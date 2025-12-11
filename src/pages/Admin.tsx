@@ -10,6 +10,7 @@ import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
 import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface QuizLead {
@@ -737,6 +738,17 @@ const Admin = () => {
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {/* Email Settings Tab */}
+          {activeTab === "email" && (
+            <div className="max-w-6xl">
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-foreground">Email Settings</h1>
+                <p className="text-muted-foreground mt-1">Configure email sender and subjects</p>
+              </div>
+              <EmailTemplateManager />
             </div>
           )}
         </div>

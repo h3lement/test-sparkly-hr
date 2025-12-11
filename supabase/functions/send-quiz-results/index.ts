@@ -402,6 +402,23 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Fetch live email template configuration
+    const { data: templateData, error: templateError } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("template_type", "quiz_results")
+      .eq("is_live", true)
+      .limit(1)
+      .maybeSingle();
+
+    // Use template values or fallback to defaults
+    const senderName = templateData?.sender_name || "Sparkly.hr";
+    const senderEmail = templateData?.sender_email || "support@sparkly.hr";
+    const templateSubjects = templateData?.subjects as Record<string, string> || {};
+    const emailSubject = templateSubjects[language] || trans.subject;
+
+    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
+
     const { error: insertError } = await supabase.from("quiz_leads").insert({
       email,
       score: totalScore,
@@ -488,11 +505,11 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send to user
+    // Send to user with dynamic sender config
     const userEmailResponse = await resend.emails.send({
-      from: "Sparkly.hr <support@sparkly.hr>",
+      from: `${senderName} <${senderEmail}>`,
       to: [email],
-      subject: `${trans.subject}: ${safeResultTitle}`,
+      subject: `${emailSubject}: ${safeResultTitle}`,
       html: emailHtml,
     });
 
@@ -536,7 +553,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const adminEmailResponse = await resend.emails.send({
-      from: "Sparkly.hr Quiz <support@sparkly.hr>",
+      from: `${senderName} Quiz <${senderEmail}>`,
       to: ["mikk@sparkly.hr"],
       subject: `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`,
       html: adminEmailHtml,

@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Shield, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
+import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import sparklyLogo from "@/assets/sparkly-logo.png";
 
@@ -21,6 +21,7 @@ export function AdminSidebar({
   const menuItems = [
     { id: "leads", label: "Respondents", icon: Users },
     { id: "admins", label: "Admin Users", icon: Shield },
+    { id: "email", label: "Email Settings", icon: Mail },
   ];
 
   return (
