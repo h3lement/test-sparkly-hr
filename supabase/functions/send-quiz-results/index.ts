@@ -9,6 +9,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// HTML sanitization to prevent injection attacks
+function escapeHtml(text: string): string {
+  const htmlEscapes: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+  };
+  return text.replace(/[&<>"'/]/g, (char) => htmlEscapes[char] || char);
+}
+
 // In-memory rate limiting
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const MAX_REQUESTS_PER_WINDOW = 5; // 5 submissions per hour per IP
@@ -153,7 +166,13 @@ const handler = async (req: Request): Promise<Response> => {
       console.log("Lead saved to database successfully");
     }
 
-    const insightsList = insights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
+    // Sanitize user-provided content to prevent HTML injection
+    const safeResultTitle = escapeHtml(resultTitle);
+    const safeResultDescription = escapeHtml(resultDescription);
+    const safeEmail = escapeHtml(email);
+    const safeInsights = insights.map(insight => escapeHtml(insight));
+
+    const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -173,9 +192,9 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="opacity: 0.9;">out of ${maxScore} points</div>
           </div>
           
-          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${resultTitle}</h2>
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${safeResultTitle}</h2>
           
-          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${resultDescription}</p>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
           
           <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Key Insights:</h3>
           <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
@@ -199,7 +218,7 @@ const handler = async (req: Request): Promise<Response> => {
     const userEmailResponse = await resend.emails.send({
       from: "Sparkly.hr <mikk.orglaan@gmail.com>",
       to: [email],
-      subject: `Your Team Performance Results: ${resultTitle}`,
+      subject: `Your Team Performance Results: ${safeResultTitle}`,
       html: emailHtml,
     });
 
@@ -211,9 +230,9 @@ const handler = async (req: Request): Promise<Response> => {
       <html>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px;">
         <h2>New Quiz Submission</h2>
-        <p><strong>User Email:</strong> ${email}</p>
+        <p><strong>User Email:</strong> ${safeEmail}</p>
         <p><strong>Score:</strong> ${totalScore} / ${maxScore}</p>
-        <p><strong>Result:</strong> ${resultTitle}</p>
+        <p><strong>Result:</strong> ${safeResultTitle}</p>
         <hr>
         <h3>Insights:</h3>
         <ul>${insightsList}</ul>
@@ -224,7 +243,7 @@ const handler = async (req: Request): Promise<Response> => {
     const adminEmailResponse = await resend.emails.send({
       from: "Sparkly.hr Quiz <mikk.orglaan@gmail.com>",
       to: ["mikk.orglaan@gmail.com"],
-      subject: `New Quiz Lead: ${email} - ${resultTitle}`,
+      subject: `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`,
       html: adminEmailHtml,
     });
 
