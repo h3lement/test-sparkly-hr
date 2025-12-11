@@ -294,9 +294,14 @@ export function EmailLogsMonitor() {
                           <span className="text-sm text-foreground">{log.recipient_email}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-muted-foreground max-w-48 truncate block" title={log.subject}>
-                            {log.subject}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded shrink-0">
+                              {log.language || "en"}
+                            </span>
+                            <span className="text-sm text-muted-foreground max-w-48 truncate block" title={log.subject}>
+                              {log.subject}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-sm font-medium ${totalAttempts > 1 ? "text-amber-600" : "text-muted-foreground"}`}>
