@@ -386,12 +386,13 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, language = 'en', answers, opennessScore }: QuizResultsRequest = await req.json();
+    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, language = 'en', answers, opennessScore, isTest = false }: QuizResultsRequest & { isTest?: boolean } = await req.json();
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
     console.log("Openness Score:", opennessScore);
     console.log("Language:", language);
+    console.log("Is Test Email:", isTest);
     console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
 
     // Get translations for the language
@@ -419,20 +420,28 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
 
-    const { error: insertError } = await supabase.from("quiz_leads").insert({
-      email,
-      score: totalScore,
-      total_questions: maxScore,
-      result_category: resultTitle,
-      answers: answers || null,
-      openness_score: opennessScore ?? null,
-      language: language,
-    });
+    let quizLeadId: string | null = null;
 
-    if (insertError) {
-      console.error("Error saving lead to database:", insertError);
+    // Only save to database if not a test email
+    if (!isTest) {
+      const { data: insertedLead, error: insertError } = await supabase.from("quiz_leads").insert({
+        email,
+        score: totalScore,
+        total_questions: maxScore,
+        result_category: resultTitle,
+        answers: answers || null,
+        openness_score: opennessScore ?? null,
+        language: language,
+      }).select("id").single();
+
+      if (insertError) {
+        console.error("Error saving lead to database:", insertError);
+      } else {
+        console.log("Lead saved to database successfully");
+        quizLeadId = insertedLead?.id || null;
+      }
     } else {
-      console.log("Lead saved to database successfully");
+      console.log("Test email - skipping database save");
     }
 
     // Sanitize user-provided content to prevent HTML injection
@@ -507,17 +516,46 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send to user with dynamic sender config
     console.log("Attempting to send user email to:", email);
+    const userEmailSubject = `${emailSubject}: ${safeResultTitle}`;
     const userEmailResponse = await resend.emails.send({
       from: `${senderName} <${senderEmail}>`,
       to: [email],
-      subject: `${emailSubject}: ${safeResultTitle}`,
+      subject: userEmailSubject,
       html: emailHtml,
     });
 
     console.log("User email response:", JSON.stringify(userEmailResponse));
     
+    // Log user email to database
+    await supabase.from("email_logs").insert({
+      email_type: isTest ? "test" : "quiz_result_user",
+      recipient_email: email,
+      sender_email: senderEmail,
+      sender_name: senderName,
+      subject: userEmailSubject,
+      status: userEmailResponse.error ? "failed" : "sent",
+      resend_id: userEmailResponse.data?.id || null,
+      error_message: userEmailResponse.error?.message || null,
+      language: language,
+      quiz_lead_id: quizLeadId,
+    });
+    
     if (userEmailResponse.error) {
       console.error("Resend user email error:", userEmailResponse.error);
+    }
+
+    // Skip admin notification for test emails
+    if (isTest) {
+      console.log("Test email - skipping admin notification");
+      return new Response(JSON.stringify({ success: true, isTest: true }), {
+        status: 200,
+        headers: { 
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(),
+          "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
+          ...corsHeaders 
+        },
+      });
     }
 
     // Send copy to admin (mikk@sparkly.hr) - always in English for consistency
@@ -558,14 +596,29 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     console.log("Attempting to send admin email to: mikk@sparkly.hr");
+    const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
     const adminEmailResponse = await resend.emails.send({
       from: `${senderName} Quiz <${senderEmail}>`,
       to: ["mikk@sparkly.hr"],
-      subject: `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`,
+      subject: adminEmailSubject,
       html: adminEmailHtml,
     });
 
     console.log("Admin email response:", JSON.stringify(adminEmailResponse));
+
+    // Log admin email to database
+    await supabase.from("email_logs").insert({
+      email_type: "quiz_result_admin",
+      recipient_email: "mikk@sparkly.hr",
+      sender_email: senderEmail,
+      sender_name: senderName,
+      subject: adminEmailSubject,
+      status: adminEmailResponse.error ? "failed" : "sent",
+      resend_id: adminEmailResponse.data?.id || null,
+      error_message: adminEmailResponse.error?.message || null,
+      language: language,
+      quiz_lead_id: quizLeadId,
+    });
     
     if (adminEmailResponse.error) {
       console.error("Resend admin email error:", adminEmailResponse.error);

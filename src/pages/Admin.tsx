@@ -11,6 +11,7 @@ import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
 import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
+import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface QuizLead {
@@ -749,6 +750,13 @@ const Admin = () => {
                 <p className="text-muted-foreground mt-1">Configure email sender and subjects</p>
               </div>
               <EmailTemplateManager />
+            </div>
+          )}
+
+          {/* Email Logs Tab */}
+          {activeTab === "email-logs" && (
+            <div className="max-w-6xl">
+              <EmailLogsMonitor />
             </div>
           )}
         </div>
