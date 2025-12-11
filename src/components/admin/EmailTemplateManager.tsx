@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send, Eye } from "lucide-react";
 
 interface EmailTemplate {
   id: string;
@@ -56,6 +56,7 @@ export function EmailTemplateManager() {
   const [testEmail, setTestEmail] = useState("");
   const [testLanguage, setTestLanguage] = useState("en");
   const [sendingTest, setSendingTest] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -265,6 +266,78 @@ export function EmailTemplateManager() {
     }
   };
 
+  // Sample test data for preview
+  const sampleData = {
+    totalScore: 18,
+    maxScore: 24,
+    resultTitle: "Strong Team Foundation",
+    resultDescription: "Your team shows solid performance indicators with room for growth.",
+    insights: [
+      "Your team demonstrates good collaboration patterns",
+      "Consider implementing regular feedback sessions",
+      "Focus on developing leadership skills within the team"
+    ],
+    opennessScore: 3,
+  };
+
+  const getEmailPreviewHtml = () => {
+    const currentSubject = subjects[testLanguage] || "Your Team Performance Results";
+    const logoUrl = "https://sparklyhr.app/favicon.png";
+    
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto;">
+          <div style="background: #f3f4f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+            <p style="margin: 0; font-size: 13px; color: #6b7280;"><strong>From:</strong> ${senderName || "Sparkly.hr"} &lt;${senderEmail || "support@sparkly.hr"}&gt;</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280;"><strong>Subject:</strong> ${currentSubject}: ${sampleData.resultTitle}</p>
+          </div>
+          <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <a href="https://sparkly.hr" target="_blank">
+                <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
+              </a>
+              <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">Your Results</h1>
+            </div>
+            
+            <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+              <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${sampleData.totalScore}</div>
+              <div style="opacity: 0.9;">out of ${sampleData.maxScore} points</div>
+            </div>
+            
+            <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${sampleData.resultTitle}</h2>
+            
+            <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${sampleData.resultDescription}</p>
+            
+            <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+              <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px 0;">Leadership Open-Mindedness</h3>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 24px; font-weight: bold; color: #6d28d9;">${sampleData.opennessScore}</span>
+                <span style="color: #6b7280;">out of 4</span>
+              </div>
+            </div>
+            
+            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Key Insights:</h3>
+            <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
+              ${sampleData.insights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("")}
+            </ul>
+            
+            <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">Want to improve your team performance?</p>
+              <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Visit Sparkly.hr</a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <a href="https://sparkly.hr" target="_blank">
+                <img src="${logoUrl}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
+              </a>
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-US", {
       month: "short",
@@ -421,7 +494,29 @@ export function EmailTemplateManager() {
               <Send className="w-4 h-4" />
               {sendingTest ? "Sending..." : "Send Test"}
             </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setShowPreview(!showPreview)}
+              className="gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              {showPreview ? "Hide Preview" : "Preview"}
+            </Button>
           </div>
+          
+          {/* Email Preview */}
+          {showPreview && (
+            <div className="mt-6 border rounded-lg overflow-hidden">
+              <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
+                <span className="text-sm font-medium">Email Preview</span>
+                <Badge variant="outline">{SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name}</Badge>
+              </div>
+              <div 
+                className="bg-[#faf7f5] max-h-[600px] overflow-y-auto"
+                dangerouslySetInnerHTML={{ __html: getEmailPreviewHtml() }}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
