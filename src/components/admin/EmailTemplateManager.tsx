@@ -22,20 +22,20 @@ interface EmailTemplate {
 }
 
 const SUPPORTED_LANGUAGES = [
+  { code: "da", name: "Danish" },
+  { code: "nl", name: "Dutch" },
   { code: "en", name: "English" },
   { code: "et", name: "Estonian" },
-  { code: "de", name: "German" },
-  { code: "fr", name: "French" },
-  { code: "es", name: "Spanish" },
-  { code: "it", name: "Italian" },
-  { code: "pt", name: "Portuguese" },
-  { code: "nl", name: "Dutch" },
-  { code: "pl", name: "Polish" },
-  { code: "ru", name: "Russian" },
-  { code: "sv", name: "Swedish" },
-  { code: "no", name: "Norwegian" },
-  { code: "da", name: "Danish" },
   { code: "fi", name: "Finnish" },
+  { code: "fr", name: "French" },
+  { code: "de", name: "German" },
+  { code: "it", name: "Italian" },
+  { code: "no", name: "Norwegian" },
+  { code: "pl", name: "Polish" },
+  { code: "pt", name: "Portuguese" },
+  { code: "ru", name: "Russian" },
+  { code: "es", name: "Spanish" },
+  { code: "sv", name: "Swedish" },
   { code: "uk", name: "Ukrainian" },
 ];
 
