@@ -159,17 +159,29 @@ export function ResultsScreen() {
         <h3 className="font-heading text-xl font-semibold mb-3">
           {t('wantToImprove')}
         </h3>
-        <p className="text-muted-foreground mb-6">
+        <p className="text-muted-foreground mb-4">
           {t('wantToImproveDesc')}
         </p>
+        <p className="text-muted-foreground mb-6 font-medium">
+          {t('ctaAdvice')}
+        </p>
         
-        <Button
-          onClick={resetQuiz}
-          variant="outline"
-          className="mr-4"
-        >
-          {t('takeQuizAgain')}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button
+            asChild
+            className="gradient-primary text-primary-foreground"
+          >
+            <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
+              {t('visitSparkly')}
+            </a>
+          </Button>
+          <Button
+            onClick={resetQuiz}
+            variant="outline"
+          >
+            {t('takeQuizAgain')}
+          </Button>
+        </div>
       </div>
       
       <Footer />
