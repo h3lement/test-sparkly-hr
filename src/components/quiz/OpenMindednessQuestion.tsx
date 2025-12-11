@@ -36,12 +36,12 @@ export function OpenMindednessQuestion() {
   const progress = (7 / totalQuestions) * 100;
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
+    <main className="max-w-2xl mx-auto animate-fade-in" role="main" aria-labelledby="mindedness-heading">
       {/* Progress bar */}
-      <div className="mb-8">
+      <div className="mb-8" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={`Quiz progress: ${Math.round(progress)}% complete`}>
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>{t('questionOf').replace('{current}', '7').replace('{total}', String(totalQuestions))}</span>
-          <span>{t('complete').replace('{percent}', String(Math.round(progress)))}</span>
+          <span aria-hidden="true">{t('questionOf').replace('{current}', '7').replace('{total}', String(totalQuestions))}</span>
+          <span aria-hidden="true">{t('complete').replace('{percent}', String(Math.round(progress)))}</span>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div 
@@ -51,54 +51,66 @@ export function OpenMindednessQuestion() {
         </div>
       </div>
 
-      {/* Question */}
-      <h2 className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
-        {t('openMindedness_question')}
-      </h2>
-
-      {/* Checkbox options */}
-      <div className="space-y-3 mb-8">
-        {checkboxOptions.map((option) => (
-          <label
-            key={option.key}
-            className={cn(
-              'flex items-center gap-4 w-full text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer',
-              openMindednessAnswers[option.key]
-                ? 'border-primary bg-primary/5 shadow-lg'
-                : 'border-border bg-card hover:border-primary/50 hover:bg-secondary/50'
-            )}
-          >
-            <Checkbox
-              checked={openMindednessAnswers[option.key]}
-              onCheckedChange={(checked) => handleCheckboxChange(option.key, checked === true)}
-              className="h-6 w-6 rounded border-2"
-            />
-            <span className="text-base md:text-lg">{t(option.labelKey)}</span>
-          </label>
-        ))}
+      {/* Screen reader announcement */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        Question 7 of {totalQuestions}, final question
       </div>
 
+      {/* Question */}
+      <h1 id="mindedness-heading" className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
+        {t('openMindedness_question')}
+      </h1>
+
+      {/* Checkbox options */}
+      <fieldset className="space-y-3 mb-8" aria-describedby="mindedness-hint">
+        <legend className="sr-only">{t('openMindedness_question')}</legend>
+        {checkboxOptions.map((option) => {
+          const isChecked = openMindednessAnswers[option.key];
+          return (
+            <label
+              key={option.key}
+              className={cn(
+                'flex items-center gap-4 w-full text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer',
+                isChecked
+                  ? 'border-primary bg-primary/5 shadow-lg'
+                  : 'border-border bg-card hover:border-primary/50 hover:bg-secondary/50'
+              )}
+            >
+              <Checkbox
+                checked={isChecked}
+                onCheckedChange={(checked) => handleCheckboxChange(option.key, checked === true)}
+                className="h-6 w-6 rounded border-2"
+                aria-label={t(option.labelKey)}
+              />
+              <span className="text-base md:text-lg">{t(option.labelKey)}</span>
+            </label>
+          );
+        })}
+      </fieldset>
+
       {/* Hint text */}
-      <p className="text-sm text-muted-foreground mb-6 text-center">
+      <p id="mindedness-hint" className="text-sm text-muted-foreground mb-6 text-center">
         {t('openMindedness_hint')}
       </p>
 
       {/* Navigation */}
-      <div className="flex justify-between gap-4">
+      <nav className="flex justify-between gap-4" aria-label="Quiz navigation">
         <Button
           variant="outline"
           onClick={handlePrevious}
           className="px-6"
+          aria-label={t('back')}
         >
           {t('back')}
         </Button>
         <Button
           onClick={handleNext}
           className="gradient-primary text-primary-foreground px-8 hover:scale-105 transition-transform"
+          aria-label={t('next')}
         >
           {t('next')}
         </Button>
-      </div>
-    </div>
+      </nav>
+    </main>
   );
 }

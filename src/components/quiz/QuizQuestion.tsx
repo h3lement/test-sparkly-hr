@@ -66,12 +66,12 @@ export function QuizQuestion() {
   const currentQuestionData = questionKeys[currentQuestion];
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <main className="max-w-2xl mx-auto" role="main" aria-labelledby="question-heading">
       {/* Progress bar */}
-      <div className="mb-8">
+      <div className="mb-8" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={`Quiz progress: ${Math.round(progress)}% complete`}>
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>{t('questionOf').replace('{current}', String(currentQuestion + 1)).replace('{total}', String(totalQuestions))}</span>
-          <span>{t('complete').replace('{percent}', String(Math.round(progress)))}</span>
+          <span aria-hidden="true">{t('questionOf').replace('{current}', String(currentQuestion + 1)).replace('{total}', String(totalQuestions))}</span>
+          <span aria-hidden="true">{t('complete').replace('{percent}', String(Math.round(progress)))}</span>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div 
@@ -79,6 +79,11 @@ export function QuizQuestion() {
             style={{ width: `${progress}%` }}
           />
         </div>
+      </div>
+
+      {/* Screen reader announcement for question change */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        Question {currentQuestion + 1} of {totalQuestions}
       </div>
 
       {/* Question content with slide animation */}
@@ -89,14 +94,16 @@ export function QuizQuestion() {
         )}
       >
         {/* Question */}
-        <h2 className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
+        <h1 id="question-heading" className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
           {t(currentQuestionData.question)}
-        </h2>
+        </h1>
 
       {/* Answers */}
-      <div className="space-y-3 mb-8">
+      <fieldset className="space-y-3 mb-8" role="radiogroup" aria-labelledby="question-heading">
+        <legend className="sr-only">{t(currentQuestionData.question)}</legend>
         {currentQuestionData.answers.map((answerKey, index) => {
           const answerId = index + 1;
+          const isSelected = selectedAnswer === answerId;
           return (
             <button
               key={answerId}
@@ -116,9 +123,12 @@ export function QuizQuestion() {
                   }
                 }, 300);
               }}
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`${t(answerKey)}${isSelected ? ', selected' : ''}`}
               className={cn(
                 'w-full text-left p-5 rounded-xl border-2 transition-all duration-200',
-                selectedAnswer === answerId
+                isSelected
                   ? 'border-primary bg-primary/5 shadow-lg'
                   : 'border-border bg-card hover:border-primary/50 hover:bg-secondary/50'
               )}
@@ -127,12 +137,13 @@ export function QuizQuestion() {
                 <div 
                   className={cn(
                     'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
-                    selectedAnswer === answerId
+                    isSelected
                       ? 'border-primary bg-primary'
                       : 'border-muted-foreground'
                   )}
+                  aria-hidden="true"
                 >
-                  {selectedAnswer === answerId && (
+                  {isSelected && (
                     <div className="w-2 h-2 bg-primary-foreground rounded-full" />
                   )}
                 </div>
@@ -141,16 +152,17 @@ export function QuizQuestion() {
             </button>
           );
         })}
-      </div>
+      </fieldset>
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between gap-4">
+      <nav className="flex justify-between gap-4" aria-label="Quiz navigation">
         <Button
           variant="outline"
           onClick={handlePrevious}
           disabled={currentQuestion === 0}
           className="px-6"
+          aria-label={t('back')}
         >
           {t('back')}
         </Button>
@@ -158,10 +170,11 @@ export function QuizQuestion() {
           onClick={handleNext}
           disabled={selectedAnswer === null}
           className="gradient-primary text-primary-foreground px-8 hover:scale-105 transition-transform"
+          aria-label={isLastQuestion ? t('seeResults') : t('next')}
         >
           {isLastQuestion ? t('seeResults') : t('next')}
         </Button>
-      </div>
-    </div>
+      </nav>
+    </main>
   );
 }
