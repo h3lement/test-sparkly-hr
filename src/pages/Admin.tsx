@@ -215,6 +215,16 @@ const Admin = () => {
       return;
     }
 
+    // Prevent deactivating the primary admin (Mikk)
+    if (admin.email.toLowerCase() === "mikk@sparkly.hr" && admin.is_active) {
+      toast({
+        title: "Protected account",
+        description: "This admin account cannot be deactivated",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const action = admin.is_active ? "deactivate" : "activate";
       const { data, error } = await supabase.functions.invoke("manage-admin-user", {
