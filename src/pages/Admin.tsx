@@ -127,7 +127,7 @@ const Admin = () => {
   const fetchAdmins = async () => {
     setAdminsLoading(true);
     try {
-      // Fetch active admins
+      // Fetch admin role entries
       const { data, error } = await supabase
         .from("user_roles")
         .select("id, user_id")
@@ -135,22 +135,28 @@ const Admin = () => {
 
       if (error) throw error;
 
-      // Get emails from profiles table
-      const adminUsers: AdminUser[] = [];
-      for (const role of data || []) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email")
-          .eq("user_id", role.user_id)
-          .maybeSingle();
-        
-        adminUsers.push({
+      if (!data || data.length === 0) {
+        setAdmins([]);
+        setPendingAdmins([]);
+        return;
+      }
+
+      // Get user emails and status from edge function
+      const userIds = data.map(role => role.user_id);
+      const { data: usersData, error: usersError } = await supabase.functions.invoke("manage-admin-user", {
+        body: { action: "get-users-status", userIds },
+      });
+
+      const adminUsers: AdminUser[] = data.map(role => {
+        const userData = usersData?.users?.[role.user_id];
+        return {
           id: role.id,
           user_id: role.user_id,
-          email: profile?.email || "Unknown",
-          is_active: true, // Default to active, will be updated if needed
-        });
-      }
+          email: userData?.email || "Unknown",
+          is_active: userData?.is_active ?? true,
+        };
+      });
+      
       setAdmins(adminUsers);
 
       // Fetch pending admins
