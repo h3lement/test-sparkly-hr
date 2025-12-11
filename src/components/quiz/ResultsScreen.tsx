@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useQuiz, quizQuestions } from './QuizContext';
 import { Footer } from './Footer';
-import sparklyLogo from '@/assets/sparkly-logo.png';
+import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 
 interface ResultLevel {
@@ -83,13 +83,9 @@ export function ResultsScreen() {
   return (
     <div className="animate-fade-in max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
-          <img 
-            src={sparklyLogo} 
-            alt="Sparkly Logo" 
-            className="w-16 h-16 mx-auto mb-6 object-contain hover:opacity-80 transition-opacity cursor-pointer"
-          />
-        </a>
+        <div className="mb-6">
+          <Logo />
+        </div>
         
         <p className="text-muted-foreground mb-2">Results for {email}</p>
         

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Download, RefreshCw } from "lucide-react";
-import sparklyLogo from "@/assets/sparkly-logo.png";
+import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 
 interface QuizLead {
@@ -156,13 +156,9 @@ const Admin = () => {
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center max-w-md">
-            <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
-              <img 
-                src={sparklyLogo} 
-                alt="Sparkly.hr" 
-                className="h-12 mx-auto mb-6 hover:opacity-80 transition-opacity"
-              />
-            </a>
+            <div className="mb-6">
+              <Logo />
+            </div>
             <h1 className="text-2xl font-bold text-foreground mb-4">Access Denied</h1>
             <p className="text-muted-foreground mb-6">
               You don't have admin privileges to view this page. Please contact the administrator to request access.
@@ -182,13 +178,7 @@ const Admin = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <a href="https://sparkly.hr" target="_blank" rel="noopener noreferrer">
-            <img 
-              src={sparklyLogo} 
-              alt="Sparkly.hr" 
-              className="h-10 hover:opacity-80 transition-opacity"
-            />
-          </a>
+          <Logo />
           <div className="flex items-center gap-3">
             <Button onClick={fetchLeads} variant="outline" size="sm" disabled={loading}>
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
