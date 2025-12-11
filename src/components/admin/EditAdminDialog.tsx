@@ -18,6 +18,7 @@ interface EditAdminDialogProps {
     id: string;
     user_id: string;
     email: string;
+    name: string;
   } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,7 +41,7 @@ export function EditAdminDialog({ admin, open, onOpenChange, onAdminUpdated }: E
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && admin) {
       setEmail(admin.email);
-      setName("");
+      setName(admin.name || "");
       setPassword("");
     } else {
       resetForm();
