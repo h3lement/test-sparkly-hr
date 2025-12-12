@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Eye, Users, CheckCircle, XCircle, BarChart3, TrendingDown, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Eye, Users, CheckCircle, XCircle, BarChart3, TrendingDown } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -22,15 +22,6 @@ interface FunnelStep {
   label: string;
   count: number;
   percentage: number;
-}
-
-interface DropOffPoint {
-  fromStep: string;
-  toStep: string;
-  fromLabel: string;
-  toLabel: string;
-  dropOffCount: number;
-  dropOffRate: number;
 }
 
 const FUNNEL_STEPS = [
@@ -65,7 +56,6 @@ export function WebStatsMonitor() {
     completionRate: 0,
   });
   const [funnelData, setFunnelData] = useState<FunnelStep[]>([]);
-  const [dropOffData, setDropOffData] = useState<DropOffPoint[]>([]);
   const { toast } = useToast();
 
   const fetchStats = async () => {
@@ -100,7 +90,7 @@ export function WebStatsMonitor() {
   };
 
   const calculateStats = (views: PageViewData[]) => {
-    // Get unique sessions and their furthest step
+    // Get unique sessions and their visited pages
     const sessionProgress = new Map<string, Set<string>>();
     
     views.forEach((view) => {
@@ -138,28 +128,6 @@ export function WebStatsMonitor() {
       };
     });
 
-    // Calculate drop-off points
-    const dropOffs: DropOffPoint[] = [];
-    for (let i = 0; i < FUNNEL_STEPS.length - 1; i++) {
-      const currentStep = FUNNEL_STEPS[i];
-      const nextStep = FUNNEL_STEPS[i + 1];
-      const currentCount = stepReachedCounts.get(currentStep.slug) || 0;
-      const nextCount = stepReachedCounts.get(nextStep.slug) || 0;
-      const dropOffCount = currentCount - nextCount;
-      const dropOffRate = currentCount > 0 ? (dropOffCount / currentCount) * 100 : 0;
-
-      dropOffs.push({
-        fromStep: currentStep.slug,
-        toStep: nextStep.slug,
-        fromLabel: currentStep.label,
-        toLabel: nextStep.label,
-        dropOffCount: Math.max(0, dropOffCount),
-        dropOffRate: Math.max(0, dropOffRate),
-      });
-    }
-
-    setDropOffData(dropOffs);
-
     // Calculate completions
     const completions = stepReachedCounts.get('results') || 0;
     const abandoned = welcomeCount - completions;
@@ -181,6 +149,15 @@ export function WebStatsMonitor() {
   }, [dateRange]);
 
   const maxFunnelCount = Math.max(...funnelData.map((f) => f.count), 1);
+
+  // Get badge color based on percentage
+  const getBadgeColor = (percentage: number, isFirst: boolean) => {
+    if (isFirst) return 'bg-primary text-primary-foreground';
+    if (percentage >= 80) return 'bg-green-500 text-white';
+    if (percentage >= 50) return 'bg-amber-500 text-white';
+    if (percentage > 0) return 'bg-red-500 text-white';
+    return 'bg-muted text-muted-foreground';
+  };
 
   return (
     <div className="max-w-6xl">
@@ -268,24 +245,9 @@ export function WebStatsMonitor() {
             <p className="text-muted-foreground">No session data available for this period.</p>
           </div>
         ) : (
-          <div className="flex items-end gap-3 sm:gap-4 h-72 px-4">
+          <div className="flex items-end gap-2 sm:gap-3 h-72 px-2">
             {funnelData.map((step, index) => {
               const heightPercentage = (step.count / maxFunnelCount) * 100;
-              const getBarColor = (idx: number) => {
-                const colors = [
-                  'bg-primary',
-                  'bg-primary/90',
-                  'bg-primary/80',
-                  'bg-primary/70',
-                  'bg-primary/60',
-                  'bg-primary/50',
-                  'bg-amber-500',
-                  'bg-amber-400',
-                  'bg-green-500',
-                  'bg-green-600',
-                ];
-                return colors[idx] || 'bg-primary';
-              };
               
               return (
                 <div
@@ -293,105 +255,28 @@ export function WebStatsMonitor() {
                   className="flex-1 flex flex-col items-center justify-end h-full"
                 >
                   {/* Count above bar */}
-                  <span className="text-lg font-bold text-foreground mb-2">
+                  <span className="text-sm font-bold text-foreground mb-2">
                     {step.count}
                   </span>
                   
                   {/* Vertical Bar */}
                   <div
-                    className={`w-full max-w-[60px] ${getBarColor(index)} rounded-t-lg transition-all duration-500 ease-out shadow-md`}
+                    className="w-full max-w-[50px] bg-[#4a5568] rounded-t-lg transition-all duration-500 ease-out"
                     style={{ height: `${Math.max(heightPercentage, 5)}%` }}
                   />
                   
                   {/* Label below bar */}
-                  <div className="mt-3 text-center w-full">
-                    <span className="text-xs font-semibold text-foreground block">
+                  <div className="mt-3 text-center w-full flex flex-col items-center gap-1">
+                    <span className="text-xs font-medium text-foreground">
                       {step.label}
                     </span>
-                    <span className="text-xs text-muted-foreground mt-1 block">
+                    {/* Percentage badge */}
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getBadgeColor(step.percentage, index === 0)}`}>
                       {step.percentage}%
                     </span>
-      </div>
-
-      {/* Drop-off Analysis */}
-      <div className="bg-card rounded-2xl border border-border p-6 mt-6">
-        <div className="flex items-center gap-2 mb-2">
-          <AlertTriangle className="w-5 h-5 text-amber-500" />
-          <h2 className="text-lg font-semibold text-foreground">Drop-off Analysis</h2>
-        </div>
-        <p className="text-sm text-muted-foreground mb-6">
-          Where users leave the quiz (sorted by highest drop-off rate)
-        </p>
-
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          </div>
-        ) : dropOffData.length === 0 || pageViews.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">No drop-off data available.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {[...dropOffData]
-              .sort((a, b) => b.dropOffRate - a.dropOffRate)
-              .map((point) => {
-                const isHighDropOff = point.dropOffRate > 30;
-                const isMediumDropOff = point.dropOffRate > 15 && point.dropOffRate <= 30;
-                
-                return (
-                  <div
-                    key={`${point.fromStep}-${point.toStep}`}
-                    className="flex items-center gap-4"
-                  >
-                    <div className="w-32 sm:w-40 text-sm text-muted-foreground truncate">
-                      {point.fromLabel} → {point.toLabel}
-                    </div>
-                    <div className="flex-1 h-8 bg-secondary/50 rounded-lg overflow-hidden relative">
-                      <div
-                        className={`h-full rounded-lg transition-all duration-500 ${
-                          isHighDropOff 
-                            ? 'bg-red-500' 
-                            : isMediumDropOff 
-                              ? 'bg-amber-500' 
-                              : 'bg-green-500'
-                        }`}
-                        style={{ width: `${Math.min(point.dropOffRate, 100)}%` }}
-                      />
-                      <div className="absolute inset-0 flex items-center px-3">
-                        <span className={`text-sm font-semibold ${point.dropOffRate > 50 ? 'text-white' : 'text-foreground'}`}>
-                          {point.dropOffRate.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-20 text-right">
-                      <span className="text-sm text-muted-foreground">
-                        {point.dropOffCount} users
-                      </span>
-                    </div>
                   </div>
-                );
-              })}
-          </div>
-        )}
-
-        <div className="flex items-center gap-6 mt-6 pt-4 border-t border-border text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-red-500" />
-            <span>High drop-off (&gt;30%)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-amber-500" />
-            <span>Medium (15-30%)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-500" />
-            <span>Low (&lt;15%)</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+                </div>
+              );
             })}
           </div>
         )}
