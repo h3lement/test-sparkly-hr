@@ -4,7 +4,6 @@ import { useLanguage, TranslationKey } from './LanguageContext';
 import { Footer } from './Footer';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
-import { usePageTracking, QUIZ_STEPS } from '@/hooks/usePageTracking';
 
 interface ResultLevel {
   min: number;
@@ -58,9 +57,6 @@ const resultLevels: ResultLevel[] = [
 export function ResultsScreen() {
   const { totalScore, email, resetQuiz, openMindednessScore } = useQuiz();
   const { t } = useLanguage();
-  
-  // Track page view
-  usePageTracking(QUIZ_STEPS.RESULTS);
   
   const result = resultLevels.find(
     (level) => totalScore >= level.min && totalScore <= level.max
