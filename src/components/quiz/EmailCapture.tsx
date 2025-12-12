@@ -4,8 +4,6 @@ import { Input } from '@/components/ui/input';
 import { useQuiz } from './QuizContext';
 import { useLanguage, TranslationKey } from './LanguageContext';
 import { useToast } from '@/hooks/use-toast';
-import { Footer } from './Footer';
-import { Logo } from '@/components/Logo';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -121,9 +119,6 @@ export function EmailCapture() {
 
   return (
     <main className="animate-fade-in text-center max-w-xl mx-auto" role="main" aria-labelledby="email-heading">
-      <div className="mb-6">
-        <Logo />
-      </div>
       
       <h1 id="email-heading" className="font-heading text-3xl md:text-4xl font-bold mb-4">
         {t('resultsReady')}{' '}
@@ -166,8 +161,6 @@ export function EmailCapture() {
       <p id="privacy-notice" className="text-sm text-muted-foreground mt-6">
         {t('privacyNotice')}
       </p>
-      
-      <Footer />
     </main>
   );
 }
