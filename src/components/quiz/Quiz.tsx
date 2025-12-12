@@ -8,6 +8,8 @@ import { EmailCapture } from './EmailCapture';
 import { ResultsScreen } from './ResultsScreen';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { trackPageView } from '@/hooks/usePageTracking';
+import { Logo } from '@/components/Logo';
+import { Footer } from './Footer';
 
 // Map URL slugs to quiz steps
 const SLUG_TO_STEP: Record<string, { step: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results'; question?: number }> = {
@@ -67,13 +69,21 @@ function QuizContent() {
   }, [currentStep, currentQuestion, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 md:p-8">
-      <div className="w-full max-w-3xl">
-        {currentStep === 'welcome' && <WelcomeScreen />}
-        {currentStep === 'quiz' && <QuizQuestion />}
-        {currentStep === 'mindedness' && <OpenMindednessQuestion />}
-        {currentStep === 'email' && <EmailCapture />}
-        {currentStep === 'results' && <ResultsScreen />}
+    <div className="min-h-screen flex flex-col">
+      <header className="pt-6 pb-4 px-4">
+        <Logo />
+      </header>
+      <main className="flex-1 flex items-center justify-center p-4 md:p-8">
+        <div className="w-full max-w-3xl">
+          {currentStep === 'welcome' && <WelcomeScreen />}
+          {currentStep === 'quiz' && <QuizQuestion />}
+          {currentStep === 'mindedness' && <OpenMindednessQuestion />}
+          {currentStep === 'email' && <EmailCapture />}
+          {currentStep === 'results' && <ResultsScreen />}
+        </div>
+      </main>
+      <div className="px-4 pb-6">
+        <Footer />
       </div>
     </div>
   );
