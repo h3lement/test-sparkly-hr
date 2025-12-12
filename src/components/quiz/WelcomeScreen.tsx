@@ -1,7 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { useQuiz } from './QuizContext';
-import { Footer } from './Footer';
-import { Logo } from '@/components/Logo';
 import { useLanguage, languages } from './LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Globe } from 'lucide-react';
@@ -35,10 +33,6 @@ export function WelcomeScreen() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      <div className="mb-10">
-        <Logo />
       </div>
       
       <div className="badge-pill inline-flex items-center gap-2 mb-8" role="status" aria-label={t('badge')}>
@@ -94,8 +88,6 @@ export function WelcomeScreen() {
       <p id="quiz-duration" className="text-sm text-muted-foreground mt-8">
         {t('duration')}
       </p>
-      
-      <Footer />
     </main>
   );
 }
