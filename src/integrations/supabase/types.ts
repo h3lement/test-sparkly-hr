@@ -125,6 +125,27 @@ export type Database = {
         }
         Relationships: []
       }
+      page_views: {
+        Row: {
+          created_at: string
+          id: string
+          page_slug: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          page_slug: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          page_slug?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       pending_admin_emails: {
         Row: {
           created_at: string

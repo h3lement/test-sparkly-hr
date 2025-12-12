@@ -3,6 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useQuiz } from './QuizContext';
 import { useLanguage, TranslationKey } from './LanguageContext';
 import { cn } from '@/lib/utils';
+import { usePageTracking, QUIZ_STEPS } from '@/hooks/usePageTracking';
 
 const checkboxOptions: { key: keyof ReturnType<typeof useQuiz>['openMindednessAnswers']; labelKey: TranslationKey }[] = [
   { key: 'humans', labelKey: 'openMindedness_humans' },
@@ -14,6 +15,9 @@ const checkboxOptions: { key: keyof ReturnType<typeof useQuiz>['openMindednessAn
 export function OpenMindednessQuestion() {
   const { openMindednessAnswers, setOpenMindednessAnswers, setCurrentStep, setCurrentQuestion, currentQuestion } = useQuiz();
   const { t } = useLanguage();
+  
+  // Track page view
+  usePageTracking(QUIZ_STEPS.MINDEDNESS);
 
   const handleCheckboxChange = (key: keyof typeof openMindednessAnswers, checked: boolean) => {
     setOpenMindednessAnswers({
