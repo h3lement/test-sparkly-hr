@@ -70,11 +70,9 @@ function QuizContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {currentStep !== 'welcome' && (
-        <header className="pt-6 pb-4 px-4">
-          <Logo />
-        </header>
-      )}
+      <header className="pt-6 pb-4 px-4">
+        <Logo />
+      </header>
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-3xl">
           {currentStep === 'welcome' && <WelcomeScreen />}
