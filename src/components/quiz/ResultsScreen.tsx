@@ -1,8 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useQuiz } from './QuizContext';
 import { useLanguage, TranslationKey } from './LanguageContext';
-import { Footer } from './Footer';
-import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 
 interface ResultLevel {
@@ -83,9 +81,6 @@ export function ResultsScreen() {
       </div>
 
       <header className="text-center mb-8">
-        <div className="mb-6">
-          <Logo />
-        </div>
         
         <p className="text-muted-foreground mb-2">{t('resultsFor')} {email}</p>
         
@@ -203,8 +198,6 @@ export function ResultsScreen() {
           </Button>
         </div>
       </section>
-      
-      <Footer />
     </main>
   );
 }
