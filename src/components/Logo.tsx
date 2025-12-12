@@ -1,10 +1,9 @@
-import { Link } from 'react-router-dom';
 import sparklyLogo from '@/assets/sparkly-logo.png';
 
 export function Logo() {
   return (
-    <Link 
-      to="/"
+    <a 
+      href="https://team-test.sparkly.hr/"
       aria-label="Go to home page"
     >
       <img 
@@ -12,6 +11,6 @@ export function Logo() {
         alt="Sparkly.hr" 
         className="h-16 sm:h-[4.5rem] mx-auto object-contain hover:opacity-80 transition-opacity cursor-pointer"
       />
-    </Link>
+    </a>
   );
 }
