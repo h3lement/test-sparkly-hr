@@ -19,22 +19,14 @@ export const trackPageView = async (pageSlug: string): Promise<void> => {
   try {
     const sessionId = getSessionId();
     
-    const { data, error } = await supabase.from('page_views').insert({
+    const { error } = await supabase.from('page_views').insert({
       session_id: sessionId,
       page_slug: pageSlug,
-    }).select();
+    });
     
     if (error) {
-      // Ignore duplicate key errors (already tracked this page for this session)
-      if (error.code === '23505') {
-        console.log(`Page already tracked for this session: ${pageSlug}`);
-        return;
-      }
       console.error('Failed to track page view:', error);
-      return;
     }
-    
-    console.log(`Tracked page view: ${pageSlug}`, data);
   } catch (error) {
     console.error('Failed to track page view:', error);
   }
