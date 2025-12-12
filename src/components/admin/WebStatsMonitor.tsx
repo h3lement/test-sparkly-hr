@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Eye, Users, CheckCircle, XCircle, BarChart3, TrendingDown } from 'lucide-react';
+import { RefreshCw, Eye, Users, CheckCircle, XCircle, BarChart3, TrendingDown, AlertTriangle } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -22,6 +22,15 @@ interface FunnelStep {
   label: string;
   count: number;
   percentage: number;
+}
+
+interface DropOffPoint {
+  fromStep: string;
+  toStep: string;
+  fromLabel: string;
+  toLabel: string;
+  dropOffCount: number;
+  dropOffRate: number;
 }
 
 const FUNNEL_STEPS = [
@@ -56,6 +65,7 @@ export function WebStatsMonitor() {
     completionRate: 0,
   });
   const [funnelData, setFunnelData] = useState<FunnelStep[]>([]);
+  const [dropOffData, setDropOffData] = useState<DropOffPoint[]>([]);
   const { toast } = useToast();
 
   const fetchStats = async () => {
@@ -90,25 +100,36 @@ export function WebStatsMonitor() {
   };
 
   const calculateStats = (views: PageViewData[]) => {
-    // Get unique sessions
-    const sessions = new Set(views.map((v) => v.session_id));
-    const totalSessions = sessions.size;
-
-    // Count total page views per page (all visits, not unique)
-    const pageViewCounts = new Map<string, number>();
+    // Get unique sessions and their furthest step
+    const sessionProgress = new Map<string, Set<string>>();
     
     views.forEach((view) => {
-      const currentCount = pageViewCounts.get(view.page_slug) || 0;
-      pageViewCounts.set(view.page_slug, currentCount + 1);
+      if (!sessionProgress.has(view.session_id)) {
+        sessionProgress.set(view.session_id, new Set());
+      }
+      sessionProgress.get(view.session_id)!.add(view.page_slug);
+    });
+
+    const totalSessions = sessionProgress.size;
+
+    // Count unique sessions that reached each step
+    const stepReachedCounts = new Map<string, number>();
+    FUNNEL_STEPS.forEach(step => {
+      let count = 0;
+      sessionProgress.forEach((visitedPages) => {
+        if (visitedPages.has(step.slug)) {
+          count++;
+        }
+      });
+      stepReachedCounts.set(step.slug, count);
     });
 
     // Get welcome count for percentage calculation
-    const welcomeCount = pageViewCounts.get('welcome') || 0;
+    const welcomeCount = stepReachedCounts.get('welcome') || 0;
 
-    // Calculate funnel data - total page views per page
+    // Calculate funnel data
     const funnel: FunnelStep[] = FUNNEL_STEPS.map((step) => {
-      const count = pageViewCounts.get(step.slug) || 0;
-      
+      const count = stepReachedCounts.get(step.slug) || 0;
       return {
         slug: step.slug,
         label: step.label,
@@ -117,13 +138,31 @@ export function WebStatsMonitor() {
       };
     });
 
-    // Calculate completions (total results page views)
-    const completions = pageViewCounts.get('results') || 0;
+    // Calculate drop-off points
+    const dropOffs: DropOffPoint[] = [];
+    for (let i = 0; i < FUNNEL_STEPS.length - 1; i++) {
+      const currentStep = FUNNEL_STEPS[i];
+      const nextStep = FUNNEL_STEPS[i + 1];
+      const currentCount = stepReachedCounts.get(currentStep.slug) || 0;
+      const nextCount = stepReachedCounts.get(nextStep.slug) || 0;
+      const dropOffCount = currentCount - nextCount;
+      const dropOffRate = currentCount > 0 ? (dropOffCount / currentCount) * 100 : 0;
 
-    // Calculate abandoned (welcome views minus results views)
+      dropOffs.push({
+        fromStep: currentStep.slug,
+        toStep: nextStep.slug,
+        fromLabel: currentStep.label,
+        toLabel: nextStep.label,
+        dropOffCount: Math.max(0, dropOffCount),
+        dropOffRate: Math.max(0, dropOffRate),
+      });
+    }
+
+    setDropOffData(dropOffs);
+
+    // Calculate completions
+    const completions = stepReachedCounts.get('results') || 0;
     const abandoned = welcomeCount - completions;
-
-    // Completion rate
     const completionRate = welcomeCount > 0 ? (completions / welcomeCount) * 100 : 0;
 
     setStats({
@@ -272,9 +311,87 @@ export function WebStatsMonitor() {
                     <span className="text-xs text-muted-foreground mt-1 block">
                       {step.percentage}%
                     </span>
+      </div>
+
+      {/* Drop-off Analysis */}
+      <div className="bg-card rounded-2xl border border-border p-6 mt-6">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertTriangle className="w-5 h-5 text-amber-500" />
+          <h2 className="text-lg font-semibold text-foreground">Drop-off Analysis</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-6">
+          Where users leave the quiz (sorted by highest drop-off rate)
+        </p>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          </div>
+        ) : dropOffData.length === 0 || pageViews.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No drop-off data available.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {[...dropOffData]
+              .sort((a, b) => b.dropOffRate - a.dropOffRate)
+              .map((point) => {
+                const isHighDropOff = point.dropOffRate > 30;
+                const isMediumDropOff = point.dropOffRate > 15 && point.dropOffRate <= 30;
+                
+                return (
+                  <div
+                    key={`${point.fromStep}-${point.toStep}`}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="w-32 sm:w-40 text-sm text-muted-foreground truncate">
+                      {point.fromLabel} → {point.toLabel}
+                    </div>
+                    <div className="flex-1 h-8 bg-secondary/50 rounded-lg overflow-hidden relative">
+                      <div
+                        className={`h-full rounded-lg transition-all duration-500 ${
+                          isHighDropOff 
+                            ? 'bg-red-500' 
+                            : isMediumDropOff 
+                              ? 'bg-amber-500' 
+                              : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(point.dropOffRate, 100)}%` }}
+                      />
+                      <div className="absolute inset-0 flex items-center px-3">
+                        <span className={`text-sm font-semibold ${point.dropOffRate > 50 ? 'text-white' : 'text-foreground'}`}>
+                          {point.dropOffRate.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-20 text-right">
+                      <span className="text-sm text-muted-foreground">
+                        {point.dropOffCount} users
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
+                );
+              })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-6 mt-6 pt-4 border-t border-border text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-red-500" />
+            <span>High drop-off (&gt;30%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-amber-500" />
+            <span>Medium (15-30%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-green-500" />
+            <span>Low (&lt;15%)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
             })}
           </div>
         )}
