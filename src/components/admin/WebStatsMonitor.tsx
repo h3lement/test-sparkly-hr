@@ -224,7 +224,7 @@ export function WebStatsMonitor() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading funnel data...</p>
           </div>
-        ) : funnelData.length === 0 || stats.totalSessions === 0 ? (
+        ) : pageViews.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No session data available for this period.</p>
           </div>
