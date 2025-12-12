@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Eye, Users, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
+import { RefreshCw, Eye, Users, CheckCircle, XCircle, BarChart3, TrendingDown } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -159,7 +159,7 @@ export function WebStatsMonitor() {
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">Web Stats</h1>
+          <h1 className="text-3xl font-serif italic text-foreground">Web Stats</h1>
           <p className="text-muted-foreground mt-1">
             Track page views and complete user journey
           </p>
@@ -170,7 +170,7 @@ export function WebStatsMonitor() {
             variant="outline"
             size="icon"
             disabled={loading}
-            className="h-10 w-10"
+            className="h-10 w-10 rounded-full"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -221,13 +221,13 @@ export function WebStatsMonitor() {
       </div>
 
       {/* Funnel Chart */}
-      <div className="bg-card rounded-xl border border-border p-6">
+      <div className="bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center gap-2 mb-2">
-          <BarChart3 className="w-5 h-5 text-muted-foreground" />
+          <TrendingDown className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-lg font-semibold text-foreground">User Journey Funnel</h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-6">
-          {FUNNEL_STEPS.map((s) => s.label).join(' → ')}
+        <p className="text-sm text-muted-foreground mb-8">
+          Welcome → Questions → Email → Results
         </p>
 
         {loading ? (
@@ -240,33 +240,40 @@ export function WebStatsMonitor() {
             <p className="text-muted-foreground">No session data available for this period.</p>
           </div>
         ) : (
-          <div className="flex items-end gap-2 h-64">
-            {funnelData.map((step, index) => {
+          <div className="flex items-end gap-1 sm:gap-2 h-64 overflow-x-auto pb-2">
+            {funnelData.map((step) => {
               const heightPercentage = (step.count / maxFunnelCount) * 100;
+              const getPercentageColor = (pct: number) => {
+                if (pct >= 80) return 'bg-green-500 text-white';
+                if (pct >= 50) return 'bg-green-400 text-white';
+                if (pct >= 30) return 'bg-amber-400 text-white';
+                if (pct > 0) return 'bg-red-400 text-white';
+                return 'bg-gray-300 text-gray-600';
+              };
+              
               return (
                 <div
                   key={step.slug}
-                  className="flex-1 flex flex-col items-center"
+                  className="flex-1 min-w-[50px] flex flex-col items-center"
                 >
-                  <span className="text-sm font-medium text-foreground mb-1">
+                  {/* Count above bar */}
+                  <span className="text-sm font-semibold text-foreground mb-1">
                     {step.count}
                   </span>
+                  
+                  {/* Bar */}
                   <div
-                    className="w-full bg-primary/80 rounded-t-sm transition-all duration-300"
-                    style={{ height: `${Math.max(heightPercentage, 4)}%` }}
+                    className="w-full bg-slate-600 rounded-t transition-all duration-500 ease-out"
+                    style={{ height: `${Math.max(heightPercentage, 8)}%` }}
                   />
-                  <div className="mt-2 text-center">
-                    <span className="text-xs font-medium text-foreground block">
+                  
+                  {/* Label and percentage */}
+                  <div className="mt-3 text-center w-full">
+                    <span className="text-xs font-medium text-foreground block truncate px-1">
                       {step.label}
                     </span>
                     <span
-                      className={`text-xs px-1.5 py-0.5 rounded mt-1 inline-block ${
-                        step.percentage >= 50
-                          ? 'bg-green-100 text-green-700'
-                          : step.percentage >= 25
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
+                      className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full mt-1.5 inline-block font-medium ${getPercentageColor(step.percentage)}`}
                     >
                       {step.percentage}%
                     </span>
@@ -293,12 +300,12 @@ function StatCard({
   valueColor?: string;
 }) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-card rounded-2xl border border-border p-5">
+      <div className="flex items-center justify-between mb-3">
         <span className="text-sm text-muted-foreground">{label}</span>
         {icon}
       </div>
-      <span className={`text-2xl font-bold ${valueColor || 'text-foreground'}`}>
+      <span className={`text-3xl font-bold ${valueColor || 'text-foreground'}`}>
         {value}
       </span>
     </div>
