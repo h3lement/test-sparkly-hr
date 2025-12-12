@@ -91,22 +91,20 @@ export function WebStatsMonitor() {
     const sessions = new Set(views.map((v) => v.session_id));
     const totalSessions = sessions.size;
 
-    // Count unique sessions that visited each page directly
-    const pageSessionCounts = new Map<string, Set<string>>();
+    // Count total page views per page (all visits, not unique)
+    const pageViewCounts = new Map<string, number>();
     
     views.forEach((view) => {
-      if (!pageSessionCounts.has(view.page_slug)) {
-        pageSessionCounts.set(view.page_slug, new Set());
-      }
-      pageSessionCounts.get(view.page_slug)!.add(view.session_id);
+      const currentCount = pageViewCounts.get(view.page_slug) || 0;
+      pageViewCounts.set(view.page_slug, currentCount + 1);
     });
 
     // Get welcome count for percentage calculation
-    const welcomeCount = pageSessionCounts.get('welcome')?.size || 0;
+    const welcomeCount = pageViewCounts.get('welcome') || 0;
 
-    // Calculate funnel data - count unique sessions per page
+    // Calculate funnel data - total page views per page
     const funnel: FunnelStep[] = FUNNEL_STEPS.map((step) => {
-      const count = pageSessionCounts.get(step.slug)?.size || 0;
+      const count = pageViewCounts.get(step.slug) || 0;
       
       return {
         slug: step.slug,
@@ -116,10 +114,10 @@ export function WebStatsMonitor() {
       };
     });
 
-    // Calculate completions (sessions that reached results)
-    const completions = pageSessionCounts.get('results')?.size || 0;
+    // Calculate completions (total results page views)
+    const completions = pageViewCounts.get('results') || 0;
 
-    // Calculate abandoned (sessions that started but didn't complete)
+    // Calculate abandoned (welcome views minus results views)
     const abandoned = welcomeCount - completions;
 
     // Completion rate
