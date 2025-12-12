@@ -12,6 +12,7 @@ import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
 import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
+import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface QuizLead {
@@ -740,6 +741,11 @@ const Admin = () => {
                 </>
               )}
             </div>
+          )}
+
+          {/* Web Stats Tab */}
+          {activeTab === "web-stats" && (
+            <WebStatsMonitor />
           )}
 
           {/* Email Settings Tab */}

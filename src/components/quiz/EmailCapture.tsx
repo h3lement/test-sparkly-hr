@@ -8,6 +8,7 @@ import { Footer } from './Footer';
 import { Logo } from '@/components/Logo';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageTracking, QUIZ_STEPS } from '@/hooks/usePageTracking';
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255, { message: "Email must be less than 255 characters" });
 
@@ -55,6 +56,9 @@ export function EmailCapture() {
   const { t, language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  
+  // Track page view
+  usePageTracking(QUIZ_STEPS.EMAIL);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
