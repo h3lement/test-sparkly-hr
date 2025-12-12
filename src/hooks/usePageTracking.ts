@@ -14,15 +14,18 @@ const getSessionId = (): string => {
   return sessionId;
 };
 
-// Track a page view
+// Track a page view (upsert to prevent duplicates)
 export const trackPageView = async (pageSlug: string): Promise<void> => {
   try {
     const sessionId = getSessionId();
     
-    await supabase.from('page_views').insert({
-      session_id: sessionId,
-      page_slug: pageSlug,
-    });
+    await supabase.from('page_views').upsert(
+      {
+        session_id: sessionId,
+        page_slug: pageSlug,
+      },
+      { onConflict: 'session_id,page_slug', ignoreDuplicates: true }
+    );
     
     console.log(`Tracked page view: ${pageSlug}`);
   } catch (error) {
