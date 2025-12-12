@@ -91,30 +91,44 @@ export function WebStatsMonitor() {
     const sessions = new Set(views.map((v) => v.session_id));
     const totalSessions = sessions.size;
 
-    // Get sessions that reached each step
-    const sessionSteps = new Map<string, Set<string>>();
+    // For each session, determine the FURTHEST step they reached in the funnel
+    const sessionFurthestStep = new Map<string, number>();
+    
     views.forEach((view) => {
-      if (!sessionSteps.has(view.session_id)) {
-        sessionSteps.set(view.session_id, new Set());
+      const stepIndex = FUNNEL_STEPS.findIndex((s) => s.slug === view.page_slug);
+      if (stepIndex === -1) return; // Unknown step, skip
+      
+      const currentFurthest = sessionFurthestStep.get(view.session_id) ?? -1;
+      if (stepIndex > currentFurthest) {
+        sessionFurthestStep.set(view.session_id, stepIndex);
       }
-      sessionSteps.get(view.session_id)!.add(view.page_slug);
     });
 
-    // Calculate funnel data
-    const funnel: FunnelStep[] = FUNNEL_STEPS.map((step) => {
-      const count = Array.from(sessionSteps.values()).filter((steps) =>
-        steps.has(step.slug)
+    // Calculate funnel data - count sessions that reached AT LEAST this step
+    // A session "reached" a step if their furthest step is >= this step's index
+    const funnel: FunnelStep[] = FUNNEL_STEPS.map((step, stepIndex) => {
+      const count = Array.from(sessionFurthestStep.values()).filter(
+        (furthestIndex) => furthestIndex >= stepIndex
       ).length;
+      
+      // Percentage is relative to sessions that started (reached welcome)
+      const startedSessions = Array.from(sessionFurthestStep.values()).filter(
+        (furthestIndex) => furthestIndex >= 0
+      ).length;
+      
       return {
         slug: step.slug,
         label: step.label,
         count,
-        percentage: totalSessions > 0 ? Math.round((count / totalSessions) * 100) : 0,
+        percentage: startedSessions > 0 ? Math.round((count / startedSessions) * 100) : 0,
       };
     });
 
-    // Calculate completions (sessions that reached results)
-    const completions = funnel.find((f) => f.slug === 'results')?.count || 0;
+    // Calculate completions (sessions that reached results - last step)
+    const resultsIndex = FUNNEL_STEPS.findIndex((s) => s.slug === 'results');
+    const completions = Array.from(sessionFurthestStep.values()).filter(
+      (furthestIndex) => furthestIndex >= resultsIndex
+    ).length;
 
     // Calculate abandoned (sessions that started but didn't complete)
     const welcomeCount = funnel.find((f) => f.slug === 'welcome')?.count || 0;
