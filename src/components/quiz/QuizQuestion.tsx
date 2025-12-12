@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { useQuiz } from './QuizContext';
 import { useLanguage, TranslationKey } from './LanguageContext';
 import { cn } from '@/lib/utils';
-import { trackPageView, getQuizStepSlug } from '@/hooks/usePageTracking';
 
 const questionKeys: { question: TranslationKey; answers: TranslationKey[] }[] = [
   { question: 'q1_question', answers: ['q1_a1', 'q1_a2', 'q1_a3', 'q1_a4'] },
@@ -25,16 +24,6 @@ export function QuizQuestion() {
   );
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
   const prevQuestion = useRef(currentQuestion);
-  const trackedQuestions = useRef<Set<number>>(new Set());
-
-  // Track page view when question changes
-  useEffect(() => {
-    const slug = getQuizStepSlug('quiz', currentQuestion);
-    if (!trackedQuestions.current.has(currentQuestion)) {
-      trackedQuestions.current.add(currentQuestion);
-      trackPageView(slug);
-    }
-  }, [currentQuestion]);
 
   useEffect(() => {
     if (currentQuestion > prevQuestion.current) {

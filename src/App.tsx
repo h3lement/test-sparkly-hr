@@ -19,7 +19,10 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Quiz routes with step parameter */}
             <Route path="/" element={<Index />} />
+            <Route path="/quiz" element={<Index />} />
+            <Route path="/quiz/:step" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

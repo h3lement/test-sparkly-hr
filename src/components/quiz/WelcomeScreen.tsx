@@ -5,14 +5,10 @@ import { Logo } from '@/components/Logo';
 import { useLanguage, languages } from './LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Globe } from 'lucide-react';
-import { usePageTracking, QUIZ_STEPS } from '@/hooks/usePageTracking';
 
 export function WelcomeScreen() {
   const { setCurrentStep } = useQuiz();
   const { language, setLanguage, t } = useLanguage();
-  
-  // Track page view
-  usePageTracking(QUIZ_STEPS.WELCOME);
 
   return (
     <main className="animate-fade-in text-center max-w-2xl mx-auto" role="main" aria-labelledby="welcome-heading">
