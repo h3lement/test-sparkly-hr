@@ -96,8 +96,9 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .maybeSingle();
 
-    const senderName = templateData?.sender_name || emailLog.sender_name || "Sparkly.hr";
-    const senderEmail = templateData?.sender_email || emailLog.sender_email || "support@sparkly.hr";
+    // Ensure sender values are never undefined/empty - some email clients show "Undefined" otherwise
+    const senderName = (templateData?.sender_name?.trim() || emailLog.sender_name?.trim() || "Sparkly.hr");
+    const senderEmail = (templateData?.sender_email?.trim() || emailLog.sender_email?.trim() || "support@sparkly.hr");
 
     // Use the original email HTML body if available, otherwise create a fallback
     const emailHtml = emailLog.html_body || `

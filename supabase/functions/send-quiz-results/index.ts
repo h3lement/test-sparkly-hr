@@ -457,9 +457,9 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .maybeSingle();
 
-    // Use template values or fallback to defaults
-    const senderName = templateData?.sender_name || "Sparkly.hr";
-    const senderEmail = templateData?.sender_email || "support@sparkly.hr";
+    // Use template values or fallback to defaults - ensure no undefined/null values
+    const senderName = (templateData?.sender_name && templateData.sender_name.trim()) || "Sparkly.hr";
+    const senderEmail = (templateData?.sender_email && templateData.sender_email.trim()) || "support@sparkly.hr";
     const templateSubjects = templateData?.subjects as Record<string, string> || {};
     const emailSubject = templateSubjects[language] || trans.subject;
 
