@@ -313,65 +313,6 @@ export function WebStatsMonitor() {
           </div>
         )}
       </div>
-
-      {/* Drop-off Table */}
-      <div className="bg-card rounded-2xl border border-border p-6 mt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Drop-off Points</h2>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          </div>
-        ) : dropOffData.length === 0 || pageViews.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">No drop-off data available.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Step</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Users Lost</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Drop-off Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...dropOffData]
-                  .sort((a, b) => b.dropOffRate - a.dropOffRate)
-                  .map((point) => {
-                    const isHighDropOff = point.dropOffRate > 30;
-                    const isMediumDropOff = point.dropOffRate > 15 && point.dropOffRate <= 30;
-                    
-                    return (
-                      <tr key={`${point.fromStep}-${point.toStep}`} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                        <td className="py-3 px-4 text-sm text-foreground">
-                          {point.fromLabel} → {point.toLabel}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-right text-foreground">
-                          {point.dropOffCount}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            isHighDropOff 
-                              ? 'bg-red-500/15 text-red-600' 
-                              : isMediumDropOff 
-                                ? 'bg-amber-500/15 text-amber-600' 
-                                : 'bg-green-500/15 text-green-600'
-                          }`}>
-                            {point.dropOffRate.toFixed(1)}%
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
