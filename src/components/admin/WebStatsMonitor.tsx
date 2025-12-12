@@ -240,41 +240,47 @@ export function WebStatsMonitor() {
             <p className="text-muted-foreground">No session data available for this period.</p>
           </div>
         ) : (
-          <div className="flex items-end gap-1 sm:gap-2 h-64 overflow-x-auto pb-2">
-            {funnelData.map((step) => {
+          <div className="flex items-end gap-3 sm:gap-4 h-72 px-4">
+            {funnelData.map((step, index) => {
               const heightPercentage = (step.count / maxFunnelCount) * 100;
-              const getPercentageColor = (pct: number) => {
-                if (pct >= 80) return 'bg-green-500 text-white';
-                if (pct >= 50) return 'bg-green-400 text-white';
-                if (pct >= 30) return 'bg-amber-400 text-white';
-                if (pct > 0) return 'bg-red-400 text-white';
-                return 'bg-gray-300 text-gray-600';
+              const getBarColor = (idx: number) => {
+                const colors = [
+                  'bg-primary',
+                  'bg-primary/90',
+                  'bg-primary/80',
+                  'bg-primary/70',
+                  'bg-primary/60',
+                  'bg-primary/50',
+                  'bg-amber-500',
+                  'bg-amber-400',
+                  'bg-green-500',
+                  'bg-green-600',
+                ];
+                return colors[idx] || 'bg-primary';
               };
               
               return (
                 <div
                   key={step.slug}
-                  className="flex-1 min-w-[50px] flex flex-col items-center"
+                  className="flex-1 flex flex-col items-center justify-end h-full"
                 >
                   {/* Count above bar */}
-                  <span className="text-sm font-semibold text-foreground mb-1">
+                  <span className="text-lg font-bold text-foreground mb-2">
                     {step.count}
                   </span>
                   
-                  {/* Bar */}
+                  {/* Vertical Bar */}
                   <div
-                    className="w-full bg-slate-600 rounded-t transition-all duration-500 ease-out"
-                    style={{ height: `${Math.max(heightPercentage, 8)}%` }}
+                    className={`w-full max-w-[60px] ${getBarColor(index)} rounded-t-lg transition-all duration-500 ease-out shadow-md`}
+                    style={{ height: `${Math.max(heightPercentage, 5)}%` }}
                   />
                   
-                  {/* Label and percentage */}
+                  {/* Label below bar */}
                   <div className="mt-3 text-center w-full">
-                    <span className="text-xs font-medium text-foreground block truncate px-1">
+                    <span className="text-xs font-semibold text-foreground block">
                       {step.label}
                     </span>
-                    <span
-                      className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full mt-1.5 inline-block font-medium ${getPercentageColor(step.percentage)}`}
-                    >
+                    <span className="text-xs text-muted-foreground mt-1 block">
                       {step.percentage}%
                     </span>
                   </div>
