@@ -91,47 +91,35 @@ export function WebStatsMonitor() {
     const sessions = new Set(views.map((v) => v.session_id));
     const totalSessions = sessions.size;
 
-    // For each session, determine the FURTHEST step they reached in the funnel
-    const sessionFurthestStep = new Map<string, number>();
+    // Count unique sessions that visited each page directly
+    const pageSessionCounts = new Map<string, Set<string>>();
     
     views.forEach((view) => {
-      const stepIndex = FUNNEL_STEPS.findIndex((s) => s.slug === view.page_slug);
-      if (stepIndex === -1) return; // Unknown step, skip
-      
-      const currentFurthest = sessionFurthestStep.get(view.session_id) ?? -1;
-      if (stepIndex > currentFurthest) {
-        sessionFurthestStep.set(view.session_id, stepIndex);
+      if (!pageSessionCounts.has(view.page_slug)) {
+        pageSessionCounts.set(view.page_slug, new Set());
       }
+      pageSessionCounts.get(view.page_slug)!.add(view.session_id);
     });
 
-    // Calculate funnel data - count sessions that reached AT LEAST this step
-    // A session "reached" a step if their furthest step is >= this step's index
-    const funnel: FunnelStep[] = FUNNEL_STEPS.map((step, stepIndex) => {
-      const count = Array.from(sessionFurthestStep.values()).filter(
-        (furthestIndex) => furthestIndex >= stepIndex
-      ).length;
-      
-      // Percentage is relative to sessions that started (reached welcome)
-      const startedSessions = Array.from(sessionFurthestStep.values()).filter(
-        (furthestIndex) => furthestIndex >= 0
-      ).length;
+    // Get welcome count for percentage calculation
+    const welcomeCount = pageSessionCounts.get('welcome')?.size || 0;
+
+    // Calculate funnel data - count unique sessions per page
+    const funnel: FunnelStep[] = FUNNEL_STEPS.map((step) => {
+      const count = pageSessionCounts.get(step.slug)?.size || 0;
       
       return {
         slug: step.slug,
         label: step.label,
         count,
-        percentage: startedSessions > 0 ? Math.round((count / startedSessions) * 100) : 0,
+        percentage: welcomeCount > 0 ? Math.round((count / welcomeCount) * 100) : 0,
       };
     });
 
-    // Calculate completions (sessions that reached results - last step)
-    const resultsIndex = FUNNEL_STEPS.findIndex((s) => s.slug === 'results');
-    const completions = Array.from(sessionFurthestStep.values()).filter(
-      (furthestIndex) => furthestIndex >= resultsIndex
-    ).length;
+    // Calculate completions (sessions that reached results)
+    const completions = pageSessionCounts.get('results')?.size || 0;
 
     // Calculate abandoned (sessions that started but didn't complete)
-    const welcomeCount = funnel.find((f) => f.slug === 'welcome')?.count || 0;
     const abandoned = welcomeCount - completions;
 
     // Completion rate
