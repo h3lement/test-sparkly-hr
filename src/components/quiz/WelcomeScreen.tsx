@@ -3,6 +3,7 @@ import { useQuiz } from './QuizContext';
 import { useLanguage, languages } from './LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Globe } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 export function WelcomeScreen() {
   const { setCurrentStep } = useQuiz();
@@ -17,6 +18,11 @@ export function WelcomeScreen() {
       >
         Skip to start quiz
       </a>
+
+      {/* Logo */}
+      <div className="mb-6">
+        <Logo />
+      </div>
 
       {/* Language Selector */}
       <div className="flex justify-end mb-4">
