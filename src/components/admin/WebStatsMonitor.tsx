@@ -60,11 +60,9 @@ export function WebStatsMonitor() {
 
   const fetchStats = async () => {
     setLoading(true);
-    console.log('Fetching stats for date range:', dateRange);
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(dateRange));
-      console.log('Start date:', startDate.toISOString());
 
       const { data, error } = await supabase
         .from('page_views')
@@ -76,9 +74,6 @@ export function WebStatsMonitor() {
         console.error('Supabase error:', error);
         throw error;
       }
-
-      console.log('Fetched page views:', data?.length, 'records');
-      console.log('Raw data:', data);
       
       setPageViews(data || []);
       calculateStats(data || []);
@@ -95,8 +90,6 @@ export function WebStatsMonitor() {
   };
 
   const calculateStats = (views: PageViewData[]) => {
-    console.log('Calculating stats for', views.length, 'views');
-    
     // Get unique sessions
     const sessions = new Set(views.map((v) => v.session_id));
     const totalSessions = sessions.size;
@@ -108,8 +101,6 @@ export function WebStatsMonitor() {
       const currentCount = pageViewCounts.get(view.page_slug) || 0;
       pageViewCounts.set(view.page_slug, currentCount + 1);
     });
-
-    console.log('Page view counts:', Object.fromEntries(pageViewCounts));
 
     // Get welcome count for percentage calculation
     const welcomeCount = pageViewCounts.get('welcome') || 0;
@@ -125,8 +116,6 @@ export function WebStatsMonitor() {
         percentage: welcomeCount > 0 ? Math.round((count / welcomeCount) * 100) : 0,
       };
     });
-
-    console.log('Funnel data:', funnel);
 
     // Calculate completions (total results page views)
     const completions = pageViewCounts.get('results') || 0;
