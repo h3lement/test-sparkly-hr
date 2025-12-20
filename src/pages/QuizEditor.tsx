@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { useDirtyTracking, useQuestionsDirtyTracking } from "@/hooks/useDirtyTracking";
 import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
 import { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
@@ -226,12 +227,17 @@ export default function QuizEditor() {
   const initialLoadComplete = useRef(false);
   const savedQuizIdRef = useRef<string | undefined>(quizId);
 
-  // Auto-save callback
+  // Dirty tracking for optimized saves
+  const quizFieldsRef = useRef<Record<string, unknown>>({});
+  const questionsDirtyTracking = useQuestionsDirtyTracking();
+  const resultLevelsDirtyTracking = useDirtyTracking<ResultLevel>();
+
+  // Auto-save callback - optimized with parallel batching and dirty tracking
   const performAutoSave = useCallback(async () => {
     if (!savedQuizIdRef.current || savedQuizIdRef.current === "new") return;
     if (!slug.trim()) return;
 
-    const quizData = {
+    const currentQuizFields = {
       slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
       title,
       description,
@@ -254,122 +260,228 @@ export default function QuizEditor() {
       buying_persona: buyingPersona,
     };
 
-    // Update quiz
-    const { error: quizError } = await supabase
-      .from("quizzes")
-      .update(quizData)
-      .eq("id", savedQuizIdRef.current);
+    // Check if quiz fields changed
+    const quizFieldsChanged = JSON.stringify(currentQuizFields) !== JSON.stringify(quizFieldsRef.current);
 
-    if (quizError) throw quizError;
+    // Get dirty entities
+    const dirtyQuestions = questionsDirtyTracking.getDirtyQuestions(questions);
+    const dirtyAnswers = questionsDirtyTracking.getDirtyAnswers(questions);
+    const deletedQuestionIds = questionsDirtyTracking.getDeletedQuestionIds(questions);
+    const deletedAnswerIds = questionsDirtyTracking.getDeletedAnswerIds(questions);
+    const dirtyResultLevels = resultLevelsDirtyTracking.getDirtyEntities(resultLevels);
+    const deletedResultLevelIds = resultLevelsDirtyTracking.getDeletedIds(resultLevels);
 
-    // Save questions and answers
-    for (const question of questions) {
-      let questionId = question.id;
+    // Skip if nothing changed
+    if (!quizFieldsChanged && 
+        dirtyQuestions.length === 0 && 
+        dirtyAnswers.length === 0 && 
+        deletedQuestionIds.length === 0 &&
+        deletedAnswerIds.length === 0 &&
+        dirtyResultLevels.length === 0 &&
+        deletedResultLevelIds.length === 0) {
+      return;
+    }
 
-      if (question.id.startsWith("new-")) {
-        const { data, error } = await supabase
-          .from("quiz_questions")
-          .insert({
-            quiz_id: savedQuizIdRef.current,
-            question_text: question.question_text,
-            question_order: question.question_order,
-            question_type: question.question_type,
-          })
-          .select()
-          .single();
+    const promises: Promise<void>[] = [];
 
-        if (error) throw error;
-        questionId = data.id;
-        // Update local state with real ID
-        setQuestions(prev => prev.map(q => 
-          q.id === question.id ? { ...q, id: questionId } : q
-        ));
-      } else {
-        const { error } = await supabase
-          .from("quiz_questions")
-          .update({
-            question_text: question.question_text,
-            question_order: question.question_order,
-            question_type: question.question_type,
-          })
-          .eq("id", question.id);
-
-        if (error) throw error;
-      }
-
-      for (const answer of question.answers) {
-        if (answer.id.startsWith("new-")) {
-          const { data, error } = await supabase
-            .from("quiz_answers")
-            .insert({
-              question_id: questionId,
-              answer_text: answer.answer_text,
-              answer_order: answer.answer_order,
-              score_value: answer.score_value,
-            })
-            .select()
-            .single();
-
+    // Update quiz fields if changed
+    if (quizFieldsChanged) {
+      promises.push(
+        (async () => {
+          const { error } = await supabase
+            .from("quizzes")
+            .update(currentQuizFields)
+            .eq("id", savedQuizIdRef.current!);
           if (error) throw error;
-          // Update local state with real ID
-          setQuestions(prev => prev.map(q => ({
-            ...q,
-            answers: q.answers.map(a => 
-              a.id === answer.id ? { ...a, id: data.id } : a
-            ),
-          })));
-        } else {
-          await supabase
+          quizFieldsRef.current = currentQuizFields;
+        })()
+      );
+    }
+
+    // Handle deleted answers first (in parallel)
+    for (const answerId of deletedAnswerIds) {
+      promises.push(
+        (async () => {
+          const { error } = await supabase
             .from("quiz_answers")
-            .update({
-              answer_text: answer.answer_text,
-              answer_order: answer.answer_order,
-              score_value: answer.score_value,
-            })
-            .eq("id", answer.id);
-        }
-      }
+            .delete()
+            .eq("id", answerId);
+          if (error) throw error;
+        })()
+      );
     }
 
-    // Save result levels
-    for (const level of resultLevels) {
-      if (level.id.startsWith("new-")) {
-        const { data, error } = await supabase
-          .from("quiz_result_levels")
-          .insert({
-            quiz_id: savedQuizIdRef.current,
-            min_score: level.min_score,
-            max_score: level.max_score,
-            title: level.title,
-            description: level.description,
-            insights: level.insights,
-            emoji: level.emoji,
-            color_class: level.color_class,
-          })
-          .select()
-          .single();
+    // Handle deleted questions (in parallel)
+    for (const questionId of deletedQuestionIds) {
+      promises.push(
+        (async () => {
+          const { error } = await supabase
+            .from("quiz_questions")
+            .delete()
+            .eq("id", questionId);
+          if (error) throw error;
+        })()
+      );
+    }
 
-        if (error) throw error;
-        // Update local state with real ID
-        setResultLevels(prev => prev.map(l => 
-          l.id === level.id ? { ...l, id: data.id } : l
-        ));
+    // Handle deleted result levels (in parallel)
+    for (const levelId of deletedResultLevelIds) {
+      promises.push(
+        (async () => {
+          const { error } = await supabase
+            .from("quiz_result_levels")
+            .delete()
+            .eq("id", levelId);
+          if (error) throw error;
+        })()
+      );
+    }
+
+    // Save dirty questions (in parallel)
+    for (const question of dirtyQuestions) {
+      if (question.id.startsWith("new-")) {
+        promises.push(
+          (async () => {
+            const { data, error } = await supabase
+              .from("quiz_questions")
+              .insert({
+                quiz_id: savedQuizIdRef.current!,
+                question_text: question.question_text as Json,
+                question_order: question.question_order,
+                question_type: question.question_type,
+              })
+              .select()
+              .single();
+            if (error) throw error;
+            // Update local state with real ID
+            setQuestions(prev => prev.map(q => 
+              q.id === question.id ? { ...q, id: data.id } : q
+            ));
+          })()
+        );
       } else {
-        await supabase
-          .from("quiz_result_levels")
-          .update({
-            min_score: level.min_score,
-            max_score: level.max_score,
-            title: level.title,
-            description: level.description,
-            insights: level.insights,
-            emoji: level.emoji,
-            color_class: level.color_class,
-          })
-          .eq("id", level.id);
+        promises.push(
+          (async () => {
+            const { error } = await supabase
+              .from("quiz_questions")
+              .update({
+                question_text: question.question_text as Json,
+                question_order: question.question_order,
+                question_type: question.question_type,
+              })
+              .eq("id", question.id);
+            if (error) throw error;
+          })()
+        );
       }
     }
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels]);
+
+    // Save dirty answers (in parallel)
+    for (const { answer, questionId } of dirtyAnswers) {
+      // For new answers, we need the real question ID
+      const realQuestionId = questions.find(q => 
+        q.id === questionId || q.answers.some(a => a.id === answer.id)
+      )?.id;
+      
+      if (!realQuestionId || realQuestionId.startsWith("new-")) {
+        // Question is new too, answer will be saved after question is created
+        continue;
+      }
+
+      if (answer.id.startsWith("new-")) {
+        promises.push(
+          (async () => {
+            const { data, error } = await supabase
+              .from("quiz_answers")
+              .insert({
+                question_id: realQuestionId,
+                answer_text: answer.answer_text as Json,
+                answer_order: answer.answer_order,
+                score_value: answer.score_value,
+              })
+              .select()
+              .single();
+            if (error) throw error;
+            // Update local state with real ID
+            setQuestions(prev => prev.map(q => ({
+              ...q,
+              answers: q.answers.map(a => 
+                a.id === answer.id ? { ...a, id: data.id } : a
+              ),
+            })));
+          })()
+        );
+      } else {
+        promises.push(
+          (async () => {
+            const { error } = await supabase
+              .from("quiz_answers")
+              .update({
+                answer_text: answer.answer_text as Json,
+                answer_order: answer.answer_order,
+                score_value: answer.score_value,
+              })
+              .eq("id", answer.id);
+            if (error) throw error;
+          })()
+        );
+      }
+    }
+
+    // Save dirty result levels (in parallel)
+    for (const level of dirtyResultLevels) {
+      if (level.id.startsWith("new-")) {
+        promises.push(
+          (async () => {
+            const { data, error } = await supabase
+              .from("quiz_result_levels")
+              .insert({
+                quiz_id: savedQuizIdRef.current!,
+                min_score: level.min_score,
+                max_score: level.max_score,
+                title: level.title as Json,
+                description: level.description as Json,
+                insights: level.insights as Json,
+                emoji: level.emoji,
+                color_class: level.color_class,
+              })
+              .select()
+              .single();
+            if (error) throw error;
+            // Update local state with real ID
+            setResultLevels(prev => prev.map(l => 
+              l.id === level.id ? { ...l, id: data.id } : l
+            ));
+          })()
+        );
+      } else {
+        promises.push(
+          (async () => {
+            const { error } = await supabase
+              .from("quiz_result_levels")
+              .update({
+                min_score: level.min_score,
+                max_score: level.max_score,
+                title: level.title as Json,
+                description: level.description as Json,
+                insights: level.insights as Json,
+                emoji: level.emoji,
+                color_class: level.color_class,
+              })
+              .eq("id", level.id);
+            if (error) throw error;
+          })()
+        );
+      }
+    }
+
+    // Execute all updates in parallel
+    await Promise.all(promises);
+
+    // Mark everything as clean after successful save
+    questionsDirtyTracking.markClean(questions);
+    resultLevelsDirtyTracking.markClean(resultLevels);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -504,18 +616,17 @@ export default function QuizEditor() {
         .eq("quiz_id", id)
         .order("min_score");
 
-      setResultLevels(
-        (levelsData || []).map(l => ({
-          id: l.id,
-          min_score: l.min_score,
-          max_score: l.max_score,
-          title: l.title,
-          description: l.description,
-          insights: l.insights,
-          emoji: l.emoji || "🌟",
-          color_class: l.color_class || "from-emerald-500 to-green-600",
-        }))
-      );
+      const loadedResultLevels = (levelsData || []).map(l => ({
+        id: l.id,
+        min_score: l.min_score,
+        max_score: l.max_score,
+        title: l.title,
+        description: l.description,
+        insights: l.insights,
+        emoji: l.emoji || "🌟",
+        color_class: l.color_class || "from-emerald-500 to-green-600",
+      }));
+      setResultLevels(loadedResultLevels);
 
       // Load total AI generation cost
       const { data: versionsData } = await supabase
@@ -525,6 +636,34 @@ export default function QuizEditor() {
 
       const totalCost = (versionsData || []).reduce((sum, v) => sum + (v.estimated_cost_eur || 0), 0);
       setTotalAiCost(totalCost);
+
+      // Mark loaded data as clean for dirty tracking
+      questionsDirtyTracking.markClean(questionsWithAnswers);
+      resultLevelsDirtyTracking.markClean(loadedResultLevels);
+      
+      // Store quiz fields baseline
+      quizFieldsRef.current = {
+        slug: quiz.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+        title: jsonToRecord(quiz.title),
+        description: jsonToRecord(quiz.description),
+        headline: jsonToRecord(quiz.headline),
+        headline_highlight: jsonToRecord(quiz.headline_highlight),
+        badge_text: jsonToRecord(quiz.badge_text),
+        cta_text: jsonToRecord(quiz.cta_text),
+        cta_url: quiz.cta_url || "https://sparkly.hr",
+        duration_text: jsonToRecord(quiz.duration_text),
+        is_active: quiz.is_active,
+        primary_language: quiz.primary_language || "en",
+        shuffle_questions: (quiz as any).shuffle_questions || false,
+        enable_scoring: (quiz as any).enable_scoring !== false,
+        include_open_mindedness: (quiz as any).include_open_mindedness || false,
+        tone_of_voice: (quiz as any).tone_of_voice || "",
+        tone_source: (quiz as any).tone_source || "manual",
+        use_tone_for_ai: (quiz as any).use_tone_for_ai !== false,
+        tone_intensity: (quiz as any).tone_intensity ?? 4,
+        icp_description: (quiz as any).icp_description || "",
+        buying_persona: (quiz as any).buying_persona || "",
+      };
     } catch (error: any) {
       console.error("Error loading quiz:", error);
       toast({
