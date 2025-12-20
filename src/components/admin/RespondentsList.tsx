@@ -601,10 +601,14 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             <tbody className="divide-y divide-border">
               {paginatedLeads.map((lead) => {
                 const isExpanded = expandedRow === lead.id;
-                const quizQuestions = getQuestionsForQuiz(lead.quiz_id);
+                // Find quiz by id, or fallback to first quiz if quiz_id is null (for legacy data)
+                const quiz = lead.quiz_id 
+                  ? quizzes.find(q => q.id === lead.quiz_id)
+                  : quizzes.length > 0 ? quizzes[0] : null;
+                const effectiveQuizId = quiz?.id || null;
+                const quizQuestions = getQuestionsForQuiz(effectiveQuizId);
                 const leadAnswers = parseLeadAnswers(lead.answers);
                 const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
-                const quiz = quizzes.find(q => q.id === lead.quiz_id);
 
                 return (
                   <>
@@ -656,7 +660,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleQuizClick(lead.quiz_id);
+                              handleQuizClick(effectiveQuizId);
                             }}
                             className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
                           >
