@@ -179,6 +179,10 @@ export default function QuizEditor() {
   const [useToneForAi, setUseToneForAi] = useState(true);
   const [toneIntensity, setToneIntensity] = useState(4); // Default to "Balanced"
   
+  // ICP & Buying Persona for AI context
+  const [icpDescription, setIcpDescription] = useState("");
+  const [buyingPersona, setBuyingPersona] = useState("");
+  
   // AI headline assistance
   const [suggestingHeadline, setSuggestingHeadline] = useState(false);
   const [useAiHeadline, setUseAiHeadline] = useState(true);
@@ -226,6 +230,8 @@ export default function QuizEditor() {
       tone_source: toneSource,
       use_tone_for_ai: useToneForAi,
       tone_intensity: toneIntensity,
+      icp_description: icpDescription,
+      buying_persona: buyingPersona,
     };
 
     // Update quiz
@@ -343,7 +349,7 @@ export default function QuizEditor() {
           .eq("id", level.id);
       }
     }
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, questions, resultLevels]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -357,7 +363,7 @@ export default function QuizEditor() {
     if (!initialLoadComplete.current) return;
     if (isCreating) return;
     triggerSave();
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, questions, resultLevels, triggerSave, isCreating]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -438,6 +444,8 @@ export default function QuizEditor() {
       setToneSource((quiz as any).tone_source || "manual");
       setUseToneForAi((quiz as any).use_tone_for_ai !== false);
       setToneIntensity((quiz as any).tone_intensity ?? 4);
+      setIcpDescription((quiz as any).icp_description || "");
+      setBuyingPersona((quiz as any).buying_persona || "");
 
       // Load questions with answers
       const { data: questionsData } = await supabase
@@ -1441,12 +1449,16 @@ export default function QuizEditor() {
               toneSource={toneSource}
               useToneForAi={useToneForAi}
               toneIntensity={toneIntensity}
+              icpDescription={icpDescription}
+              buyingPersona={buyingPersona}
               quizId={isCreating ? undefined : quizId}
               isPreviewMode={isPreviewMode}
               onToneChange={setToneOfVoice}
               onSourceChange={setToneSource}
               onUseToneChange={setUseToneForAi}
               onIntensityChange={setToneIntensity}
+              onIcpChange={setIcpDescription}
+              onBuyingPersonaChange={setBuyingPersona}
             />
 
             <div className="grid grid-cols-3 gap-3">
