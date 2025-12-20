@@ -1381,6 +1381,181 @@ function QuizDesignReference() {
         </CardContent>
       </Card>
 
+      {/* Form Elements Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Form Elements</CardTitle>
+          <CardDescription>Input, select, checkbox, and radio button styling</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Text Inputs */}
+          <ComponentPreview title="Text Input">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email Address</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                className="flex h-10 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">
+              className="h-10 rounded-md border border-input bg-background px-3 py-2"
+            </code>
+          </ComponentPreview>
+
+          {/* Textarea */}
+          <ComponentPreview title="Textarea">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Message</label>
+              <textarea
+                placeholder="Type your message here..."
+                rows={3}
+                className="flex w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+              />
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">
+              className="rounded-md border border-input bg-background px-3 py-2"
+            </code>
+          </ComponentPreview>
+
+          {/* Select */}
+          <ComponentPreview title="Select Dropdown">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Choose option</label>
+              <select className="flex h-10 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <option value="">Select an option</option>
+                <option value="1">Option 1</option>
+                <option value="2">Option 2</option>
+                <option value="3">Option 3</option>
+              </select>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">
+              Native select with custom arrow via CSS
+            </code>
+          </ComponentPreview>
+
+          {/* Checkboxes */}
+          <ComponentPreview title="Checkboxes (Square)">
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 border border-primary accent-primary"
+                />
+                <span className="text-sm">Checked option</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 border border-primary accent-primary"
+                />
+                <span className="text-sm">Unchecked option</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer opacity-50">
+                <input
+                  type="checkbox"
+                  disabled
+                  className="h-4 w-4 border border-primary"
+                />
+                <span className="text-sm">Disabled option</span>
+              </label>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">
+              Checkboxes always square (border-radius: 0)
+            </code>
+          </ComponentPreview>
+
+          {/* Radio Buttons */}
+          <ComponentPreview title="Radio Buttons (Circular)">
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="demo-radio"
+                  defaultChecked
+                  className="h-4 w-4 border border-primary accent-primary"
+                />
+                <span className="text-sm">Selected option</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="demo-radio"
+                  className="h-4 w-4 border border-primary accent-primary"
+                />
+                <span className="text-sm">Another option</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer opacity-50">
+                <input
+                  type="radio"
+                  name="demo-radio-disabled"
+                  disabled
+                  className="h-4 w-4 border border-primary"
+                />
+                <span className="text-sm">Disabled option</span>
+              </label>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">
+              Radio buttons always circular (border-radius: 9999px)
+            </code>
+          </ComponentPreview>
+
+          {/* Styled Card Options */}
+          <ComponentPreview title="Card Selection (Quiz Style)">
+            <div className="space-y-2 max-w-sm">
+              <div className="p-4 rounded-lg border-2 border-primary bg-primary/5 cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-4 rounded-full border-2 border-primary bg-primary flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-primary-foreground" />
+                  </div>
+                  <span className="text-sm font-medium">Selected card option</span>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border-2 border-border bg-card hover:border-primary/50 cursor-pointer transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/50" />
+                  <span className="text-sm">Unselected card option</span>
+                </div>
+              </div>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">
+              Card-style selection for quiz answers
+            </code>
+          </ComponentPreview>
+
+          {/* Form Group */}
+          <ComponentPreview title="Complete Form Group">
+            <div className="space-y-4 max-w-sm p-4 bg-card border border-border rounded-lg">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Preference</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" defaultChecked className="h-4 w-4 accent-primary" />
+                    <span className="text-sm">Receive updates</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="h-4 w-4 accent-primary" />
+                    <span className="text-sm">Accept terms</span>
+                  </label>
+                </div>
+              </div>
+              <button className="w-full h-10 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors">
+                Submit
+              </button>
+            </div>
+          </ComponentPreview>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Animation Classes</CardTitle>
