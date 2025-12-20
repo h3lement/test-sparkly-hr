@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList, PieChart } from "lucide-react";
+import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList, PieChart, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +64,7 @@ export function AdminSidebar({
   };
 
   const menuItems = [
+    { id: "activity", label: "Activity", icon: Activity, count: null },
     { id: "leads", label: "Respondents", icon: Users, count: counts.leads },
     { id: "quizzes", label: "Quizzes", icon: ClipboardList, count: counts.quizzes },
     { id: "analytics", label: "Quiz Analytics", icon: PieChart, count: null },
