@@ -402,7 +402,7 @@ const Admin = () => {
       />
 
       <main className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 p-8 overflow-y-auto min-h-0">
+        <div className="flex-1 density-padding-lg overflow-y-auto min-h-0">
           {/* Activity Dashboard Tab */}
           {activeTab === "activity" && (
             <ActivityDashboard />
@@ -467,10 +467,10 @@ const Admin = () => {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-border">
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Admin</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Joined</th>
-                          <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
+                          <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Admin</th>
+                          <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Status</th>
+                          <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Joined</th>
+                          <th className="text-right density-px density-py-sm text-sm font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -479,7 +479,7 @@ const Admin = () => {
                             key={admin.id} 
                             className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}
                           >
-                            <td className="px-6 py-4">
+                            <td className="density-px density-py">
                               <div 
                                 className="flex items-center gap-3 cursor-pointer group"
                                 onClick={() => openEditDialog(admin)}
@@ -500,7 +500,7 @@ const Admin = () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="density-px density-py">
                               <button
                                 onClick={() => admin.user_id !== currentUserId && toggleAdminStatus(admin)}
                                 disabled={admin.user_id === currentUserId}
@@ -512,10 +512,10 @@ const Admin = () => {
                                 {admin.is_active ? "Active" : "Inactive"}
                               </button>
                             </td>
-                            <td className="px-6 py-4 text-sm text-muted-foreground">
+                            <td className="density-px density-py text-sm text-muted-foreground">
                               {admin.created_at ? formatDate(admin.created_at) : "—"}
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="density-px density-py text-right">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -531,7 +531,7 @@ const Admin = () => {
                         ))}
                         {filteredAdmins.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
+                            <td colSpan={4} className="density-px py-8 text-center text-muted-foreground">
                               No admins found
                             </td>
                           </tr>
@@ -543,7 +543,7 @@ const Admin = () => {
                   {/* Pending Admins */}
                   {pendingAdmins.length > 0 && (
                     <div className="bg-card rounded-xl border border-border overflow-hidden">
-                      <div className="px-6 py-4 border-b border-border bg-secondary/30">
+                      <div className="density-px density-py border-b border-border bg-secondary/30">
                         <h3 className="font-semibold text-foreground flex items-center gap-2">
                           <Clock className="w-4 h-4" />
                           Pending Admin Invites
@@ -552,16 +552,16 @@ const Admin = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-border">
-                            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
-                            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
-                            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Added</th>
-                            <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
+                            <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Email</th>
+                            <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Status</th>
+                            <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Added</th>
+                            <th className="text-right density-px density-py-sm text-sm font-medium text-muted-foreground">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {pendingAdmins.map((pending) => (
                             <tr key={pending.id} className="hover:bg-secondary/30 transition-colors">
-                              <td className="px-6 py-4">
+                              <td className="density-px density-py">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9 bg-secondary">
                                     <AvatarFallback className="text-xs bg-secondary text-foreground">
@@ -571,15 +571,15 @@ const Admin = () => {
                                   <span className="text-sm text-foreground">{pending.email}</span>
                                 </div>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="density-px density-py">
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-600">
                                   Pending signup
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-sm text-muted-foreground">
+                              <td className="density-px density-py text-sm text-muted-foreground">
                                 {formatDate(pending.created_at)}
                               </td>
-                              <td className="px-6 py-4 text-right">
+                              <td className="density-px density-py text-right">
                                 <Button
                                   variant="ghost"
                                   size="icon"

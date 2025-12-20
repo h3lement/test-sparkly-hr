@@ -89,11 +89,12 @@ function SortableMenuItem({ item, isActive, collapsed, isEditing, onTabChange, f
   return (
     <li ref={setNodeRef} style={style}>
       <div
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+        className={`w-full flex items-center density-gap px-3 rounded-lg text-sm font-medium transition-colors ${
           isActive
             ? "bg-primary text-primary-foreground"
             : "text-foreground hover:bg-secondary"
         } ${collapsed ? "justify-center" : ""} ${isEditing ? "cursor-grab" : "cursor-pointer"}`}
+        style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
         onClick={() => !isEditing && onTabChange(item.id)}
         title={collapsed ? `${item.label}${item.count !== null ? ` (${item.count})` : ""}` : undefined}
         {...(isEditing ? { ...attributes, ...listeners } : {})}
@@ -297,7 +298,7 @@ export function AdminSidebar({
       } bg-card border-r border-border flex flex-col transition-all duration-300 shrink-0`}
     >
       {/* Header with logo and toggle */}
-      <div className="p-4 flex items-center justify-between border-b border-border">
+      <div className="density-padding flex items-center justify-between border-b border-border">
         {!collapsed && (
           <a 
             href="https://sparkly.hr" 
@@ -366,7 +367,7 @@ export function AdminSidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3">
+      <nav className="flex-1 density-padding">
         {!collapsed && (
           <span className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {isEditing ? "Drag to reorder" : "Management"}
@@ -399,12 +400,13 @@ export function AdminSidebar({
       </nav>
 
       {/* Footer with logout */}
-      <div className="p-3 border-t border-border">
+      <div className="density-padding border-t border-border">
         <button
           onClick={onLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors ${
+          className={`w-full flex items-center density-gap rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors ${
             collapsed ? "justify-center" : ""
           }`}
+          style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
           title={collapsed ? "Sign Out" : undefined}
         >
           <LogOut className="h-4 w-4 shrink-0" />

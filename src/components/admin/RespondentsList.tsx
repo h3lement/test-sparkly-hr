@@ -685,14 +685,14 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Quiz</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Score</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Result</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Openness</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Lang</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Submitted</th>
-                <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Email</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Quiz</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Score</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Result</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Openness</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Lang</th>
+                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Submitted</th>
+                <th className="text-right density-px density-py-sm text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -715,8 +715,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       className={`hover:bg-secondary/30 transition-all ${hasAnswers ? 'cursor-pointer' : ''} ${highlightedLeadId === lead.id ? 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse' : ''}`}
                       onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="density-px density-py">
+                        <div className="flex items-center density-gap">
                           <Avatar className="h-9 w-9 bg-secondary">
                             <AvatarFallback className="text-xs bg-secondary text-foreground">
                               {lead.email.slice(0, 2).toUpperCase()}
@@ -752,7 +752,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="density-px density-py">
                         {quiz ? (
                           <div className="flex flex-col gap-0.5">
                             <button
@@ -777,15 +777,15 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           <span className="text-sm text-muted-foreground">Unknown</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-foreground">
+                      <td className="density-px density-py text-sm text-foreground">
                         {lead.score}/{lead.total_questions}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="density-px density-py">
                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                           {lead.result_category}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="density-px density-py">
                         {lead.openness_score !== null ? (
                           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                             {lead.openness_score}/4
@@ -794,15 +794,15 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="density-px density-py">
                         <Badge variant="secondary" className="uppercase text-xs">
                           {lead.language || 'en'}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                      <td className="density-px density-py text-sm text-muted-foreground">
                         {formatDate(lead.created_at)}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="density-px density-py text-right">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -818,8 +818,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                     </tr>
                     {isExpanded && hasAnswers && (
                       <tr key={`${lead.id}-expanded`}>
-                        <td colSpan={8} className="px-6 py-4 bg-secondary/20">
-                          <div className="space-y-3">
+                        <td colSpan={8} className="density-px density-py bg-secondary/20">
+                          <div className="density-gap-lg">
                             <p className="text-sm font-medium text-foreground">Quiz Answers</p>
                             <div className="grid gap-2">
                               {quizQuestions.map((question, qIdx) => {
