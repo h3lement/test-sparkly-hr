@@ -84,15 +84,19 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
     return shuffledQuestions.length > 0 ? shuffledQuestions : questions.filter(q => q.question_type !== 'open_mindedness');
   };
 
-  // Get open mindedness question
+  // Get open mindedness question (only if enabled in quiz settings)
   const getOpenMindednessQuestion = () => {
+    if (!quizData?.include_open_mindedness) return undefined;
     return questions.find(q => q.question_type === 'open_mindedness');
   };
 
-  // Total question count for progress
+  // Total question count for progress (excludes open-mindedness if disabled)
   const getTotalQuestionCount = () => {
-    return questions.length;
+    const regularCount = questions.filter(q => q.question_type !== 'open_mindedness').length;
+    const hasOpenMindedness = quizData?.include_open_mindedness && questions.some(q => q.question_type === 'open_mindedness');
+    return regularCount + (hasOpenMindedness ? 1 : 0);
   };
+
 
   const addAnswer = (answer: QuizAnswer) => {
     setAnswers((prev) => {

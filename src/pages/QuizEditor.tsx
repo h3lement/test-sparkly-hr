@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
   Select,
   SelectContent,
@@ -1270,6 +1271,14 @@ export default function QuizEditor() {
                 );
               })}
             </Accordion>
+
+            <OpenMindednessEditor
+              questions={questions}
+              setQuestions={setQuestions}
+              displayLanguage={displayLanguage}
+              isPreviewMode={isPreviewMode}
+              includeOpenMindedness={includeOpenMindedness}
+            />
           </TabsContent>
 
           <TabsContent value="results" className="space-y-2">
