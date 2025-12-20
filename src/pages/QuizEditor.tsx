@@ -1281,11 +1281,12 @@ export default function QuizEditor() {
               </Button>
             )}
 
-            {resultLevels.map((level, index) => (
-              <div
-                key={level.id}
-                className="border rounded px-2 py-1.5 space-y-1"
-              >
+            <div className="space-y-0">
+              {resultLevels.map((level, index) => (
+                <div
+                  key={level.id}
+                  className={`list-row border-x first:border-t last:border-b first:rounded-t last:rounded-b px-2 py-1.5 space-y-1 ${index % 2 === 1 ? 'list-row-alt' : ''}`}
+                >
                 {/* Row 1: Header with score range, emoji, and delete */}
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium flex-shrink-0">
@@ -1357,7 +1358,8 @@ export default function QuizEditor() {
                   disabled={isPreviewMode}
                 />
               </div>
-            ))}
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
           </div>
