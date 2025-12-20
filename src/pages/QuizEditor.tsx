@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import {
   Select,
@@ -156,6 +156,10 @@ export default function QuizEditor() {
   const [ctaUrl, setCtaUrl] = useState("");
   const [durationText, setDurationText] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
+  
+  // AI headline assistance
+  const [suggestingHeadline, setSuggestingHeadline] = useState(false);
+  const [useAiHeadline, setUseAiHeadline] = useState(true);
 
   // Questions state
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -533,6 +537,73 @@ export default function QuizEditor() {
     return { total: otherLanguages.length, translated, needsUpdate };
   };
 
+  // AI headline suggestion - combines headline + highlight using **syntax**
+  const suggestHeadlineHighlight = async () => {
+    const currentTitle = title[primaryLanguage] || "";
+    const currentDesc = description[primaryLanguage] || "";
+    
+    if (!currentTitle && !currentDesc) {
+      toast({
+        title: "Need context",
+        description: "Add a title or description first for AI to suggest a headline",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSuggestingHeadline(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-headline", {
+        body: { 
+          title: currentTitle, 
+          description: currentDesc,
+          language: primaryLanguage,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      if (data.headline) {
+        // Parse the AI response - it returns headline with **highlighted** parts
+        const fullHeadline = data.headline;
+        const highlightMatch = fullHeadline.match(/\*\*(.+?)\*\*/);
+        
+        if (highlightMatch) {
+          // Extract highlight and clean headline
+          const highlightText = highlightMatch[1];
+          const cleanHeadline = fullHeadline.replace(/\*\*(.+?)\*\*/, "").trim();
+          
+          setLocalizedValue(setHeadline, primaryLanguage, cleanHeadline);
+          setLocalizedValue(setHeadlineHighlight, primaryLanguage, highlightText);
+        } else {
+          // No highlight markers, use as-is
+          setLocalizedValue(setHeadline, primaryLanguage, fullHeadline);
+        }
+        
+        toast({
+          title: "Headline suggested",
+          description: "AI generated a headline with highlights. Edit as needed.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Headline suggestion error:", error);
+      toast({
+        title: "Suggestion failed",
+        description: error.message || "Failed to generate headline",
+        variant: "destructive",
+      });
+    } finally {
+      setSuggestingHeadline(false);
+    }
+  };
+
+  // Auto-suggest headline when title changes (if AI mode is on)
+  const handleTitleChange = (value: string) => {
+    setLocalizedValue(setTitle, displayLanguage, value);
+    // Debounced auto-suggest could be added here
+  };
+
   const addQuestion = () => {
     const newQuestion: Question = {
       id: `new-${Date.now()}`,
@@ -885,15 +956,35 @@ export default function QuizEditor() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
-                <Label htmlFor="slug" className="text-xs">Slug (URL path)</Label>
+            <div className="grid grid-cols-6 gap-3">
+              <div>
+                <Label htmlFor="slug" className="text-xs">Slug</Label>
                 <Input
                   id="slug"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  placeholder="employee-performance"
+                  placeholder="quiz-url"
                   className="h-8"
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Title ({displayLanguage.toUpperCase()})</Label>
+                <Input
+                  value={title[displayLanguage] || ""}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="Quiz title"
+                  className="h-8"
+                  disabled={isPreviewMode}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Badge ({displayLanguage.toUpperCase()})</Label>
+                <Input
+                  value={badgeText[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setBadgeText, displayLanguage, e.target.value)}
+                  placeholder="Free"
+                  className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
               <div className="flex items-center gap-2 pt-5">
@@ -902,50 +993,76 @@ export default function QuizEditor() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Title ({displayLanguage.toUpperCase()})</Label>
-                <Input
-                  value={title[displayLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setTitle, displayLanguage, e.target.value)}
-                  placeholder="Quiz title"
-                  className="h-8"
-                  disabled={isPreviewMode}
-                />
+            {/* Headline with AI assistance */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs flex items-center gap-1.5">
+                  Headline ({displayLanguage.toUpperCase()})
+                  <span className="text-muted-foreground font-normal">
+                    — Use **asterisks** to highlight words
+                  </span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUseAiHeadline(!useAiHeadline)}
+                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                      useAiHeadline 
+                        ? "bg-primary/10 text-primary" 
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    AI Auto
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs gap-1"
+                    onClick={suggestHeadlineHighlight}
+                    disabled={suggestingHeadline || isPreviewMode}
+                  >
+                    {suggestingHeadline ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3" />
+                    )}
+                    Suggest
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Badge Text ({displayLanguage.toUpperCase()})</Label>
-                <Input
-                  value={badgeText[displayLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setBadgeText, displayLanguage, e.target.value)}
-                  placeholder="Free Assessment"
-                  className="h-8"
-                  disabled={isPreviewMode}
-                />
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Input
+                    value={headline[displayLanguage] || ""}
+                    onChange={(e) => setLocalizedValue(setHeadline, displayLanguage, e.target.value)}
+                    placeholder="Discover your hidden"
+                    className="h-8"
+                    disabled={isPreviewMode}
+                  />
+                  <span className="text-xs text-muted-foreground">Main text</span>
+                </div>
+                <div>
+                  <Input
+                    value={headlineHighlight[displayLanguage] || ""}
+                    onChange={(e) => setLocalizedValue(setHeadlineHighlight, displayLanguage, e.target.value)}
+                    placeholder="leadership potential"
+                    className="h-8 border-primary/50 bg-primary/5"
+                    disabled={isPreviewMode}
+                  />
+                  <span className="text-xs text-muted-foreground">Highlighted text (shown bold/colored)</span>
+                </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Headline ({displayLanguage.toUpperCase()})</Label>
-                <Input
-                  value={headline[displayLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setHeadline, displayLanguage, e.target.value)}
-                  placeholder="Discover your"
-                  className="h-8"
-                  disabled={isPreviewMode}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Headline Highlight ({displayLanguage.toUpperCase()})</Label>
-                <Input
-                  value={headlineHighlight[displayLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setHeadlineHighlight, displayLanguage, e.target.value)}
-                  placeholder="team's potential"
-                  className="h-8"
-                  disabled={isPreviewMode}
-                />
-              </div>
+              
+              {/* Preview */}
+              {(headline[displayLanguage] || headlineHighlight[displayLanguage]) && (
+                <div className="text-sm p-2 rounded bg-muted/50 border">
+                  <span className="text-muted-foreground">Preview: </span>
+                  <span>{headline[displayLanguage] || ""} </span>
+                  <span className="font-bold text-primary">{headlineHighlight[displayLanguage] || ""}</span>
+                </div>
+              )}
             </div>
 
             <div>
