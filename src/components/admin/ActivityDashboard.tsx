@@ -46,7 +46,8 @@ import {
   Wifi,
   Pencil,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Search
 } from "lucide-react";
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
@@ -86,6 +87,7 @@ export function ActivityDashboard() {
   const [loading, setLoading] = useState(true);
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [adminFilter, setAdminFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -278,6 +280,17 @@ export function ActivityDashboard() {
   const filteredActivities = useMemo(() => {
     let result = activities;
     
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((a) => 
+        (a.description && a.description.toLowerCase().includes(query)) ||
+        (a.user_email && a.user_email.toLowerCase().includes(query)) ||
+        (a.action_type && a.action_type.toLowerCase().includes(query)) ||
+        (a.table_name && a.table_name.toLowerCase().includes(query))
+      );
+    }
+    
     if (activityFilter !== "all") {
       result = result.filter((a) => a.table_name === activityFilter);
     }
@@ -287,7 +300,7 @@ export function ActivityDashboard() {
     }
     
     return result;
-  }, [activities, activityFilter, adminFilter]);
+  }, [activities, activityFilter, adminFilter, searchQuery]);
 
   // Pagination calculations
   const totalItems = filteredActivities.length;
@@ -299,7 +312,7 @@ export function ActivityDashboard() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activityFilter, adminFilter]);
+  }, [activityFilter, adminFilter, searchQuery]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -622,8 +635,18 @@ export function ActivityDashboard() {
               Activity Log
             </CardTitle>
             <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-[180px] bg-secondary/50 border-border"
+                />
+              </div>
               <Select value={adminFilter} onValueChange={setAdminFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Filter by admin" />
                 </SelectTrigger>
                 <SelectContent>
@@ -636,7 +659,7 @@ export function ActivityDashboard() {
                 </SelectContent>
               </Select>
               <Select value={activityFilter} onValueChange={setActivityFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
                 <SelectContent>
