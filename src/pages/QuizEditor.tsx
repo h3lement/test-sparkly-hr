@@ -232,6 +232,43 @@ export default function QuizEditor() {
   const questionsDirtyTracking = useQuestionsDirtyTracking();
   const resultLevelsDirtyTracking = useDirtyTracking<ResultLevel>();
 
+  // Calculate pending changes count for the indicator
+  const getPendingChangesCount = useCallback(() => {
+    if (!initialLoadComplete.current) return 0;
+    
+    const currentQuizFields = {
+      slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+      title, description, headline, headline_highlight: headlineHighlight,
+      badge_text: badgeText, cta_text: ctaText, cta_url: ctaUrl,
+      duration_text: durationText, is_active: isActive, primary_language: primaryLanguage,
+      shuffle_questions: shuffleQuestions, enable_scoring: enableScoring,
+      include_open_mindedness: includeOpenMindedness, tone_of_voice: toneOfVoice,
+      tone_source: toneSource, use_tone_for_ai: useToneForAi, tone_intensity: toneIntensity,
+      icp_description: icpDescription, buying_persona: buyingPersona,
+    };
+    
+    let count = 0;
+    
+    // Check quiz fields
+    if (JSON.stringify(currentQuizFields) !== JSON.stringify(quizFieldsRef.current)) {
+      count += 1; // Count as 1 change for quiz settings
+    }
+    
+    // Count dirty questions
+    count += questionsDirtyTracking.getDirtyQuestions(questions).length;
+    count += questionsDirtyTracking.getDirtyAnswers(questions).length;
+    count += questionsDirtyTracking.getDeletedQuestionIds(questions).length;
+    count += questionsDirtyTracking.getDeletedAnswerIds(questions).length;
+    
+    // Count dirty result levels
+    count += resultLevelsDirtyTracking.getDirtyEntities(resultLevels).length;
+    count += resultLevelsDirtyTracking.getDeletedIds(resultLevels).length;
+    
+    return count;
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+
+  const pendingChangesCount = getPendingChangesCount();
+
   // Auto-save callback - optimized with parallel batching and dirty tracking
   const performAutoSave = useCallback(async () => {
     if (!savedQuizIdRef.current || savedQuizIdRef.current === "new") return;
@@ -1431,7 +1468,7 @@ export default function QuizEditor() {
               </div>
               <div className="flex items-center gap-3">
                 {/* Auto-save indicator for existing quizzes */}
-                {!isCreating && <AutoSaveIndicator status={autoSaveStatus} />}
+                {!isCreating && <AutoSaveIndicator status={autoSaveStatus} pendingChangesCount={pendingChangesCount} />}
                 
                 {/* Check Errors button */}
                 {!isCreating && (

@@ -5,10 +5,11 @@ type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
 interface AutoSaveIndicatorProps {
   status: SaveStatus;
+  pendingChangesCount?: number;
   className?: string;
 }
 
-export function AutoSaveIndicator({ status, className }: AutoSaveIndicatorProps) {
+export function AutoSaveIndicator({ status, pendingChangesCount = 0, className }: AutoSaveIndicatorProps) {
   const getContent = () => {
     switch (status) {
       case "idle":
@@ -22,14 +23,22 @@ export function AutoSaveIndicator({ status, className }: AutoSaveIndicatorProps)
         return (
           <>
             <Cloud className="w-3.5 h-3.5 animate-pulse" />
-            <span>Unsaved changes</span>
+            <span>
+              {pendingChangesCount > 0 
+                ? `${pendingChangesCount} unsaved change${pendingChangesCount === 1 ? '' : 's'}`
+                : 'Unsaved changes'}
+            </span>
           </>
         );
       case "saving":
         return (
           <>
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Saving...</span>
+            <span>
+              {pendingChangesCount > 0 
+                ? `Saving ${pendingChangesCount} change${pendingChangesCount === 1 ? '' : 's'}...`
+                : 'Saving...'}
+            </span>
           </>
         );
       case "saved":
