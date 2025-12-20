@@ -647,6 +647,24 @@ export function AppearanceSettings() {
     applyTheme(updated);
   };
 
+  // Auto-save theme mode immediately when changed
+  const updateThemeMode = async (mode: AppearancePreferences["themeMode"]) => {
+    const updated = { ...localPrefs, themeMode: mode };
+    setLocalPrefs(updated);
+    applyTheme(updated);
+    
+    // Auto-save theme mode immediately
+    try {
+      await savePreferences(updated);
+      toast({
+        title: "Theme updated",
+        description: `Switched to ${mode === "system" ? "system" : mode} mode`,
+      });
+    } catch (error) {
+      console.error("Failed to save theme mode:", error);
+    }
+  };
+
   const updateColor = (mode: "light" | "dark", colorKey: string, value: string) => {
     const updated = {
       ...localPrefs,
@@ -810,7 +828,7 @@ export function AppearanceSettings() {
               ].map(({ value, icon: Icon }) => (
                 <button
                   key={value}
-                  onClick={() => updateLocalPref("themeMode", value as AppearancePreferences["themeMode"])}
+                  onClick={() => updateThemeMode(value as AppearancePreferences["themeMode"])}
                   className={`flex items-center justify-center p-2 rounded-md transition-all ${
                     localPrefs.themeMode === value
                       ? "bg-primary text-primary-foreground shadow-sm"
