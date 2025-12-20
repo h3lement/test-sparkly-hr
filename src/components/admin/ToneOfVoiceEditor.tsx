@@ -117,8 +117,14 @@ export function ToneOfVoiceEditor({
   onBuyingPersonaChange,
 }: ToneOfVoiceEditorProps) {
   const [showExtractPopover, setShowExtractPopover] = useState(false);
+  const [showIcpExtractPopover, setShowIcpExtractPopover] = useState(false);
+  const [showPersonaExtractPopover, setShowPersonaExtractPopover] = useState(false);
   const [extractText, setExtractText] = useState("");
+  const [icpExtractText, setIcpExtractText] = useState("");
+  const [personaExtractText, setPersonaExtractText] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [generatingIcp, setGeneratingIcp] = useState(false);
+  const [generatingPersona, setGeneratingPersona] = useState(false);
   const { toast } = useToast();
 
   // Get current tone examples based on intensity
@@ -221,6 +227,124 @@ export function ToneOfVoiceEditor({
     }
   };
 
+  // ICP suggestion handlers
+  const handleSuggestIcpFromQuizzes = async () => {
+    setGeneratingIcp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-tone", {
+        body: { mode: "from_quizzes", targetField: "icp" },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      onIcpChange(data.icpDescription);
+      toast({ title: "ICP suggested", description: "AI analyzed your existing quizzes" });
+    } catch (error: any) {
+      toast({ title: "Suggestion failed", description: error.message || "Failed to suggest ICP", variant: "destructive" });
+    } finally {
+      setGeneratingIcp(false);
+    }
+  };
+
+  const handleSuggestIcpFromCurrentQuiz = async () => {
+    if (!quizId) return;
+    setGeneratingIcp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-tone", {
+        body: { mode: "from_current_quiz", quizId, targetField: "icp" },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      onIcpChange(data.icpDescription);
+      toast({ title: "ICP suggested", description: "AI analyzed this quiz" });
+    } catch (error: any) {
+      toast({ title: "Suggestion failed", description: error.message || "Failed to suggest ICP", variant: "destructive" });
+    } finally {
+      setGeneratingIcp(false);
+    }
+  };
+
+  const handleExtractIcpFromText = async () => {
+    if (!icpExtractText.trim()) {
+      toast({ title: "No text provided", description: "Paste sample text to extract ICP from", variant: "destructive" });
+      return;
+    }
+    setGeneratingIcp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-tone", {
+        body: { mode: "from_text", sampleText: icpExtractText, targetField: "icp" },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      onIcpChange(data.icpDescription);
+      setShowIcpExtractPopover(false);
+      setIcpExtractText("");
+      toast({ title: "ICP extracted", description: "AI analyzed your text" });
+    } catch (error: any) {
+      toast({ title: "Extraction failed", description: error.message || "Failed to extract ICP", variant: "destructive" });
+    } finally {
+      setGeneratingIcp(false);
+    }
+  };
+
+  // Buying Persona suggestion handlers
+  const handleSuggestPersonaFromQuizzes = async () => {
+    setGeneratingPersona(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-tone", {
+        body: { mode: "from_quizzes", targetField: "persona" },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      onBuyingPersonaChange(data.buyingPersona);
+      toast({ title: "Persona suggested", description: "AI analyzed your existing quizzes" });
+    } catch (error: any) {
+      toast({ title: "Suggestion failed", description: error.message || "Failed to suggest persona", variant: "destructive" });
+    } finally {
+      setGeneratingPersona(false);
+    }
+  };
+
+  const handleSuggestPersonaFromCurrentQuiz = async () => {
+    if (!quizId) return;
+    setGeneratingPersona(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-tone", {
+        body: { mode: "from_current_quiz", quizId, targetField: "persona" },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      onBuyingPersonaChange(data.buyingPersona);
+      toast({ title: "Persona suggested", description: "AI analyzed this quiz" });
+    } catch (error: any) {
+      toast({ title: "Suggestion failed", description: error.message || "Failed to suggest persona", variant: "destructive" });
+    } finally {
+      setGeneratingPersona(false);
+    }
+  };
+
+  const handleExtractPersonaFromText = async () => {
+    if (!personaExtractText.trim()) {
+      toast({ title: "No text provided", description: "Paste sample text to extract persona from", variant: "destructive" });
+      return;
+    }
+    setGeneratingPersona(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-tone", {
+        body: { mode: "from_text", sampleText: personaExtractText, targetField: "persona" },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      onBuyingPersonaChange(data.buyingPersona);
+      setShowPersonaExtractPopover(false);
+      setPersonaExtractText("");
+      toast({ title: "Persona extracted", description: "AI analyzed your text" });
+    } catch (error: any) {
+      toast({ title: "Extraction failed", description: error.message || "Failed to extract persona", variant: "destructive" });
+    } finally {
+      setGeneratingPersona(false);
+    }
+  };
+
   const handleManualChange = (value: string) => {
     onToneChange(value);
     if (toneSource !== "manual") {
@@ -279,11 +403,43 @@ export function ToneOfVoiceEditor({
             <Textarea
               value={icpDescription}
               onChange={(e) => onIcpChange(e.target.value)}
-              placeholder="e.g., Mid-level HR managers at companies with 50-500 employees, looking to improve employee engagement and reduce turnover..."
-              rows={4}
+              placeholder="e.g., Mid-level HR managers at companies with 50-500 employees..."
+              rows={3}
               className="text-sm resize-none"
               disabled={isPreviewMode}
             />
+            {!isPreviewMode && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button variant="outline" size="sm" onClick={handleSuggestIcpFromQuizzes} disabled={generatingIcp} className="h-6 px-1.5 text-[10px] gap-1">
+                  {generatingIcp ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <History className="w-2.5 h-2.5" />}
+                  All Quizzes
+                </Button>
+                {quizId && (
+                  <Button variant="outline" size="sm" onClick={handleSuggestIcpFromCurrentQuiz} disabled={generatingIcp} className="h-6 px-1.5 text-[10px] gap-1">
+                    {generatingIcp ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Wand2 className="w-2.5 h-2.5" />}
+                    This Quiz
+                  </Button>
+                )}
+                <Popover open={showIcpExtractPopover} onOpenChange={setShowIcpExtractPopover}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-6 px-1.5 text-[10px] gap-1">
+                      <FileText className="w-2.5 h-2.5" />
+                      From Text
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72" align="start">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Extract ICP from Text</h4>
+                      <Textarea value={icpExtractText} onChange={(e) => setIcpExtractText(e.target.value)} placeholder="Paste company description, marketing content..." rows={4} className="text-sm resize-none" />
+                      <Button size="sm" onClick={handleExtractIcpFromText} disabled={generatingIcp || !icpExtractText.trim()} className="w-full gap-1.5">
+                        {generatingIcp ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        Extract ICP
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -294,11 +450,43 @@ export function ToneOfVoiceEditor({
             <Textarea
               value={buyingPersona}
               onChange={(e) => onBuyingPersonaChange(e.target.value)}
-              placeholder="e.g., Decision-maker who values data-driven insights, time-constrained, skeptical of generic solutions, prefers actionable recommendations..."
-              rows={4}
+              placeholder="e.g., Decision-maker who values data-driven insights..."
+              rows={3}
               className="text-sm resize-none"
               disabled={isPreviewMode}
             />
+            {!isPreviewMode && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button variant="outline" size="sm" onClick={handleSuggestPersonaFromQuizzes} disabled={generatingPersona} className="h-6 px-1.5 text-[10px] gap-1">
+                  {generatingPersona ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <History className="w-2.5 h-2.5" />}
+                  All Quizzes
+                </Button>
+                {quizId && (
+                  <Button variant="outline" size="sm" onClick={handleSuggestPersonaFromCurrentQuiz} disabled={generatingPersona} className="h-6 px-1.5 text-[10px] gap-1">
+                    {generatingPersona ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Wand2 className="w-2.5 h-2.5" />}
+                    This Quiz
+                  </Button>
+                )}
+                <Popover open={showPersonaExtractPopover} onOpenChange={setShowPersonaExtractPopover}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-6 px-1.5 text-[10px] gap-1">
+                      <FileText className="w-2.5 h-2.5" />
+                      From Text
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72" align="start">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Extract Persona from Text</h4>
+                      <Textarea value={personaExtractText} onChange={(e) => setPersonaExtractText(e.target.value)} placeholder="Paste customer research, testimonials..." rows={4} className="text-sm resize-none" />
+                      <Button size="sm" onClick={handleExtractPersonaFromText} disabled={generatingPersona || !personaExtractText.trim()} className="w-full gap-1.5">
+                        {generatingPersona ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        Extract Persona
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
         </div>
 
