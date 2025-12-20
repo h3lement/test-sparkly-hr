@@ -80,15 +80,43 @@ const PRIMARY_LANGUAGES = [
   { code: "et", label: "Estonian" },
 ];
 
-// All target languages for display/reference
+// All target languages for display/reference (EU languages)
 const ALL_LANGUAGES = [
   { code: "en", label: "English" },
   { code: "et", label: "Estonian" },
-  { code: "hr", label: "Croatian" },
   { code: "de", label: "German" },
+  { code: "fr", label: "French" },
   { code: "it", label: "Italian" },
+  { code: "es", label: "Spanish" },
+  { code: "pl", label: "Polish" },
+  { code: "ro", label: "Romanian" },
+  { code: "nl", label: "Dutch" },
+  { code: "el", label: "Greek" },
+  { code: "pt", label: "Portuguese" },
+  { code: "cs", label: "Czech" },
+  { code: "hu", label: "Hungarian" },
+  { code: "sv", label: "Swedish" },
+  { code: "bg", label: "Bulgarian" },
+  { code: "da", label: "Danish" },
+  { code: "fi", label: "Finnish" },
+  { code: "sk", label: "Slovak" },
+  { code: "hr", label: "Croatian" },
+  { code: "lt", label: "Lithuanian" },
   { code: "sl", label: "Slovenian" },
+  { code: "lv", label: "Latvian" },
+  { code: "ga", label: "Irish" },
+  { code: "mt", label: "Maltese" },
 ];
+
+interface TranslationMeta {
+  source_hashes?: Record<string, string>;
+  translations?: Record<string, {
+    translated_at: string;
+    field_hashes: Record<string, string>;
+    is_complete: boolean;
+  }>;
+  total_cost_usd?: number;
+}
 
 export default function QuizEditor() {
   const { quizId } = useParams<{ quizId: string }>();
@@ -112,6 +140,10 @@ export default function QuizEditor() {
   
   // Preview language for viewing translations
   const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
+  
+  // Translation metadata state
+  const [translationMeta, setTranslationMeta] = useState<TranslationMeta>({});
+  const [showLanguageList, setShowLanguageList] = useState(false);
 
   // Quiz details state
   const [slug, setSlug] = useState("");
@@ -206,6 +238,7 @@ export default function QuizEditor() {
       setDurationText(jsonToRecord(quiz.duration_text));
       setIsActive(quiz.is_active);
       setPrimaryLanguage(quiz.primary_language || "en");
+      setTranslationMeta((quiz as any).translation_meta || {});
 
       // Load questions with answers
       const { data: questionsData } = await supabase
@@ -453,9 +486,12 @@ export default function QuizEditor() {
         throw new Error(data.error);
       }
 
+      const costInfo = data.sessionCost ? ` (Cost: $${data.sessionCost.toFixed(4)})` : "";
+      const skippedInfo = data.skippedCount > 0 ? `, ${data.skippedCount} already translated` : "";
+      
       toast({
         title: "Translation complete",
-        description: `Translated ${data.textCount} texts to ${data.translatedLanguages?.length || 0} languages`,
+        description: `Translated ${data.translatedCount || 0} texts to ${data.translatedLanguages?.length || 0} languages${skippedInfo}${costInfo}`,
       });
 
       // Reload quiz data to show translations
@@ -470,6 +506,31 @@ export default function QuizEditor() {
     } finally {
       setTranslating(false);
     }
+  };
+
+  // Get translation status for a language
+  const getTranslationStatus = (langCode: string) => {
+    const langMeta = translationMeta.translations?.[langCode];
+    if (!langMeta) return { translated: false, needsUpdate: false, date: null };
+    
+    const hasChanges = Object.keys(translationMeta.source_hashes || {}).some(
+      path => (translationMeta.source_hashes?.[path] || "") !== (langMeta.field_hashes?.[path] || "")
+    );
+    
+    return {
+      translated: true,
+      needsUpdate: hasChanges,
+      date: langMeta.translated_at ? new Date(langMeta.translated_at) : null,
+      isComplete: langMeta.is_complete,
+    };
+  };
+
+  // Count languages with translations
+  const getTranslationStats = () => {
+    const otherLanguages = ALL_LANGUAGES.filter(l => l.code !== primaryLanguage);
+    const translated = otherLanguages.filter(l => getTranslationStatus(l.code).translated).length;
+    const needsUpdate = otherLanguages.filter(l => getTranslationStatus(l.code).needsUpdate).length;
+    return { total: otherLanguages.length, translated, needsUpdate };
   };
 
   const addQuestion = () => {
@@ -669,6 +730,82 @@ export default function QuizEditor() {
             </div>
           </div>
 
+          {/* Language Count Badge with Dropdown */}
+          {!isCreating && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowLanguageList(!showLanguageList)}
+                className="flex items-center gap-1.5 px-2 py-1 text-xs rounded border bg-muted hover:bg-muted/80 transition-colors"
+              >
+                <Languages className="w-3.5 h-3.5" />
+                <span className="font-medium">{getTranslationStats().translated}/{getTranslationStats().total}</span>
+                <span className="text-muted-foreground">languages</span>
+                {getTranslationStats().needsUpdate > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded">
+                    {getTranslationStats().needsUpdate} outdated
+                  </span>
+                )}
+                <ChevronDown className={`w-3 h-3 transition-transform ${showLanguageList ? "rotate-180" : ""}`} />
+              </button>
+              
+              {showLanguageList && (
+                <div className="absolute top-full left-0 mt-1 z-50 w-72 p-2 bg-popover border rounded-md shadow-lg max-h-80 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                    <span className="text-xs font-medium">Translation Status</span>
+                    {translationMeta.total_cost_usd !== undefined && (
+                      <span className="text-xs text-muted-foreground">
+                        Total cost: ${translationMeta.total_cost_usd.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
+                  {ALL_LANGUAGES.filter(l => l.code !== primaryLanguage).map(lang => {
+                    const status = getTranslationStatus(lang.code);
+                    return (
+                      <div
+                        key={lang.code}
+                        className="flex items-center justify-between py-1.5 px-1 hover:bg-muted rounded cursor-pointer"
+                        onClick={() => {
+                          setPreviewLanguage(lang.code);
+                          setShowLanguageList(false);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{lang.label}</span>
+                          <span className="text-xs text-muted-foreground uppercase">{lang.code}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {status.translated ? (
+                            <>
+                              {status.needsUpdate ? (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+                                  Outdated
+                                </span>
+                              ) : (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                                  ✓ Translated
+                                </span>
+                              )}
+                              {status.date && (
+                                <span className="text-xs text-muted-foreground">
+                                  {status.date.toLocaleDateString()}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              Not translated
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Preview Language Dropdown */}
           {!isCreating && (
             <div className="flex items-center gap-2">
@@ -684,11 +821,22 @@ export default function QuizEditor() {
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_LANGUAGES.map(lang => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
+                  {ALL_LANGUAGES.map(lang => {
+                    const status = getTranslationStatus(lang.code);
+                    return (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        <span className="flex items-center gap-2">
+                          {lang.label}
+                          {lang.code !== primaryLanguage && status.translated && !status.needsUpdate && (
+                            <span className="text-green-600">✓</span>
+                          )}
+                          {lang.code !== primaryLanguage && status.needsUpdate && (
+                            <span className="text-amber-600">⚠</span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {previewLanguage && (
@@ -717,7 +865,7 @@ export default function QuizEditor() {
               ) : (
                 <Languages className="w-4 h-4" />
               )}
-              {translating ? "Translating..." : "AI Translate to All Languages"}
+              {translating ? "Translating..." : "AI Translate"}
             </Button>
           )}
           
