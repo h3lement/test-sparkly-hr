@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -616,6 +616,45 @@ export default function QuizEditor() {
     // Debounced auto-suggest could be added here
   };
 
+  // Toggle open-mindedness and save immediately to database
+  const handleOpenMindednessToggle = async (checked: boolean) => {
+    setIncludeOpenMindedness(checked);
+    
+    if (!isCreating && quizId) {
+      try {
+        const { error } = await supabase
+          .from("quizzes")
+          .update({ include_open_mindedness: checked })
+          .eq("id", quizId);
+
+        if (error) throw error;
+
+        toast({
+          title: checked ? "Module enabled" : "Module disabled",
+          description: `Open-Mindedness module is now ${checked ? 'ON' : 'OFF'}`,
+        });
+
+        await logActivity({
+          actionType: "UPDATE",
+          tableName: "quizzes",
+          recordId: quizId,
+          fieldName: "include_open_mindedness",
+          oldValue: String(!checked),
+          newValue: String(checked),
+          description: `Open-Mindedness module ${checked ? 'enabled' : 'disabled'}`,
+        });
+      } catch (error: any) {
+        console.error("Error updating open-mindedness setting:", error);
+        setIncludeOpenMindedness(!checked); // Revert on error
+        toast({
+          title: "Error",
+          description: "Failed to update setting",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const addQuestion = () => {
     const newQuestion: Question = {
       id: `new-${Date.now()}`,
@@ -961,9 +1000,15 @@ export default function QuizEditor() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="questions">Questions ({questions.length})</TabsTrigger>
+            <TabsTrigger value="questions">Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})</TabsTrigger>
+            <TabsTrigger value="mindedness" className="gap-1">
+              Open-Mindedness
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
+                {includeOpenMindedness ? 'ON' : 'OFF'}
+              </span>
+            </TabsTrigger>
             <TabsTrigger value="results">Results ({resultLevels.length})</TabsTrigger>
           </TabsList>
 
@@ -1145,8 +1190,8 @@ export default function QuizEditor() {
               <div className="flex items-center gap-2">
                 <Switch 
                   checked={includeOpenMindedness} 
-                  onCheckedChange={setIncludeOpenMindedness}
-                  disabled={isPreviewMode}
+                  onCheckedChange={handleOpenMindednessToggle}
+                  disabled={isPreviewMode || isCreating}
                 />
                 <Label className="text-xs">Include Open-Mindedness module</Label>
               </div>
@@ -1272,13 +1317,49 @@ export default function QuizEditor() {
               })}
             </Accordion>
 
-            <OpenMindednessEditor
-              questions={questions}
-              setQuestions={setQuestions}
-              displayLanguage={displayLanguage}
-              isPreviewMode={isPreviewMode}
-              includeOpenMindedness={includeOpenMindedness}
-            />
+          </TabsContent>
+
+          <TabsContent value="mindedness" className="space-y-3">
+            {/* Toggle control */}
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+              <div className="flex items-center gap-3">
+                <Brain className="w-5 h-5 text-primary" />
+                <div>
+                  <Label className="text-sm font-medium">Open-Mindedness Module</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Multi-select question shown after all quiz questions
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${includeOpenMindedness ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                  {includeOpenMindedness ? 'Enabled' : 'Disabled'}
+                </span>
+                <Switch 
+                  checked={includeOpenMindedness} 
+                  onCheckedChange={handleOpenMindednessToggle}
+                  disabled={isPreviewMode || isCreating}
+                />
+              </div>
+            </div>
+
+            {isCreating && (
+              <div className="text-center py-6 border rounded-lg border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Save the quiz first to configure the Open-Mindedness module.
+                </p>
+              </div>
+            )}
+
+            {!isCreating && (
+              <OpenMindednessEditor
+                questions={questions}
+                setQuestions={setQuestions}
+                displayLanguage={displayLanguage}
+                isPreviewMode={isPreviewMode}
+                includeOpenMindedness={includeOpenMindedness}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="results" className="space-y-2">
