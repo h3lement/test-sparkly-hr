@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.fill-result-level]
 verify_jwt = true
+
+[functions.sync-answer-weights]
+verify_jwt = true

@@ -13,6 +13,8 @@ import { SortableResultList } from "@/components/admin/SortableResultList";
 import { GenerateResultsDialog } from "@/components/admin/GenerateResultsDialog";
 import { ResultVersionsDialog } from "@/components/admin/ResultVersionsDialog";
 import { BulkAiFillButton } from "@/components/admin/BulkAiFillButton";
+import { AutoSuggestScoresButton } from "@/components/admin/AutoSuggestScoresButton";
+import { SyncAnswerWeightsButton } from "@/components/admin/SyncAnswerWeightsButton";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -1397,6 +1399,27 @@ export default function QuizEditor() {
               {/* Action Buttons */}
               {!isPreviewMode && !isCreating && (
                 <>
+                  {(() => {
+                    const validation = getPointRangeValidation();
+                    return (
+                      <>
+                        <AutoSuggestScoresButton
+                          resultLevels={resultLevels}
+                          minPossibleScore={validation.minScore ?? 0}
+                          maxPossibleScore={validation.maxScore ?? 100}
+                          onUpdateLevels={setResultLevels}
+                        />
+                        <SyncAnswerWeightsButton
+                          quizId={quizId!}
+                          questions={questions}
+                          resultLevels={resultLevels}
+                          language={primaryLanguage}
+                          onUpdateQuestions={setQuestions}
+                          getLocalizedValue={getLocalizedValue}
+                        />
+                      </>
+                    );
+                  })()}
                   <BulkAiFillButton
                     quizId={quizId!}
                     language={primaryLanguage}
