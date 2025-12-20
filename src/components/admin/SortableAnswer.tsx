@@ -16,6 +16,7 @@ interface SortableAnswerProps {
   answer: Answer;
   questionIndex: number;
   answerIndex: number;
+  isEven: boolean;
   displayLanguage: string;
   isPreviewMode: boolean;
   enableScoring: boolean;
@@ -29,6 +30,7 @@ export function SortableAnswer({
   answer,
   questionIndex,
   answerIndex,
+  isEven,
   displayLanguage,
   isPreviewMode,
   enableScoring,
@@ -56,7 +58,7 @@ export function SortableAnswer({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-1.5 p-1.5 bg-secondary/30 rounded"
+      className={`flex items-center gap-1.5 p-1.5 border-b last:border-b-0 ${isEven ? 'bg-muted/40' : 'bg-secondary/20'}`}
     >
       <div
         {...attributes}
