@@ -778,33 +778,33 @@ export default function QuizEditor() {
             </div>
           </TabsContent>
 
-          <TabsContent value="questions" className="space-y-4">
-            <Button onClick={addQuestion} variant="outline" className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
+          <TabsContent value="questions" className="space-y-2">
+            <Button onClick={addQuestion} variant="outline" size="sm" className="w-full h-8 text-xs">
+              <Plus className="w-3 h-3 mr-1" />
               Add Question
             </Button>
 
-            <Accordion type="single" collapsible className="space-y-2">
+            <Accordion type="single" collapsible className="space-y-1">
               {questions.map((question, qIndex) => (
                 <AccordionItem
                   key={question.id}
                   value={question.id}
-                  className="border rounded-lg px-4"
+                  className="border rounded px-3 py-0"
                 >
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2 text-left">
-                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                  <AccordionTrigger className="hover:no-underline py-2">
+                    <div className="flex items-center gap-1.5 text-left text-sm">
+                      <GripVertical className="w-3 h-3 text-muted-foreground" />
                       <span className="font-medium">
                         Q{qIndex + 1}: {getLocalizedValue(question.question_text, primaryLanguage) || "New Question"}
                       </span>
-                      <span className="text-sm text-muted-foreground">
-                        ({question.answers.length} answers)
+                      <span className="text-xs text-muted-foreground">
+                        ({question.answers.length})
                       </span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
+                  <AccordionContent className="space-y-2 pt-2 pb-3">
                     <div>
-                      <Label>Question Text ({primaryLanguage.toUpperCase()})</Label>
+                      <Label className="text-xs">Question ({primaryLanguage.toUpperCase()})</Label>
                       <Textarea
                         value={getLocalizedValue(question.question_text, primaryLanguage)}
                         onChange={(e) => {
@@ -813,28 +813,30 @@ export default function QuizEditor() {
                         }}
                         placeholder="Enter question text"
                         rows={2}
+                        className="resize-none text-sm"
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <Label>Answers</Label>
+                        <Label className="text-xs">Answers</Label>
                         <Button
                           variant="outline"
                           size="sm"
+                          className="h-6 text-xs px-2"
                           onClick={() => addAnswer(qIndex)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
-                          Add Answer
+                          Add
                         </Button>
                       </div>
 
                       {question.answers.map((answer, aIndex) => (
                         <div
                           key={answer.id}
-                          className="flex items-center gap-2 p-2 bg-secondary/30 rounded-lg"
+                          className="flex items-center gap-1.5 p-1.5 bg-secondary/30 rounded"
                         >
-                          <GripVertical className="w-4 h-4 text-muted-foreground" />
+                          <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                           <Input
                             value={getLocalizedValue(answer.answer_text, primaryLanguage)}
                             onChange={(e) => {
@@ -842,28 +844,26 @@ export default function QuizEditor() {
                               updateAnswer(qIndex, aIndex, { answer_text: updated });
                             }}
                             placeholder={`Answer ${aIndex + 1}`}
-                            className="flex-1"
+                            className="flex-1 h-7 text-sm"
                           />
-                          <div className="flex items-center gap-1">
-                            <Label className="text-xs">Score:</Label>
-                            <Input
-                              type="number"
-                              value={answer.score_value}
-                              onChange={(e) =>
-                                updateAnswer(qIndex, aIndex, {
-                                  score_value: parseInt(e.target.value) || 0,
-                                })
-                              }
-                              className="w-20"
-                            />
-                          </div>
+                          <Input
+                            type="number"
+                            value={answer.score_value}
+                            onChange={(e) =>
+                              updateAnswer(qIndex, aIndex, {
+                                score_value: parseInt(e.target.value) || 0,
+                              })
+                            }
+                            className="w-14 h-7 text-sm text-center"
+                            title="Score"
+                          />
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-destructive"
+                            className="h-7 w-7 text-destructive"
                             onClick={() => deleteAnswer(qIndex, aIndex)}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
                       ))}
@@ -872,10 +872,11 @@ export default function QuizEditor() {
                     <Button
                       variant="destructive"
                       size="sm"
+                      className="h-7 text-xs"
                       onClick={() => deleteQuestion(qIndex)}
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Question
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete
                     </Button>
                   </AccordionContent>
                 </AccordionItem>
@@ -883,34 +884,34 @@ export default function QuizEditor() {
             </Accordion>
           </TabsContent>
 
-          <TabsContent value="results" className="space-y-4">
-            <Button onClick={addResultLevel} variant="outline" className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
+          <TabsContent value="results" className="space-y-2">
+            <Button onClick={addResultLevel} variant="outline" size="sm" className="w-full h-8 text-xs">
+              <Plus className="w-3 h-3 mr-1" />
               Add Result Level
             </Button>
 
             {resultLevels.map((level, index) => (
               <div
                 key={level.id}
-                className="border rounded-lg p-4 space-y-4"
+                className="border rounded p-3 space-y-2"
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium">
+                  <h4 className="font-medium text-sm">
                     {level.emoji} {getLocalizedValue(level.title, primaryLanguage) || `Level ${index + 1}`}
                   </h4>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-destructive"
+                    className="h-7 w-7 text-destructive"
                     onClick={() => deleteResultLevel(index)}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-2">
                   <div>
-                    <Label>Min Score</Label>
+                    <Label className="text-xs">Min</Label>
                     <Input
                       type="number"
                       value={level.min_score}
@@ -919,10 +920,11 @@ export default function QuizEditor() {
                           min_score: parseInt(e.target.value) || 0,
                         })
                       }
+                      className="h-7 text-sm"
                     />
                   </div>
                   <div>
-                    <Label>Max Score</Label>
+                    <Label className="text-xs">Max</Label>
                     <Input
                       type="number"
                       value={level.max_score}
@@ -931,21 +933,34 @@ export default function QuizEditor() {
                           max_score: parseInt(e.target.value) || 0,
                         })
                       }
+                      className="h-7 text-sm"
                     />
                   </div>
                   <div>
-                    <Label>Emoji</Label>
+                    <Label className="text-xs">Emoji</Label>
                     <Input
                       value={level.emoji}
                       onChange={(e) =>
                         updateResultLevel(index, { emoji: e.target.value })
                       }
+                      className="h-7 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Color</Label>
+                    <Input
+                      value={level.color_class}
+                      onChange={(e) =>
+                        updateResultLevel(index, { color_class: e.target.value })
+                      }
+                      placeholder="from-emerald-500 to-green-600"
+                      className="h-7 text-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label>Title ({primaryLanguage.toUpperCase()})</Label>
+                  <Label className="text-xs">Title ({primaryLanguage.toUpperCase()})</Label>
                   <Input
                     value={getLocalizedValue(level.title, primaryLanguage)}
                     onChange={(e) => {
@@ -953,11 +968,12 @@ export default function QuizEditor() {
                       updateResultLevel(index, { title: updated });
                     }}
                     placeholder="Result title"
+                    className="h-7 text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label>Description ({primaryLanguage.toUpperCase()})</Label>
+                  <Label className="text-xs">Description ({primaryLanguage.toUpperCase()})</Label>
                   <Textarea
                     value={getLocalizedValue(level.description, primaryLanguage)}
                     onChange={(e) => {
@@ -966,17 +982,7 @@ export default function QuizEditor() {
                     }}
                     placeholder="Result description"
                     rows={2}
-                  />
-                </div>
-
-                <div>
-                  <Label>Color Class</Label>
-                  <Input
-                    value={level.color_class}
-                    onChange={(e) =>
-                      updateResultLevel(index, { color_class: e.target.value })
-                    }
-                    placeholder="from-emerald-500 to-green-600"
+                    className="resize-none text-sm"
                   />
                 </div>
               </div>
