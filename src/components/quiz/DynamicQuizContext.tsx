@@ -47,9 +47,20 @@ interface DynamicQuizContextType {
 
 const DynamicQuizContext = createContext<DynamicQuizContextType | undefined>(undefined);
 
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export function DynamicQuizProvider({ children }: { children: ReactNode }) {
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [questions, setQuestions] = useState<QuestionData[]>([]);
+  const [shuffledQuestions, setShuffledQuestions] = useState<QuestionData[]>([]);
   const [resultLevels, setResultLevels] = useState<ResultLevelData[]>([]);
   
   const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'mindedness' | 'email' | 'results'>('welcome');
@@ -58,9 +69,19 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState('');
   const [openMindednessAnswers, setOpenMindednessAnswers] = useState<OpenMindednessAnswers>({});
 
-  // Get regular questions (not open_mindedness type)
+  // Shuffle questions when quiz starts (on welcome -> quiz transition)
+  const initializeQuestions = () => {
+    const regularQuestions = questions.filter(q => q.question_type !== 'open_mindedness');
+    if (quizData?.shuffle_questions) {
+      setShuffledQuestions(shuffleArray(regularQuestions));
+    } else {
+      setShuffledQuestions(regularQuestions);
+    }
+  };
+
+  // Get regular questions (shuffled if setting enabled)
   const getRegularQuestions = () => {
-    return questions.filter(q => q.question_type !== 'open_mindedness');
+    return shuffledQuestions.length > 0 ? shuffledQuestions : questions.filter(q => q.question_type !== 'open_mindedness');
   };
 
   // Get open mindedness question
@@ -99,6 +120,15 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
     setAnswers([]);
     setEmail('');
     setOpenMindednessAnswers({});
+    setShuffledQuestions([]);
+  };
+
+  // Custom step setter that initializes questions when starting quiz
+  const handleSetCurrentStep = (step: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results') => {
+    if (step === 'quiz' && currentStep === 'welcome') {
+      initializeQuestions();
+    }
+    setCurrentStep(step);
   };
 
   return (
@@ -117,7 +147,7 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
         totalScore: calculateScore(),
         openMindednessAnswers,
         openMindednessScore: calculateOpenMindednessScore(),
-        setCurrentStep,
+        setCurrentStep: handleSetCurrentStep,
         setCurrentQuestion,
         addAnswer,
         setEmail,

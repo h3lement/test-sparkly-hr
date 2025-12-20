@@ -13,6 +13,9 @@ export interface QuizData {
   duration_text: Record<string, string>;
   cta_url: string;
   cta_text: Record<string, string>;
+  shuffle_questions: boolean;
+  enable_scoring: boolean;
+  include_open_mindedness: boolean;
 }
 
 export interface QuestionData {
@@ -94,6 +97,9 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           duration_text: quizData.duration_text as Record<string, string>,
           cta_url: quizData.cta_url || 'https://sparkly.hr',
           cta_text: quizData.cta_text as Record<string, string>,
+          shuffle_questions: quizData.shuffle_questions ?? false,
+          enable_scoring: quizData.enable_scoring ?? true,
+          include_open_mindedness: quizData.include_open_mindedness ?? false,
         });
 
         // Fetch questions with answers
