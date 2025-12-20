@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/components/quiz/LanguageContext";
-import Index from "./pages/Index";
+import { DynamicQuiz } from "@/components/quiz/DynamicQuiz";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
@@ -19,13 +19,15 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Quiz routes with step parameter */}
-            <Route path="/" element={<Index />} />
-            <Route path="/quiz" element={<Index />} />
-            <Route path="/quiz/:step" element={<Index />} />
+            {/* Dynamic quiz routes with unique slugs */}
+            <Route path="/" element={<DynamicQuiz />} />
+            <Route path="/q/:quizSlug" element={<DynamicQuiz />} />
+            <Route path="/q/:quizSlug/:step" element={<DynamicQuiz />} />
+            {/* Legacy routes for backwards compatibility */}
+            <Route path="/quiz" element={<DynamicQuiz />} />
+            <Route path="/quiz/:step" element={<DynamicQuiz />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
