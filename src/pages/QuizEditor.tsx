@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useAutoSave } from "@/hooks/useAutoSave";
 import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, Euro } from "lucide-react";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
@@ -15,6 +16,7 @@ import { ResultVersionsDialog } from "@/components/admin/ResultVersionsDialog";
 import { BulkAiFillButton } from "@/components/admin/BulkAiFillButton";
 import { AutoSuggestScoresButton } from "@/components/admin/AutoSuggestScoresButton";
 import { SyncAnswerWeightsButton } from "@/components/admin/SyncAnswerWeightsButton";
+import { AutoSaveIndicator } from "@/components/admin/AutoSaveIndicator";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -188,6 +190,163 @@ export default function QuizEditor() {
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
+  
+  // Track if initial load is complete (to prevent auto-save on first render)
+  const initialLoadComplete = useRef(false);
+  const savedQuizIdRef = useRef<string | undefined>(quizId);
+
+  // Auto-save callback
+  const performAutoSave = useCallback(async () => {
+    if (!savedQuizIdRef.current || savedQuizIdRef.current === "new") return;
+    if (!slug.trim()) return;
+
+    const quizData = {
+      slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+      title,
+      description,
+      headline,
+      headline_highlight: headlineHighlight,
+      badge_text: badgeText,
+      cta_text: ctaText,
+      cta_url: ctaUrl,
+      duration_text: durationText,
+      is_active: isActive,
+      primary_language: primaryLanguage,
+      shuffle_questions: shuffleQuestions,
+      enable_scoring: enableScoring,
+      include_open_mindedness: includeOpenMindedness,
+    };
+
+    // Update quiz
+    const { error: quizError } = await supabase
+      .from("quizzes")
+      .update(quizData)
+      .eq("id", savedQuizIdRef.current);
+
+    if (quizError) throw quizError;
+
+    // Save questions and answers
+    for (const question of questions) {
+      let questionId = question.id;
+
+      if (question.id.startsWith("new-")) {
+        const { data, error } = await supabase
+          .from("quiz_questions")
+          .insert({
+            quiz_id: savedQuizIdRef.current,
+            question_text: question.question_text,
+            question_order: question.question_order,
+            question_type: question.question_type,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        questionId = data.id;
+        // Update local state with real ID
+        setQuestions(prev => prev.map(q => 
+          q.id === question.id ? { ...q, id: questionId } : q
+        ));
+      } else {
+        const { error } = await supabase
+          .from("quiz_questions")
+          .update({
+            question_text: question.question_text,
+            question_order: question.question_order,
+            question_type: question.question_type,
+          })
+          .eq("id", question.id);
+
+        if (error) throw error;
+      }
+
+      for (const answer of question.answers) {
+        if (answer.id.startsWith("new-")) {
+          const { data, error } = await supabase
+            .from("quiz_answers")
+            .insert({
+              question_id: questionId,
+              answer_text: answer.answer_text,
+              answer_order: answer.answer_order,
+              score_value: answer.score_value,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          // Update local state with real ID
+          setQuestions(prev => prev.map(q => ({
+            ...q,
+            answers: q.answers.map(a => 
+              a.id === answer.id ? { ...a, id: data.id } : a
+            ),
+          })));
+        } else {
+          await supabase
+            .from("quiz_answers")
+            .update({
+              answer_text: answer.answer_text,
+              answer_order: answer.answer_order,
+              score_value: answer.score_value,
+            })
+            .eq("id", answer.id);
+        }
+      }
+    }
+
+    // Save result levels
+    for (const level of resultLevels) {
+      if (level.id.startsWith("new-")) {
+        const { data, error } = await supabase
+          .from("quiz_result_levels")
+          .insert({
+            quiz_id: savedQuizIdRef.current,
+            min_score: level.min_score,
+            max_score: level.max_score,
+            title: level.title,
+            description: level.description,
+            insights: level.insights,
+            emoji: level.emoji,
+            color_class: level.color_class,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        // Update local state with real ID
+        setResultLevels(prev => prev.map(l => 
+          l.id === level.id ? { ...l, id: data.id } : l
+        ));
+      } else {
+        await supabase
+          .from("quiz_result_levels")
+          .update({
+            min_score: level.min_score,
+            max_score: level.max_score,
+            title: level.title,
+            description: level.description,
+            insights: level.insights,
+            emoji: level.emoji,
+            color_class: level.color_class,
+          })
+          .eq("id", level.id);
+      }
+    }
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, questions, resultLevels]);
+
+  // Auto-save hook
+  const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
+    onSave: performAutoSave,
+    debounceMs: 1500,
+    enabled: !isCreating && !!savedQuizIdRef.current && savedQuizIdRef.current !== "new",
+  });
+
+  // Trigger auto-save when data changes
+  useEffect(() => {
+    if (!initialLoadComplete.current) return;
+    if (isCreating) return;
+    triggerSave();
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -332,6 +491,11 @@ export default function QuizEditor() {
       });
     } finally {
       setLoading(false);
+      // Mark initial load complete after a brief delay to avoid triggering auto-save
+      setTimeout(() => {
+        savedQuizIdRef.current = id;
+        initialLoadComplete.current = true;
+      }, 100);
     }
   };
 
@@ -912,6 +1076,9 @@ export default function QuizEditor() {
                 </h1>
               </div>
               <div className="flex items-center gap-2">
+                {/* Auto-save indicator for existing quizzes */}
+                {!isCreating && <AutoSaveIndicator status={autoSaveStatus} />}
+                
                 {!isCreating && slug && (
                   <Button
                     variant="outline"
@@ -923,10 +1090,13 @@ export default function QuizEditor() {
                     Preview Quiz
                   </Button>
                 )}
-                <Button onClick={handleSave} disabled={saving}>
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? "Saving..." : "Save Quiz"}
-                </Button>
+                {/* Manual save only for new quizzes */}
+                {isCreating && (
+                  <Button onClick={handleSave} disabled={saving}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {saving ? "Saving..." : "Create Quiz"}
+                  </Button>
+                )}
               </div>
             </div>
 
