@@ -1221,16 +1221,6 @@ export default function QuizEditor() {
                 </h1>
               </div>
               <div className="flex items-center gap-3">
-                {/* AI Cost and Model Selector */}
-                {!isCreating && (
-                  <AiModelSelector
-                    totalCost={totalAiCost}
-                    selectedModel={selectedAiModel}
-                    onModelChange={handleAiModelChange}
-                    disabled={isRegenerating}
-                  />
-                )}
-                
                 {/* Auto-save indicator for existing quizzes */}
                 {!isCreating && <AutoSaveIndicator status={autoSaveStatus} />}
                 
@@ -1418,6 +1408,16 @@ export default function QuizEditor() {
               )}
               {translating ? "Translating..." : "AI Translate"}
             </Button>
+          )}
+          
+          {/* AI Cost and Model Selector - after translate button */}
+          {!isCreating && !previewLanguage && (
+            <AiModelSelector
+              totalCost={totalAiCost}
+              selectedModel={selectedAiModel}
+              onModelChange={handleAiModelChange}
+              disabled={isRegenerating}
+            />
           )}
           
           {previewLanguage && (
