@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Sparkles, FileText, History, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import {
   Popover,
   PopoverContent,
@@ -12,33 +13,109 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Tone intensity labels (10 steps)
+const TONE_LABELS = [
+  "Very Casual",
+  "Casual",
+  "Friendly",
+  "Warm",
+  "Balanced",
+  "Professional",
+  "Formal",
+  "Authoritative",
+  "Corporate",
+  "Very Formal",
+];
+
+// Example phrases for each tone level
+const TONE_EXAMPLES: Record<number, { greeting: string; encouragement: string; result: string }> = {
+  0: {
+    greeting: "Hey! 👋 Ready to find out more about yourself?",
+    encouragement: "You're doing awesome! Keep going!",
+    result: "Wow, look at you! You totally nailed it!",
+  },
+  1: {
+    greeting: "Hi there! Let's explore what makes you tick.",
+    encouragement: "Nice work so far! Almost there.",
+    result: "Great job! Your results are really interesting.",
+  },
+  2: {
+    greeting: "Hello! We're excited to help you discover your potential.",
+    encouragement: "You're making great progress! Keep it up.",
+    result: "Wonderful! Here's what we learned about you.",
+  },
+  3: {
+    greeting: "Welcome! Let's take this journey of self-discovery together.",
+    encouragement: "You're doing really well. Just a few more to go.",
+    result: "Excellent work! Your insights are truly valuable.",
+  },
+  4: {
+    greeting: "Welcome. This assessment will help reveal your strengths.",
+    encouragement: "Good progress. Continue when you're ready.",
+    result: "Well done. Here are your comprehensive results.",
+  },
+  5: {
+    greeting: "Thank you for participating in this assessment.",
+    encouragement: "You are progressing well through the evaluation.",
+    result: "Your assessment is complete. Please review your results.",
+  },
+  6: {
+    greeting: "Welcome to your professional competency evaluation.",
+    encouragement: "Please proceed to complete the remaining sections.",
+    result: "Your evaluation has been processed. Results are below.",
+  },
+  7: {
+    greeting: "This assessment measures key performance indicators.",
+    encouragement: "Continue with the assessment at your convenience.",
+    result: "Assessment complete. Review your detailed analysis.",
+  },
+  8: {
+    greeting: "Commence your organizational alignment assessment.",
+    encouragement: "Proceed through the assessment methodology.",
+    result: "Assessment concluded. Analysis and recommendations follow.",
+  },
+  9: {
+    greeting: "Initiate competency framework evaluation protocol.",
+    encouragement: "Continue assessment per established protocols.",
+    result: "Evaluation finalized. Strategic findings documented below.",
+  },
+};
+
 type ToneSource = "ai" | "extracted" | "manual";
 
 interface ToneOfVoiceEditorProps {
   toneOfVoice: string;
   toneSource: ToneSource;
   useToneForAi: boolean;
+  toneIntensity: number;
   quizId?: string;
   isPreviewMode?: boolean;
   onToneChange: (tone: string) => void;
   onSourceChange: (source: ToneSource) => void;
   onUseToneChange: (use: boolean) => void;
+  onIntensityChange: (intensity: number) => void;
 }
 
 export function ToneOfVoiceEditor({
   toneOfVoice,
   toneSource,
   useToneForAi,
+  toneIntensity,
   quizId,
   isPreviewMode,
   onToneChange,
   onSourceChange,
   onUseToneChange,
+  onIntensityChange,
 }: ToneOfVoiceEditorProps) {
   const [showExtractPopover, setShowExtractPopover] = useState(false);
   const [extractText, setExtractText] = useState("");
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
+
+  // Get current tone examples based on intensity
+  const currentExamples = useMemo(() => TONE_EXAMPLES[toneIntensity] || TONE_EXAMPLES[4], [toneIntensity]);
+  const currentLabel = TONE_LABELS[toneIntensity] || "Balanced";
 
   const handleSuggestFromQuizzes = async () => {
     setGenerating(true);
@@ -169,7 +246,7 @@ export function ToneOfVoiceEditor({
   };
 
   return (
-    <div className="space-y-2 p-3 rounded-lg border bg-muted/30">
+    <div className="space-y-4 p-3 rounded-lg border bg-muted/30">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label className="text-xs font-medium">Tone of Voice</Label>
@@ -183,6 +260,48 @@ export function ToneOfVoiceEditor({
             disabled={isPreviewMode}
             className="scale-75"
           />
+        </div>
+      </div>
+
+      {/* Tone Intensity Slider */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Tone Intensity</Label>
+          <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary">
+            {currentLabel}
+          </span>
+        </div>
+        <Slider
+          value={[toneIntensity]}
+          onValueChange={(value) => onIntensityChange(value[0])}
+          min={0}
+          max={9}
+          step={1}
+          disabled={isPreviewMode}
+          className="w-full"
+        />
+        <div className="flex justify-between text-[9px] text-muted-foreground">
+          <span>Casual</span>
+          <span>Formal</span>
+        </div>
+      </div>
+
+      {/* Tone Preview Examples */}
+      <div className="space-y-2 p-2 rounded bg-background/50 border border-border/50">
+        <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Preview Examples</Label>
+        <div className="space-y-1.5">
+          <div className="text-xs">
+            <span className="text-muted-foreground">Greeting: </span>
+            <span className="italic">{currentExamples.greeting}</span>
+          </div>
+          <div className="text-xs">
+            <span className="text-muted-foreground">Encouragement: </span>
+            <span className="italic">{currentExamples.encouragement}</span>
+          </div>
+          <div className="text-xs">
+            <span className="text-muted-foreground">Result: </span>
+            <span className="italic">{currentExamples.result}</span>
+          </div>
         </div>
       </div>
 
