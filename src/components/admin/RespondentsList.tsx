@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -13,16 +12,14 @@ import { cn } from "@/lib/utils";
 import { 
   RefreshCw, 
   Download, 
-  Search, 
   Trash2, 
   ChevronDown, 
   ChevronUp,
   FileText,
-  ChevronLeft,
-  ChevronRight,
   Upload,
   CalendarIcon,
-  X
+  X,
+  Users
 } from "lucide-react";
 import {
   Select,
@@ -44,6 +41,24 @@ import { RespondentsGrowthChart } from "./RespondentsGrowthChart";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import type { Json } from "@/integrations/supabase/types";
+
+// Import admin components
+import {
+  AdminPageHeader,
+  AdminCard,
+  AdminCardContent,
+  AdminFilters,
+  AdminSearch,
+  AdminCountBadge,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+  AdminEmptyState,
+  AdminLoading,
+  AdminPagination,
+} from "@/components/admin";
 
 interface QuizLead {
   id: string;
@@ -465,33 +480,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     setExpandedRow(null);
   };
 
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value));
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
     setCurrentPage(1);
-  };
-
-  const getPageNumbers = () => {
-    const pages: (number | "ellipsis")[] = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      
-      if (currentPage > 3) pages.push("ellipsis");
-      
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      
-      for (let i = start; i <= end; i++) pages.push(i);
-      
-      if (currentPage < totalPages - 2) pages.push("ellipsis");
-      
-      pages.push(totalPages);
-    }
-    
-    return pages;
   };
 
   const handleQuizClick = (quizId: string | null, e?: React.MouseEvent) => {
@@ -504,51 +495,46 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   };
 
   return (
-    <div className="max-w-6xl">
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Respondents</h1>
-          <p className="text-muted-foreground mt-1">View quiz submissions</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          <label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="hidden"
-              disabled={importing}
-            />
-            <Button variant="outline" size="sm" disabled={importing} asChild>
-              <span>
-                <Upload className={`w-4 h-4 mr-2 ${importing ? "animate-pulse" : ""}`} />
-                {importing ? "Importing..." : "Import CSV"}
-              </span>
+    <div className="admin-page">
+      <AdminPageHeader
+        title="Respondents"
+        description="View quiz submissions"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
             </Button>
-          </label>
-          <Button onClick={downloadCSV} variant="default" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Download CSV
-          </Button>
-        </div>
-      </div>
+            <label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="hidden"
+                disabled={importing}
+              />
+              <Button variant="outline" size="sm" disabled={importing} asChild>
+                <span>
+                  <Upload className={`w-4 h-4 mr-2 ${importing ? "animate-pulse" : ""}`} />
+                  {importing ? "Importing..." : "Import CSV"}
+                </span>
+              </Button>
+            </label>
+            <Button onClick={downloadCSV} variant="default" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Download CSV
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Filters - all on one row */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative w-[160px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-9 bg-secondary/50 border-border text-sm"
-          />
-        </div>
+      {/* Filters */}
+      <AdminFilters>
+        <AdminSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search emails..."
+        />
         <Select value={selectedQuizFilter} onValueChange={setSelectedQuizFilter}>
           <SelectTrigger className="w-[160px] h-9 bg-secondary/50 border-border text-sm">
             <SelectValue placeholder="All quizzes" />
@@ -660,7 +646,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             {uniqueEmailQuizCount}
           </Badge>
         </div>
-      </div>
+        
+        <AdminCountBadge count={totalItems} singular="respondent" />
+      </AdminFilters>
 
       {/* Respondents Growth Chart */}
       <RespondentsGrowthChart 
@@ -671,267 +659,220 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       />
 
       {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading respondents...</p>
-        </div>
+        <AdminLoading message="Loading respondents..." />
       ) : filteredLeads.length === 0 ? (
-        <div className="text-center py-12 bg-card rounded-xl border border-border">
-          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No submissions found.</p>
-        </div>
+        <AdminEmptyState
+          icon={Users}
+          title="No submissions found"
+          description="Quiz submissions will appear here once users complete quizzes."
+        />
       ) : (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Email</th>
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Quiz</th>
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Score</th>
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Result</th>
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Openness</th>
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Lang</th>
-                <th className="text-left density-px density-py-sm text-sm font-medium text-muted-foreground">Submitted</th>
-                <th className="text-right density-px density-py-sm text-sm font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginatedLeads.map((lead) => {
-                const isExpanded = expandedRow === lead.id;
-                // Find quiz by id, or fallback to first quiz if quiz_id is null (for legacy data)
-                const quiz = lead.quiz_id 
-                  ? quizzes.find(q => q.id === lead.quiz_id)
-                  : quizzes.length > 0 ? quizzes[0] : null;
-                const effectiveQuizId = quiz?.id || null;
-                const quizQuestions = getQuestionsForQuiz(effectiveQuizId);
-                const leadAnswers = parseLeadAnswers(lead.answers);
-                const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
+        <AdminCard>
+          <AdminCardContent noPadding>
+            <AdminTable>
+              <AdminTableHeader>
+                <AdminTableCell header>Email</AdminTableCell>
+                <AdminTableCell header>Quiz</AdminTableCell>
+                <AdminTableCell header>Score</AdminTableCell>
+                <AdminTableCell header>Result</AdminTableCell>
+                <AdminTableCell header>Openness</AdminTableCell>
+                <AdminTableCell header>Lang</AdminTableCell>
+                <AdminTableCell header>Submitted</AdminTableCell>
+                <AdminTableCell header align="right">&nbsp;</AdminTableCell>
+              </AdminTableHeader>
+              <AdminTableBody>
+                {paginatedLeads.map((lead) => {
+                  const isExpanded = expandedRow === lead.id;
+                  // Find quiz by id, or fallback to first quiz if quiz_id is null (for legacy data)
+                  const quiz = lead.quiz_id 
+                    ? quizzes.find(q => q.id === lead.quiz_id)
+                    : quizzes.length > 0 ? quizzes[0] : null;
+                  const effectiveQuizId = quiz?.id || null;
+                  const quizQuestions = getQuestionsForQuiz(effectiveQuizId);
+                  const leadAnswers = parseLeadAnswers(lead.answers);
+                  const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
 
-                return (
-                  <>
-                    <tr 
-                      key={lead.id}
-                      id={`lead-row-${lead.id}`}
-                      className={`hover:bg-secondary/30 transition-all ${hasAnswers ? 'cursor-pointer' : ''} ${highlightedLeadId === lead.id ? 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse' : ''}`}
-                      onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
-                    >
-                      <td className="density-px density-py">
-                        <div className="flex items-center density-gap">
-                          <Avatar className="h-9 w-9 bg-secondary">
-                            <AvatarFallback className="text-xs bg-secondary text-foreground">
-                              {lead.email.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEmail(lead.email);
-                              }}
-                              className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
-                            >
-                              {lead.email}
-                            </button>
-                            <Badge 
-                              variant="secondary" 
-                              className="text-xs cursor-pointer hover:bg-primary/20"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEmail(lead.email);
-                              }}
-                            >
-                              {getEmailQuizCount(lead.email)}
-                            </Badge>
-                            {hasAnswers && (
-                              isExpanded ? (
-                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                              )
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="density-px density-py">
-                        {quiz ? (
-                          <div className="flex flex-col gap-0.5">
-                            <button
-                              type="button"
-                              onClick={(e) => handleQuizClick(effectiveQuizId, e)}
-                              className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left"
-                              title="Click to edit quiz"
-                            >
-                              {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
-                            </button>
-                            <a
-                              href={`/${quiz.slug.replace(/^\/+/, "")}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
-                            >
-                              /{quiz.slug.replace(/^\/+/, "")}
-                            </a>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Unknown</span>
+                  return (
+                    <>
+                      <AdminTableRow 
+                        key={lead.id}
+                        id={`lead-row-${lead.id}`}
+                        className={cn(
+                          hasAnswers && 'cursor-pointer',
+                          highlightedLeadId === lead.id && 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse'
                         )}
-                      </td>
-                      <td className="density-px density-py text-sm text-foreground">
-                        {lead.score}/{lead.total_questions}
-                      </td>
-                      <td className="density-px density-py">
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                          {lead.result_category}
-                        </Badge>
-                      </td>
-                      <td className="density-px density-py">
-                        {lead.openness_score !== null ? (
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                            {lead.openness_score}/4
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="density-px density-py">
-                        <Badge variant="secondary" className="uppercase text-xs">
-                          {lead.language || 'en'}
-                        </Badge>
-                      </td>
-                      <td className="density-px density-py text-sm text-muted-foreground">
-                        {formatDate(lead.created_at)}
-                      </td>
-                      <td className="density-px density-py text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteLead(lead.id, lead.email);
-                          }}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                    {isExpanded && hasAnswers && (
-                      <tr key={`${lead.id}-expanded`}>
-                        <td colSpan={8} className="density-px density-py bg-secondary/20">
-                          <div className="density-gap-lg">
-                            <p className="text-sm font-medium text-foreground">Quiz Answers</p>
-                            <div className="grid gap-2">
-                              {quizQuestions.map((question, qIdx) => {
-                                const questionAnswers = getAnswersForQuestion(question.id);
-                                const selectedAnswerId = leadAnswers[question.id];
-                                const selectedAnswer = questionAnswers.find(a => a.id === selectedAnswerId);
-
-                                return (
-                                  <div
-                                    key={question.id}
-                                    className="bg-card rounded-lg p-3 border border-border"
-                                  >
-                                    <p className="text-sm text-muted-foreground mb-1">
-                                      Q{qIdx + 1}: {getLocalizedText(question.question_text, lead.language || "en")}
-                                    </p>
-                                    {selectedAnswer ? (
-                                      <div className="flex items-center justify-between">
-                                        <p className="text-sm font-medium text-foreground">
-                                          {getLocalizedText(selectedAnswer.answer_text, lead.language || "en")}
-                                        </p>
-                                        <Badge 
-                                          variant="outline" 
-                                          className={`text-xs ${
-                                            selectedAnswer.score_value >= 3 
-                                              ? "bg-green-500/10 text-green-600 border-green-500/20"
-                                              : selectedAnswer.score_value >= 2
-                                              ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                                              : "bg-red-500/10 text-red-600 border-red-500/20"
-                                          }`}
-                                        >
-                                          {selectedAnswer.score_value} pt{selectedAnswer.score_value !== 1 ? "s" : ""}
-                                        </Badge>
-                                      </div>
-                                    ) : (
-                                      <p className="text-sm text-muted-foreground italic">No answer recorded</p>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                        onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
+                      >
+                        <AdminTableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 bg-secondary">
+                              <AvatarFallback className="text-xs bg-secondary text-foreground">
+                                {lead.email.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedEmail(lead.email);
+                                }}
+                                className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                              >
+                                {lead.email}
+                              </button>
+                              <Badge 
+                                variant="secondary" 
+                                className="text-xs cursor-pointer hover:bg-primary/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedEmail(lead.email);
+                                }}
+                              >
+                                {getEmailQuizCount(lead.email)}
+                              </Badge>
+                              {hasAnswers && (
+                                isExpanded ? (
+                                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                )
+                              )}
                             </div>
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
+                        </AdminTableCell>
+                        <AdminTableCell>
+                          {quiz ? (
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                type="button"
+                                onClick={(e) => handleQuizClick(effectiveQuizId, e)}
+                                className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left"
+                                title="Click to edit quiz"
+                              >
+                                {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
+                              </button>
+                              <a
+                                href={`/${quiz.slug.replace(/^\/+/, "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+                              >
+                                /{quiz.slug.replace(/^\/+/, "")}
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Unknown</span>
+                          )}
+                        </AdminTableCell>
+                        <AdminTableCell>
+                          <span className="text-sm text-foreground">{lead.score}/{lead.total_questions}</span>
+                        </AdminTableCell>
+                        <AdminTableCell>
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                            {lead.result_category}
+                          </Badge>
+                        </AdminTableCell>
+                        <AdminTableCell>
+                          {lead.openness_score !== null ? (
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                              {lead.openness_score}/4
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </AdminTableCell>
+                        <AdminTableCell>
+                          <Badge variant="secondary" className="uppercase text-xs">
+                            {lead.language || 'en'}
+                          </Badge>
+                        </AdminTableCell>
+                        <AdminTableCell>
+                          <span className="text-sm text-muted-foreground">{formatDate(lead.created_at)}</span>
+                        </AdminTableCell>
+                        <AdminTableCell align="right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteLead(lead.id, lead.email);
+                            }}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AdminTableCell>
+                      </AdminTableRow>
+                      {isExpanded && hasAnswers && (
+                        <tr key={`${lead.id}-expanded`}>
+                          <td colSpan={8} className="density-px density-py bg-secondary/20">
+                            <div className="space-y-3">
+                              <p className="text-sm font-medium text-foreground">Quiz Answers</p>
+                              <div className="grid gap-2">
+                                {quizQuestions.map((question, qIdx) => {
+                                  const questionAnswers = getAnswersForQuestion(question.id);
+                                  const selectedAnswerId = leadAnswers[question.id];
+                                  const selectedAnswer = questionAnswers.find(a => a.id === selectedAnswerId);
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Showing</span>
-                <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
-                  <SelectTrigger className="w-[70px] h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={String(option)}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span>of {totalItems} results</span>
-              </div>
+                                  return (
+                                    <div
+                                      key={question.id}
+                                      className="bg-card rounded-lg p-3 border border-border"
+                                    >
+                                      <p className="text-sm text-muted-foreground mb-1">
+                                        Q{qIdx + 1}: {getLocalizedText(question.question_text, lead.language || "en")}
+                                      </p>
+                                      {selectedAnswer ? (
+                                        <div className="flex items-center justify-between">
+                                          <p className="text-sm font-medium text-foreground">
+                                            {getLocalizedText(selectedAnswer.answer_text, lead.language || "en")}
+                                          </p>
+                                          <Badge 
+                                            variant="outline" 
+                                            className={cn(
+                                              "text-xs",
+                                              selectedAnswer.score_value >= 3 
+                                                ? "bg-green-500/10 text-green-600 border-green-500/20"
+                                                : selectedAnswer.score_value >= 2
+                                                ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                                                : "bg-red-500/10 text-red-600 border-red-500/20"
+                                            )}
+                                          >
+                                            {selectedAnswer.score_value} pt{selectedAnswer.score_value !== 1 ? "s" : ""}
+                                          </Badge>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-muted-foreground italic">No answer recorded</p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </AdminTableBody>
+            </AdminTable>
 
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                {getPageNumbers().map((page, idx) =>
-                  page === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">
-                      ...
-                    </span>
-                  ) : (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handlePageChange(page)}
-                    >
-                      {page}
-                    </Button>
-                  )
-                )}
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <AdminPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            )}
+          </AdminCardContent>
+        </AdminCard>
       )}
 
       {/* Email Quiz History Dialog */}
