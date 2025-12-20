@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { RotateCcw, Save, Sun, Moon, Monitor, Type, Palette, Box, Loader2 } from "lucide-react";
+import { RotateCcw, Save, Sun, Moon, Monitor, Type, Palette, Box, Loader2, Sparkles, Copy, Check } from "lucide-react";
 
 interface ColorToken {
   key: string;
@@ -438,6 +438,10 @@ export function AppearanceSettings() {
             <Moon className="h-4 w-4" />
             Dark Colors
           </TabsTrigger>
+          <TabsTrigger value="quiz-design" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Quiz Design
+          </TabsTrigger>
         </TabsList>
 
         {/* General Tab */}
@@ -785,7 +789,260 @@ export function AppearanceSettings() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Quiz Design Reference Tab */}
+        <TabsContent value="quiz-design" className="space-y-6">
+          <QuizDesignReference />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Quiz Design Reference Component
+function QuizDesignReference() {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const DesignToken = ({ label, value, cssVar }: { label: string; value: string; cssVar?: string }) => (
+    <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        {cssVar && <p className="text-xs text-muted-foreground font-mono">{cssVar}</p>}
+      </div>
+      <button
+        onClick={() => copyToClipboard(value, label)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-md hover:bg-secondary transition-colors"
+      >
+        <code className="text-xs font-mono">{value}</code>
+        {copiedKey === label ? (
+          <Check className="h-3 w-3 text-green-500" />
+        ) : (
+          <Copy className="h-3 w-3 text-muted-foreground" />
+        )}
+      </button>
+    </div>
+  );
+
+  const ComponentPreview = ({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) => (
+    <div className={className}>
+      <h4 className="text-sm font-medium text-muted-foreground mb-2">{title}</h4>
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Quiz Layout Structure</CardTitle>
+          <CardDescription>Core layout values used across all quiz screens</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <DesignToken label="Container Max Width" value="max-w-2xl" cssVar="max-width: 42rem" />
+          <DesignToken label="Content Max Width (Welcome)" value="max-w-xl" cssVar="max-width: 36rem" />
+          <DesignToken label="Outer Padding (Desktop)" value="p-4 md:p-8" cssVar="padding: 1rem / 2rem" />
+          <DesignToken label="Section Spacing" value="mb-8" cssVar="margin-bottom: 2rem" />
+          <DesignToken label="Card Padding" value="p-6 / p-8" cssVar="padding: 1.5rem / 2rem" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Typography Scale</CardTitle>
+          <CardDescription>Font sizes and styles for quiz text elements</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <DesignToken label="Main Heading (H1)" value="text-4xl md:text-5xl font-medium" cssVar="font-heading" />
+          <DesignToken label="Section Heading (H2)" value="text-xl font-semibold" cssVar="font-heading" />
+          <DesignToken label="Question Text" value="text-2xl md:text-3xl font-semibold" cssVar="font-heading" />
+          <DesignToken label="Body Text" value="text-lg md:text-xl" cssVar="font-body" />
+          <DesignToken label="Small Text" value="text-sm" cssVar="14px" />
+          <DesignToken label="Micro Text" value="text-xs" cssVar="12px" />
+          <DesignToken label="Heading Line Height" value="leading-tight" cssVar="line-height: 1.25" />
+          <DesignToken label="Body Line Height" value="leading-relaxed" cssVar="line-height: 1.625" />
+          <DesignToken label="Letter Spacing (Headings)" value="tracking-tight" cssVar="letter-spacing: -0.025em" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Component Styles</CardTitle>
+          <CardDescription>Reusable component class patterns</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <ComponentPreview title="Badge Pill">
+            <div className="badge-pill inline-flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Assessment</span>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="badge-pill"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Glass Card">
+            <div className="glass rounded-xl p-6">
+              <p className="text-sm">Glass morphism container with subtle background and border.</p>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="glass rounded-xl p-6"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Primary CTA Button">
+            <button className="bg-primary text-primary-foreground px-8 py-3 text-base font-semibold rounded-lg glow-primary hover:bg-primary/90 transition-all">
+              Start Assessment
+            </button>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="bg-primary text-primary-foreground px-8 py-6 text-base font-semibold rounded-lg glow-primary"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Gradient Text">
+            <span className="font-heading text-3xl italic gradient-text">Highlighted Text</span>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="gradient-text"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Progress Bar">
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full gradient-primary transition-all duration-500 ease-out" style={{ width: '65%' }} />
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="h-2 bg-secondary rounded-full" → inner: "gradient-primary"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Answer Option (Default)">
+            <div className="w-full text-left p-5 rounded-xl border-2 border-border bg-card hover:border-primary/50 hover:bg-secondary/50 transition-all">
+              <div className="flex items-center gap-4">
+                <kbd className="flex w-6 h-6 rounded border text-xs font-mono items-center justify-center border-muted-foreground/50 bg-muted/50 text-muted-foreground">1</kbd>
+                <span className="text-base">Answer option text</span>
+              </div>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="p-5 rounded-xl border-2 border-border bg-card"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Answer Option (Selected)">
+            <div className="w-full text-left p-5 rounded-xl border-2 border-primary bg-primary/5 shadow-lg transition-all">
+              <div className="flex items-center gap-4">
+                <kbd className="flex w-6 h-6 rounded border text-xs font-mono items-center justify-center border-primary bg-primary text-primary-foreground">1</kbd>
+                <span className="text-base">Selected answer option</span>
+              </div>
+            </div>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="border-primary bg-primary/5 shadow-lg"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Checkmark Circle">
+            <span className="bg-primary w-5 h-5 rounded-full flex items-center justify-center text-primary-foreground text-xs">✓</span>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="bg-primary w-5 h-5 rounded-full flex items-center justify-center text-primary-foreground text-xs"</code>
+          </ComponentPreview>
+
+          <ComponentPreview title="Numbered Circle (Results)">
+            <span className="gradient-primary w-6 h-6 rounded-full flex items-center justify-center text-primary-foreground text-sm">1</span>
+            <code className="block mt-2 text-xs font-mono text-muted-foreground">className="gradient-primary w-6 h-6 rounded-full flex items-center justify-center text-primary-foreground"</code>
+          </ComponentPreview>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Animation Classes</CardTitle>
+          <CardDescription>Motion and transition classes used in quiz flow</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <DesignToken label="Fade In (Screens)" value="animate-fade-in" cssVar="0.5s ease-out" />
+          <DesignToken label="Slide Left (Questions)" value="animate-slide-in-left" cssVar="0.35s ease-out" />
+          <DesignToken label="Slide Right (Back)" value="animate-slide-in-right" cssVar="0.35s ease-out" />
+          <DesignToken label="Progress Bar" value="transition-all duration-500 ease-out" />
+          <DesignToken label="Button Hover Scale" value="hover:scale-105 transition-transform" />
+          <DesignToken label="Glow Pulse" value="glow-primary" cssVar="box-shadow pulse" />
+          <DesignToken label="Color Transition" value="transition-colors" cssVar="150ms" />
+          <DesignToken label="All Transitions" value="transition-all duration-200" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Color Usage Patterns</CardTitle>
+          <CardDescription>How semantic colors are applied in quiz components</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <DesignToken label="Background" value="bg-background" cssVar="--background" />
+          <DesignToken label="Text Primary" value="text-foreground" cssVar="--foreground" />
+          <DesignToken label="Text Secondary" value="text-muted-foreground" cssVar="--muted-foreground" />
+          <DesignToken label="Card Background" value="bg-card" cssVar="--card" />
+          <DesignToken label="Border Default" value="border-border" cssVar="--border" />
+          <DesignToken label="Border Active" value="border-primary" cssVar="--primary" />
+          <DesignToken label="Primary Button BG" value="bg-primary text-primary-foreground" />
+          <DesignToken label="Secondary BG" value="bg-secondary" cssVar="--secondary" />
+          <DesignToken label="Hover State" value="hover:bg-secondary/50" />
+          <DesignToken label="Active Selection BG" value="bg-primary/5" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Spacing Reference</CardTitle>
+          <CardDescription>Common spacing values used throughout the quiz</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <DesignToken label="Gap XS" value="gap-2" cssVar="0.5rem" />
+          <DesignToken label="Gap SM" value="gap-3" cssVar="0.75rem" />
+          <DesignToken label="Gap MD" value="gap-4" cssVar="1rem" />
+          <DesignToken label="Gap LG" value="gap-6" cssVar="1.5rem" />
+          <DesignToken label="Margin Bottom SM" value="mb-4" cssVar="1rem" />
+          <DesignToken label="Margin Bottom MD" value="mb-6" cssVar="1.5rem" />
+          <DesignToken label="Margin Bottom LG" value="mb-8" cssVar="2rem" />
+          <DesignToken label="Margin Bottom XL" value="mb-10" cssVar="2.5rem" />
+          <DesignToken label="Padding SM" value="p-4" cssVar="1rem" />
+          <DesignToken label="Padding MD" value="p-6" cssVar="1.5rem" />
+          <DesignToken label="Padding LG" value="p-8" cssVar="2rem" />
+          <DesignToken label="Padding X Button" value="px-8 py-6" cssVar="2rem / 1.5rem" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Border Radius Values</CardTitle>
+          <CardDescription>Rounded corner presets</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <DesignToken label="Small" value="rounded-md" cssVar="calc(var(--radius) - 2px)" />
+          <DesignToken label="Default" value="rounded-lg" cssVar="var(--radius)" />
+          <DesignToken label="Large" value="rounded-xl" cssVar="0.75rem" />
+          <DesignToken label="Extra Large" value="rounded-2xl" cssVar="1rem" />
+          <DesignToken label="Full (Pills)" value="rounded-full" cssVar="9999px" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Result Level Gradients</CardTitle>
+          <CardDescription>Color gradients used for different score ranges</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-8 rounded-md bg-gradient-to-r from-emerald-500 to-green-600" />
+            <code className="text-xs font-mono">from-emerald-500 to-green-600</code>
+            <span className="text-sm text-muted-foreground">High Score</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-8 rounded-md bg-gradient-to-r from-amber-500 to-orange-600" />
+            <code className="text-xs font-mono">from-amber-500 to-orange-600</code>
+            <span className="text-sm text-muted-foreground">Medium Score</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-8 rounded-md bg-gradient-to-r from-rose-500 to-red-600" />
+            <code className="text-xs font-mono">from-rose-500 to-red-600</code>
+            <span className="text-sm text-muted-foreground">Low Score</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-8 rounded-md bg-gradient-to-r from-red-600 to-rose-700" />
+            <code className="text-xs font-mono">from-red-600 to-rose-700</code>
+            <span className="text-sm text-muted-foreground">Critical</span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
