@@ -174,7 +174,7 @@ export function AdminSidebar({
     }
   }, [savedOrder]);
 
-  const fetchCounts = async () => {
+  async function fetchCounts() {
     try {
       const [leadsRes, quizzesRes, adminsRes, emailLogsRes, pageViewsRes, activityRes] = await Promise.all([
         supabase.from("quiz_leads").select("*", { count: "exact", head: true }),
@@ -196,7 +196,25 @@ export function AdminSidebar({
     } catch (error) {
       console.error("Error fetching counts:", error);
     }
-  };
+  }
+
+  // Keep Respondents count in sync while the admin is active
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-sidebar-counts")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "quiz_leads" },
+        () => {
+          fetchCounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const menuItems: MenuItem[] = menuOrder.map(id => {
     const defaultItem = DEFAULT_MENU_ITEMS.find(item => item.id === id)!;
