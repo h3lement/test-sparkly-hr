@@ -495,21 +495,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     return pages;
   };
 
-  const handleQuizClick = (quizId: string | null) => {
-    console.log("handleQuizClick called with quizId:", quizId);
-    if (!quizId) {
-      console.log("quizId is null, returning early");
-      return;
+  const handleQuizClick = (quizId: string | null, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-    console.log("Available quizzes:", quizzes.map(q => ({ id: q.id, slug: q.slug })));
+    if (!quizId) return;
     const quiz = quizzes.find((q) => q.id === quizId);
-    console.log("Found quiz:", quiz);
     if (quiz) {
-      console.log("Setting editingQuiz and opening dialog");
       setEditingQuiz(quiz);
       setIsQuizEditorOpen(true);
-    } else {
-      console.log("Quiz not found in quizzes array");
     }
   };
 
@@ -777,12 +772,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           <div className="flex flex-col gap-0.5">
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log("QUIZ TITLE CLICKED - effectiveQuizId:", effectiveQuizId);
-                                handleQuizClick(effectiveQuizId);
-                              }}
+                              onClick={(e) => handleQuizClick(effectiveQuizId, e)}
                               className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left"
                               title="Click to edit quiz"
                             >
