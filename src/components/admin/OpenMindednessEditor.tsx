@@ -121,16 +121,18 @@ export function OpenMindednessEditor({
   };
 
   if (!includeOpenMindedness) {
-    return null;
+    return (
+      <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
+        <Brain className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">
+          Enable the Open-Mindedness module above to configure the question.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div className="mt-4 border-t pt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Brain className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-medium">Open-Mindedness Question</h3>
-        <span className="text-xs text-muted-foreground">(Multi-select checkboxes)</span>
-      </div>
+    <div>
 
       {!openMindednessQuestion ? (
         <div className="text-center py-6 border rounded-lg border-dashed">
