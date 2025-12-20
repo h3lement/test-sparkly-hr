@@ -14,7 +14,8 @@ import {
   ChevronUp,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Info
 } from "lucide-react";
 import {
   Select,
@@ -32,6 +33,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { QuizEditorDialog } from "./QuizEditorDialog";
+import { ActivityLogDialog } from "./ActivityLogDialog";
+import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -94,6 +97,7 @@ export function RespondentsList() {
   const [isQuizEditorOpen, setIsQuizEditorOpen] = useState(false);
   const [showUniqueEmails, setShowUniqueEmails] = useState(false);
   const [showUniqueEmailQuiz, setShowUniqueEmailQuiz] = useState(false);
+  const [activityLogLead, setActivityLogLead] = useState<QuizLead | null>(null);
   const { toast } = useToast();
 
   // Calculate quiz count per email
@@ -161,6 +165,14 @@ export function RespondentsList() {
 
   const deleteLead = async (leadId: string, email: string) => {
     try {
+      // Log the activity before deletion
+      await logActivity({
+        actionType: "DELETE",
+        tableName: "quiz_leads",
+        recordId: leadId,
+        description: `Respondent submission from "${email}" deleted`,
+      });
+
       const { error } = await supabase
         .from("quiz_leads")
         .delete()
@@ -560,17 +572,31 @@ export function RespondentsList() {
                         {formatDate(lead.created_at)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteLead(lead.id, lead.email);
-                          }}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActivityLogLead(lead);
+                            }}
+                            className="h-8 w-8"
+                            title="Activity log"
+                          >
+                            <Info className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteLead(lead.id, lead.email);
+                            }}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                     {isExpanded && hasAnswers && (
@@ -776,6 +802,14 @@ export function RespondentsList() {
         quiz={editingQuiz}
         isCreating={false}
         onSaved={handleQuizSaved}
+      />
+
+      <ActivityLogDialog
+        open={!!activityLogLead}
+        onClose={() => setActivityLogLead(null)}
+        tableName="quiz_leads"
+        recordId={activityLogLead?.id || ""}
+        recordTitle={activityLogLead?.email}
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, ExternalLink, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -25,6 +25,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { QuizEditorDialog } from "./QuizEditorDialog";
+import { ActivityLogDialog } from "./ActivityLogDialog";
+import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -46,6 +48,7 @@ export function QuizManager() {
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [activityLogQuiz, setActivityLogQuiz] = useState<Quiz | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -105,6 +108,17 @@ export function QuizManager() {
 
       if (error) throw error;
 
+      // Log the activity
+      await logActivity({
+        actionType: "STATUS_CHANGE",
+        tableName: "quizzes",
+        recordId: quiz.id,
+        fieldName: "is_active",
+        oldValue: quiz.is_active ? "Active" : "Inactive",
+        newValue: !quiz.is_active ? "Active" : "Inactive",
+        description: `Quiz "${getLocalizedText(quiz.title)}" ${quiz.is_active ? "deactivated" : "activated"}`,
+      });
+
       setQuizzes(quizzes.map(q => 
         q.id === quiz.id ? { ...q, is_active: !q.is_active } : q
       ));
@@ -125,6 +139,14 @@ export function QuizManager() {
 
   const deleteQuiz = async (quiz: Quiz) => {
     try {
+      // Log the activity before deletion
+      await logActivity({
+        actionType: "DELETE",
+        tableName: "quizzes",
+        recordId: quiz.id,
+        description: `Quiz "${getLocalizedText(quiz.title)}" deleted`,
+      });
+
       const { error } = await supabase
         .from("quizzes")
         .delete()
@@ -406,6 +428,14 @@ export function QuizManager() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setActivityLogQuiz(quiz)}
+                        title="Activity log"
+                      >
+                        <Info className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => duplicateQuiz(quiz)}
                         title="Duplicate quiz"
                       >
@@ -457,6 +487,14 @@ export function QuizManager() {
         quiz={editingQuiz}
         isCreating={isCreating}
         onSaved={handleQuizSaved}
+      />
+
+      <ActivityLogDialog
+        open={!!activityLogQuiz}
+        onClose={() => setActivityLogQuiz(null)}
+        tableName="quizzes"
+        recordId={activityLogQuiz?.id || ""}
+        recordTitle={activityLogQuiz ? getLocalizedText(activityLogQuiz.title) : undefined}
       />
     </div>
   );
