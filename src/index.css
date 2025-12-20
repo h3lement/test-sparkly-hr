@@ -250,6 +250,30 @@
     @apply text-base font-semibold text-foreground;
   }
 
+  /* ===========================================
+   * LIST DESIGN PRINCIPLES
+   * ===========================================
+   * 1. Use zebra striping (alternating row backgrounds) for better scannability
+   * 2. Apply slightly darker bg on even rows: .list-row:nth-child(even) or .list-row-alt
+   * 3. Keep row padding compact (py-1.5 to py-2) for high-density lists
+   * 4. Use subtle borders between rows only when zebra striping is not used
+   * 5. Ensure sufficient contrast between row backgrounds in both light/dark modes
+   */
+
+  /* Zebra-striped list rows */
+  .list-row:nth-child(even) {
+    @apply bg-muted/40;
+  }
+
+  .list-row:nth-child(odd) {
+    @apply bg-transparent;
+  }
+
+  /* Manual alternate row class (for non-sequential lists) */
+  .list-row-alt {
+    @apply bg-muted/40;
+  }
+
   .admin-card-content {
     padding: var(--density-padding);
   }
