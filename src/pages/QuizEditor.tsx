@@ -12,6 +12,7 @@ import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
 import { GenerateResultsDialog } from "@/components/admin/GenerateResultsDialog";
 import { ResultVersionsDialog } from "@/components/admin/ResultVersionsDialog";
+import { BulkAiFillButton } from "@/components/admin/BulkAiFillButton";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -1396,6 +1397,14 @@ export default function QuizEditor() {
               {/* Action Buttons */}
               {!isPreviewMode && !isCreating && (
                 <>
+                  <BulkAiFillButton
+                    quizId={quizId!}
+                    language={primaryLanguage}
+                    resultLevels={resultLevels}
+                    onUpdateLevel={updateResultLevel}
+                    getLocalizedValue={getLocalizedValue}
+                    jsonToRecord={jsonToRecord}
+                  />
                   <Button
                     variant="ghost"
                     size="sm"
