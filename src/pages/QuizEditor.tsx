@@ -25,6 +25,7 @@ import { ToneOfVoiceEditor } from "@/components/admin/ToneOfVoiceEditor";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import { OpenMindednessResults } from "@/components/admin/OpenMindednessResults";
+import { OpenMindednessResultLevels } from "@/components/admin/OpenMindednessResultLevels";
 import {
   Select,
   SelectContent,
@@ -2059,7 +2060,18 @@ export default function QuizEditor() {
                   enableScoring={enableScoring}
                 />
                 
-                {/* Open-Mindedness Results */}
+                {/* Open-Mindedness Result Levels */}
+                {includeOpenMindedness && quizId && (
+                  <OpenMindednessResultLevels
+                    quizId={quizId}
+                    questions={questions}
+                    displayLanguage={displayLanguage}
+                    isPreviewMode={isPreviewMode}
+                    model={selectedAiModel}
+                  />
+                )}
+                
+                {/* Open-Mindedness Statistics */}
                 {includeOpenMindedness && quizId && (
                   <OpenMindednessResults
                     quizId={quizId}
