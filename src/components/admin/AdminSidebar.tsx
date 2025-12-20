@@ -37,6 +37,7 @@ interface TableCounts {
   admins: number;
   emailLogs: number;
   pageViews: number;
+  activity: number;
 }
 
 interface MenuItem {
@@ -133,6 +134,7 @@ export function AdminSidebar({
     admins: 0,
     emailLogs: 0,
     pageViews: 0,
+    activity: 0,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [menuOrder, setMenuOrder] = useState<string[]>(DEFAULT_MENU_ITEMS.map(item => item.id));
@@ -174,12 +176,13 @@ export function AdminSidebar({
 
   const fetchCounts = async () => {
     try {
-      const [leadsRes, quizzesRes, adminsRes, emailLogsRes, pageViewsRes] = await Promise.all([
+      const [leadsRes, quizzesRes, adminsRes, emailLogsRes, pageViewsRes, activityRes] = await Promise.all([
         supabase.from("quiz_leads").select("*", { count: "exact", head: true }),
         supabase.from("quizzes").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
         supabase.from("page_views").select("*", { count: "exact", head: true }),
+        supabase.from("activity_logs").select("*", { count: "exact", head: true }),
       ]);
 
       setCounts({
@@ -188,6 +191,7 @@ export function AdminSidebar({
         admins: adminsRes.count || 0,
         emailLogs: emailLogsRes.count || 0,
         pageViews: pageViewsRes.count || 0,
+        activity: activityRes.count || 0,
       });
     } catch (error) {
       console.error("Error fetching counts:", error);
@@ -199,6 +203,9 @@ export function AdminSidebar({
     let count: number | null = null;
     
     switch (id) {
+      case "activity":
+        count = counts.activity;
+        break;
       case "leads":
         count = counts.leads;
         break;
