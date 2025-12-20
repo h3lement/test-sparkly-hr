@@ -1106,6 +1106,33 @@ export default function QuizEditor() {
     }
   };
 
+  // Handle activation toggle with error check
+  const handleActivationToggle = async (checked: boolean) => {
+    // If trying to activate, run error check first
+    if (checked && !isCreating) {
+      setIsCheckingErrors(true);
+      const result = await errorChecker.checkErrors();
+      setErrorCheckResult(result);
+      setIsCheckingErrors(false);
+
+      if (!result.isValid) {
+        toast({
+          title: "Cannot activate quiz",
+          description: `Please fix ${result.errors.length} issue${result.errors.length > 1 ? "s" : ""} before activating.`,
+          variant: "destructive",
+        });
+        return; // Don't activate if errors exist
+      }
+
+      toast({
+        title: "Quiz activated!",
+        description: "All checks passed. Your quiz is now live.",
+      });
+    }
+
+    setIsActive(checked);
+  };
+
   // Handle AI model change
   const handleAiModelChange = (newModel: AiModelId) => {
     if (newModel !== selectedAiModel) {
@@ -1569,8 +1596,23 @@ export default function QuizEditor() {
                 />
               </div>
               <div className="flex items-center gap-2 pt-5">
-                <Switch checked={isActive} onCheckedChange={setIsActive} />
-                <Label className="text-xs">Active</Label>
+                <Switch 
+                  checked={isActive} 
+                  onCheckedChange={handleActivationToggle}
+                  disabled={isCheckingErrors}
+                />
+                <Label className="text-xs flex items-center gap-1">
+                  {isCheckingErrors ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      {isActive ? "Active" : "Inactive"}
+                    </>
+                  )}
+                </Label>
               </div>
             </div>
 
