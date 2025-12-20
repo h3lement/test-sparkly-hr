@@ -14,11 +14,6 @@ import {
   ChevronUp,
   FileText
 } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -62,7 +57,7 @@ export function RespondentsList() {
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,7 +67,6 @@ export function RespondentsList() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch all data in parallel
       const [leadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
         supabase
           .from("quiz_leads")
@@ -127,6 +121,7 @@ export function RespondentsList() {
       });
 
       setLeads(leads.filter(lead => lead.id !== leadId));
+      if (expandedRow === leadId) setExpandedRow(null);
     } catch (error: any) {
       console.error("Error deleting lead:", error);
       toast({
@@ -197,22 +192,6 @@ export function RespondentsList() {
     });
   };
 
-  const toggleRow = (id: string) => {
-    setExpandedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const getQuizForLead = (quizId: string | null) => {
-    return quizzes.find(q => q.id === quizId);
-  };
-
   const getQuestionsForQuiz = (quizId: string | null) => {
     if (!quizId) return [];
     return questions.filter(q => q.quiz_id === quizId);
@@ -234,27 +213,12 @@ export function RespondentsList() {
     lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Group leads by email for respondent view
-  const respondentGroups = filteredLeads.reduce((acc, lead) => {
-    if (!acc[lead.email]) {
-      acc[lead.email] = [];
-    }
-    acc[lead.email].push(lead);
-    return acc;
-  }, {} as Record<string, QuizLead[]>);
-
-  const respondentEmails = Object.keys(respondentGroups).sort((a, b) => {
-    const latestA = Math.max(...respondentGroups[a].map(l => new Date(l.created_at).getTime()));
-    const latestB = Math.max(...respondentGroups[b].map(l => new Date(l.created_at).getTime()));
-    return latestB - latestA;
-  });
-
   return (
     <div className="max-w-6xl">
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Respondents</h1>
-          <p className="text-muted-foreground mt-1">View quiz submissions and detailed answers</p>
+          <p className="text-muted-foreground mt-1">View quiz submissions</p>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
@@ -281,7 +245,7 @@ export function RespondentsList() {
           />
         </div>
         <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
-          {respondentEmails.length} respondent{respondentEmails.length !== 1 ? "s" : ""} · {filteredLeads.length} submission{filteredLeads.length !== 1 ? "s" : ""}
+          {filteredLeads.length} respondent{filteredLeads.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -290,175 +254,150 @@ export function RespondentsList() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading respondents...</p>
         </div>
-      ) : respondentEmails.length === 0 ? (
+      ) : filteredLeads.length === 0 ? (
         <div className="text-center py-12 bg-card rounded-xl border border-border">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">No submissions found.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {respondentEmails.map((email) => {
-            const submissions = respondentGroups[email];
-            const isExpanded = expandedRows.has(email);
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Score</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Result</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Openness</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Lang</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Submitted</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredLeads.map((lead) => {
+                const isExpanded = expandedRow === lead.id;
+                const quizQuestions = getQuestionsForQuiz(lead.quiz_id);
+                const leadAnswers = parseLeadAnswers(lead.answers);
+                const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
 
-            return (
-              <Collapsible
-                key={email}
-                open={isExpanded}
-                onOpenChange={() => toggleRow(email)}
-              >
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                  {/* Respondent Header */}
-                  <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-secondary/30 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-10 w-10 bg-secondary group-hover:ring-2 group-hover:ring-primary/30 transition-all">
-                          <AvatarFallback className="text-sm bg-secondary text-foreground">
-                            {email.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">
-                            {email}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {submissions.length} quiz{submissions.length !== 1 ? "zes" : ""} taken
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Latest submission</p>
-                          <p className="text-sm font-medium text-foreground">
-                            {formatDate(submissions[0].created_at)}
-                          </p>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
-                  </CollapsibleTrigger>
-
-                  {/* Expanded Content */}
-                  <CollapsibleContent>
-                    <div className="border-t border-border">
-                      {submissions.map((lead, idx) => {
-                        const quiz = getQuizForLead(lead.quiz_id);
-                        const quizQuestions = getQuestionsForQuiz(lead.quiz_id);
-                        const leadAnswers = parseLeadAnswers(lead.answers);
-                        const percentage = Math.round((lead.score / lead.total_questions) * 100);
-
-                        return (
-                          <div
-                            key={lead.id}
-                            className={`${idx > 0 ? "border-t border-border" : ""}`}
-                          >
-                            {/* Quiz Summary */}
-                            <div className="px-6 py-4 bg-secondary/20">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-3">
-                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                    {quiz ? getLocalizedText(quiz.title, lead.language || "en") : "Unknown Quiz"}
-                                  </Badge>
-                                  <span className="text-sm text-muted-foreground">
-                                    {formatDate(lead.created_at)}
-                                  </span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteLead(lead.id, lead.email);
-                                  }}
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-
-                              {/* Score Summary */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <div className="bg-card rounded-lg p-3 border border-border">
-                                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Score</p>
-                                  <p className="text-lg font-bold text-foreground">
-                                    {lead.score}/{lead.total_questions}
-                                  </p>
-                                </div>
-                                <div className="bg-card rounded-lg p-3 border border-border">
-                                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Percentage</p>
-                                  <p className="text-lg font-bold text-foreground">{percentage}%</p>
-                                </div>
-                                <div className="bg-card rounded-lg p-3 border border-border">
-                                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Result</p>
-                                  <p className="text-sm font-medium text-primary">{lead.result_category}</p>
-                                </div>
-                                <div className="bg-card rounded-lg p-3 border border-border">
-                                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Openness</p>
-                                  <p className="text-lg font-bold text-foreground">
-                                    {lead.openness_score !== null ? `${lead.openness_score}/4` : "—"}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Detailed Answers */}
-                            {quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0 && (
-                              <div className="px-6 py-4">
-                                <p className="text-sm font-medium text-foreground mb-3">Answers</p>
-                                <div className="space-y-3">
-                                  {quizQuestions.map((question, qIdx) => {
-                                    const questionAnswers = getAnswersForQuestion(question.id);
-                                    const selectedAnswerId = leadAnswers[question.id];
-                                    const selectedAnswer = questionAnswers.find(a => a.id === selectedAnswerId);
-
-                                    return (
-                                      <div
-                                        key={question.id}
-                                        className="bg-secondary/30 rounded-lg p-3"
-                                      >
-                                        <p className="text-sm text-muted-foreground mb-1">
-                                          Q{qIdx + 1}: {getLocalizedText(question.question_text, lead.language || "en")}
-                                        </p>
-                                        {selectedAnswer ? (
-                                          <div className="flex items-center justify-between">
-                                            <p className="text-sm font-medium text-foreground">
-                                              {getLocalizedText(selectedAnswer.answer_text, lead.language || "en")}
-                                            </p>
-                                            <Badge 
-                                              variant="outline" 
-                                              className={`text-xs ${
-                                                selectedAnswer.score_value >= 3 
-                                                  ? "bg-green-500/10 text-green-600 border-green-500/20"
-                                                  : selectedAnswer.score_value >= 2
-                                                  ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                                                  : "bg-red-500/10 text-red-600 border-red-500/20"
-                                              }`}
-                                            >
-                                              {selectedAnswer.score_value} pt{selectedAnswer.score_value !== 1 ? "s" : ""}
-                                            </Badge>
-                                          </div>
-                                        ) : (
-                                          <p className="text-sm text-muted-foreground italic">No answer recorded</p>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
+                return (
+                  <>
+                    <tr 
+                      key={lead.id} 
+                      className={`hover:bg-secondary/30 transition-colors ${hasAnswers ? 'cursor-pointer' : ''}`}
+                      onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9 bg-secondary">
+                            <AvatarFallback className="text-xs bg-secondary text-foreground">
+                              {lead.email.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-foreground">{lead.email}</span>
+                            {hasAnswers && (
+                              isExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              )
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-            );
-          })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-foreground">
+                        {lead.score}/{lead.total_questions}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                          {lead.result_category}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        {lead.openness_score !== null ? (
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                            {lead.openness_score}/4
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="secondary" className="uppercase text-xs">
+                          {lead.language || 'en'}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        {formatDate(lead.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteLead(lead.id, lead.email);
+                          }}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                    {isExpanded && hasAnswers && (
+                      <tr key={`${lead.id}-expanded`}>
+                        <td colSpan={7} className="px-6 py-4 bg-secondary/20">
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium text-foreground">Quiz Answers</p>
+                            <div className="grid gap-2">
+                              {quizQuestions.map((question, qIdx) => {
+                                const questionAnswers = getAnswersForQuestion(question.id);
+                                const selectedAnswerId = leadAnswers[question.id];
+                                const selectedAnswer = questionAnswers.find(a => a.id === selectedAnswerId);
+
+                                return (
+                                  <div
+                                    key={question.id}
+                                    className="bg-card rounded-lg p-3 border border-border"
+                                  >
+                                    <p className="text-sm text-muted-foreground mb-1">
+                                      Q{qIdx + 1}: {getLocalizedText(question.question_text, lead.language || "en")}
+                                    </p>
+                                    {selectedAnswer ? (
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium text-foreground">
+                                          {getLocalizedText(selectedAnswer.answer_text, lead.language || "en")}
+                                        </p>
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`text-xs ${
+                                            selectedAnswer.score_value >= 3 
+                                              ? "bg-green-500/10 text-green-600 border-green-500/20"
+                                              : selectedAnswer.score_value >= 2
+                                              ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                                              : "bg-red-500/10 text-red-600 border-red-500/20"
+                                          }`}
+                                        >
+                                          {selectedAnswer.score_value} pt{selectedAnswer.score_value !== 1 ? "s" : ""}
+                                        </Badge>
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground italic">No answer recorded</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
