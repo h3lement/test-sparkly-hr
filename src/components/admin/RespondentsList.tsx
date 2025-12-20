@@ -34,6 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { QuizEditorDialog } from "./QuizEditorDialog";
 import { ActivityLogDialog } from "./ActivityLogDialog";
+import { RespondentsGrowthChart } from "./RespondentsGrowthChart";
 import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -453,6 +454,13 @@ export function RespondentsList() {
           {filteredLeads.length} respondent{filteredLeads.length !== 1 ? "s" : ""}
         </span>
       </div>
+
+      {/* Respondents Growth Chart */}
+      <RespondentsGrowthChart 
+        quizzes={quizzes} 
+        leads={leads} 
+        loading={loading} 
+      />
 
       {loading ? (
         <div className="text-center py-12">
