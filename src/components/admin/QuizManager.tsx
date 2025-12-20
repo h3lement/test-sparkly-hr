@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Eye, EyeOff, Copy, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Eye, EyeOff, Copy, ExternalLink, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -345,24 +345,22 @@ export function QuizManager() {
             <TableBody>
               {filteredQuizzes.map((quiz) => (
                 <TableRow key={quiz.id} className="hover:bg-secondary/30 group">
-                  <TableCell 
-                    className="font-medium cursor-pointer text-foreground group-hover:text-primary hover:underline underline-offset-2 transition-colors"
-                    onClick={() => handleEditQuiz(quiz)}
-                  >
-                    {getLocalizedText(quiz.title)}
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/q/${quiz.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
+                      >
+                        {getLocalizedText(quiz.title)}
+                      </a>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">
                     <div className="flex items-center gap-2">
                       <span>/q/{quiz.slug}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => window.open(`/q/${quiz.slug}`, '_blank')}
-                        title="Open quiz in new tab"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
@@ -378,6 +376,14 @@ export function QuizManager() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditQuiz(quiz)}
+                        title="Edit quiz"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
