@@ -95,7 +95,7 @@ export default function QuizEditor() {
   const isCreating = quizId === "new";
   
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("general");
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [primaryLanguage, setPrimaryLanguage] = useState("en");
@@ -670,100 +670,111 @@ export default function QuizEditor() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="questions">Questions ({questions.length})</TabsTrigger>
             <TabsTrigger value="results">Results ({resultLevels.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="slug">Slug (URL path)</Label>
+          <TabsContent value="general" className="space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <Label htmlFor="slug" className="text-xs">Slug (URL path)</Label>
                 <Input
                   id="slug"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="employee-performance"
+                  className="h-8"
                 />
               </div>
-              <div className="flex items-center gap-2 pt-6">
+              <div className="flex items-center gap-2 pt-5">
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
-                <Label>Active</Label>
+                <Label className="text-xs">Active</Label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Title ({primaryLanguage.toUpperCase()})</Label>
+                <Input
+                  value={title[primaryLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setTitle, primaryLanguage, e.target.value)}
+                  placeholder="Quiz title"
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Badge Text ({primaryLanguage.toUpperCase()})</Label>
+                <Input
+                  value={badgeText[primaryLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setBadgeText, primaryLanguage, e.target.value)}
+                  placeholder="Free Assessment"
+                  className="h-8"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Headline ({primaryLanguage.toUpperCase()})</Label>
+                <Input
+                  value={headline[primaryLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setHeadline, primaryLanguage, e.target.value)}
+                  placeholder="Discover your"
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Headline Highlight ({primaryLanguage.toUpperCase()})</Label>
+                <Input
+                  value={headlineHighlight[primaryLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setHeadlineHighlight, primaryLanguage, e.target.value)}
+                  placeholder="team's potential"
+                  className="h-8"
+                />
               </div>
             </div>
 
             <div>
-              <Label>Title ({primaryLanguage.toUpperCase()})</Label>
-              <Input
-                value={title[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setTitle, primaryLanguage, e.target.value)}
-                placeholder="Quiz title"
-              />
-            </div>
-
-            <div>
-              <Label>Headline ({primaryLanguage.toUpperCase()})</Label>
-              <Input
-                value={headline[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setHeadline, primaryLanguage, e.target.value)}
-                placeholder="Discover your"
-              />
-            </div>
-
-            <div>
-              <Label>Headline Highlight ({primaryLanguage.toUpperCase()})</Label>
-              <Input
-                value={headlineHighlight[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setHeadlineHighlight, primaryLanguage, e.target.value)}
-                placeholder="team's potential"
-              />
-            </div>
-
-            <div>
-              <Label>Description ({primaryLanguage.toUpperCase()})</Label>
+              <Label className="text-xs">Description ({primaryLanguage.toUpperCase()})</Label>
               <Textarea
                 value={description[primaryLanguage] || ""}
                 onChange={(e) => setLocalizedValue(setDescription, primaryLanguage, e.target.value)}
                 placeholder="Quiz description"
-                rows={3}
+                rows={2}
+                className="resize-none"
               />
             </div>
 
-            <div>
-              <Label>Badge Text ({primaryLanguage.toUpperCase()})</Label>
-              <Input
-                value={badgeText[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setBadgeText, primaryLanguage, e.target.value)}
-                placeholder="Free Assessment"
-              />
-            </div>
-
-            <div>
-              <Label>Duration Text ({primaryLanguage.toUpperCase()})</Label>
-              <Input
-                value={durationText[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setDurationText, primaryLanguage, e.target.value)}
-                placeholder="Takes only 2 minutes"
-              />
-            </div>
-
-            <div>
-              <Label>CTA Text ({primaryLanguage.toUpperCase()})</Label>
-              <Input
-                value={ctaText[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setCtaText, primaryLanguage, e.target.value)}
-                placeholder="Start Quiz"
-              />
-            </div>
-
-            <div>
-              <Label>CTA URL</Label>
-              <Input
-                value={ctaUrl}
-                onChange={(e) => setCtaUrl(e.target.value)}
-                placeholder="https://sparkly.hr"
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Duration Text ({primaryLanguage.toUpperCase()})</Label>
+                <Input
+                  value={durationText[primaryLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setDurationText, primaryLanguage, e.target.value)}
+                  placeholder="Takes only 2 minutes"
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">CTA Text ({primaryLanguage.toUpperCase()})</Label>
+                <Input
+                  value={ctaText[primaryLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setCtaText, primaryLanguage, e.target.value)}
+                  placeholder="Start Quiz"
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">CTA URL</Label>
+                <Input
+                  value={ctaUrl}
+                  onChange={(e) => setCtaUrl(e.target.value)}
+                  placeholder="https://sparkly.hr"
+                  className="h-8"
+                />
+              </div>
             </div>
           </TabsContent>
 
