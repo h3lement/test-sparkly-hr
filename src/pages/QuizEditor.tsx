@@ -1482,14 +1482,52 @@ export default function QuizEditor() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="questions">Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})</TabsTrigger>
-            <TabsTrigger value="results">Results ({resultLevels.length})</TabsTrigger>
+            <TabsTrigger value="general" className="gap-1.5">
+              General
+              {errorCheckResult && !errorCheckResult.isValid && (() => {
+                const count = errorCheckResult.errors.filter(e => e.tab === "general").length;
+                return count > 0 ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                    {count}
+                  </span>
+                ) : null;
+              })()}
+            </TabsTrigger>
+            <TabsTrigger value="questions" className="gap-1.5">
+              Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})
+              {errorCheckResult && !errorCheckResult.isValid && (() => {
+                const count = errorCheckResult.errors.filter(e => e.tab === "questions").length;
+                return count > 0 ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                    {count}
+                  </span>
+                ) : null;
+              })()}
+            </TabsTrigger>
+            <TabsTrigger value="results" className="gap-1.5">
+              Results ({resultLevels.length})
+              {errorCheckResult && !errorCheckResult.isValid && (() => {
+                const count = errorCheckResult.errors.filter(e => e.tab === "results").length;
+                return count > 0 ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                    {count}
+                  </span>
+                ) : null;
+              })()}
+            </TabsTrigger>
             <TabsTrigger value="mindedness" className="gap-1">
               Open-Mindedness
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
                 {includeOpenMindedness ? 'ON' : 'OFF'}
               </span>
+              {errorCheckResult && !errorCheckResult.isValid && (() => {
+                const count = errorCheckResult.errors.filter(e => e.tab === "mindedness").length;
+                return count > 0 ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                    {count}
+                  </span>
+                ) : null;
+              })()}
             </TabsTrigger>
           </TabsList>
 
