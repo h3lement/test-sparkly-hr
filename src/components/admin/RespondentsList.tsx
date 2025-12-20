@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { QuizEditorDialog } from "./QuizEditorDialog";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -48,6 +49,15 @@ interface Quiz {
   id: string;
   title: Json;
   slug: string;
+  description: Json;
+  is_active: boolean;
+  headline?: Json;
+  headline_highlight?: Json;
+  badge_text?: Json;
+  cta_text?: Json;
+  cta_url?: string;
+  duration_text?: Json;
+  discover_items?: Json;
 }
 
 interface QuizQuestion {
@@ -78,6 +88,8 @@ export function RespondentsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
+  const [isQuizEditorOpen, setIsQuizEditorOpen] = useState(false);
   const { toast } = useToast();
 
   // Calculate quiz count per email
@@ -110,7 +122,7 @@ export function RespondentsList() {
           .order("created_at", { ascending: false }),
         supabase
           .from("quizzes")
-          .select("id, title, slug"),
+          .select("*"),
         supabase
           .from("quiz_questions")
           .select("*")
@@ -295,6 +307,25 @@ export function RespondentsList() {
     return pages;
   };
 
+  const handleQuizClick = (quizId: string | null) => {
+    if (!quizId) return;
+    const quiz = quizzes.find((q) => q.id === quizId);
+    if (quiz) {
+      setEditingQuiz(quiz);
+      setIsQuizEditorOpen(true);
+    }
+  };
+
+  const handleQuizEditorClose = () => {
+    setIsQuizEditorOpen(false);
+    setEditingQuiz(null);
+  };
+
+  const handleQuizSaved = () => {
+    handleQuizEditorClose();
+    fetchData();
+  };
+
   return (
     <div className="max-w-6xl">
       <div className="flex items-start justify-between mb-8">
@@ -409,9 +440,19 @@ export function RespondentsList() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-foreground">
-                          {quiz ? getLocalizedText(quiz.title, lead.language || "en") : "Unknown"}
-                        </span>
+                        {quiz ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuizClick(lead.quiz_id);
+                            }}
+                            className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                          >
+                            {getLocalizedText(quiz.title, lead.language || "en")}
+                          </button>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Unknown</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-foreground">
                         {lead.score}/{lead.total_questions}
@@ -595,11 +636,21 @@ export function RespondentsList() {
                             <Badge variant="outline" className="text-xs">
                               #{getSubmissionsForEmail(selectedEmail).length - idx}
                             </Badge>
-                            <span className="text-sm font-medium text-foreground truncate">
-                              {quiz
-                                ? getLocalizedText(quiz.title, submission.language || "en")
-                                : "Unknown Quiz"}
-                            </span>
+                            {quiz ? (
+                              <button
+                                onClick={() => {
+                                  setSelectedEmail(null);
+                                  handleQuizClick(submission.quiz_id);
+                                }}
+                                className="text-sm font-medium text-foreground truncate hover:text-primary hover:underline transition-colors text-left"
+                              >
+                                {getLocalizedText(quiz.title, submission.language || "en")}
+                              </button>
+                            ) : (
+                              <span className="text-sm font-medium text-muted-foreground truncate">
+                                Unknown Quiz
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
@@ -637,6 +688,15 @@ export function RespondentsList() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Quiz Editor Dialog */}
+      <QuizEditorDialog
+        open={isQuizEditorOpen}
+        onClose={handleQuizEditorClose}
+        quiz={editingQuiz}
+        isCreating={false}
+        onSaved={handleQuizSaved}
+      />
     </div>
   );
 }
