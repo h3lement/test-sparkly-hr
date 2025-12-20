@@ -765,15 +765,26 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </td>
                       <td className="px-6 py-4">
                         {quiz ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQuizClick(effectiveQuizId);
-                            }}
-                            className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
-                          >
-                            {getLocalizedText(quiz.title, lead.language || "en")}
-                          </button>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuizClick(effectiveQuizId);
+                              }}
+                              className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                            >
+                              {getLocalizedText(quiz.title, lead.language || "en")}
+                            </button>
+                            <a
+                              href={`/${quiz.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+                            >
+                              /{quiz.slug}
+                            </a>
+                          </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Unknown</span>
                         )}
