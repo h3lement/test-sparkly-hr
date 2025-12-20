@@ -14,6 +14,7 @@ import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
 import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
 import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
 import { QuizManager } from "@/components/admin/QuizManager";
+import { QuizAnalytics } from "@/components/admin/QuizAnalytics";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface QuizLead {
@@ -582,6 +583,11 @@ const Admin = () => {
           {/* Quizzes Tab */}
           {activeTab === "quizzes" && (
             <QuizManager />
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <QuizAnalytics />
           )}
 
           {/* Admins Tab */}
