@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, Euro } from "lucide-react";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
+import { GenerateResultsDialog } from "@/components/admin/GenerateResultsDialog";
+import { ResultVersionsDialog } from "@/components/admin/ResultVersionsDialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -174,6 +176,11 @@ export default function QuizEditor() {
 
   // Result levels state
   const [resultLevels, setResultLevels] = useState<ResultLevel[]>([]);
+  
+  // AI Results dialogs
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [showVersionsDialog, setShowVersionsDialog] = useState(false);
+  const [totalAiCost, setTotalAiCost] = useState<number>(0);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -304,6 +311,15 @@ export default function QuizEditor() {
           color_class: l.color_class || "from-emerald-500 to-green-600",
         }))
       );
+
+      // Load total AI generation cost
+      const { data: versionsData } = await supabase
+        .from("quiz_result_versions")
+        .select("estimated_cost_eur")
+        .eq("quiz_id", id);
+
+      const totalCost = (versionsData || []).reduce((sum, v) => sum + (v.estimated_cost_eur || 0), 0);
+      setTotalAiCost(totalCost);
     } catch (error: any) {
       console.error("Error loading quiz:", error);
       toast({
@@ -762,6 +778,59 @@ export default function QuizEditor() {
       await supabase.from("quiz_result_levels").delete().eq("id", level.id);
     }
     setResultLevels(resultLevels.filter((_, i) => i !== index));
+  };
+
+  // Validate point ranges coverage
+  const getPointRangeValidation = () => {
+    if (resultLevels.length === 0) {
+      return { isValid: false, message: "No result levels", gaps: [], overlaps: [] };
+    }
+
+    // Calculate max possible score from questions
+    let maxPossibleScore = 0;
+    let minPossibleScore = 0;
+    for (const q of questions.filter(q => q.question_type !== "open_mindedness")) {
+      if (q.answers.length > 0) {
+        const scores = q.answers.map(a => a.score_value);
+        maxPossibleScore += Math.max(...scores);
+        minPossibleScore += Math.min(...scores);
+      }
+    }
+
+    // Sort levels by min_score
+    const sortedLevels = [...resultLevels].sort((a, b) => a.min_score - b.min_score);
+    const gaps: string[] = [];
+    const overlaps: string[] = [];
+
+    // Check start coverage
+    if (sortedLevels[0]?.min_score > minPossibleScore) {
+      gaps.push(`${minPossibleScore}-${sortedLevels[0].min_score - 1}`);
+    }
+
+    // Check gaps and overlaps between levels
+    for (let i = 0; i < sortedLevels.length - 1; i++) {
+      const current = sortedLevels[i];
+      const next = sortedLevels[i + 1];
+      
+      if (current.max_score + 1 < next.min_score) {
+        gaps.push(`${current.max_score + 1}-${next.min_score - 1}`);
+      } else if (current.max_score >= next.min_score) {
+        overlaps.push(`${next.min_score}-${current.max_score}`);
+      }
+    }
+
+    // Check end coverage
+    const lastLevel = sortedLevels[sortedLevels.length - 1];
+    if (lastLevel?.max_score < maxPossibleScore) {
+      gaps.push(`${lastLevel.max_score + 1}-${maxPossibleScore}`);
+    }
+
+    const isValid = gaps.length === 0 && overlaps.length === 0;
+    let message = isValid ? `All points covered (${minPossibleScore}–${maxPossibleScore})` : "";
+    if (gaps.length > 0) message = `Gaps: ${gaps.join(", ")}`;
+    if (overlaps.length > 0) message += `${gaps.length > 0 ? " | " : ""}Overlaps: ${overlaps.join(", ")}`;
+
+    return { isValid, message, gaps, overlaps, minScore: minPossibleScore, maxScore: maxPossibleScore };
   };
 
   // Display language: use preview language if set, otherwise primary language
@@ -1293,12 +1362,71 @@ export default function QuizEditor() {
           </TabsContent>
 
           <TabsContent value="results" className="space-y-3">
-            {!isPreviewMode && (
-              <Button onClick={addResultLevel} variant="outline" size="sm" className="w-full h-8 text-sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Result Level
-              </Button>
-            )}
+            {/* Compact Results Header */}
+            <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg border">
+              {/* Point Range Validator */}
+              {(() => {
+                const validation = getPointRangeValidation();
+                return (
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
+                    validation.isValid 
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" 
+                      : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                  }`}>
+                    {validation.isValid ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                    )}
+                    <span className="font-medium">{validation.message}</span>
+                  </div>
+                );
+              })()}
+
+              {/* AI Cost Display */}
+              {totalAiCost > 0 && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-xs text-muted-foreground">
+                  <Euro className="w-3 h-3" />
+                  <span>{totalAiCost.toFixed(4)}</span>
+                </div>
+              )}
+
+              <div className="flex-1" />
+
+              {/* Action Buttons */}
+              {!isPreviewMode && !isCreating && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowVersionsDialog(true)}
+                    className="h-7 px-2 text-xs gap-1"
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    Versions
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowGenerateDialog(true)}
+                    className="h-7 px-2 text-xs gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Generate with AI
+                  </Button>
+                </>
+              )}
+              {!isPreviewMode && (
+                <Button 
+                  onClick={addResultLevel} 
+                  size="sm" 
+                  className="h-7 px-3 text-xs gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Level
+                </Button>
+              )}
+            </div>
 
             <SortableResultList
               resultLevels={resultLevels}
@@ -1310,6 +1438,25 @@ export default function QuizEditor() {
               getLocalizedValue={getLocalizedValue}
               jsonToRecord={jsonToRecord}
             />
+
+            {/* AI Dialogs */}
+            {!isCreating && quizId && (
+              <>
+                <GenerateResultsDialog
+                  open={showGenerateDialog}
+                  onOpenChange={setShowGenerateDialog}
+                  quizId={quizId}
+                  language={primaryLanguage}
+                  onResultsGenerated={(levels) => setResultLevels(levels)}
+                />
+                <ResultVersionsDialog
+                  open={showVersionsDialog}
+                  onOpenChange={setShowVersionsDialog}
+                  quizId={quizId}
+                  onRestoreVersion={(levels) => setResultLevels(levels)}
+                />
+              </>
+            )}
           </TabsContent>
         </Tabs>
           </div>
