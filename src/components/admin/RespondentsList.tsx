@@ -15,7 +15,8 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Info
+  Info,
+  Upload
 } from "lucide-react";
 import {
   Select,
@@ -103,7 +104,41 @@ export function RespondentsList() {
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [isQuizEditorOpen, setIsQuizEditorOpen] = useState(false);
   const [activityLogLead, setActivityLogLead] = useState<QuizLead | null>(null);
+  const [importing, setImporting] = useState(false);
   const { toast } = useToast();
+
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const text = await file.text();
+      
+      const { data, error } = await supabase.functions.invoke("import-quiz-leads", {
+        body: { csvContent: text },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Import successful",
+        description: `Imported ${data.inserted} respondents (${data.parseErrors} parse errors)`,
+      });
+      
+      fetchData();
+    } catch (error: any) {
+      console.error("Import error:", error);
+      toast({
+        title: "Import failed",
+        description: error.message || "Failed to import CSV",
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
+      event.target.value = "";
+    }
+  };
 
   // User preferences
   const { preferences, savePreferences, loading: prefsLoading } = useUserPreferences<RespondentsPreferences>({
@@ -424,6 +459,21 @@ export function RespondentsList() {
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <label>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              className="hidden"
+              disabled={importing}
+            />
+            <Button variant="outline" size="sm" disabled={importing} asChild>
+              <span>
+                <Upload className={`w-4 h-4 mr-2 ${importing ? "animate-pulse" : ""}`} />
+                {importing ? "Importing..." : "Import CSV"}
+              </span>
+            </Button>
+          </label>
           <Button onClick={downloadCSV} variant="default" size="sm">
             <Download className="w-4 h-4 mr-2" />
             Download CSV

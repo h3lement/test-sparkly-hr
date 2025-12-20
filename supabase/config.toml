@@ -2,3 +2,6 @@ project_id = "itcnukhlqkrsirrznuig"
 
 [functions.import-email-logs]
 verify_jwt = false
+
+[functions.import-quiz-leads]
+verify_jwt = false
