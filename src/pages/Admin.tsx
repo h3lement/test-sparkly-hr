@@ -13,6 +13,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
 import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
 import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
+import { QuizManager } from "@/components/admin/QuizManager";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface QuizLead {
@@ -576,6 +577,11 @@ const Admin = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Quizzes Tab */}
+          {activeTab === "quizzes" && (
+            <QuizManager />
           )}
 
           {/* Admins Tab */}
