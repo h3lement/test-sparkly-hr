@@ -394,6 +394,56 @@ export type Database = {
           },
         ]
       }
+      quiz_result_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          estimated_cost_eur: number | null
+          generation_params: Json
+          id: string
+          input_tokens: number | null
+          output_tokens: number | null
+          quiz_id: string
+          result_levels: Json
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          estimated_cost_eur?: number | null
+          generation_params?: Json
+          id?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          quiz_id: string
+          result_levels?: Json
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          estimated_cost_eur?: number | null
+          generation_params?: Json
+          id?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          quiz_id?: string
+          result_levels?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_result_versions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quizzes: {
         Row: {
           badge_text: Json
