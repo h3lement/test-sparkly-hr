@@ -1017,13 +1017,13 @@ export default function QuizEditor() {
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="questions">Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})</TabsTrigger>
+            <TabsTrigger value="results">Results ({resultLevels.length})</TabsTrigger>
             <TabsTrigger value="mindedness" className="gap-1">
               Open-Mindedness
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
                 {includeOpenMindedness ? 'ON' : 'OFF'}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="results">Results ({resultLevels.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-3">
@@ -1192,14 +1192,6 @@ export default function QuizEditor() {
                   disabled={isPreviewMode}
                 />
                 <Label className="text-xs">Shuffle order each time</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch 
-                  checked={enableScoring} 
-                  onCheckedChange={setEnableScoring}
-                  disabled={isPreviewMode}
-                />
-                <Label className="text-xs">Answers have points (for results)</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch 
