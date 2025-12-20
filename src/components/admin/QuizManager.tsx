@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Eye, EyeOff, Copy, ExternalLink, Pencil } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -351,7 +351,7 @@ export function QuizManager() {
                 <TableHead className="font-semibold text-center">Respondents</TableHead>
                 <TableHead className="font-semibold text-center">Status</TableHead>
                 <TableHead className="font-semibold">Updated</TableHead>
-                <TableHead className="font-semibold text-right">Actions</TableHead>
+                <TableHead className="font-semibold text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -384,23 +384,25 @@ export function QuizManager() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={quiz.is_active ? "default" : "secondary"}>
-                      {quiz.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleQuizStatus(quiz)}
+                      className="px-0 h-auto hover:bg-transparent"
+                    >
+                      <Badge 
+                        variant={quiz.is_active ? "default" : "secondary"}
+                        className="cursor-pointer hover:opacity-80 transition-opacity"
+                      >
+                        {quiz.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </Button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(quiz.updated_at)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditQuiz(quiz)}
-                        title="Edit quiz"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center justify-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -408,18 +410,6 @@ export function QuizManager() {
                         title="Duplicate quiz"
                       >
                         <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => toggleQuizStatus(quiz)}
-                        title={quiz.is_active ? "Deactivate" : "Activate"}
-                      >
-                        {quiz.is_active ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
