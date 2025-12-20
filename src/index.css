@@ -129,6 +129,12 @@
   .sr-only:focus {
     @apply not-sr-only;
   }
+
+  /* Checkbox styling - always square */
+  [type="checkbox"],
+  [role="checkbox"] {
+    border-radius: 0 !important;
+  }
 }
 
 @layer utilities {
