@@ -157,6 +157,11 @@ export default function QuizEditor() {
   const [durationText, setDurationText] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
   
+  // Quiz behavior settings
+  const [shuffleQuestions, setShuffleQuestions] = useState(false);
+  const [enableScoring, setEnableScoring] = useState(true);
+  const [includeOpenMindedness, setIncludeOpenMindedness] = useState(false);
+  
   // AI headline assistance
   const [suggestingHeadline, setSuggestingHeadline] = useState(false);
   const [useAiHeadline, setUseAiHeadline] = useState(true);
@@ -243,6 +248,9 @@ export default function QuizEditor() {
       setIsActive(quiz.is_active);
       setPrimaryLanguage(quiz.primary_language || "en");
       setTranslationMeta((quiz as any).translation_meta || {});
+      setShuffleQuestions((quiz as any).shuffle_questions || false);
+      setEnableScoring((quiz as any).enable_scoring !== false);
+      setIncludeOpenMindedness((quiz as any).include_open_mindedness || false);
 
       // Load questions with answers
       const { data: questionsData } = await supabase
@@ -340,6 +348,9 @@ export default function QuizEditor() {
         duration_text: durationText,
         is_active: isActive,
         primary_language: primaryLanguage,
+        shuffle_questions: shuffleQuestions,
+        enable_scoring: enableScoring,
+        include_open_mindedness: includeOpenMindedness,
       };
 
       if (isCreating) {
@@ -1111,7 +1122,35 @@ export default function QuizEditor() {
             </div>
           </TabsContent>
 
-          <TabsContent value="questions" className="space-y-2">
+          <TabsContent value="questions" className="space-y-3">
+            {/* Question Settings */}
+            <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <Switch 
+                  checked={shuffleQuestions} 
+                  onCheckedChange={setShuffleQuestions}
+                  disabled={isPreviewMode}
+                />
+                <Label className="text-xs">Shuffle order each time</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  checked={enableScoring} 
+                  onCheckedChange={setEnableScoring}
+                  disabled={isPreviewMode}
+                />
+                <Label className="text-xs">Answers have points (for results)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  checked={includeOpenMindedness} 
+                  onCheckedChange={setIncludeOpenMindedness}
+                  disabled={isPreviewMode}
+                />
+                <Label className="text-xs">Include Open-Mindedness module</Label>
+              </div>
+            </div>
+
             {!isPreviewMode && (
               <Button onClick={addQuestion} variant="outline" size="sm" className="w-full h-8 text-xs">
                 <Plus className="w-3 h-3 mr-1" />
@@ -1120,7 +1159,9 @@ export default function QuizEditor() {
             )}
 
             <Accordion type="single" collapsible className="space-y-1">
-              {questions.map((question, qIndex) => (
+              {questions.filter(q => q.question_type !== "open_mindedness").map((question, filteredIndex) => {
+                const qIndex = questions.findIndex(q => q.id === question.id);
+                return (
                 <AccordionItem
                   key={question.id}
                   value={question.id}
@@ -1185,18 +1226,20 @@ export default function QuizEditor() {
                             className="flex-1 h-7 text-sm"
                             disabled={isPreviewMode}
                           />
-                          <Input
-                            type="number"
-                            value={answer.score_value}
-                            onChange={(e) =>
-                              updateAnswer(qIndex, aIndex, {
-                                score_value: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-14 h-7 text-sm text-center"
-                            title="Score"
-                            disabled={isPreviewMode}
-                          />
+                          {enableScoring && (
+                            <Input
+                              type="number"
+                              value={answer.score_value}
+                              onChange={(e) =>
+                                updateAnswer(qIndex, aIndex, {
+                                  score_value: parseInt(e.target.value) || 0,
+                                })
+                              }
+                              className="w-14 h-7 text-sm text-center"
+                              title="Score"
+                              disabled={isPreviewMode}
+                            />
+                          )}
                           {!isPreviewMode && (
                             <Button
                               variant="ghost"
@@ -1224,7 +1267,8 @@ export default function QuizEditor() {
                     )}
                   </AccordionContent>
                 </AccordionItem>
-              ))}
+                );
+              })}
             </Accordion>
           </TabsContent>
 
