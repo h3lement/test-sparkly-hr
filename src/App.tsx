@@ -21,10 +21,8 @@ const App = () => (
           <Routes>
             {/* Dynamic quiz routes with unique slugs */}
             <Route path="/" element={<DynamicQuiz />} />
-            <Route path="/q/:quizSlug" element={<DynamicQuiz />} />
-            <Route path="/q/:quizSlug/:step" element={<DynamicQuiz />} />
-            {/* Legacy routes for backwards compatibility */}
-            <Route path="/quiz" element={<DynamicQuiz />} />
+            <Route path="/:quizSlug" element={<DynamicQuiz />} />
+            <Route path="/:quizSlug/:step" element={<DynamicQuiz />} />
             <Route path="/quiz/:step" element={<DynamicQuiz />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
