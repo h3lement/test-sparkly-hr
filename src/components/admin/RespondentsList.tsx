@@ -105,14 +105,6 @@ export function RespondentsList() {
     return counts;
   }, [leads]);
 
-  // Calculate unique counts for toggle labels
-  const uniqueEmailCount = useMemo(() => {
-    return new Set(leads.map((lead) => lead.email)).size;
-  }, [leads]);
-
-  const uniqueEmailQuizCount = useMemo(() => {
-    return new Set(leads.map((lead) => `${lead.email}::${lead.quiz_id || "unknown"}`)).size;
-  }, [leads]);
 
   // Get all submissions for a specific email, ordered by latest first
   const getSubmissionsForEmail = (email: string) => {
@@ -274,6 +266,15 @@ export function RespondentsList() {
     lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Calculate unique counts for toggle labels (based on search-filtered leads)
+  const uniqueEmailCount = useMemo(() => {
+    return new Set(searchFilteredLeads.map((lead) => lead.email)).size;
+  }, [searchFilteredLeads]);
+
+  const uniqueEmailQuizCount = useMemo(() => {
+    return new Set(searchFilteredLeads.map((lead) => `${lead.email}::${lead.quiz_id || "unknown"}`)).size;
+  }, [searchFilteredLeads]);
 
   // Apply unique filters
   const filteredLeads = useMemo(() => {
