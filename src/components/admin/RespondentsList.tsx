@@ -431,55 +431,18 @@ export function RespondentsList() {
         </div>
       </div>
 
-      {/* Search bar and filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
+      {/* Search bar */}
+      <div className="mb-4">
+        <div className="relative max-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search by email or category..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 bg-secondary/50 border-border"
           />
         </div>
-        
-        {/* Toggle filters */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="unique-emails"
-              checked={showUniqueEmails}
-              onCheckedChange={(checked) => {
-                setShowUniqueEmails(checked);
-                if (checked) setShowUniqueEmailQuiz(false);
-              }}
-            />
-            <Label htmlFor="unique-emails" className="text-sm text-muted-foreground cursor-pointer">
-              Unique emails
-            </Label>
-            <Badge variant="secondary" className="text-xs">
-              {uniqueEmailCount}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="unique-email-quiz"
-              checked={showUniqueEmailQuiz}
-              onCheckedChange={(checked) => {
-                setShowUniqueEmailQuiz(checked);
-                if (checked) setShowUniqueEmails(false);
-              }}
-            />
-            <Label htmlFor="unique-email-quiz" className="text-sm text-muted-foreground cursor-pointer">
-              Unique email + quiz
-            </Label>
-            <Badge variant="secondary" className="text-xs">
-              {uniqueEmailQuizCount}
-            </Badge>
-          </div>
-        </div>
-
       </div>
 
       {/* Respondents Growth Chart */}
@@ -488,6 +451,18 @@ export function RespondentsList() {
         leads={leads} 
         loading={loading}
         onLeadInserted={fetchData}
+        showUniqueEmails={showUniqueEmails}
+        showUniqueEmailQuiz={showUniqueEmailQuiz}
+        onUniqueEmailsChange={(checked) => {
+          setShowUniqueEmails(checked);
+          if (checked) setShowUniqueEmailQuiz(false);
+        }}
+        onUniqueEmailQuizChange={(checked) => {
+          setShowUniqueEmailQuiz(checked);
+          if (checked) setShowUniqueEmails(false);
+        }}
+        uniqueEmailCount={uniqueEmailCount}
+        uniqueEmailQuizCount={uniqueEmailQuizCount}
       />
 
       {loading ? (
