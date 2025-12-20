@@ -167,6 +167,50 @@ export type Database = {
         }
         Relationships: []
       }
+      open_mindedness_result_levels: {
+        Row: {
+          color_class: string | null
+          created_at: string
+          description: Json
+          emoji: string | null
+          id: string
+          max_score: number
+          min_score: number
+          quiz_id: string
+          title: Json
+        }
+        Insert: {
+          color_class?: string | null
+          created_at?: string
+          description?: Json
+          emoji?: string | null
+          id?: string
+          max_score: number
+          min_score: number
+          quiz_id: string
+          title?: Json
+        }
+        Update: {
+          color_class?: string | null
+          created_at?: string
+          description?: Json
+          emoji?: string | null
+          id?: string
+          max_score?: number
+          min_score?: number
+          quiz_id?: string
+          title?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_mindedness_result_levels_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       page_views: {
         Row: {
           created_at: string

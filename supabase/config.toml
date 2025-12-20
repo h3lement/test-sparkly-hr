@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.extract-from-url]
 verify_jwt = true
+
+[functions.generate-open-mindedness-results]
+verify_jwt = true
