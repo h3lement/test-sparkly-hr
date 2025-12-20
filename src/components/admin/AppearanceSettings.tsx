@@ -1748,6 +1748,106 @@ function QuizDesignReference() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Admin UI Components */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Box className="h-5 w-5" />
+            Admin UI Components
+          </CardTitle>
+          <CardDescription>Reusable components for admin pages - import from "@/components/admin"</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminPageHeader</p>
+              <p className="text-xs text-muted-foreground">Page title, description, and actions</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminCard, AdminCardHeader, AdminCardContent</p>
+              <p className="text-xs text-muted-foreground">Consistent card layouts</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminTable, AdminTableHeader, AdminTableRow, AdminTableCell</p>
+              <p className="text-xs text-muted-foreground">Data table components</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminStatsGrid, AdminStatCard</p>
+              <p className="text-xs text-muted-foreground">Stats/metrics display</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminFilters, AdminSearch, AdminCountBadge</p>
+              <p className="text-xs text-muted-foreground">Search and filter controls</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminPagination</p>
+              <p className="text-xs text-muted-foreground">Pagination with items per page</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium">AdminEmptyState, AdminLoading</p>
+              <p className="text-xs text-muted-foreground">Empty and loading states</p>
+            </div>
+          </div>
+          <code className="block text-xs font-mono text-muted-foreground">
+            {`import { AdminPageHeader, AdminCard, AdminTable } from "@/components/admin";`}
+          </code>
+        </CardContent>
+      </Card>
+
+      {/* Admin CSS Utility Classes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin CSS Utility Classes</CardTitle>
+          <CardDescription>CSS classes for consistent admin styling (defined in index.css)</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <DesignToken label="Page Container" value="admin-page" cssVar="max-w-6xl" />
+          <DesignToken label="Page Header" value="admin-page-header" cssVar="flex justify-between mb-8" />
+          <DesignToken label="Page Title" value="admin-page-title" cssVar="text-3xl font-bold" />
+          <DesignToken label="Page Description" value="admin-page-description" cssVar="text-muted mt-1" />
+          <DesignToken label="Card" value="admin-card" cssVar="rounded-xl border" />
+          <DesignToken label="Card Header" value="admin-card-header" cssVar="flex border-b padding" />
+          <DesignToken label="Card Content" value="admin-card-content" cssVar="density padding" />
+          <DesignToken label="Table" value="admin-table" cssVar="w-full" />
+          <DesignToken label="Table Header Cell" value="admin-table-th" cssVar="text-sm font-medium" />
+          <DesignToken label="Table Row" value="admin-table-row" cssVar="hover:bg-secondary/30" />
+          <DesignToken label="Table Cell" value="admin-table-td" cssVar="density padding" />
+          <DesignToken label="Stat Card" value="admin-stat-card" cssVar="rounded-xl border p-4" />
+          <DesignToken label="Search Wrapper" value="admin-search-wrapper" cssVar="relative max-w-md" />
+          <DesignToken label="Filter Bar" value="admin-filters" cssVar="flex gap-3 mb-6" />
+          <DesignToken label="Count Badge" value="admin-count-badge" cssVar="bg-secondary rounded-full" />
+          <DesignToken label="Empty State" value="admin-empty-state" cssVar="text-center py-12" />
+          <DesignToken label="Loading State" value="admin-loading" cssVar="text-center py-12" />
+          <DesignToken label="Pagination" value="admin-pagination" cssVar="flex justify-between mt-6" />
+        </CardContent>
+      </Card>
+
+      {/* Status Badge Classes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Status Badge Classes</CardTitle>
+          <CardDescription>Semantic status colors for badges and indicators</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 rounded-md text-sm admin-status-active border">Active</span>
+            <code className="text-xs font-mono text-muted-foreground">admin-status-active</code>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 rounded-md text-sm admin-status-inactive border">Inactive</span>
+            <code className="text-xs font-mono text-muted-foreground">admin-status-inactive</code>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 rounded-md text-sm admin-status-pending border">Pending</span>
+            <code className="text-xs font-mono text-muted-foreground">admin-status-pending</code>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 rounded-md text-sm admin-status-error border">Error</span>
+            <code className="text-xs font-mono text-muted-foreground">admin-status-error</code>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
