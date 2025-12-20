@@ -1,13 +1,1 @@
-project_id = "abluatwkfycfunudmssc"
-
-[functions.send-quiz-results]
-verify_jwt = false
-
-[functions.create-admin-user]
-verify_jwt = false
-
-[functions.manage-admin-user]
-verify_jwt = false
-
-[functions.resend-email]
-verify_jwt = false
+project_id = "itcnukhlqkrsirrznuig"
