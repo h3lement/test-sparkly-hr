@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Download, RefreshCw, Trash2, Clock, Pencil, Search, UserPlus } from "lucide-react";
+import { Download, RefreshCw, Trash2, Clock, Search, UserPlus } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
@@ -643,14 +643,17 @@ const Admin = () => {
                             className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}
                           >
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
+                              <div 
+                                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => openEditDialog(admin)}
+                              >
                                 <Avatar className="h-9 w-9 bg-secondary">
                                   <AvatarFallback className="text-xs bg-secondary text-foreground">
                                     {getInitials(admin.name, admin.email)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="text-sm font-medium text-foreground">
+                                  <p className="text-sm font-medium text-foreground hover:text-primary transition-colors">
                                     {admin.name || <span className="text-muted-foreground italic">No name</span>}
                                     {admin.user_id === currentUserId && (
                                       <span className="ml-2 text-xs text-muted-foreground">(you)</span>
@@ -676,27 +679,16 @@ const Admin = () => {
                               {admin.created_at ? formatDate(admin.created_at) : "—"}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => openEditDialog(admin)}
-                                  className="h-8 w-8"
-                                  title="Edit admin"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
-                                  disabled={admin.user_id === currentUserId}
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  title="Remove admin"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeAdmin(admin.id, admin.user_id, admin.email)}
+                                disabled={admin.user_id === currentUserId}
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Remove admin"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </td>
                           </tr>
                         ))}

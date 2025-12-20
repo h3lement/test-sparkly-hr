@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, RefreshCw, Eye, EyeOff, Copy } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Eye, EyeOff, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -345,7 +345,10 @@ export function QuizManager() {
             <TableBody>
               {filteredQuizzes.map((quiz) => (
                 <TableRow key={quiz.id} className="hover:bg-secondary/30">
-                  <TableCell className="font-medium">
+                  <TableCell 
+                    className="font-medium cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleEditQuiz(quiz)}
+                  >
                     {getLocalizedText(quiz.title)}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">
@@ -364,14 +367,6 @@ export function QuizManager() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditQuiz(quiz)}
-                        title="Edit quiz"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
