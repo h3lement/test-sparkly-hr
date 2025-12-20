@@ -29,6 +29,7 @@ interface SortableResultLevelProps {
   displayLanguage: string;
   isPreviewMode: boolean;
   quizId?: string;
+  model?: string;
   onUpdateLevel: (index: number, updates: Partial<ResultLevel>) => void;
   onDeleteLevel: (index: number) => void;
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
@@ -42,6 +43,7 @@ export function SortableResultLevel({
   displayLanguage,
   isPreviewMode,
   quizId,
+  model,
   onUpdateLevel,
   onDeleteLevel,
   getLocalizedValue,
@@ -92,6 +94,7 @@ export function SortableResultLevel({
           maxScore: level.max_score,
           instructions: aiInstructions,
           language: displayLanguage,
+          model,
         },
       });
 

@@ -34,7 +34,8 @@ serve(async (req) => {
       });
     }
 
-    const { quizId, minScore, maxScore, instructions, language } = await req.json();
+    const { quizId, minScore, maxScore, instructions, language, model } = await req.json();
+    const selectedModel = model || 'google/gemini-2.5-flash';
 
     console.log('Filling result level for quiz:', quizId, 'score range:', minScore, '-', maxScore);
 
@@ -145,7 +146,7 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: selectedModel,
         messages: [
           { role: 'system', content: 'You are an expert quiz result designer. Always output valid JSON only, no markdown.' },
           { role: 'user', content: prompt }

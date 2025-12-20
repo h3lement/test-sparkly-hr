@@ -32,6 +32,7 @@ interface SortableResultListProps {
   displayLanguage: string;
   isPreviewMode: boolean;
   quizId?: string;
+  model?: string;
   onReorderLevels: (levels: ResultLevel[]) => void;
   onUpdateLevel: (index: number, updates: Partial<ResultLevel>) => void;
   onDeleteLevel: (index: number) => void;
@@ -44,6 +45,7 @@ export function SortableResultList({
   displayLanguage,
   isPreviewMode,
   quizId,
+  model,
   onReorderLevels,
   onUpdateLevel,
   onDeleteLevel,
@@ -101,6 +103,7 @@ export function SortableResultList({
               displayLanguage={displayLanguage}
               isPreviewMode={isPreviewMode}
               quizId={quizId}
+              model={model}
               onUpdateLevel={onUpdateLevel}
               onDeleteLevel={onDeleteLevel}
               getLocalizedValue={getLocalizedValue}

@@ -12,6 +12,7 @@ interface GenerationParams {
   toneOfVoice: string;
   higherScoreMeaning: 'positive' | 'negative';
   language: string;
+  model?: string;
 }
 
 serve(async (req) => {
@@ -43,9 +44,10 @@ serve(async (req) => {
     }
 
     const params: GenerationParams = await req.json();
-    const { quizId, numberOfLevels, toneOfVoice, higherScoreMeaning, language } = params;
+    const { quizId, numberOfLevels, toneOfVoice, higherScoreMeaning, language, model } = params;
+    const selectedModel = model || 'google/gemini-2.5-flash';
 
-    console.log('Generating results for quiz:', quizId, 'with params:', { numberOfLevels, toneOfVoice, higherScoreMeaning, language });
+    console.log('Generating results for quiz:', quizId, 'with params:', { numberOfLevels, toneOfVoice, higherScoreMeaning, language, model: selectedModel });
 
     // Fetch quiz with questions and answers, including tone settings and AI context
     const { data: quiz, error: quizError } = await supabaseClient
@@ -178,7 +180,7 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: selectedModel,
         messages: [
           { role: 'system', content: 'You are an expert quiz result designer. Always output valid JSON only, no markdown.' },
           { role: 'user', content: prompt }

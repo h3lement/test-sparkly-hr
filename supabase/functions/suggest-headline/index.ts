@@ -9,6 +9,7 @@ interface SuggestRequest {
   title: string;
   description: string;
   language: string;
+  model?: string;
 }
 
 serve(async (req) => {
@@ -22,8 +23,9 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { title, description, language }: SuggestRequest = await req.json();
-    console.log(`Suggesting headline for: "${title}" in ${language}`);
+    const { title, description, language, model }: SuggestRequest = await req.json();
+    const selectedModel = model || 'google/gemini-2.5-flash';
+    console.log(`Suggesting headline for: "${title}" in ${language} using ${selectedModel}`);
 
     const languageName = language === "en" ? "English" : language === "et" ? "Estonian" : language;
 
@@ -55,7 +57,7 @@ Return ONLY the headline with **highlighted** words, nothing else.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: selectedModel,
         messages: [
           { role: "system", content: "You are a concise marketing copywriter. Return only the headline, no explanations." },
           { role: "user", content: prompt }

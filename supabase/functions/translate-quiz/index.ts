@@ -57,6 +57,7 @@ function getTargetLanguages(sourceLanguage: string) {
 interface TranslateRequest {
   quizId: string;
   sourceLanguage: string;
+  model?: string;
 }
 
 interface TranslationMeta {
@@ -84,8 +85,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { quizId, sourceLanguage }: TranslateRequest = await req.json();
-    console.log(`Starting smart translation for quiz ${quizId} from ${sourceLanguage}`);
+    const { quizId, sourceLanguage, model }: TranslateRequest = await req.json();
+    const selectedModel = model || 'google/gemini-2.5-flash';
+    console.log(`Starting smart translation for quiz ${quizId} from ${sourceLanguage} using model ${selectedModel}`);
 
     // Fetch quiz data
     const { data: quiz, error: quizError } = await supabase
@@ -257,7 +259,7 @@ ${JSON.stringify(textsToTranslate.map(t => ({ path: t.path, text: t.text })), nu
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: selectedModel,
           messages: [
             { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
             { role: "user", content: prompt }
