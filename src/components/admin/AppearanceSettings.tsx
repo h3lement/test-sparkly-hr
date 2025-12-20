@@ -1291,6 +1291,83 @@ function QuizDesignReference() {
 
   return (
     <div className="space-y-6">
+      {/* Editable CSS Variables Alert */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Palette className="h-5 w-5" />
+            Customizable via Appearance Settings
+          </CardTitle>
+          <CardDescription>These CSS variables are automatically applied from your saved preferences</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+          <div className="p-2 bg-card rounded-md border border-border">
+            <p className="text-xs font-medium">--quiz-primary</p>
+            <p className="text-xs text-muted-foreground">Quiz accent color</p>
+          </div>
+          <div className="p-2 bg-card rounded-md border border-border">
+            <p className="text-xs font-medium">--quiz-primary-light</p>
+            <p className="text-xs text-muted-foreground">Lighter quiz accent</p>
+          </div>
+          <div className="p-2 bg-card rounded-md border border-border">
+            <p className="text-xs font-medium">--quiz-glow</p>
+            <p className="text-xs text-muted-foreground">Button glow effect</p>
+          </div>
+          <div className="p-2 bg-card rounded-md border border-border">
+            <p className="text-xs font-medium">--font-heading</p>
+            <p className="text-xs text-muted-foreground">Quiz headlines</p>
+          </div>
+          <div className="p-2 bg-card rounded-md border border-border">
+            <p className="text-xs font-medium">--font-body</p>
+            <p className="text-xs text-muted-foreground">Quiz body text</p>
+          </div>
+          <div className="p-2 bg-card rounded-md border border-border">
+            <p className="text-xs font-medium">--radius</p>
+            <p className="text-xs text-muted-foreground">Border radius scale</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Utility Classes from index.css */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quiz Utility Classes</CardTitle>
+          <CardDescription>CSS utility classes defined in index.css for quiz styling</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ComponentPreview title="gradient-primary">
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-10 gradient-primary rounded-md" />
+              <code className="text-xs font-mono text-muted-foreground">background: hsl(var(--primary))</code>
+            </div>
+          </ComponentPreview>
+          <ComponentPreview title="gradient-text">
+            <div className="flex items-center gap-4">
+              <span className="text-2xl font-bold gradient-text">Colored Text</span>
+              <code className="text-xs font-mono text-muted-foreground">color: hsl(var(--primary))</code>
+            </div>
+          </ComponentPreview>
+          <ComponentPreview title="glow-primary">
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-10 bg-primary glow-primary rounded-md" />
+              <code className="text-xs font-mono text-muted-foreground">box-shadow: 0 4px 20px hsl(var(--quiz-glow) / 0.25)</code>
+            </div>
+          </ComponentPreview>
+          <ComponentPreview title="glass">
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-10 glass rounded-md" />
+              <code className="text-xs font-mono text-muted-foreground">bg-card + border + subtle shadow</code>
+            </div>
+          </ComponentPreview>
+          <ComponentPreview title="badge-pill">
+            <div className="flex items-center gap-4">
+              <div className="badge-pill">Badge Text</div>
+              <code className="text-xs font-mono text-muted-foreground">bg-secondary + rounded-full + padding</code>
+            </div>
+          </ComponentPreview>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Quiz Layout Structure</CardTitle>
