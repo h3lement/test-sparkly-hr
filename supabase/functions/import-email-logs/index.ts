@@ -170,13 +170,31 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log(`Parsed ${records.length} valid records, ${parseErrors} errors`);
 
+    // Get all existing quiz_lead_ids to validate foreign keys
+    const quizLeadIds = [...new Set(records.map(r => r.quiz_lead_id).filter(Boolean))];
+    const { data: existingLeads } = await supabase
+      .from("quiz_leads")
+      .select("id")
+      .in("id", quizLeadIds);
+    
+    const validLeadIds = new Set((existingLeads || []).map(l => l.id));
+    console.log(`Found ${validLeadIds.size} valid quiz_lead_ids out of ${quizLeadIds.length}`);
+
+    // Nullify quiz_lead_id if it doesn't exist in quiz_leads table
+    const cleanedRecords = records.map(record => ({
+      ...record,
+      quiz_lead_id: record.quiz_lead_id && validLeadIds.has(record.quiz_lead_id) 
+        ? record.quiz_lead_id 
+        : null
+    }));
+
     // Insert in batches of 100
     const batchSize = 100;
     let inserted = 0;
     let errors: string[] = [];
 
-    for (let i = 0; i < records.length; i += batchSize) {
-      const batch = records.slice(i, i + batchSize);
+    for (let i = 0; i < cleanedRecords.length; i += batchSize) {
+      const batch = cleanedRecords.slice(i, i + batchSize);
       
       const { data, error } = await supabase
         .from("email_logs")
