@@ -15,6 +15,7 @@ interface AdminTableRowProps {
   inactive?: boolean;
   onClick?: () => void;
   className?: string;
+  id?: string;
 }
 
 interface AdminTableCellProps {
@@ -40,9 +41,10 @@ export function AdminTableBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-border">{children}</tbody>;
 }
 
-export function AdminTableRow({ children, inactive, onClick, className }: AdminTableRowProps) {
+export function AdminTableRow({ children, inactive, onClick, className, id }: AdminTableRowProps) {
   return (
     <tr
+      id={id}
       className={cn(
         "admin-table-row",
         inactive && "admin-table-row-inactive",
