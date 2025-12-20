@@ -26,6 +26,9 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import { OpenMindednessResults } from "@/components/admin/OpenMindednessResults";
 import { OpenMindednessResultLevels } from "@/components/admin/OpenMindednessResultLevels";
+import { QuizRespondents } from "@/components/admin/QuizRespondents";
+import { QuizStats } from "@/components/admin/QuizStats";
+import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
 import {
   Select,
   SelectContent,
@@ -1694,53 +1697,54 @@ export default function QuizEditor() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="general" className="gap-1.5">
+          <TabsList className="grid w-full grid-cols-7 mb-4">
+            <TabsTrigger value="general" className="text-xs gap-1">
               General
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "general").length;
                 return count > 0 ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                  <span className="text-[10px] px-1 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
                     {count}
                   </span>
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="questions" className="gap-1.5">
+            <TabsTrigger value="questions" className="text-xs gap-1">
               Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "questions").length;
                 return count > 0 ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                  <span className="text-[10px] px-1 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
                     {count}
                   </span>
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="results" className="gap-1.5">
+            <TabsTrigger value="results" className="text-xs gap-1">
               Results ({resultLevels.length})
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "results").length;
                 return count > 0 ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                  <span className="text-[10px] px-1 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
                     {count}
                   </span>
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="mindedness" className="gap-1">
-              Open-Mindedness
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
+            <TabsTrigger value="mindedness" className="text-xs gap-1">
+              Open-Mind
+              <span className={`text-[10px] px-1 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
                 {includeOpenMindedness ? 'ON' : 'OFF'}
               </span>
-              {errorCheckResult && !errorCheckResult.isValid && (() => {
-                const count = errorCheckResult.errors.filter(e => e.tab === "mindedness").length;
-                return count > 0 ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
-                    {count}
-                  </span>
-                ) : null;
-              })()}
+            </TabsTrigger>
+            <TabsTrigger value="respondents" className="text-xs gap-1">
+              Respondents
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="text-xs gap-1">
+              Stats
+            </TabsTrigger>
+            <TabsTrigger value="log" className="text-xs gap-1">
+              Log
             </TabsTrigger>
           </TabsList>
 
@@ -2211,6 +2215,45 @@ export default function QuizEditor() {
                 />
               </>
             )}
+          </TabsContent>
+
+          {/* Respondents Tab */}
+          <TabsContent value="respondents" className="space-y-3">
+            {isCreating ? (
+              <div className="text-center py-8 border rounded-lg border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Save the quiz first to view respondents.
+                </p>
+              </div>
+            ) : quizId ? (
+              <QuizRespondents quizId={quizId} displayLanguage={displayLanguage} />
+            ) : null}
+          </TabsContent>
+
+          {/* Stats Tab */}
+          <TabsContent value="stats" className="space-y-3">
+            {isCreating ? (
+              <div className="text-center py-8 border rounded-lg border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Save the quiz first to view statistics.
+                </p>
+              </div>
+            ) : quizId ? (
+              <QuizStats quizId={quizId} displayLanguage={displayLanguage} />
+            ) : null}
+          </TabsContent>
+
+          {/* Activity Log Tab */}
+          <TabsContent value="log" className="space-y-3">
+            {isCreating ? (
+              <div className="text-center py-8 border rounded-lg border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Save the quiz first to view activity log.
+                </p>
+              </div>
+            ) : quizId ? (
+              <QuizActivityLog quizId={quizId} />
+            ) : null}
           </TabsContent>
         </Tabs>
           </div>
