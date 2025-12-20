@@ -23,6 +23,7 @@ interface ResultLevel {
 interface BulkAiFillButtonProps {
   quizId: string;
   language: string;
+  model?: string;
   resultLevels: ResultLevel[];
   onUpdateLevel: (index: number, updates: Partial<ResultLevel>) => void;
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
@@ -32,6 +33,7 @@ interface BulkAiFillButtonProps {
 export function BulkAiFillButton({
   quizId,
   language,
+  model,
   resultLevels,
   onUpdateLevel,
   getLocalizedValue,
@@ -77,6 +79,7 @@ export function BulkAiFillButton({
             maxScore: level.max_score,
             instructions,
             language,
+            model,
           },
         });
 

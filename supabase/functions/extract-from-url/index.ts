@@ -34,7 +34,8 @@ serve(async (req) => {
       });
     }
 
-    const { url } = await req.json();
+    const { url, model } = await req.json();
+    const selectedModel = model || 'google/gemini-2.5-flash';
 
     if (!url) {
       return new Response(JSON.stringify({ error: "URL is required" }), {
@@ -138,7 +139,7 @@ Return ONLY valid JSON in this format (no markdown, no explanation):
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: selectedModel,
         messages: [
           { role: "system", content: "You are an expert marketing strategist. Extract ICP and buying persona from company websites. Output valid JSON only." },
           { role: "user", content: prompt },

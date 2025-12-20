@@ -27,6 +27,7 @@ interface GenerateResultsDialogProps {
   onOpenChange: (open: boolean) => void;
   quizId: string;
   language: string;
+  model?: string;
   onResultsGenerated: (levels: ResultLevel[]) => void;
 }
 
@@ -45,6 +46,7 @@ export function GenerateResultsDialog({
   onOpenChange,
   quizId,
   language,
+  model,
   onResultsGenerated,
 }: GenerateResultsDialogProps) {
   const [step, setStep] = useState<DialogStep>("config");
@@ -81,6 +83,7 @@ export function GenerateResultsDialog({
           toneOfVoice,
           higherScoreMeaning,
           language,
+          model,
         },
       });
 

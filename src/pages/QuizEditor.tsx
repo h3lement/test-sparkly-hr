@@ -719,7 +719,7 @@ export default function QuizEditor() {
     setTranslating(true);
     try {
       const { data, error } = await supabase.functions.invoke("translate-quiz", {
-        body: { quizId, sourceLanguage: primaryLanguage },
+        body: { quizId, sourceLanguage: primaryLanguage, model: selectedAiModel },
       });
 
       if (error) throw error;
@@ -1572,6 +1572,7 @@ export default function QuizEditor() {
               icpDescription={icpDescription}
               buyingPersona={buyingPersona}
               quizId={isCreating ? undefined : quizId}
+              model={selectedAiModel}
               isPreviewMode={isPreviewMode}
               onToneChange={setToneOfVoice}
               onSourceChange={setToneSource}
@@ -1760,6 +1761,7 @@ export default function QuizEditor() {
                   <BulkAiFillButton
                     quizId={quizId!}
                     language={primaryLanguage}
+                    model={selectedAiModel}
                     resultLevels={resultLevels}
                     onUpdateLevel={updateResultLevel}
                     getLocalizedValue={getLocalizedValue}
@@ -1802,6 +1804,7 @@ export default function QuizEditor() {
               displayLanguage={displayLanguage}
               isPreviewMode={isPreviewMode}
               quizId={quizId}
+              model={selectedAiModel}
               onReorderLevels={(reorderedLevels) => setResultLevels(reorderedLevels)}
               onUpdateLevel={updateResultLevel}
               onDeleteLevel={deleteResultLevel}
@@ -1817,6 +1820,7 @@ export default function QuizEditor() {
                   onOpenChange={setShowGenerateDialog}
                   quizId={quizId}
                   language={primaryLanguage}
+                  model={selectedAiModel}
                   onResultsGenerated={(levels) => setResultLevels(levels)}
                 />
                 <ResultVersionsDialog

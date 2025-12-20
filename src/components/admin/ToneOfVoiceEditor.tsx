@@ -92,6 +92,7 @@ interface ToneOfVoiceEditorProps {
   icpDescription: string;
   buyingPersona: string;
   quizId?: string;
+  model?: string;
   isPreviewMode?: boolean;
   onToneChange: (tone: string) => void;
   onSourceChange: (source: ToneSource) => void;
@@ -109,6 +110,7 @@ export function ToneOfVoiceEditor({
   icpDescription,
   buyingPersona,
   quizId,
+  model,
   isPreviewMode,
   onToneChange,
   onSourceChange,
@@ -140,7 +142,7 @@ export function ToneOfVoiceEditor({
     setGeneratingFromUrl(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-from-url", {
-        body: { url: urlInput },
+        body: { url: urlInput, model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -170,7 +172,7 @@ export function ToneOfVoiceEditor({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_quizzes" },
+        body: { mode: "from_quizzes", model },
       });
 
       if (error) throw error;
@@ -199,7 +201,7 @@ export function ToneOfVoiceEditor({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_current_quiz", quizId },
+        body: { mode: "from_current_quiz", quizId, model },
       });
 
       if (error) throw error;
@@ -236,7 +238,7 @@ export function ToneOfVoiceEditor({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_text", sampleText: extractText },
+        body: { mode: "from_text", sampleText: extractText, model },
       });
 
       if (error) throw error;
@@ -267,7 +269,7 @@ export function ToneOfVoiceEditor({
     setGeneratingIcp(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_quizzes", targetField: "icp" },
+        body: { mode: "from_quizzes", targetField: "icp", model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -285,7 +287,7 @@ export function ToneOfVoiceEditor({
     setGeneratingIcp(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_current_quiz", quizId, targetField: "icp" },
+        body: { mode: "from_current_quiz", quizId, targetField: "icp", model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -306,7 +308,7 @@ export function ToneOfVoiceEditor({
     setGeneratingIcp(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_text", sampleText: icpExtractText, targetField: "icp" },
+        body: { mode: "from_text", sampleText: icpExtractText, targetField: "icp", model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -326,7 +328,7 @@ export function ToneOfVoiceEditor({
     setGeneratingPersona(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_quizzes", targetField: "persona" },
+        body: { mode: "from_quizzes", targetField: "persona", model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -344,7 +346,7 @@ export function ToneOfVoiceEditor({
     setGeneratingPersona(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_current_quiz", quizId, targetField: "persona" },
+        body: { mode: "from_current_quiz", quizId, targetField: "persona", model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -365,7 +367,7 @@ export function ToneOfVoiceEditor({
     setGeneratingPersona(true);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-tone", {
-        body: { mode: "from_text", sampleText: personaExtractText, targetField: "persona" },
+        body: { mode: "from_text", sampleText: personaExtractText, targetField: "persona", model },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);

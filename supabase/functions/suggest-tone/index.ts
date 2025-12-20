@@ -34,7 +34,8 @@ serve(async (req) => {
       });
     }
 
-    const { mode, sampleText, quizId, targetField } = await req.json();
+    const { mode, sampleText, quizId, targetField, model } = await req.json();
+    const selectedModel = model || 'google/gemini-2.5-flash';
     
     // targetField: 'tone' | 'icp' | 'persona' (default: 'tone')
     const field = targetField || 'tone';
@@ -157,7 +158,7 @@ Example format: "Use a warm, encouraging tone that feels like advice from a supp
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: selectedModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt },
