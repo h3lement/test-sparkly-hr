@@ -38,10 +38,10 @@ serve(async (req) => {
 
     console.log('Filling result level for quiz:', quizId, 'score range:', minScore, '-', maxScore);
 
-    // Fetch quiz info including tone of voice
+    // Fetch quiz info including tone of voice and AI context
     const { data: quiz, error: quizError } = await supabaseClient
       .from('quizzes')
-      .select('title, description, tone_of_voice, use_tone_for_ai')
+      .select('title, description, tone_of_voice, use_tone_for_ai, tone_intensity, icp_description, buying_persona')
       .eq('id', quizId)
       .maybeSingle();
 
@@ -77,6 +77,27 @@ serve(async (req) => {
     const quizTitle = (quiz?.title as Record<string, string>)?.[language] || (quiz?.title as Record<string, string>)?.en || 'Quiz';
     const quizDescription = (quiz?.description as Record<string, string>)?.[language] || (quiz?.description as Record<string, string>)?.en || '';
     const toneOfVoice = (quiz?.use_tone_for_ai && quiz?.tone_of_voice) ? quiz.tone_of_voice : '';
+    
+    // Get ICP and Buying Persona if AI context is enabled
+    const icpDescription = quiz?.use_tone_for_ai ? (quiz.icp_description || '') : '';
+    const buyingPersona = quiz?.use_tone_for_ai ? (quiz.buying_persona || '') : '';
+    const toneIntensity = quiz?.use_tone_for_ai ? (quiz.tone_intensity ?? 4) : 4;
+
+    // Build audience context section
+    let audienceContext = '';
+    if (icpDescription || buyingPersona) {
+      audienceContext = `
+TARGET AUDIENCE CONTEXT:
+${icpDescription ? `Ideal Customer Profile (ICP): ${icpDescription}` : ''}
+${buyingPersona ? `Buying Persona: ${buyingPersona}` : ''}
+
+Tailor the result to resonate with this specific audience.
+`;
+    }
+
+    // Map tone intensity to description
+    const toneIntensityLabels = ['Very Casual', 'Casual', 'Friendly', 'Warm', 'Balanced', 'Professional', 'Formal', 'Authoritative', 'Corporate', 'Very Formal'];
+    const toneIntensityLabel = toneIntensityLabels[toneIntensity] || 'Balanced';
 
     // Build context about the score range
     const scorePercentMin = ((minScore - minPossibleScore) / (maxPossibleScore - minPossibleScore) * 100).toFixed(0);
@@ -86,12 +107,13 @@ serve(async (req) => {
 
 Quiz: "${quizTitle}"
 Description: ${quizDescription}
-
+${audienceContext}
 This result level is for scores ${minScore} to ${maxScore} points.
 The total quiz score range is ${minPossibleScore} to ${maxPossibleScore} points.
 This represents approximately ${scorePercentMin}% to ${scorePercentMax}% of the maximum score.
 
 ${toneOfVoice ? `Tone of voice to use: ${toneOfVoice}` : ''}
+Tone intensity: ${toneIntensityLabel} (on a scale from Very Casual to Very Formal)
 ${instructions ? `Additional instructions: ${instructions}` : ''}
 
 Language: ${language === 'et' ? 'Estonian' : 'English'}
@@ -101,6 +123,7 @@ Create a result for this score range that includes:
 2. A description (2-3 sentences explaining what this score means)
 3. An appropriate single emoji
 4. 2-3 actionable insights or tips
+${icpDescription || buyingPersona ? '5. Language and advice that resonates with the target audience' : ''}
 
 Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {

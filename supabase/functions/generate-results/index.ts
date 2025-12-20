@@ -47,10 +47,10 @@ serve(async (req) => {
 
     console.log('Generating results for quiz:', quizId, 'with params:', { numberOfLevels, toneOfVoice, higherScoreMeaning, language });
 
-    // Fetch quiz with questions and answers, including tone settings
+    // Fetch quiz with questions and answers, including tone settings and AI context
     const { data: quiz, error: quizError } = await supabaseClient
       .from('quizzes')
-      .select('title, description, tone_of_voice, use_tone_for_ai')
+      .select('title, description, tone_of_voice, use_tone_for_ai, tone_intensity, icp_description, buying_persona')
       .eq('id', quizId)
       .single();
 
@@ -106,12 +106,33 @@ serve(async (req) => {
     const effectiveTone = (quiz.use_tone_for_ai && quiz.tone_of_voice) 
       ? quiz.tone_of_voice 
       : toneOfVoice;
+    
+    // Get ICP and Buying Persona if AI context is enabled
+    const icpDescription = quiz.use_tone_for_ai ? (quiz.icp_description || '') : '';
+    const buyingPersona = quiz.use_tone_for_ai ? (quiz.buying_persona || '') : '';
+    const toneIntensity = quiz.use_tone_for_ai ? (quiz.tone_intensity ?? 4) : 4;
+
+    // Build audience context section
+    let audienceContext = '';
+    if (icpDescription || buyingPersona) {
+      audienceContext = `
+TARGET AUDIENCE CONTEXT:
+${icpDescription ? `Ideal Customer Profile (ICP): ${icpDescription}` : ''}
+${buyingPersona ? `Buying Persona: ${buyingPersona}` : ''}
+
+Use this audience context to make the result descriptions more relevant and resonant with this specific audience.
+`;
+    }
+
+    // Map tone intensity to description
+    const toneIntensityLabels = ['Very Casual', 'Casual', 'Friendly', 'Warm', 'Balanced', 'Professional', 'Formal', 'Authoritative', 'Corporate', 'Very Formal'];
+    const toneIntensityLabel = toneIntensityLabels[toneIntensity] || 'Balanced';
 
     const prompt = `You are creating result levels for a personality/assessment quiz. Generate exactly ${numberOfLevels} distinct result levels.
 
 Quiz: "${quizTitle}"
 Description: ${quizDescription}
-
+${audienceContext}
 Questions and Answers with point values:
 ${questionsContext}
 
@@ -119,14 +140,16 @@ Score Range: ${minPossibleScore} to ${maxPossibleScore} points
 ${scoreMeaningInstruction}
 
 Tone of voice: ${effectiveTone}
+Tone intensity: ${toneIntensityLabel} (on a scale from Very Casual to Very Formal)
 Language: ${language === 'et' ? 'Estonian' : 'English'}
 
 Create ${numberOfLevels} result levels that:
 1. Cover the entire score range from ${minPossibleScore} to ${maxPossibleScore} without gaps or overlaps
 2. Have meaningful, distinct titles and descriptions
-3. Match the specified tone of voice
+3. Match the specified tone of voice and intensity level
 4. Use appropriate emojis
 5. Include 2-3 actionable insights for each level
+${icpDescription || buyingPersona ? '6. Speak directly to the target audience described above' : ''}
 
 Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
