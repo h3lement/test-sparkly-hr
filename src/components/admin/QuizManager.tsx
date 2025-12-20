@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Eye, EyeOff, Copy } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Eye, EyeOff, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -352,7 +352,18 @@ export function QuizManager() {
                     {getLocalizedText(quiz.title)}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">
-                    /q/{quiz.slug}
+                    <div className="flex items-center gap-2">
+                      <span>/q/{quiz.slug}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => window.open(`/q/${quiz.slug}`, '_blank')}
+                        title="Open quiz in new tab"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     {quiz.questions_count}
