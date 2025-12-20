@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, ExternalLink, Info } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -380,22 +380,25 @@ export function QuizManager() {
               {filteredQuizzes.map((quiz) => (
                 <TableRow key={quiz.id} className="hover:bg-secondary/30 group">
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`/${quiz.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
-                      >
-                        {getLocalizedText(quiz.title)}
-                      </a>
-                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleEditQuiz(quiz)}
+                      className="text-left text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
+                      title="Edit quiz"
+                    >
+                      {getLocalizedText(quiz.title) || quiz.slug}
+                    </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">
-                    <div className="flex items-center gap-2">
-                      <span>/{quiz.slug}</span>
-                    </div>
+                    <a
+                      href={`/${quiz.slug.replace(/^\/+/, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary hover:underline transition-colors"
+                      title="Open public quiz"
+                    >
+                      /{quiz.slug.replace(/^\/+/, "")}
+                    </a>
                   </TableCell>
                   <TableCell className="text-center">
                     {quiz.questions_count}
