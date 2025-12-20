@@ -464,6 +464,7 @@ export type Database = {
           shuffle_questions: boolean
           slug: string
           title: Json
+          tone_intensity: number | null
           tone_of_voice: string | null
           tone_source: string | null
           translation_meta: Json
@@ -489,6 +490,7 @@ export type Database = {
           shuffle_questions?: boolean
           slug: string
           title?: Json
+          tone_intensity?: number | null
           tone_of_voice?: string | null
           tone_source?: string | null
           translation_meta?: Json
@@ -514,6 +516,7 @@ export type Database = {
           shuffle_questions?: boolean
           slug?: string
           title?: Json
+          tone_intensity?: number | null
           tone_of_voice?: string | null
           tone_source?: string | null
           translation_meta?: Json
