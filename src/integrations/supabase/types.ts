@@ -188,6 +188,41 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_answers: {
+        Row: {
+          answer_order: number
+          answer_text: Json
+          created_at: string
+          id: string
+          question_id: string
+          score_value: number
+        }
+        Insert: {
+          answer_order: number
+          answer_text?: Json
+          created_at?: string
+          id?: string
+          question_id: string
+          score_value?: number
+        }
+        Update: {
+          answer_order?: number
+          answer_text?: Json
+          created_at?: string
+          id?: string
+          question_id?: string
+          score_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_leads: {
         Row: {
           answers: Json | null
@@ -196,6 +231,7 @@ export type Database = {
           id: string
           language: string | null
           openness_score: number | null
+          quiz_id: string | null
           result_category: string
           score: number
           total_questions: number
@@ -207,6 +243,7 @@ export type Database = {
           id?: string
           language?: string | null
           openness_score?: number | null
+          quiz_id?: string | null
           result_category: string
           score: number
           total_questions: number
@@ -218,9 +255,154 @@ export type Database = {
           id?: string
           language?: string | null
           openness_score?: number | null
+          quiz_id?: string | null
           result_category?: string
           score?: number
           total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_leads_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          created_at: string
+          id: string
+          question_order: number
+          question_text: Json
+          question_type: string
+          quiz_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_order: number
+          question_text?: Json
+          question_type?: string
+          quiz_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_order?: number
+          question_text?: Json
+          question_type?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_result_levels: {
+        Row: {
+          color_class: string | null
+          created_at: string
+          description: Json
+          emoji: string | null
+          id: string
+          insights: Json
+          max_score: number
+          min_score: number
+          quiz_id: string
+          title: Json
+        }
+        Insert: {
+          color_class?: string | null
+          created_at?: string
+          description?: Json
+          emoji?: string | null
+          id?: string
+          insights?: Json
+          max_score: number
+          min_score: number
+          quiz_id: string
+          title?: Json
+        }
+        Update: {
+          color_class?: string | null
+          created_at?: string
+          description?: Json
+          emoji?: string | null
+          id?: string
+          insights?: Json
+          max_score?: number
+          min_score?: number
+          quiz_id?: string
+          title?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_result_levels_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          badge_text: Json
+          created_at: string
+          created_by: string | null
+          cta_text: Json
+          cta_url: string | null
+          description: Json
+          discover_items: Json
+          duration_text: Json
+          headline: Json
+          headline_highlight: Json
+          id: string
+          is_active: boolean
+          slug: string
+          title: Json
+          updated_at: string
+        }
+        Insert: {
+          badge_text?: Json
+          created_at?: string
+          created_by?: string | null
+          cta_text?: Json
+          cta_url?: string | null
+          description?: Json
+          discover_items?: Json
+          duration_text?: Json
+          headline?: Json
+          headline_highlight?: Json
+          id?: string
+          is_active?: boolean
+          slug: string
+          title?: Json
+          updated_at?: string
+        }
+        Update: {
+          badge_text?: Json
+          created_at?: string
+          created_by?: string | null
+          cta_text?: Json
+          cta_url?: string | null
+          description?: Json
+          discover_items?: Json
+          duration_text?: Json
+          headline?: Json
+          headline_highlight?: Json
+          id?: string
+          is_active?: boolean
+          slug?: string
+          title?: Json
+          updated_at?: string
         }
         Relationships: []
       }
