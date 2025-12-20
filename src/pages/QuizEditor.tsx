@@ -2056,6 +2056,7 @@ export default function QuizEditor() {
                   displayLanguage={displayLanguage}
                   isPreviewMode={isPreviewMode}
                   includeOpenMindedness={includeOpenMindedness}
+                  enableScoring={enableScoring}
                 />
                 
                 {/* Open-Mindedness Results */}
