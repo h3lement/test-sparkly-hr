@@ -49,12 +49,18 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState("activity");
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
+  const [emailHistoryFilter, setEmailHistoryFilter] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleViewQuizLead = (leadId: string) => {
     setHighlightedLeadId(leadId);
     setActiveTab("leads");
+  };
+
+  const handleViewEmailHistory = (leadId: string, email: string) => {
+    setEmailHistoryFilter(email);
+    setActiveTab("email-logs");
   };
 
   useEffect(() => {
@@ -405,7 +411,8 @@ const Admin = () => {
           {activeTab === "leads" && (
             <RespondentsList 
               highlightedLeadId={highlightedLeadId} 
-              onHighlightCleared={() => setHighlightedLeadId(null)} 
+              onHighlightCleared={() => setHighlightedLeadId(null)}
+              onViewEmailHistory={handleViewEmailHistory}
             />
           )}
 
@@ -611,7 +618,11 @@ const Admin = () => {
           {/* Email Logs Tab */}
           {activeTab === "email-logs" && (
             <div className="max-w-6xl">
-              <EmailLogsMonitor onViewQuizLead={handleViewQuizLead} />
+              <EmailLogsMonitor 
+                onViewQuizLead={handleViewQuizLead}
+                initialEmailFilter={emailHistoryFilter}
+                onEmailFilterCleared={() => setEmailHistoryFilter(null)}
+              />
             </div>
           )}
         </div>

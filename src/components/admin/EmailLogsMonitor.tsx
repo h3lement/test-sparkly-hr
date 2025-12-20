@@ -63,12 +63,14 @@ const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 interface EmailLogsMonitorProps {
   onViewQuizLead?: (leadId: string) => void;
+  initialEmailFilter?: string | null;
+  onEmailFilterCleared?: () => void;
 }
 
-export function EmailLogsMonitor({ onViewQuizLead }: EmailLogsMonitorProps = {}) {
+export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFilterCleared }: EmailLogsMonitorProps = {}) {
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialEmailFilter || "");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -139,6 +141,14 @@ export function EmailLogsMonitor({ onViewQuizLead }: EmailLogsMonitorProps = {})
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
+
+  // Handle initial email filter changes
+  useEffect(() => {
+    if (initialEmailFilter) {
+      setSearchQuery(initialEmailFilter);
+      setCurrentPage(1);
+    }
+  }, [initialEmailFilter]);
 
   // Realtime subscription
   useEffect(() => {
