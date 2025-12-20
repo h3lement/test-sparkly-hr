@@ -218,9 +218,10 @@
     color: hsl(var(--muted-foreground));
   }
 
-  /* Admin Layout Utilities */
+  /* Admin Layout Utilities - Responsive */
   .admin-page {
-    @apply max-w-6xl;
+    @apply w-full px-4 sm:px-6 lg:px-8;
+    max-width: min(100%, 72rem); /* 72rem = 6xl, but responsive */
   }
 
   .admin-page-header {
