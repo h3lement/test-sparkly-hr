@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -820,10 +820,23 @@ export default function QuizEditor() {
                   {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
                 </h1>
               </div>
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? "Saving..." : "Save Quiz"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {!isCreating && slug && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`/quiz/${slug}`, '_blank')}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Preview Quiz
+                  </Button>
+                )}
+                <Button onClick={handleSave} disabled={saving}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? "Saving..." : "Save Quiz"}
+                </Button>
+              </div>
             </div>
 
         {/* Language Controls */}
