@@ -35,7 +35,8 @@ import {
   ChevronRight,
   Send,
   Clock,
-  Upload
+  Upload,
+  ExternalLink
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 
@@ -60,7 +61,11 @@ interface EmailLog {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-export function EmailLogsMonitor() {
+interface EmailLogsMonitorProps {
+  onViewQuizLead?: (leadId: string) => void;
+}
+
+export function EmailLogsMonitor({ onViewQuizLead }: EmailLogsMonitorProps = {}) {
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -553,6 +558,17 @@ export function EmailLogsMonitor() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          {log.quiz_lead_id && onViewQuizLead && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary"
+                              onClick={() => onViewQuizLead(log.quiz_lead_id!)}
+                              title="View quiz lead"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

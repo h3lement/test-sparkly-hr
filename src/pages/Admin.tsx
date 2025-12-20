@@ -48,8 +48,14 @@ const Admin = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("activity");
   const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleViewQuizLead = (leadId: string) => {
+    setHighlightedLeadId(leadId);
+    setActiveTab("leads");
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -397,7 +403,10 @@ const Admin = () => {
 
           {/* Respondents Tab */}
           {activeTab === "leads" && (
-            <RespondentsList />
+            <RespondentsList 
+              highlightedLeadId={highlightedLeadId} 
+              onHighlightCleared={() => setHighlightedLeadId(null)} 
+            />
           )}
 
           {/* Quizzes Tab */}
@@ -602,7 +611,7 @@ const Admin = () => {
           {/* Email Logs Tab */}
           {activeTab === "email-logs" && (
             <div className="max-w-6xl">
-              <EmailLogsMonitor />
+              <EmailLogsMonitor onViewQuizLead={handleViewQuizLead} />
             </div>
           )}
         </div>
