@@ -1,4 +1,21 @@
 import { useState, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +39,80 @@ interface Question {
   answers: Answer[];
 }
 
+interface SortableOptionProps {
+  answer: Answer;
+  index: number;
+  displayLanguage: string;
+  isPreviewMode: boolean;
+  getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
+  jsonToRecord: (json: Json | undefined) => Record<string, string>;
+  onUpdate: (index: number, updates: Partial<Answer>) => void;
+  onDelete: (index: number) => void;
+}
+
+function SortableOption({
+  answer,
+  index,
+  displayLanguage,
+  isPreviewMode,
+  getLocalizedValue,
+  jsonToRecord,
+  onUpdate,
+  onDelete,
+}: SortableOptionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: answer.id, disabled: isPreviewMode });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 p-2 bg-background rounded border"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className={`cursor-grab active:cursor-grabbing touch-none ${isPreviewMode ? 'opacity-30' : ''}`}
+      >
+        <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+      </div>
+      <Checkbox disabled className="opacity-50" />
+      <Input
+        value={getLocalizedValue(answer.answer_text, displayLanguage)}
+        onChange={(e) => {
+          const updated = { ...jsonToRecord(answer.answer_text), [displayLanguage]: e.target.value };
+          onUpdate(index, { answer_text: updated });
+        }}
+        placeholder={`Option ${index + 1}`}
+        className="flex-1 h-7 text-sm"
+        disabled={isPreviewMode}
+      />
+      {!isPreviewMode && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-destructive"
+          onClick={() => onDelete(index)}
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
 interface OpenMindednessEditorProps {
   questions: Question[];
   setQuestions: React.Dispatch<React.SetStateAction<Question[]>>;
@@ -38,6 +129,17 @@ export function OpenMindednessEditor({
   includeOpenMindedness,
 }: OpenMindednessEditorProps) {
   const openMindednessQuestion = questions.find(q => q.question_type === "open_mindedness");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const jsonToRecord = (json: Json | undefined): Record<string, string> => {
     if (!json) return {};
@@ -120,6 +222,23 @@ export function OpenMindednessEditor({
     setQuestions(prev => prev.filter(q => q.id !== openMindednessQuestion.id));
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!openMindednessQuestion || !over || active.id === over.id) return;
+
+    const oldIndex = openMindednessQuestion.answers.findIndex(a => a.id === active.id);
+    const newIndex = openMindednessQuestion.answers.findIndex(a => a.id === over.id);
+
+    const reorderedAnswers = arrayMove(openMindednessQuestion.answers, oldIndex, newIndex).map(
+      (answer, idx) => ({
+        ...answer,
+        answer_order: idx + 1,
+      })
+    );
+
+    updateQuestion({ answers: reorderedAnswers });
+  };
+
   if (!includeOpenMindedness) {
     return (
       <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
@@ -165,7 +284,7 @@ export function OpenMindednessEditor({
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Options (users can select multiple)</Label>
+              <Label className="text-xs">Options (users can select multiple) — drag to reorder</Label>
               {!isPreviewMode && (
                 <Button
                   variant="outline"
@@ -179,35 +298,32 @@ export function OpenMindednessEditor({
               )}
             </div>
 
-            {openMindednessQuestion.answers.map((answer, index) => (
-              <div
-                key={answer.id}
-                className="flex items-center gap-2 p-2 bg-background rounded border"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={openMindednessQuestion.answers.map(a => a.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <Checkbox disabled className="opacity-50" />
-                <Input
-                  value={getLocalizedValue(answer.answer_text, displayLanguage)}
-                  onChange={(e) => {
-                    const updated = { ...jsonToRecord(answer.answer_text), [displayLanguage]: e.target.value };
-                    updateOption(index, { answer_text: updated });
-                  }}
-                  placeholder={`Option ${index + 1}`}
-                  className="flex-1 h-7 text-sm"
-                  disabled={isPreviewMode}
-                />
-                {!isPreviewMode && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => deleteOption(index)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            ))}
+                <div className="space-y-1">
+                  {openMindednessQuestion.answers.map((answer, index) => (
+                    <SortableOption
+                      key={answer.id}
+                      answer={answer}
+                      index={index}
+                      displayLanguage={displayLanguage}
+                      isPreviewMode={isPreviewMode}
+                      getLocalizedValue={getLocalizedValue}
+                      jsonToRecord={jsonToRecord}
+                      onUpdate={updateOption}
+                      onDelete={deleteOption}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
 
           <p className="text-xs text-muted-foreground">

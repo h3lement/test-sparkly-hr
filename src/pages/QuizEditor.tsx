@@ -1943,24 +1943,43 @@ export default function QuizEditor() {
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="questions" />
             )}
             
-            {/* Question Settings */}
-            <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg border">
-              <div className="flex items-center gap-2">
-                <Switch 
-                  checked={shuffleQuestions} 
-                  onCheckedChange={setShuffleQuestions}
-                  disabled={isPreviewMode}
-                />
-                <Label className="text-xs">Shuffle order each time</Label>
+            {/* Question Settings and Points Summary */}
+            <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    checked={shuffleQuestions} 
+                    onCheckedChange={setShuffleQuestions}
+                    disabled={isPreviewMode}
+                  />
+                  <Label className="text-xs">Shuffle order each time</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    checked={includeOpenMindedness} 
+                    onCheckedChange={handleOpenMindednessToggle}
+                    disabled={isPreviewMode || isCreating}
+                  />
+                  <Label className="text-xs">Include Open-Mindedness module</Label>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch 
-                  checked={includeOpenMindedness} 
-                  onCheckedChange={handleOpenMindednessToggle}
-                  disabled={isPreviewMode || isCreating}
-                />
-                <Label className="text-xs">Include Open-Mindedness module</Label>
-              </div>
+              
+              {/* Total Points Summary */}
+              {enableScoring && (() => {
+                const regularQuestions = questions.filter(q => q.question_type !== "open_mindedness");
+                const totalMaxPoints = regularQuestions.reduce((sum, q) => {
+                  const maxScore = q.answers.length > 0 ? Math.max(...q.answers.map(a => a.score_value)) : 0;
+                  return sum + maxScore;
+                }, 0);
+                const questionCount = regularQuestions.length;
+                return (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">{questionCount} questions</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="font-medium text-primary">{totalMaxPoints} max pts</span>
+                  </div>
+                );
+              })()}
             </div>
 
             {!isPreviewMode && (
