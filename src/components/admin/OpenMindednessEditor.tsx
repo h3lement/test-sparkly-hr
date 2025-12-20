@@ -44,6 +44,7 @@ interface SortableOptionProps {
   index: number;
   displayLanguage: string;
   isPreviewMode: boolean;
+  enableScoring: boolean;
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
   jsonToRecord: (json: Json | undefined) => Record<string, string>;
   onUpdate: (index: number, updates: Partial<Answer>) => void;
@@ -55,6 +56,7 @@ function SortableOption({
   index,
   displayLanguage,
   isPreviewMode,
+  enableScoring,
   getLocalizedValue,
   jsonToRecord,
   onUpdate,
@@ -99,6 +101,17 @@ function SortableOption({
         className="flex-1 h-7 text-sm"
         disabled={isPreviewMode}
       />
+      {enableScoring && (
+        <Input
+          type="number"
+          value={answer.score_value}
+          onChange={(e) => onUpdate(index, { score_value: parseInt(e.target.value) || 0 })}
+          className="w-14 h-7 text-sm text-center"
+          disabled={isPreviewMode}
+          min={0}
+          title="Points when selected"
+        />
+      )}
       {!isPreviewMode && (
         <Button
           variant="ghost"
@@ -119,6 +132,7 @@ interface OpenMindednessEditorProps {
   displayLanguage: string;
   isPreviewMode: boolean;
   includeOpenMindedness: boolean;
+  enableScoring?: boolean;
 }
 
 export function OpenMindednessEditor({
@@ -127,6 +141,7 @@ export function OpenMindednessEditor({
   displayLanguage,
   isPreviewMode,
   includeOpenMindedness,
+  enableScoring = true,
 }: OpenMindednessEditorProps) {
   const openMindednessQuestion = questions.find(q => q.question_type === "open_mindedness");
 
@@ -315,6 +330,7 @@ export function OpenMindednessEditor({
                       index={index}
                       displayLanguage={displayLanguage}
                       isPreviewMode={isPreviewMode}
+                      enableScoring={enableScoring}
                       getLocalizedValue={getLocalizedValue}
                       jsonToRecord={jsonToRecord}
                       onUpdate={updateOption}
