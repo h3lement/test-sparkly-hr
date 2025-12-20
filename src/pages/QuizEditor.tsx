@@ -24,6 +24,7 @@ import { AutoSaveIndicator } from "@/components/admin/AutoSaveIndicator";
 import { ToneOfVoiceEditor } from "@/components/admin/ToneOfVoiceEditor";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
+import { OpenMindednessResults } from "@/components/admin/OpenMindednessResults";
 import {
   Select,
   SelectContent,
@@ -2048,13 +2049,24 @@ export default function QuizEditor() {
             )}
 
             {!isCreating && (
-              <OpenMindednessEditor
-                questions={questions}
-                setQuestions={setQuestions}
-                displayLanguage={displayLanguage}
-                isPreviewMode={isPreviewMode}
-                includeOpenMindedness={includeOpenMindedness}
-              />
+              <>
+                <OpenMindednessEditor
+                  questions={questions}
+                  setQuestions={setQuestions}
+                  displayLanguage={displayLanguage}
+                  isPreviewMode={isPreviewMode}
+                  includeOpenMindedness={includeOpenMindedness}
+                />
+                
+                {/* Open-Mindedness Results */}
+                {includeOpenMindedness && quizId && (
+                  <OpenMindednessResults
+                    quizId={quizId}
+                    questions={questions}
+                    displayLanguage={displayLanguage}
+                  />
+                )}
+              </>
             )}
           </TabsContent>
 
