@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -256,6 +257,14 @@ export function QuizEditorDialog({
 
         if (error) throw error;
         quizId = data.id;
+
+        // Log quiz creation
+        await logActivity({
+          actionType: "CREATE",
+          tableName: "quizzes",
+          recordId: quizId,
+          description: `Quiz "${title.en || slug}" created`,
+        });
       } else {
         const { error } = await supabase
           .from("quizzes")
@@ -263,6 +272,14 @@ export function QuizEditorDialog({
           .eq("id", quiz!.id);
 
         if (error) throw error;
+
+        // Log quiz update
+        await logActivity({
+          actionType: "UPDATE",
+          tableName: "quizzes",
+          recordId: quiz!.id,
+          description: `Quiz "${title.en || slug}" updated`,
+        });
       }
 
       // Save questions and answers
