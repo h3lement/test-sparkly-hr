@@ -38,10 +38,10 @@ serve(async (req) => {
 
     console.log('Filling result level for quiz:', quizId, 'score range:', minScore, '-', maxScore);
 
-    // Fetch quiz info
+    // Fetch quiz info including tone of voice
     const { data: quiz, error: quizError } = await supabaseClient
       .from('quizzes')
-      .select('title, description')
+      .select('title, description, tone_of_voice, use_tone_for_ai')
       .eq('id', quizId)
       .maybeSingle();
 
@@ -76,6 +76,7 @@ serve(async (req) => {
 
     const quizTitle = (quiz?.title as Record<string, string>)?.[language] || (quiz?.title as Record<string, string>)?.en || 'Quiz';
     const quizDescription = (quiz?.description as Record<string, string>)?.[language] || (quiz?.description as Record<string, string>)?.en || '';
+    const toneOfVoice = (quiz?.use_tone_for_ai && quiz?.tone_of_voice) ? quiz.tone_of_voice : '';
 
     // Build context about the score range
     const scorePercentMin = ((minScore - minPossibleScore) / (maxPossibleScore - minPossibleScore) * 100).toFixed(0);
@@ -90,6 +91,7 @@ This result level is for scores ${minScore} to ${maxScore} points.
 The total quiz score range is ${minPossibleScore} to ${maxPossibleScore} points.
 This represents approximately ${scorePercentMin}% to ${scorePercentMax}% of the maximum score.
 
+${toneOfVoice ? `Tone of voice to use: ${toneOfVoice}` : ''}
 ${instructions ? `Additional instructions: ${instructions}` : ''}
 
 Language: ${language === 'et' ? 'Estonian' : 'English'}

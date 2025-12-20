@@ -17,6 +17,7 @@ import { BulkAiFillButton } from "@/components/admin/BulkAiFillButton";
 import { AutoSuggestScoresButton } from "@/components/admin/AutoSuggestScoresButton";
 import { SyncAnswerWeightsButton } from "@/components/admin/SyncAnswerWeightsButton";
 import { AutoSaveIndicator } from "@/components/admin/AutoSaveIndicator";
+import { ToneOfVoiceEditor } from "@/components/admin/ToneOfVoiceEditor";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -172,6 +173,11 @@ export default function QuizEditor() {
   const [enableScoring, setEnableScoring] = useState(true);
   const [includeOpenMindedness, setIncludeOpenMindedness] = useState(false);
   
+  // Tone of voice
+  const [toneOfVoice, setToneOfVoice] = useState("");
+  const [toneSource, setToneSource] = useState<"ai" | "extracted" | "manual">("manual");
+  const [useToneForAi, setUseToneForAi] = useState(true);
+  
   // AI headline assistance
   const [suggestingHeadline, setSuggestingHeadline] = useState(false);
   const [useAiHeadline, setUseAiHeadline] = useState(true);
@@ -215,6 +221,9 @@ export default function QuizEditor() {
       shuffle_questions: shuffleQuestions,
       enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness,
+      tone_of_voice: toneOfVoice,
+      tone_source: toneSource,
+      use_tone_for_ai: useToneForAi,
     };
 
     // Update quiz
@@ -332,7 +341,7 @@ export default function QuizEditor() {
           .eq("id", level.id);
       }
     }
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, questions, resultLevels]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, questions, resultLevels]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -346,7 +355,7 @@ export default function QuizEditor() {
     if (!initialLoadComplete.current) return;
     if (isCreating) return;
     triggerSave();
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, questions, resultLevels, triggerSave, isCreating]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -423,6 +432,9 @@ export default function QuizEditor() {
       setShuffleQuestions((quiz as any).shuffle_questions || false);
       setEnableScoring((quiz as any).enable_scoring !== false);
       setIncludeOpenMindedness((quiz as any).include_open_mindedness || false);
+      setToneOfVoice((quiz as any).tone_of_voice || "");
+      setToneSource((quiz as any).tone_source || "manual");
+      setUseToneForAi((quiz as any).use_tone_for_ai !== false);
 
       // Load questions with answers
       const { data: questionsData } = await supabase
@@ -537,6 +549,9 @@ export default function QuizEditor() {
         shuffle_questions: shuffleQuestions,
         enable_scoring: enableScoring,
         include_open_mindedness: includeOpenMindedness,
+        tone_of_voice: toneOfVoice,
+        tone_source: toneSource,
+        use_tone_for_ai: useToneForAi,
       };
 
       if (isCreating) {
@@ -1407,6 +1422,18 @@ export default function QuizEditor() {
                 disabled={isPreviewMode}
               />
             </div>
+
+            {/* Tone of Voice */}
+            <ToneOfVoiceEditor
+              toneOfVoice={toneOfVoice}
+              toneSource={toneSource}
+              useToneForAi={useToneForAi}
+              quizId={isCreating ? undefined : quizId}
+              isPreviewMode={isPreviewMode}
+              onToneChange={setToneOfVoice}
+              onSourceChange={setToneSource}
+              onUseToneChange={setUseToneForAi}
+            />
 
             <div className="grid grid-cols-3 gap-3">
               <div>
