@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QuizEditorDialog } from "./QuizEditorDialog";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
@@ -42,12 +42,10 @@ interface Quiz {
 }
 
 export function QuizManager() {
+  const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   const [activityLogQuiz, setActivityLogQuiz] = useState<Quiz | null>(null);
   const { toast } = useToast();
 
@@ -295,26 +293,11 @@ export function QuizManager() {
   );
 
   const handleCreateQuiz = () => {
-    setEditingQuiz(null);
-    setIsCreating(true);
-    setIsEditorOpen(true);
+    navigate("/admin/quiz/new");
   };
 
   const handleEditQuiz = (quiz: Quiz) => {
-    setEditingQuiz(quiz);
-    setIsCreating(false);
-    setIsEditorOpen(true);
-  };
-
-  const handleEditorClose = () => {
-    setIsEditorOpen(false);
-    setEditingQuiz(null);
-    setIsCreating(false);
-  };
-
-  const handleQuizSaved = () => {
-    handleEditorClose();
-    fetchQuizzes();
+    navigate(`/admin/quiz/${quiz.id}`);
   };
 
   return (
@@ -483,14 +466,6 @@ export function QuizManager() {
           </Table>
         </div>
       )}
-
-      <QuizEditorDialog
-        open={isEditorOpen}
-        onClose={handleEditorClose}
-        quiz={editingQuiz}
-        isCreating={isCreating}
-        onSaved={handleQuizSaved}
-      />
 
       <ActivityLogDialog
         open={!!activityLogQuiz}

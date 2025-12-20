@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,6 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { QuizEditorDialog } from "./QuizEditorDialog";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { RespondentsGrowthChart } from "./RespondentsGrowthChart";
 import { logActivity } from "@/hooks/useActivityLog";
@@ -103,6 +103,7 @@ interface RespondentsListProps {
 }
 
 export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewEmailHistory }: RespondentsListProps = {}) {
+  const navigate = useNavigate();
   const [leads, setLeads] = useState<QuizLead[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -116,8 +117,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
-  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
-  const [isQuizEditorOpen, setIsQuizEditorOpen] = useState(false);
   const [activityLogLead, setActivityLogLead] = useState<QuizLead | null>(null);
   const [importing, setImporting] = useState(false);
   const { toast } = useToast();
@@ -501,21 +500,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       e.stopPropagation();
     }
     if (!quizId) return;
-    const quiz = quizzes.find((q) => q.id === quizId);
-    if (quiz) {
-      setEditingQuiz(quiz);
-      setIsQuizEditorOpen(true);
-    }
-  };
-
-  const handleQuizEditorClose = () => {
-    setIsQuizEditorOpen(false);
-    setEditingQuiz(null);
-  };
-
-  const handleQuizSaved = () => {
-    handleQuizEditorClose();
-    fetchData();
+    navigate(`/admin/quiz/${quizId}`);
   };
 
   return (
@@ -1026,15 +1011,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Quiz Editor Dialog */}
-      <QuizEditorDialog
-        open={isQuizEditorOpen}
-        onClose={handleQuizEditorClose}
-        quiz={editingQuiz}
-        isCreating={false}
-        onSaved={handleQuizSaved}
-      />
 
       <ActivityLogDialog
         open={!!activityLogLead}
