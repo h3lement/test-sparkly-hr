@@ -10,7 +10,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
-import { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
+import { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
 import { RegenerationDialog, type RegenerationType } from "@/components/admin/RegenerationDialog";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
@@ -1300,6 +1300,14 @@ export default function QuizEditor() {
                     onClick={handleCheckErrors}
                     isChecking={isCheckingErrors}
                     lastCheck={errorCheckResult}
+                    onFixClick={() => {
+                      if (errorCheckResult?.errors) {
+                        const firstTab = getFirstErrorTab(errorCheckResult.errors);
+                        if (firstTab) {
+                          setActiveTab(firstTab);
+                        }
+                      }
+                    }}
                   />
                 )}
                 

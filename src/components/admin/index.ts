@@ -6,4 +6,4 @@ export { AdminStatsGrid, AdminStatCard } from "./AdminStats";
 export { AdminFilters, AdminSearch, AdminCountBadge } from "./AdminFilters";
 export { AdminEmptyState, AdminLoading } from "./AdminEmptyState";
 export { AdminPagination } from "./AdminPagination";
-export { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, type CheckErrorsResult } from "./QuizErrorChecker";
+export { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult } from "./QuizErrorChecker";

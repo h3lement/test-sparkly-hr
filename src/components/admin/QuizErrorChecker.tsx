@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -357,29 +357,57 @@ export function CheckErrorsButton({
   onClick,
   isChecking,
   lastCheck,
+  onFixClick,
 }: {
   onClick: () => void;
   isChecking: boolean;
   lastCheck: CheckErrorsResult | null;
+  onFixClick?: () => void;
 }) {
   return (
-    <Button
-      variant={lastCheck?.isValid === false ? "destructive" : "outline"}
-      size="sm"
-      onClick={onClick}
-      disabled={isChecking}
-      className="gap-2"
-    >
-      {isChecking ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
-      ) : lastCheck?.isValid === true ? (
-        <CheckCircle2 className="w-4 h-4 text-green-500" />
-      ) : lastCheck?.isValid === false ? (
-        <AlertCircle className="w-4 h-4" />
-      ) : (
-        <AlertCircle className="w-4 h-4" />
+    <div className="flex items-center gap-1">
+      <Button
+        variant={lastCheck?.isValid === false ? "destructive" : "outline"}
+        size="sm"
+        onClick={onClick}
+        disabled={isChecking}
+        className="gap-2"
+      >
+        {isChecking ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : lastCheck?.isValid === true ? (
+          <CheckCircle2 className="w-4 h-4 text-green-500" />
+        ) : lastCheck?.isValid === false ? (
+          <AlertCircle className="w-4 h-4" />
+        ) : (
+          <AlertCircle className="w-4 h-4" />
+        )}
+        {isChecking ? "Checking..." : lastCheck?.isValid === false ? `${lastCheck.errors.length} Issues` : "Check Errors"}
+      </Button>
+      
+      {/* Fix button - only show when there are errors */}
+      {lastCheck?.isValid === false && onFixClick && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onFixClick}
+          className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
+        >
+          <ArrowRight className="w-3.5 h-3.5" />
+          Fix
+        </Button>
       )}
-      {isChecking ? "Checking..." : lastCheck?.isValid === false ? `${lastCheck.errors.length} Issues` : "Check Errors"}
-    </Button>
+    </div>
   );
+}
+
+// Helper to get first tab with errors
+export function getFirstErrorTab(errors: QuizError[]): "general" | "questions" | "mindedness" | "results" | null {
+  const tabOrder: Array<"general" | "questions" | "mindedness" | "results"> = ["general", "questions", "mindedness", "results"];
+  for (const tab of tabOrder) {
+    if (errors.some(e => e.tab === tab)) {
+      return tab;
+    }
+  }
+  return null;
 }
