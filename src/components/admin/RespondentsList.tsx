@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ import { QuizEditorDialog } from "./QuizEditorDialog";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { RespondentsGrowthChart } from "./RespondentsGrowthChart";
 import { logActivity } from "@/hooks/useActivityLog";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -83,6 +84,12 @@ interface QuizAnswer {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
+interface RespondentsPreferences {
+  itemsPerPage: number;
+  showUniqueEmails: boolean;
+  showUniqueEmailQuiz: boolean;
+}
+
 export function RespondentsList() {
   const [leads, setLeads] = useState<QuizLead[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -92,14 +99,37 @@ export function RespondentsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [isQuizEditorOpen, setIsQuizEditorOpen] = useState(false);
-  const [showUniqueEmails, setShowUniqueEmails] = useState(false);
-  const [showUniqueEmailQuiz, setShowUniqueEmailQuiz] = useState(false);
   const [activityLogLead, setActivityLogLead] = useState<QuizLead | null>(null);
   const { toast } = useToast();
+
+  // User preferences
+  const { preferences, savePreferences, loading: prefsLoading } = useUserPreferences<RespondentsPreferences>({
+    key: "respondents_list_prefs",
+    defaultValue: {
+      itemsPerPage: 25,
+      showUniqueEmails: false,
+      showUniqueEmailQuiz: false,
+    },
+  });
+
+  const itemsPerPage = preferences.itemsPerPage ?? 25;
+  const showUniqueEmails = preferences.showUniqueEmails ?? false;
+  const showUniqueEmailQuiz = preferences.showUniqueEmailQuiz ?? false;
+
+  const setItemsPerPage = useCallback((value: number) => {
+    savePreferences({ ...preferences, itemsPerPage: value });
+  }, [preferences, savePreferences]);
+
+  const setShowUniqueEmails = useCallback((value: boolean) => {
+    savePreferences({ ...preferences, showUniqueEmails: value, showUniqueEmailQuiz: value ? false : preferences.showUniqueEmailQuiz });
+  }, [preferences, savePreferences]);
+
+  const setShowUniqueEmailQuiz = useCallback((value: boolean) => {
+    savePreferences({ ...preferences, showUniqueEmailQuiz: value, showUniqueEmails: value ? false : preferences.showUniqueEmails });
+  }, [preferences, savePreferences]);
 
   // Calculate quiz count per email
   const emailQuizCounts = useMemo(() => {
