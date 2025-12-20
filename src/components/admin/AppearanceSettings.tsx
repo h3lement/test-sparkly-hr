@@ -34,6 +34,7 @@ interface AppearancePreferences {
     light: Record<string, string>;
     dark: Record<string, string>;
   };
+  activePreset?: string;
 }
 
 const HEADING_FONTS: FontOption[] = [
@@ -113,6 +114,298 @@ const DEFAULT_COLORS = {
   },
 };
 
+// Preset themes
+interface ThemePreset {
+  id: string;
+  name: string;
+  description: string;
+  colors: typeof DEFAULT_COLORS;
+}
+
+const THEME_PRESETS: ThemePreset[] = [
+  {
+    id: "default",
+    name: "Default",
+    description: "Classic purple theme",
+    colors: DEFAULT_COLORS,
+  },
+  {
+    id: "ocean",
+    name: "Ocean",
+    description: "Cool blue tones",
+    colors: {
+      light: {
+        "--background": "200 30% 97%",
+        "--foreground": "210 25% 18%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "210 25% 18%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "210 25% 18%",
+        "--primary": "200 80% 45%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "200 25% 94%",
+        "--secondary-foreground": "210 25% 25%",
+        "--muted": "200 20% 92%",
+        "--muted-foreground": "210 15% 45%",
+        "--accent": "200 60% 55%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 84% 60%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "200 20% 88%",
+        "--input": "200 20% 88%",
+        "--ring": "200 80% 45%",
+        "--quiz-primary": "200 80% 45%",
+        "--quiz-primary-light": "200 60% 55%",
+        "--quiz-glow": "200 70% 60%",
+      },
+      dark: {
+        "--background": "210 30% 8%",
+        "--foreground": "200 20% 95%",
+        "--card": "210 30% 12%",
+        "--card-foreground": "200 20% 95%",
+        "--popover": "210 30% 12%",
+        "--popover-foreground": "200 20% 95%",
+        "--primary": "200 80% 50%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "210 25% 18%",
+        "--secondary-foreground": "200 20% 90%",
+        "--muted": "210 25% 20%",
+        "--muted-foreground": "200 15% 60%",
+        "--accent": "200 60% 60%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 62% 40%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "210 25% 22%",
+        "--input": "210 25% 22%",
+        "--ring": "200 80% 50%",
+        "--quiz-primary": "200 80% 45%",
+        "--quiz-primary-light": "200 60% 55%",
+        "--quiz-glow": "200 70% 60%",
+      },
+    },
+  },
+  {
+    id: "forest",
+    name: "Forest",
+    description: "Earthy green tones",
+    colors: {
+      light: {
+        "--background": "120 20% 97%",
+        "--foreground": "140 25% 18%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "140 25% 18%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "140 25% 18%",
+        "--primary": "150 60% 38%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "120 20% 93%",
+        "--secondary-foreground": "140 25% 25%",
+        "--muted": "120 15% 91%",
+        "--muted-foreground": "140 15% 45%",
+        "--accent": "150 50% 45%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 84% 60%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "120 15% 87%",
+        "--input": "120 15% 87%",
+        "--ring": "150 60% 38%",
+        "--quiz-primary": "150 60% 38%",
+        "--quiz-primary-light": "150 50% 45%",
+        "--quiz-glow": "150 55% 50%",
+      },
+      dark: {
+        "--background": "140 25% 8%",
+        "--foreground": "120 20% 95%",
+        "--card": "140 25% 12%",
+        "--card-foreground": "120 20% 95%",
+        "--popover": "140 25% 12%",
+        "--popover-foreground": "120 20% 95%",
+        "--primary": "150 55% 45%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "140 20% 16%",
+        "--secondary-foreground": "120 20% 90%",
+        "--muted": "140 20% 18%",
+        "--muted-foreground": "120 15% 60%",
+        "--accent": "150 45% 52%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 62% 40%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "140 20% 20%",
+        "--input": "140 20% 20%",
+        "--ring": "150 55% 45%",
+        "--quiz-primary": "150 60% 38%",
+        "--quiz-primary-light": "150 50% 45%",
+        "--quiz-glow": "150 55% 50%",
+      },
+    },
+  },
+  {
+    id: "sunset",
+    name: "Sunset",
+    description: "Warm orange tones",
+    colors: {
+      light: {
+        "--background": "35 40% 97%",
+        "--foreground": "25 30% 18%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "25 30% 18%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "25 30% 18%",
+        "--primary": "25 90% 52%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "35 30% 93%",
+        "--secondary-foreground": "25 30% 25%",
+        "--muted": "35 25% 91%",
+        "--muted-foreground": "25 20% 45%",
+        "--accent": "15 80% 55%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 84% 60%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "35 25% 87%",
+        "--input": "35 25% 87%",
+        "--ring": "25 90% 52%",
+        "--quiz-primary": "25 90% 52%",
+        "--quiz-primary-light": "15 80% 55%",
+        "--quiz-glow": "20 85% 60%",
+      },
+      dark: {
+        "--background": "25 30% 8%",
+        "--foreground": "35 25% 95%",
+        "--card": "25 30% 12%",
+        "--card-foreground": "35 25% 95%",
+        "--popover": "25 30% 12%",
+        "--popover-foreground": "35 25% 95%",
+        "--primary": "25 85% 55%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "25 25% 16%",
+        "--secondary-foreground": "35 20% 90%",
+        "--muted": "25 25% 18%",
+        "--muted-foreground": "35 15% 60%",
+        "--accent": "15 75% 58%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 62% 40%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "25 25% 20%",
+        "--input": "25 25% 20%",
+        "--ring": "25 85% 55%",
+        "--quiz-primary": "25 90% 52%",
+        "--quiz-primary-light": "15 80% 55%",
+        "--quiz-glow": "20 85% 60%",
+      },
+    },
+  },
+  {
+    id: "rose",
+    name: "Rose",
+    description: "Soft pink tones",
+    colors: {
+      light: {
+        "--background": "350 30% 97%",
+        "--foreground": "340 25% 18%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "340 25% 18%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "340 25% 18%",
+        "--primary": "340 75% 55%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "350 25% 94%",
+        "--secondary-foreground": "340 25% 25%",
+        "--muted": "350 20% 92%",
+        "--muted-foreground": "340 15% 45%",
+        "--accent": "340 65% 60%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 84% 60%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "350 20% 88%",
+        "--input": "350 20% 88%",
+        "--ring": "340 75% 55%",
+        "--quiz-primary": "340 75% 55%",
+        "--quiz-primary-light": "340 65% 60%",
+        "--quiz-glow": "340 70% 65%",
+      },
+      dark: {
+        "--background": "340 25% 8%",
+        "--foreground": "350 20% 95%",
+        "--card": "340 25% 12%",
+        "--card-foreground": "350 20% 95%",
+        "--popover": "340 25% 12%",
+        "--popover-foreground": "350 20% 95%",
+        "--primary": "340 70% 58%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "340 20% 16%",
+        "--secondary-foreground": "350 20% 90%",
+        "--muted": "340 20% 18%",
+        "--muted-foreground": "350 15% 60%",
+        "--accent": "340 60% 62%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 62% 40%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "340 20% 20%",
+        "--input": "340 20% 20%",
+        "--ring": "340 70% 58%",
+        "--quiz-primary": "340 75% 55%",
+        "--quiz-primary-light": "340 65% 60%",
+        "--quiz-glow": "340 70% 65%",
+      },
+    },
+  },
+  {
+    id: "midnight",
+    name: "Midnight",
+    description: "Deep indigo tones",
+    colors: {
+      light: {
+        "--background": "250 30% 97%",
+        "--foreground": "250 25% 18%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "250 25% 18%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "250 25% 18%",
+        "--primary": "250 70% 50%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "250 25% 94%",
+        "--secondary-foreground": "250 25% 25%",
+        "--muted": "250 20% 92%",
+        "--muted-foreground": "250 15% 45%",
+        "--accent": "270 60% 55%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 84% 60%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "250 20% 88%",
+        "--input": "250 20% 88%",
+        "--ring": "250 70% 50%",
+        "--quiz-primary": "250 70% 50%",
+        "--quiz-primary-light": "270 60% 55%",
+        "--quiz-glow": "260 65% 60%",
+      },
+      dark: {
+        "--background": "250 30% 6%",
+        "--foreground": "250 20% 95%",
+        "--card": "250 30% 10%",
+        "--card-foreground": "250 20% 95%",
+        "--popover": "250 30% 10%",
+        "--popover-foreground": "250 20% 95%",
+        "--primary": "250 65% 58%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "250 25% 14%",
+        "--secondary-foreground": "250 20% 90%",
+        "--muted": "250 25% 16%",
+        "--muted-foreground": "250 15% 60%",
+        "--accent": "270 55% 60%",
+        "--accent-foreground": "0 0% 100%",
+        "--destructive": "0 62% 40%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "250 25% 18%",
+        "--input": "250 25% 18%",
+        "--ring": "250 65% 58%",
+        "--quiz-primary": "250 70% 50%",
+        "--quiz-primary-light": "270 60% 55%",
+        "--quiz-glow": "260 65% 60%",
+      },
+    },
+  },
+];
+
 const DEFAULT_PREFERENCES: AppearancePreferences = {
   themeMode: "system",
   uiDensity: "default",
@@ -121,6 +414,7 @@ const DEFAULT_PREFERENCES: AppearancePreferences = {
   borderRadius: 0.75,
   spacing: 1,
   colors: DEFAULT_COLORS,
+  activePreset: "default",
 };
 
 const COLOR_GROUPS = {
@@ -452,6 +746,53 @@ export function AppearanceSettings() {
 
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
+          {/* Preset Themes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Theme Presets
+              </CardTitle>
+              <CardDescription>Quick-start with a pre-designed color scheme</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {THEME_PRESETS.map((preset) => {
+                  const isActive = localPrefs.activePreset === preset.id;
+                  const primaryColor = preset.colors.light["--primary"];
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => {
+                        const updated = {
+                          ...localPrefs,
+                          colors: preset.colors,
+                          activePreset: preset.id,
+                        };
+                        setLocalPrefs(updated);
+                        setHasChanges(true);
+                        applyTheme(updated);
+                      }}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        isActive
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full border-2 border-white shadow-md"
+                        style={{ backgroundColor: `hsl(${primaryColor})` }}
+                      />
+                      <span className={`text-xs font-medium ${isActive ? "text-primary" : ""}`}>
+                        {preset.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
