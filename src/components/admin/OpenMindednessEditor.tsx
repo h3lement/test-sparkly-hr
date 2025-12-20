@@ -299,18 +299,30 @@ export function OpenMindednessEditor({
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Options (users can select multiple) — drag to reorder</Label>
-              {!isPreviewMode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-xs px-2"
-                  onClick={addOption}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Option
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Options (users can select multiple) — drag to reorder</Label>
+                {enableScoring && (
+                  <span className="text-xs text-muted-foreground">
+                    • Max pts: <span className="font-medium text-primary">{openMindednessQuestion.answers.reduce((sum, a) => sum + (a.score_value || 0), 0)}</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {enableScoring && (
+                  <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">pts</span>
+                )}
+                {!isPreviewMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-xs px-2"
+                    onClick={addOption}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add Option
+                  </Button>
+                )}
+              </div>
             </div>
 
             <DndContext
