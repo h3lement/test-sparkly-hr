@@ -80,28 +80,36 @@ const Admin = () => {
   }, [navigate]);
 
   const checkAdminRole = async (userId: string) => {
+    setCheckingRole(true);
+
     try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
+      // Roles can be granted moments after sign-up; retry briefly to avoid false "Access Denied".
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data) {
-        setIsAdmin(true);
-        fetchLeads();
-        fetchAdmins();
-      } else {
-        setIsAdmin(false);
-        toast({
-          title: "Access Denied",
-          description: "You don't have admin privileges. Contact the administrator.",
-          variant: "destructive",
-        });
+        if (data) {
+          setIsAdmin(true);
+          fetchLeads();
+          fetchAdmins();
+          return;
+        }
+
+        await new Promise((r) => setTimeout(r, 500));
       }
+
+      setIsAdmin(false);
+      toast({
+        title: "Access Denied",
+        description: "You don't have admin privileges. Contact the administrator.",
+        variant: "destructive",
+      });
     } catch (error: any) {
       console.error("Error checking admin role:", error);
       toast({
@@ -420,9 +428,17 @@ const Admin = () => {
             <p className="text-muted-foreground mb-6">
               You don't have admin privileges to view this page. Please contact the administrator to request access.
             </p>
-            <Button onClick={handleLogout} variant="outline">
-              Sign Out
-            </Button>
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+              <Button
+                onClick={() => currentUserId && checkAdminRole(currentUserId)}
+                variant="secondary"
+              >
+                Retry access
+              </Button>
+              <Button onClick={handleLogout} variant="outline">
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
         <Footer />
