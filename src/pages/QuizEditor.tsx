@@ -1273,93 +1273,99 @@ export default function QuizEditor() {
             )}
           </TabsContent>
 
-          <TabsContent value="results" className="space-y-1">
+          <TabsContent value="results" className="space-y-2">
             {!isPreviewMode && (
-              <Button onClick={addResultLevel} variant="outline" size="sm" className="w-full h-7 text-xs mb-1">
+              <Button onClick={addResultLevel} variant="outline" size="sm" className="w-full h-7 text-xs">
                 <Plus className="w-3 h-3 mr-1" />
                 Add Result Level
               </Button>
             )}
 
-            <div className="space-y-0">
-              {resultLevels.map((level, index) => (
-                <div
-                  key={level.id}
-                  className={`list-row border-x first:border-t last:border-b first:rounded-t last:rounded-b px-2 py-1.5 space-y-1 ${index % 2 === 1 ? 'list-row-alt' : ''}`}
-                >
-                {/* Row 1: Header with score range, emoji, and delete */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium flex-shrink-0">
-                    {level.emoji}
-                  </span>
-                  <Input
-                    value={getLocalizedValue(level.title, displayLanguage)}
-                    onChange={(e) => {
-                      const updated = { ...jsonToRecord(level.title), [displayLanguage]: e.target.value };
-                      updateResultLevel(index, { title: updated });
-                    }}
-                    placeholder="Result title"
-                    className="h-6 text-sm flex-1"
-                    disabled={isPreviewMode}
-                  />
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Input
-                      type="number"
-                      value={level.min_score}
-                      onChange={(e) =>
-                        updateResultLevel(index, { min_score: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-6 w-12 text-xs text-center"
-                      title="Min score"
-                      disabled={isPreviewMode}
-                    />
-                    <span className="text-xs text-muted-foreground">–</span>
-                    <Input
-                      type="number"
-                      value={level.max_score}
-                      onChange={(e) =>
-                        updateResultLevel(index, { max_score: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-6 w-12 text-xs text-center"
-                      title="Max score"
-                      disabled={isPreviewMode}
-                    />
-                    <span className="text-xs text-muted-foreground">pts</span>
-                  </div>
-                  <Input
-                    value={level.emoji}
-                    onChange={(e) => updateResultLevel(index, { emoji: e.target.value })}
-                    className="h-6 w-10 text-center text-sm"
-                    title="Emoji"
-                    disabled={isPreviewMode}
-                  />
-                  {!isPreviewMode && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive flex-shrink-0"
-                      onClick={() => deleteResultLevel(index)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* Row 2: Description */}
-                <Textarea
-                  value={getLocalizedValue(level.description, displayLanguage)}
-                  onChange={(e) => {
-                    const updated = { ...jsonToRecord(level.description), [displayLanguage]: e.target.value };
-                    updateResultLevel(index, { description: updated });
-                  }}
-                  placeholder={`Description (${displayLanguage.toUpperCase()})`}
-                  rows={1}
-                  className="resize-none text-xs min-h-[28px]"
-                  disabled={isPreviewMode}
-                />
+            {resultLevels.length === 0 ? (
+              <div className="text-center py-8 border border-dashed rounded-lg">
+                <p className="text-muted-foreground text-sm">No result levels yet. Add your first level!</p>
               </div>
-              ))}
-            </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                {resultLevels.map((level, index) => (
+                  <div
+                    key={level.id}
+                    className={`px-3 py-2 border-b last:border-b-0 space-y-1.5 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
+                  >
+                    {/* Row 1: Header with score range, emoji, and delete */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium flex-shrink-0">
+                        {level.emoji}
+                      </span>
+                      <Input
+                        value={getLocalizedValue(level.title, displayLanguage)}
+                        onChange={(e) => {
+                          const updated = { ...jsonToRecord(level.title), [displayLanguage]: e.target.value };
+                          updateResultLevel(index, { title: updated });
+                        }}
+                        placeholder="Result title"
+                        className="h-6 text-sm flex-1"
+                        disabled={isPreviewMode}
+                      />
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Input
+                          type="number"
+                          value={level.min_score}
+                          onChange={(e) =>
+                            updateResultLevel(index, { min_score: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-6 w-12 text-xs text-center"
+                          title="Min score"
+                          disabled={isPreviewMode}
+                        />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Input
+                          type="number"
+                          value={level.max_score}
+                          onChange={(e) =>
+                            updateResultLevel(index, { max_score: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-6 w-12 text-xs text-center"
+                          title="Max score"
+                          disabled={isPreviewMode}
+                        />
+                        <span className="text-xs text-muted-foreground">pts</span>
+                      </div>
+                      <Input
+                        value={level.emoji}
+                        onChange={(e) => updateResultLevel(index, { emoji: e.target.value })}
+                        className="h-6 w-10 text-center text-sm"
+                        title="Emoji"
+                        disabled={isPreviewMode}
+                      />
+                      {!isPreviewMode && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive flex-shrink-0"
+                          onClick={() => deleteResultLevel(index)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Row 2: Description */}
+                    <Textarea
+                      value={getLocalizedValue(level.description, displayLanguage)}
+                      onChange={(e) => {
+                        const updated = { ...jsonToRecord(level.description), [displayLanguage]: e.target.value };
+                        updateResultLevel(index, { description: updated });
+                      }}
+                      placeholder={`Description (${displayLanguage.toUpperCase()})`}
+                      rows={1}
+                      className="resize-none text-xs min-h-[28px]"
+                      disabled={isPreviewMode}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
           </div>
