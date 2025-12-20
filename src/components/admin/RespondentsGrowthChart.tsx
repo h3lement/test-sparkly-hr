@@ -82,12 +82,9 @@ const getCutoffDate = (range: DateRangeOption) => {
 
 export function RespondentsGrowthChart({ quizzes, leads, loading, onLeadInserted }: RespondentsGrowthChartProps) {
   const [dateRange, setDateRange] = useState<DateRangeOption>("365");
-  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
 
-  // Realtime subscription
+  // Always-on realtime subscription
   useEffect(() => {
-    if (!realtimeEnabled) return;
-
     const channel = supabase
       .channel("respondents-chart-leads")
       .on(
@@ -102,7 +99,7 @@ export function RespondentsGrowthChart({ quizzes, leads, loading, onLeadInserted
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [realtimeEnabled, onLeadInserted]);
+  }, [onLeadInserted]);
 
   // Filter leads based on date range
   const filteredLeads = useMemo(() => {
@@ -203,20 +200,9 @@ export function RespondentsGrowthChart({ quizzes, leads, loading, onLeadInserted
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="realtime-respondents"
-            checked={realtimeEnabled}
-            onCheckedChange={setRealtimeEnabled}
-          />
-          <Label htmlFor="realtime-respondents" className="flex items-center gap-1.5 text-sm cursor-pointer">
-            {realtimeEnabled ? (
-              <Wifi className="h-4 w-4 text-green-600" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-muted-foreground" />
-            )}
-            Realtime
-          </Label>
+        <div className="flex items-center gap-1.5 text-sm text-green-600">
+          <Wifi className="h-4 w-4" />
+          <span>Live</span>
         </div>
       </div>
 

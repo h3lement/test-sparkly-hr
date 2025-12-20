@@ -54,7 +54,7 @@ export function ActivityDashboard() {
   const [loading, setLoading] = useState(true);
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [adminFilter, setAdminFilter] = useState<string>("all");
-  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
+  
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -98,10 +98,8 @@ export function ActivityDashboard() {
     fetchData();
   }, [fetchData]);
 
-  // Realtime subscription for activity_logs
+  // Always-on realtime subscription for activity_logs
   useEffect(() => {
-    if (!realtimeEnabled) return;
-
     const channel = supabase
       .channel("activity-dashboard-logs")
       .on(
@@ -116,7 +114,7 @@ export function ActivityDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [realtimeEnabled, fetchData]);
+  }, [fetchData]);
 
 
   const filteredActivities = useMemo(() => {
@@ -261,20 +259,9 @@ export function ActivityDashboard() {
           <p className="text-muted-foreground mt-1">Track what admin users are doing</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="realtime-activity"
-              checked={realtimeEnabled}
-              onCheckedChange={setRealtimeEnabled}
-            />
-            <Label htmlFor="realtime-activity" className="flex items-center gap-1.5 text-sm cursor-pointer">
-              {realtimeEnabled ? (
-                <Wifi className="h-4 w-4 text-green-600" />
-              ) : (
-                <WifiOff className="h-4 w-4 text-muted-foreground" />
-              )}
-              Realtime
-            </Label>
+          <div className="flex items-center gap-1.5 text-sm text-green-600">
+            <Wifi className="h-4 w-4" />
+            <span>Live</span>
           </div>
           <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
