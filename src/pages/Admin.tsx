@@ -16,6 +16,7 @@ import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
 import { QuizManager } from "@/components/admin/QuizManager";
 import { QuizAnalytics } from "@/components/admin/QuizAnalytics";
 import { RespondentsList } from "@/components/admin/RespondentsList";
+import { ActivityDashboard } from "@/components/admin/ActivityDashboard";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 
@@ -44,7 +45,7 @@ const Admin = () => {
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState("leads");
+  const [activeTab, setActiveTab] = useState("activity");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -364,6 +365,11 @@ const Admin = () => {
 
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
         <div className="flex-1 p-8 overflow-auto">
+          {/* Activity Dashboard Tab */}
+          {activeTab === "activity" && (
+            <ActivityDashboard />
+          )}
+
           {/* Respondents Tab */}
           {activeTab === "leads" && (
             <RespondentsList />
