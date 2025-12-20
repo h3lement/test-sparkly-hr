@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2 } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import {
@@ -98,8 +99,16 @@ export default function QuizEditor() {
   const [activeTab, setActiveTab] = useState("general");
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
-  const [primaryLanguage, setPrimaryLanguage] = useState("en");
   const { toast } = useToast();
+  
+  // User preference for language selection
+  const { preferences: editorPrefs, updatePreference: updateEditorPref } = useUserPreferences<{ language: string }>({
+    key: "quiz_editor",
+    defaultValue: { language: "en" },
+  });
+  
+  const primaryLanguage = editorPrefs.language || "en";
+  const setPrimaryLanguage = (lang: string) => updateEditorPref("language", lang);
 
   // Quiz details state
   const [slug, setSlug] = useState("");
