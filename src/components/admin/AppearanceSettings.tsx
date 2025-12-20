@@ -1782,7 +1782,7 @@ function QuizDesignReference() {
             </div>
             <div className="p-3 bg-card rounded-md border border-border">
               <p className="text-sm font-medium">AdminPagination</p>
-              <p className="text-xs text-muted-foreground">Pagination with items per page</p>
+              <p className="text-xs text-muted-foreground">Pagination with items per page (auto-hides when ≤25 items)</p>
             </div>
             <div className="p-3 bg-card rounded-md border border-border">
               <p className="text-sm font-medium">AdminEmptyState, AdminLoading</p>
@@ -1820,6 +1820,36 @@ function QuizDesignReference() {
           <DesignToken label="Empty State" value="admin-empty-state" cssVar="text-center py-12" />
           <DesignToken label="Loading State" value="admin-loading" cssVar="text-center py-12" />
           <DesignToken label="Pagination" value="admin-pagination" cssVar="flex justify-between mt-6" />
+        </CardContent>
+      </Card>
+
+      {/* Pagination Rules */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pagination Conditions</CardTitle>
+          <CardDescription>When to show pagination controls</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-secondary/50 rounded-lg border border-border space-y-3">
+            <p className="text-sm font-medium text-foreground">Default Behavior</p>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Pagination auto-hides when total items ≤ 25 (minItems threshold)</li>
+              <li>Shows when items exceed the threshold</li>
+              <li>Can override with <code className="text-xs bg-muted px-1 py-0.5 rounded">minItems={'{0}'}</code> to always show</li>
+            </ul>
+          </div>
+          <div className="p-4 bg-muted/50 rounded-lg border border-border">
+            <p className="text-sm font-medium mb-2">Usage Example</p>
+            <pre className="block text-xs font-mono text-muted-foreground whitespace-pre-wrap bg-card p-3 rounded-md border border-border">{`<AdminPagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalItems}
+  itemsPerPage={itemsPerPage}
+  onPageChange={handlePageChange}
+  onItemsPerPageChange={handleItemsPerPageChange}
+  minItems={25} // Optional: defaults to 25
+/>`}</pre>
+          </div>
         </CardContent>
       </Card>
 
