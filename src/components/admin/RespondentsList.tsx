@@ -12,8 +12,17 @@ import {
   Trash2, 
   ChevronDown, 
   ChevronUp,
-  FileText
+  FileText,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -50,6 +59,8 @@ interface QuizAnswer {
   answer_order: number;
 }
 
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
 export function RespondentsList() {
   const [leads, setLeads] = useState<QuizLead[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -58,6 +69,8 @@ export function RespondentsList() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -213,6 +226,52 @@ export function RespondentsList() {
     lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Pagination calculations
+  const totalItems = filteredLeads.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setExpandedRow(null);
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      
+      if (currentPage > 3) pages.push("ellipsis");
+      
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      
+      for (let i = start; i <= end; i++) pages.push(i);
+      
+      if (currentPage < totalPages - 2) pages.push("ellipsis");
+      
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   return (
     <div className="max-w-6xl">
       <div className="flex items-start justify-between mb-8">
@@ -275,7 +334,7 @@ export function RespondentsList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredLeads.map((lead) => {
+              {paginatedLeads.map((lead) => {
                 const isExpanded = expandedRow === lead.id;
                 const quizQuestions = getQuestionsForQuiz(lead.quiz_id);
                 const leadAnswers = parseLeadAnswers(lead.answers);
@@ -405,6 +464,68 @@ export function RespondentsList() {
               })}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Showing</span>
+                <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
+                  <SelectTrigger className="w-[70px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={String(option)}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span>of {totalItems} results</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {getPageNumbers().map((page, idx) =>
+                  page === "ellipsis" ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">
+                      ...
+                    </span>
+                  ) : (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </Button>
+                  )
+                )}
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
