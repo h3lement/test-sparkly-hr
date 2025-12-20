@@ -174,20 +174,25 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     savePreferences({ ...preferences, showUniqueEmailQuiz: value, showUniqueEmails: value ? false : preferences.showUniqueEmails });
   }, [preferences, savePreferences]);
 
-  // Calculate quiz count per email
+  // Calculate quiz count per email (case-insensitive)
   const emailQuizCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     leads.forEach((lead) => {
-      counts[lead.email] = (counts[lead.email] || 0) + 1;
+      const normalizedEmail = lead.email.toLowerCase();
+      counts[normalizedEmail] = (counts[normalizedEmail] || 0) + 1;
     });
     return counts;
   }, [leads]);
 
+  // Helper to get count for an email (case-insensitive)
+  const getEmailQuizCount = (email: string) => {
+    return emailQuizCounts[email.toLowerCase()] || 1;
+  };
 
-  // Get all submissions for a specific email, ordered by latest first
+  // Get all submissions for a specific email, ordered by latest first (case-insensitive)
   const getSubmissionsForEmail = (email: string) => {
     return leads
-      .filter((lead) => lead.email === email)
+      .filter((lead) => lead.email.toLowerCase() === email.toLowerCase())
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   };
 
@@ -628,9 +633,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                 e.stopPropagation();
                                 setSelectedEmail(lead.email);
                               }}
-                              title={`${emailQuizCounts[lead.email] || 1} quiz submission${(emailQuizCounts[lead.email] || 1) !== 1 ? 's' : ''}`}
+                              title={`${getEmailQuizCount(lead.email)} quiz submission${getEmailQuizCount(lead.email) !== 1 ? 's' : ''}`}
                             >
-                              {emailQuizCounts[lead.email] || 1} quiz{(emailQuizCounts[lead.email] || 1) !== 1 ? 'zes' : ''}
+                              {getEmailQuizCount(lead.email)} quiz{getEmailQuizCount(lead.email) !== 1 ? 'zes' : ''}
                             </Badge>
                             {hasAnswers && (
                               isExpanded ? (
