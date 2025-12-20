@@ -364,6 +364,17 @@ export function ActivityDashboard() {
                     activeDot={{ r: 6 }}
                   />
                 ))}
+                <Line
+                  key="total"
+                  type="monotone"
+                  dataKey="total"
+                  name="Total"
+                  stroke="#374151"
+                  strokeWidth={3}
+                  strokeDasharray="5 5"
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -385,7 +396,7 @@ export function ActivityDashboard() {
               <SelectContent>
                 <SelectItem value="all">All Activities</SelectItem>
                 <SelectItem value="quizzes">Quizzes</SelectItem>
-                <SelectItem value="quiz_leads">Respondents</SelectItem>
+                <SelectItem value="quiz_leads">Responses</SelectItem>
                 <SelectItem value="email_logs">Emails</SelectItem>
               </SelectContent>
             </Select>
