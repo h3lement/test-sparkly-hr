@@ -1,6 +1,9 @@
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import sparklyLogo from "@/assets/sparkly-logo.png";
 
 interface AdminSidebarProps {
@@ -11,6 +14,14 @@ interface AdminSidebarProps {
   onLogout: () => void;
 }
 
+interface TableCounts {
+  leads: number;
+  quizzes: number;
+  admins: number;
+  emailLogs: number;
+  pageViews: number;
+}
+
 export function AdminSidebar({ 
   collapsed, 
   onToggle, 
@@ -18,15 +29,55 @@ export function AdminSidebar({
   onTabChange,
   onLogout 
 }: AdminSidebarProps) {
+  const [counts, setCounts] = useState<TableCounts>({
+    leads: 0,
+    quizzes: 0,
+    admins: 0,
+    emailLogs: 0,
+    pageViews: 0,
+  });
+
+  useEffect(() => {
+    fetchCounts();
+  }, []);
+
+  const fetchCounts = async () => {
+    try {
+      const [leadsRes, quizzesRes, adminsRes, emailLogsRes, pageViewsRes] = await Promise.all([
+        supabase.from("quiz_leads").select("*", { count: "exact", head: true }),
+        supabase.from("quizzes").select("*", { count: "exact", head: true }),
+        supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
+        supabase.from("email_logs").select("*", { count: "exact", head: true }),
+        supabase.from("page_views").select("*", { count: "exact", head: true }),
+      ]);
+
+      setCounts({
+        leads: leadsRes.count || 0,
+        quizzes: quizzesRes.count || 0,
+        admins: adminsRes.count || 0,
+        emailLogs: emailLogsRes.count || 0,
+        pageViews: pageViewsRes.count || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching counts:", error);
+    }
+  };
+
   const menuItems = [
-    { id: "leads", label: "Respondents", icon: Users },
-    { id: "quizzes", label: "Quizzes", icon: ClipboardList },
-    { id: "analytics", label: "Quiz Analytics", icon: PieChart },
-    { id: "admins", label: "Admin Users", icon: Shield },
-    { id: "web-stats", label: "Web Stats", icon: BarChart3 },
-    { id: "email", label: "Email Settings", icon: Mail },
-    { id: "email-logs", label: "Email History", icon: History },
+    { id: "leads", label: "Respondents", icon: Users, count: counts.leads },
+    { id: "quizzes", label: "Quizzes", icon: ClipboardList, count: counts.quizzes },
+    { id: "analytics", label: "Quiz Analytics", icon: PieChart, count: null },
+    { id: "admins", label: "Admin Users", icon: Shield, count: counts.admins },
+    { id: "web-stats", label: "Web Stats", icon: BarChart3, count: counts.pageViews },
+    { id: "email", label: "Email Settings", icon: Mail, count: null },
+    { id: "email-logs", label: "Email History", icon: History, count: counts.emailLogs },
   ];
+
+  const formatCount = (count: number) => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  };
 
   return (
     <aside 
@@ -86,10 +137,24 @@ export function AdminSidebar({
                       ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:bg-secondary"
                   } ${collapsed ? "justify-center" : ""}`}
-                  title={collapsed ? item.label : undefined}
+                  title={collapsed ? `${item.label}${item.count !== null ? ` (${item.count})` : ""}` : undefined}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.count !== null && (
+                        <Badge 
+                          variant={isActive ? "secondary" : "outline"}
+                          className={`text-xs px-1.5 py-0.5 min-w-[1.5rem] justify-center ${
+                            isActive ? "bg-primary-foreground/20 text-primary-foreground" : ""
+                          }`}
+                        >
+                          {formatCount(item.count)}
+                        </Badge>
+                      )}
+                    </>
+                  )}
                 </button>
               </li>
             );
