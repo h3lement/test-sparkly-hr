@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, BarChart3, Users, Target, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { RefreshCw, BarChart3, Users, Target, TrendingUp, Calendar } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
+import { format, subDays, startOfDay, eachDayOfInterval, eachWeekOfInterval, startOfWeek, endOfWeek } from 'date-fns';
 
 interface Quiz {
   id: string;
@@ -19,6 +20,13 @@ interface QuizLead {
   answers: Record<string, number> | null;
   result_category: string;
   quiz_id: string;
+  created_at: string;
+}
+
+interface TrendData {
+  date: string;
+  submissions: number;
+  avgScore: number;
 }
 
 interface AnalyticsData {
@@ -27,6 +35,8 @@ interface AnalyticsData {
   averagePercentage: number;
   resultDistribution: { name: string; count: number }[];
   answerDistribution: { question: string; answers: { label: string; count: number }[] }[];
+  dailyTrend: TrendData[];
+  weeklyTrend: TrendData[];
 }
 
 const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -37,6 +47,7 @@ export function QuizAnalytics() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [questionsMap, setQuestionsMap] = useState<Record<string, { text: string; answers: { id: string; text: string }[] }>>({});
+  const [trendView, setTrendView] = useState<'daily' | 'weekly'>('daily');
 
   useEffect(() => {
     fetchQuizzes();
@@ -74,7 +85,8 @@ export function QuizAnalytics() {
       const { data: leads, error: leadsError } = await supabase
         .from('quiz_leads')
         .select('*')
-        .eq('quiz_id', quizId);
+        .eq('quiz_id', quizId)
+        .order('created_at', { ascending: true });
 
       if (leadsError) throw leadsError;
 
@@ -118,7 +130,7 @@ export function QuizAnalytics() {
       setQuestionsMap(qMap);
 
       // Calculate analytics
-      const typedLeads = leads as QuizLead[] || [];
+      const typedLeads = (leads || []) as QuizLead[];
       const totalSubmissions = typedLeads.length;
       
       const totalScore = typedLeads.reduce((acc, lead) => acc + lead.score, 0);
@@ -164,12 +176,65 @@ export function QuizAnalytics() {
         };
       });
 
+      // Calculate daily trends (last 30 days)
+      const now = new Date();
+      const thirtyDaysAgo = subDays(now, 30);
+      const days = eachDayOfInterval({ start: thirtyDaysAgo, end: now });
+      
+      const dailyTrend: TrendData[] = days.map(day => {
+        const dayStart = startOfDay(day);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        
+        const dayLeads = typedLeads.filter(lead => {
+          const leadDate = new Date(lead.created_at);
+          return leadDate >= dayStart && leadDate < dayEnd;
+        });
+        
+        const submissions = dayLeads.length;
+        const avgScore = submissions > 0 
+          ? dayLeads.reduce((acc, l) => acc + (l.score / l.total_questions) * 100, 0) / submissions 
+          : 0;
+        
+        return {
+          date: format(day, 'MMM d'),
+          submissions,
+          avgScore: Math.round(avgScore)
+        };
+      });
+
+      // Calculate weekly trends (last 12 weeks)
+      const twelveWeeksAgo = subDays(now, 84);
+      const weeks = eachWeekOfInterval({ start: twelveWeeksAgo, end: now });
+      
+      const weeklyTrend: TrendData[] = weeks.map(weekStart => {
+        const weekEnd = endOfWeek(weekStart);
+        
+        const weekLeads = typedLeads.filter(lead => {
+          const leadDate = new Date(lead.created_at);
+          return leadDate >= weekStart && leadDate <= weekEnd;
+        });
+        
+        const submissions = weekLeads.length;
+        const avgScore = submissions > 0 
+          ? weekLeads.reduce((acc, l) => acc + (l.score / l.total_questions) * 100, 0) / submissions 
+          : 0;
+        
+        return {
+          date: format(weekStart, 'MMM d'),
+          submissions,
+          avgScore: Math.round(avgScore)
+        };
+      });
+
       setAnalytics({
         totalSubmissions,
         averageScore,
         averagePercentage,
         resultDistribution,
-        answerDistribution
+        answerDistribution,
+        dailyTrend,
+        weeklyTrend
       });
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -181,6 +246,8 @@ export function QuizAnalytics() {
   const getQuizTitle = (quiz: Quiz) => {
     return quiz.title?.en || quiz.title?.hr || quiz.slug;
   };
+
+  const trendData = trendView === 'daily' ? analytics?.dailyTrend : analytics?.weeklyTrend;
 
   return (
     <div className="space-y-6">
@@ -257,6 +324,123 @@ export function QuizAnalytics() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Trend Charts */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Submissions Over Time
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant={trendView === 'daily' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTrendView('daily')}
+                >
+                  Daily
+                </Button>
+                <Button
+                  variant={trendView === 'weekly' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTrendView('weekly')}
+                >
+                  Weekly
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {trendData && trendData.length > 0 ? (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData}>
+                      <defs>
+                        <linearGradient id="colorSubmissions" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 11 }} 
+                        interval={trendView === 'daily' ? 4 : 0}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="submissions" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorSubmissions)" 
+                        name="Submissions"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No trend data available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Average Score Trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Average Score Trend ({trendView === 'daily' ? 'Last 30 Days' : 'Last 12 Weeks'})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {trendData && trendData.some(d => d.submissions > 0) ? (
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData.filter(d => d.submissions > 0)}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 11 }}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11 }} 
+                        domain={[0, 100]}
+                        className="text-muted-foreground"
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Avg Score']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="avgScore" 
+                        stroke="#22c55e" 
+                        strokeWidth={2}
+                        dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
+                        name="Avg Score %"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No score data available for this period</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Charts */}
           <div className="grid gap-6 md:grid-cols-2">
