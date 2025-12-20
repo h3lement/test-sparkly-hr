@@ -389,13 +389,6 @@ const Admin = () => {
       />
 
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <header className="flex items-center justify-end gap-2 p-4 border-b border-border bg-background">
-          <Button onClick={handleLogout} variant="outline" size="sm">
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
-        </header>
-
         <div className="flex-1 p-8 overflow-auto">
           {/* Activity Dashboard Tab */}
           {activeTab === "activity" && (
