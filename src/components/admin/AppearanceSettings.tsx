@@ -793,39 +793,36 @@ export function AppearanceSettings() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Theme Mode
-              </CardTitle>
-              <CardDescription>Choose how the interface appears</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { value: "light", label: "Light", icon: Sun },
-                  { value: "dark", label: "Dark", icon: Moon },
-                  { value: "system", label: "System", icon: Monitor },
-                ].map(({ value, label, icon: Icon }) => (
-                  <button
-                    key={value}
-                    onClick={() => updateLocalPref("themeMode", value as AppearancePreferences["themeMode"])}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                      localPrefs.themeMode === value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <Icon className={`h-6 w-6 ${localPrefs.themeMode === value ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-sm font-medium ${localPrefs.themeMode === value ? "text-primary" : ""}`}>
-                      {label}
-                    </span>
-                  </button>
-                ))}
+          {/* Compact Theme Mode */}
+          <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+            <div className="flex items-center gap-3">
+              <Palette className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <span className="font-medium">Theme Mode</span>
+                <p className="text-sm text-muted-foreground">Choose interface appearance</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="flex items-center rounded-lg border border-border bg-secondary/30 p-1">
+              {[
+                { value: "light", icon: Sun },
+                { value: "dark", icon: Moon },
+                { value: "system", icon: Monitor },
+              ].map(({ value, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => updateLocalPref("themeMode", value as AppearancePreferences["themeMode"])}
+                  className={`flex items-center justify-center p-2 rounded-md transition-all ${
+                    localPrefs.themeMode === value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}
+                  title={value.charAt(0).toUpperCase() + value.slice(1)}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              ))}
+            </div>
+          </div>
 
           <Card>
             <CardHeader>
@@ -838,24 +835,43 @@ export function AppearanceSettings() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { value: "compact", label: "Compact", icon: Minimize2, description: "Dense layout, smaller text" },
-                  { value: "default", label: "Default", icon: Square, description: "Balanced spacing" },
-                  { value: "comfortable", label: "Comfortable", icon: Maximize2, description: "Spacious, larger text" },
-                ].map(({ value, label, icon: Icon, description }) => (
+                  { value: "compact", label: "Compact", scale: 0.85 },
+                  { value: "default", label: "Default", scale: 1 },
+                  { value: "comfortable", label: "Comfortable", scale: 1.15 },
+                ].map(({ value, label, scale }) => (
                   <button
                     key={value}
                     onClick={() => updateLocalPref("uiDensity", value as AppearancePreferences["uiDensity"])}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                    className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${
                       localPrefs.uiDensity === value
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     }`}
                   >
-                    <Icon className={`h-6 w-6 ${localPrefs.uiDensity === value ? "text-primary" : "text-muted-foreground"}`} />
+                    {/* Visual representation showing scaled lines */}
+                    <div 
+                      className="flex flex-col justify-center items-center w-full"
+                      style={{ 
+                        gap: `${4 * scale}px`,
+                        padding: `${8 * scale}px`
+                      }}
+                    >
+                      <div 
+                        className={`rounded-sm ${localPrefs.uiDensity === value ? "bg-primary" : "bg-muted-foreground/40"}`}
+                        style={{ width: `${48 * scale}px`, height: `${6 * scale}px` }}
+                      />
+                      <div 
+                        className={`rounded-sm ${localPrefs.uiDensity === value ? "bg-primary/60" : "bg-muted-foreground/25"}`}
+                        style={{ width: `${36 * scale}px`, height: `${4 * scale}px` }}
+                      />
+                      <div 
+                        className={`rounded-sm ${localPrefs.uiDensity === value ? "bg-primary/60" : "bg-muted-foreground/25"}`}
+                        style={{ width: `${42 * scale}px`, height: `${4 * scale}px` }}
+                      />
+                    </div>
                     <span className={`text-sm font-medium ${localPrefs.uiDensity === value ? "text-primary" : ""}`}>
                       {label}
                     </span>
-                    <span className="text-xs text-muted-foreground text-center">{description}</span>
                   </button>
                 ))}
               </div>
