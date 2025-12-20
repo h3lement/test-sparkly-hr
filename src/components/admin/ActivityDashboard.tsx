@@ -253,7 +253,7 @@ export function ActivityDashboard() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Activity Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Overview of respondent growth and recent activities</p>
+          <p className="text-muted-foreground mt-1">Overview of responses growth and recent activities</p>
         </div>
         <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -317,12 +317,12 @@ export function ActivityDashboard() {
         </Card>
       </div>
 
-      {/* 13-Month Respondents Growth Chart */}
+      {/* 13-Month Responses Growth Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Respondents Growth (13 Months)
+            Responses Growth (13 Months)
           </CardTitle>
         </CardHeader>
         <CardContent>
