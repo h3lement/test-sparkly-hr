@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink } from "lucide-react";
+import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -1217,118 +1218,23 @@ export default function QuizEditor() {
               </Button>
             )}
 
-            <Accordion type="single" collapsible className="space-y-1">
-              {questions.filter(q => q.question_type !== "open_mindedness").map((question, filteredIndex) => {
-                const qIndex = questions.findIndex(q => q.id === question.id);
-                return (
-                <AccordionItem
-                  key={question.id}
-                  value={question.id}
-                  className="border rounded px-3 py-0"
-                >
-                  <AccordionTrigger className="hover:no-underline py-2">
-                    <div className="flex items-center gap-1.5 text-left text-sm">
-                      <GripVertical className="w-3 h-3 text-muted-foreground" />
-                      <span className="font-medium">
-                        Q{qIndex + 1}: {getLocalizedValue(question.question_text, displayLanguage) || "New Question"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ({question.answers.length})
-                      </span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-2 pt-2 pb-3">
-                    <div>
-                      <Label className="text-xs">Question ({displayLanguage.toUpperCase()})</Label>
-                      <Textarea
-                        value={getLocalizedValue(question.question_text, displayLanguage)}
-                        onChange={(e) => {
-                          const updated = { ...jsonToRecord(question.question_text), [displayLanguage]: e.target.value };
-                          updateQuestion(qIndex, { question_text: updated });
-                        }}
-                        placeholder="Enter question text"
-                        rows={2}
-                        className="resize-none text-sm"
-                        disabled={isPreviewMode}
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs">Answers</Label>
-                        {!isPreviewMode && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-xs px-2"
-                            onClick={() => addAnswer(qIndex)}
-                          >
-                            <Plus className="w-3 h-3 mr-1" />
-                            Add
-                          </Button>
-                        )}
-                      </div>
-
-                      {question.answers.map((answer, aIndex) => (
-                        <div
-                          key={answer.id}
-                          className="flex items-center gap-1.5 p-1.5 bg-secondary/30 rounded"
-                        >
-                          <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <Input
-                            value={getLocalizedValue(answer.answer_text, displayLanguage)}
-                            onChange={(e) => {
-                              const updated = { ...jsonToRecord(answer.answer_text), [displayLanguage]: e.target.value };
-                              updateAnswer(qIndex, aIndex, { answer_text: updated });
-                            }}
-                            placeholder={`Answer ${aIndex + 1}`}
-                            className="flex-1 h-7 text-sm"
-                            disabled={isPreviewMode}
-                          />
-                          {enableScoring && (
-                            <Input
-                              type="number"
-                              value={answer.score_value}
-                              onChange={(e) =>
-                                updateAnswer(qIndex, aIndex, {
-                                  score_value: parseInt(e.target.value) || 0,
-                                })
-                              }
-                              className="w-14 h-7 text-sm text-center"
-                              title="Score"
-                              disabled={isPreviewMode}
-                            />
-                          )}
-                          {!isPreviewMode && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive"
-                              onClick={() => deleteAnswer(qIndex, aIndex)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {!isPreviewMode && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => deleteQuestion(qIndex)}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Delete
-                      </Button>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-                );
-              })}
-            </Accordion>
+            <SortableQuestionList
+              questions={questions}
+              displayLanguage={displayLanguage}
+              isPreviewMode={isPreviewMode}
+              enableScoring={enableScoring}
+              onReorderQuestions={(reorderedQuestions) => setQuestions(reorderedQuestions)}
+              onUpdateQuestion={updateQuestion}
+              onDeleteQuestion={deleteQuestion}
+              onAddAnswer={addAnswer}
+              onUpdateAnswer={updateAnswer}
+              onDeleteAnswer={deleteAnswer}
+              onReorderAnswers={(qIndex, reorderedAnswers) => {
+                updateQuestion(qIndex, { answers: reorderedAnswers });
+              }}
+              getLocalizedValue={getLocalizedValue}
+              jsonToRecord={jsonToRecord}
+            />
 
           </TabsContent>
 
