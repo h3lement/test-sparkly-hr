@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -71,7 +77,24 @@ export function RespondentsList() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Calculate quiz count per email
+  const emailQuizCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    leads.forEach((lead) => {
+      counts[lead.email] = (counts[lead.email] || 0) + 1;
+    });
+    return counts;
+  }, [leads]);
+
+  // Get all submissions for a specific email, ordered by latest first
+  const getSubmissionsForEmail = (email: string) => {
+    return leads
+      .filter((lead) => lead.email === email)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  };
 
   useEffect(() => {
     fetchData();
@@ -356,7 +379,25 @@ export function RespondentsList() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-foreground">{lead.email}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEmail(lead.email);
+                              }}
+                              className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                            >
+                              {lead.email}
+                            </button>
+                            <Badge 
+                              variant="secondary" 
+                              className="text-xs cursor-pointer hover:bg-primary/20"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEmail(lead.email);
+                              }}
+                            >
+                              {emailQuizCounts[lead.email] || 1}
+                            </Badge>
                             {hasAnswers && (
                               isExpanded ? (
                                 <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -528,6 +569,74 @@ export function RespondentsList() {
           )}
         </div>
       )}
+
+      {/* Email Quiz History Dialog */}
+      <Dialog open={!!selectedEmail} onOpenChange={() => setSelectedEmail(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span>Quiz History for</span>
+              <span className="text-primary">{selectedEmail}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 pr-2">
+            {selectedEmail && (
+              <div className="space-y-3">
+                {getSubmissionsForEmail(selectedEmail).map((submission, idx) => {
+                  const quiz = quizzes.find((q) => q.id === submission.quiz_id);
+                  return (
+                    <div
+                      key={submission.id}
+                      className="bg-secondary/30 rounded-lg p-4 border border-border"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              #{getSubmissionsForEmail(selectedEmail).length - idx}
+                            </Badge>
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {quiz
+                                ? getLocalizedText(quiz.title, submission.language || "en")
+                                : "Unknown Quiz"}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                              {submission.result_category}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              Score: {submission.score}/{submission.total_questions}
+                            </span>
+                            {submission.openness_score !== null && (
+                              <span className="text-muted-foreground">
+                                Openness: {submission.openness_score}/4
+                              </span>
+                            )}
+                            <Badge variant="secondary" className="uppercase text-xs">
+                              {submission.language || "en"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm text-muted-foreground">
+                            {formatDate(submission.created_at)}
+                          </p>
+                          {idx === 0 && (
+                            <Badge className="mt-1 text-xs bg-green-500/10 text-green-600 border-green-500/20">
+                              Latest
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
