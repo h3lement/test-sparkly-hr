@@ -344,9 +344,9 @@ export function QuizManager() {
             </TableHeader>
             <TableBody>
               {filteredQuizzes.map((quiz) => (
-                <TableRow key={quiz.id} className="hover:bg-secondary/30">
+                <TableRow key={quiz.id} className="hover:bg-secondary/30 group">
                   <TableCell 
-                    className="font-medium cursor-pointer hover:text-primary transition-colors"
+                    className="font-medium cursor-pointer text-foreground group-hover:text-primary hover:underline underline-offset-2 transition-colors"
                     onClick={() => handleEditQuiz(quiz)}
                   >
                     {getLocalizedText(quiz.title)}
