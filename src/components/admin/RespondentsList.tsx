@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
-  Upload
+  Upload,
+  Mail
 } from "lucide-react";
 import {
   Select,
@@ -94,9 +95,10 @@ interface RespondentsPreferences {
 interface RespondentsListProps {
   highlightedLeadId?: string | null;
   onHighlightCleared?: () => void;
+  onViewEmailHistory?: (leadId: string, email: string) => void;
 }
 
-export function RespondentsList({ highlightedLeadId, onHighlightCleared }: RespondentsListProps = {}) {
+export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewEmailHistory }: RespondentsListProps = {}) {
   const [leads, setLeads] = useState<QuizLead[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -666,6 +668,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared }: Respo
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {onViewEmailHistory && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onViewEmailHistory(lead.id, lead.email);
+                              }}
+                              className="h-8 w-8"
+                              title="View email history"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
