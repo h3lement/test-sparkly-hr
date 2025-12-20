@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
@@ -39,11 +39,19 @@ interface ChartDataPoint {
   [key: string]: number | string;
 }
 
+export type DateRangeOption = "30" | "90" | "365" | "all";
+
 interface RespondentsGrowthChartProps {
   quizzes: Quiz[];
   leads: QuizLead[];
   loading: boolean;
   onLeadInserted?: () => void;
+  /** Controls the chart time window (for the chart + stats). */
+  dateRange: DateRangeOption;
+  /** Called when dateRange changes (used when controls are rendered). */
+  onDateRangeChange?: (range: DateRangeOption) => void;
+  /** If false, hides the built-in controls so they can be rendered elsewhere (e.g. in filters bar). */
+  showControls?: boolean;
 }
 
 // Color palette for quiz lines
@@ -59,8 +67,6 @@ const QUIZ_COLORS = [
   "#EF4444", // red
   "#84CC16", // lime
 ];
-
-type DateRangeOption = "30" | "90" | "365" | "all";
 
 const getLocalizedText = (json: Json, lang: string = "en"): string => {
   if (typeof json === "string") return json;
@@ -78,14 +84,15 @@ const getCutoffDate = (range: DateRangeOption) => {
   return date;
 };
 
-export function RespondentsGrowthChart({ 
-  quizzes, 
-  leads, 
-  loading, 
+export function RespondentsGrowthChart({
+  quizzes,
+  leads,
+  loading,
   onLeadInserted,
+  dateRange,
+  onDateRangeChange,
+  showControls = true,
 }: RespondentsGrowthChartProps) {
-  const [dateRange, setDateRange] = useState<DateRangeOption>("365");
-
   // Always-on realtime subscription
   useEffect(() => {
     const channel = supabase
@@ -188,26 +195,31 @@ export function RespondentsGrowthChart({
   return (
     <div className="space-y-6 mb-8">
       {/* Date Range + Live indicator */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeOption)}>
-            <SelectTrigger className="w-[140px] h-9 bg-secondary/50 border-border">
-              <SelectValue placeholder="Date range" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="365">Last 365 days</SelectItem>
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
+      {showControls && (
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={dateRange}
+              onValueChange={(v) => onDateRangeChange?.(v as DateRangeOption)}
+            >
+              <SelectTrigger className="w-[140px] h-9 bg-secondary/50 border-border">
+                <SelectValue placeholder="Date range" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectItem value="365">Last 365 days</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-green-600">
+            <Wifi className="h-4 w-4" />
+            <span>Live</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-sm text-green-600">
-          <Wifi className="h-4 w-4" />
-          <span>Live</span>
-        </div>
-      </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -272,9 +284,7 @@ export function RespondentsGrowthChart({
             <TrendingUp className="h-5 w-5 text-primary" />
             Responses Growth
           </CardTitle>
-          <CardDescription>
-            Based on {filteredLeads.length} submissions ({rangeLabel}).
-          </CardDescription>
+          <CardDescription>Based on {filteredLeads.length} submissions ({rangeLabel}).</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (

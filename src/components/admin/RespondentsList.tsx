@@ -13,7 +13,9 @@ import {
   ChevronDown, 
   ChevronUp,
   Upload,
-  Users
+  Users,
+  Calendar,
+  Wifi
 } from "lucide-react";
 import {
   Select,
@@ -31,7 +33,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ActivityLogDialog } from "./ActivityLogDialog";
-import { RespondentsGrowthChart } from "./RespondentsGrowthChart";
+import { RespondentsGrowthChart, type DateRangeOption } from "./RespondentsGrowthChart";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import type { Json } from "@/integrations/supabase/types";
@@ -120,6 +122,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRangeOption>("365");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
@@ -525,7 +528,27 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             ))}
           </SelectContent>
         </Select>
-        
+
+        {/* Period filter + Live (keep on same row as filters) */}
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeOption)}>
+            <SelectTrigger className="w-[140px] h-9 bg-secondary/50 border-border text-sm">
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border z-50">
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="365">Last 365 days</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1.5 text-sm text-green-600">
+            <Wifi className="h-4 w-4" />
+            <span>Live</span>
+          </div>
+        </div>
+
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/50 border border-border">
           <Switch
             id="unique-emails"
@@ -568,6 +591,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         leads={filteredLeads} 
         loading={loading}
         onLeadInserted={fetchData}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        showControls={false}
       />
 
       {loading ? (
