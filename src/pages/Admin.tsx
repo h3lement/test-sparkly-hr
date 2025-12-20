@@ -376,7 +376,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="fixed inset-0 bg-background flex overflow-hidden">
       <AdminSidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -388,8 +388,8 @@ const Admin = () => {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <div className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 p-8 overflow-y-auto min-h-0">
           {/* Activity Dashboard Tab */}
           {activeTab === "activity" && (
             <ActivityDashboard />
