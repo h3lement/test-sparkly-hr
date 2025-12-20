@@ -360,7 +360,7 @@ export function QuizManager() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <a
-                        href={`/q/${quiz.slug}`}
+                        href={`/${quiz.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
@@ -372,7 +372,7 @@ export function QuizManager() {
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">
                     <div className="flex items-center gap-2">
-                      <span>/q/{quiz.slug}</span>
+                      <span>/{quiz.slug}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
