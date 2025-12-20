@@ -411,6 +411,7 @@ export type Database = {
           primary_language: string
           slug: string
           title: Json
+          translation_meta: Json
           updated_at: string
         }
         Insert: {
@@ -429,6 +430,7 @@ export type Database = {
           primary_language?: string
           slug: string
           title?: Json
+          translation_meta?: Json
           updated_at?: string
         }
         Update: {
@@ -447,6 +449,7 @@ export type Database = {
           primary_language?: string
           slug?: string
           title?: Json
+          translation_meta?: Json
           updated_at?: string
         }
         Relationships: []
