@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,6 +15,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { 
   RefreshCw, 
   Clock, 
@@ -26,7 +45,7 @@ import {
   Users,
   Activity,
   Wifi,
-  WifiOff
+  Pencil
 } from "lucide-react";
 
 interface ActivityLog {
@@ -48,13 +67,38 @@ interface AdminUser {
   email: string;
 }
 
+interface ActivityFormData {
+  action_type: string;
+  table_name: string;
+  record_id: string;
+  description: string;
+  field_name: string;
+  old_value: string;
+  new_value: string;
+}
+
 export function ActivityDashboard() {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [adminFilter, setAdminFilter] = useState<string>("all");
-  
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<ActivityLog | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const { toast } = useToast();
+
+  const emptyForm: ActivityFormData = {
+    action_type: "CREATE",
+    table_name: "quizzes",
+    record_id: "",
+    description: "",
+    field_name: "",
+    old_value: "",
+    new_value: "",
+  };
+  const [formData, setFormData] = useState<ActivityFormData>(emptyForm);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -104,7 +148,7 @@ export function ActivityDashboard() {
       .channel("activity-dashboard-logs")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "activity_logs" },
+        { event: "*", schema: "public", table: "activity_logs" },
         () => {
           fetchData();
         }
@@ -115,6 +159,115 @@ export function ActivityDashboard() {
       supabase.removeChannel(channel);
     };
   }, [fetchData]);
+
+  const openCreateDialog = () => {
+    setFormData(emptyForm);
+    setIsCreateOpen(true);
+  };
+
+  const openEditDialog = (activity: ActivityLog) => {
+    setEditingActivity(activity);
+    setFormData({
+      action_type: activity.action_type,
+      table_name: activity.table_name,
+      record_id: activity.record_id,
+      description: activity.description || "",
+      field_name: activity.field_name || "",
+      old_value: activity.old_value || "",
+      new_value: activity.new_value || "",
+    });
+  };
+
+  const closeDialogs = () => {
+    setIsCreateOpen(false);
+    setEditingActivity(null);
+    setFormData(emptyForm);
+  };
+
+  const handleCreateActivity = async () => {
+    if (!formData.record_id.trim()) {
+      toast({ title: "Record ID is required", variant: "destructive" });
+      return;
+    }
+
+    setFormLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const { error } = await supabase.from("activity_logs").insert({
+        action_type: formData.action_type,
+        table_name: formData.table_name,
+        record_id: formData.record_id,
+        description: formData.description || null,
+        field_name: formData.field_name || null,
+        old_value: formData.old_value || null,
+        new_value: formData.new_value || null,
+        user_id: session?.session?.user.id || null,
+        user_email: session?.session?.user.email || null,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Activity log created" });
+      closeDialogs();
+      fetchData();
+    } catch (error: any) {
+      console.error("Error creating activity:", error);
+      toast({ title: "Failed to create activity", description: error.message, variant: "destructive" });
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleUpdateActivity = async () => {
+    if (!editingActivity) return;
+
+    setFormLoading(true);
+    try {
+      const { error } = await supabase
+        .from("activity_logs")
+        .update({
+          action_type: formData.action_type,
+          table_name: formData.table_name,
+          record_id: formData.record_id,
+          description: formData.description || null,
+          field_name: formData.field_name || null,
+          old_value: formData.old_value || null,
+          new_value: formData.new_value || null,
+        })
+        .eq("id", editingActivity.id);
+
+      if (error) throw error;
+
+      toast({ title: "Activity log updated" });
+      closeDialogs();
+      fetchData();
+    } catch (error: any) {
+      console.error("Error updating activity:", error);
+      toast({ title: "Failed to update activity", description: error.message, variant: "destructive" });
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteActivity = async () => {
+    if (!deleteConfirmId) return;
+
+    try {
+      const { error } = await supabase
+        .from("activity_logs")
+        .delete()
+        .eq("id", deleteConfirmId);
+
+      if (error) throw error;
+
+      toast({ title: "Activity log deleted" });
+      setDeleteConfirmId(null);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error deleting activity:", error);
+      toast({ title: "Failed to delete activity", description: error.message, variant: "destructive" });
+    }
+  };
 
 
   const filteredActivities = useMemo(() => {
@@ -258,7 +411,7 @@ export function ActivityDashboard() {
           <h1 className="text-3xl font-bold text-foreground">Admin Activity</h1>
           <p className="text-muted-foreground mt-1">Track what admin users are doing</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-sm text-green-600">
             <Wifi className="h-4 w-4" />
             <span>Live</span>
@@ -266,6 +419,10 @@ export function ActivityDashboard() {
           <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
+          </Button>
+          <Button onClick={openCreateDialog} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Log
           </Button>
         </div>
       </div>
@@ -511,10 +668,28 @@ export function ActivityDashboard() {
                         </p>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <p className="text-xs text-muted-foreground" title={formatFullDate(activity.created_at)}>
                         {formatDate(activity.created_at)}
                       </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => openEditDialog(activity)}
+                        title="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteConfirmId(activity.id)}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -523,6 +698,121 @@ export function ActivityDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isCreateOpen || !!editingActivity} onOpenChange={(open) => !open && closeDialogs()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingActivity ? "Edit Activity Log" : "Create Activity Log"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Action Type</Label>
+                <Select value={formData.action_type} onValueChange={(v) => setFormData({ ...formData, action_type: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CREATE">CREATE</SelectItem>
+                    <SelectItem value="UPDATE">UPDATE</SelectItem>
+                    <SelectItem value="DELETE">DELETE</SelectItem>
+                    <SelectItem value="STATUS_CHANGE">STATUS_CHANGE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Table Name</Label>
+                <Select value={formData.table_name} onValueChange={(v) => setFormData({ ...formData, table_name: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="quizzes">Quizzes</SelectItem>
+                    <SelectItem value="quiz_leads">Respondents</SelectItem>
+                    <SelectItem value="email_logs">Email Logs</SelectItem>
+                    <SelectItem value="email_templates">Email Templates</SelectItem>
+                    <SelectItem value="user_roles">User Roles</SelectItem>
+                    <SelectItem value="pending_admin_emails">Pending Admins</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Record ID</Label>
+              <Input
+                value={formData.record_id}
+                onChange={(e) => setFormData({ ...formData, record_id: e.target.value })}
+                placeholder="UUID of the record"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description of the action"
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Field Name (optional)</Label>
+              <Input
+                value={formData.field_name}
+                onChange={(e) => setFormData({ ...formData, field_name: e.target.value })}
+                placeholder="e.g. is_active"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Old Value (optional)</Label>
+                <Input
+                  value={formData.old_value}
+                  onChange={(e) => setFormData({ ...formData, old_value: e.target.value })}
+                  placeholder="Previous value"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>New Value (optional)</Label>
+                <Input
+                  value={formData.new_value}
+                  onChange={(e) => setFormData({ ...formData, new_value: e.target.value })}
+                  placeholder="Updated value"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialogs} disabled={formLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={editingActivity ? handleUpdateActivity : handleCreateActivity}
+              disabled={formLoading}
+            >
+              {formLoading ? "Saving..." : editingActivity ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Activity Log?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the activity log entry.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteActivity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
