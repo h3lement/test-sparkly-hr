@@ -36,6 +36,7 @@ interface Quiz {
   created_at: string;
   updated_at: string;
   questions_count?: number;
+  respondents_count?: number;
 }
 
 export function QuizManager() {
@@ -61,14 +62,24 @@ export function QuizManager() {
 
       if (quizzesError) throw quizzesError;
 
-      // Get question counts for each quiz
+      // Get question and respondent counts for each quiz
       const quizzesWithCounts = await Promise.all(
         (quizzesData || []).map(async (quiz) => {
-          const { count } = await supabase
-            .from("quiz_questions")
-            .select("*", { count: "exact", head: true })
-            .eq("quiz_id", quiz.id);
-          return { ...quiz, questions_count: count || 0 };
+          const [questionsRes, respondentsRes] = await Promise.all([
+            supabase
+              .from("quiz_questions")
+              .select("*", { count: "exact", head: true })
+              .eq("quiz_id", quiz.id),
+            supabase
+              .from("quiz_leads")
+              .select("*", { count: "exact", head: true })
+              .eq("quiz_id", quiz.id),
+          ]);
+          return { 
+            ...quiz, 
+            questions_count: questionsRes.count || 0,
+            respondents_count: respondentsRes.count || 0,
+          };
         })
       );
 
@@ -337,6 +348,7 @@ export function QuizManager() {
                 <TableHead className="font-semibold">Title</TableHead>
                 <TableHead className="font-semibold">Slug</TableHead>
                 <TableHead className="font-semibold text-center">Questions</TableHead>
+                <TableHead className="font-semibold text-center">Respondents</TableHead>
                 <TableHead className="font-semibold text-center">Status</TableHead>
                 <TableHead className="font-semibold">Updated</TableHead>
                 <TableHead className="font-semibold text-right">Actions</TableHead>
@@ -365,6 +377,11 @@ export function QuizManager() {
                   </TableCell>
                   <TableCell className="text-center">
                     {quiz.questions_count}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                      {quiz.respondents_count}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant={quiz.is_active ? "default" : "secondary"}>
