@@ -105,6 +105,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
@@ -378,8 +379,14 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     return answersJson as Record<string, string>;
   };
 
-  // Apply search filter first
-  const searchFilteredLeads = leads.filter(lead =>
+  // Apply quiz filter first
+  const quizFilteredLeads = useMemo(() => {
+    if (selectedQuizFilter === "all") return leads;
+    return leads.filter(lead => lead.quiz_id === selectedQuizFilter);
+  }, [leads, selectedQuizFilter]);
+
+  // Apply search filter
+  const searchFilteredLeads = quizFilteredLeads.filter(lead =>
     lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -431,7 +438,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, showUniqueEmails, showUniqueEmailQuiz]);
+  }, [searchQuery, selectedQuizFilter, showUniqueEmails, showUniqueEmailQuiz]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -520,8 +527,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="mb-4">
+      {/* Filters */}
+      <div className="mb-4 flex items-center gap-3">
         <div className="relative max-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -532,12 +539,25 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             className="pl-10 bg-secondary/50 border-border"
           />
         </div>
+        <Select value={selectedQuizFilter} onValueChange={setSelectedQuizFilter}>
+          <SelectTrigger className="w-[200px] bg-secondary/50 border-border">
+            <SelectValue placeholder="All quizzes" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover border-border z-50">
+            <SelectItem value="all">All quizzes</SelectItem>
+            {quizzes.map((quiz) => (
+              <SelectItem key={quiz.id} value={quiz.id}>
+                {getLocalizedText(quiz.title)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Respondents Growth Chart */}
       <RespondentsGrowthChart 
         quizzes={quizzes} 
-        leads={leads} 
+        leads={quizFilteredLeads} 
         loading={loading}
         onLeadInserted={fetchData}
         showUniqueEmails={showUniqueEmails}
