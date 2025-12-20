@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Download, RefreshCw, Trash2, Clock, Search, UserPlus } from "lucide-react";
+import { RefreshCw, Trash2, Clock, Search } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
@@ -15,18 +15,9 @@ import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
 import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
 import { QuizManager } from "@/components/admin/QuizManager";
 import { QuizAnalytics } from "@/components/admin/QuizAnalytics";
+import { RespondentsList } from "@/components/admin/RespondentsList";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-interface QuizLead {
-  id: string;
-  email: string;
-  score: number;
-  total_questions: number;
-  result_category: string;
-  created_at: string;
-  openness_score: number | null;
-  language: string | null;
-}
 
 interface AdminUser {
   id: string;
@@ -44,10 +35,8 @@ interface PendingAdmin {
 }
 
 const Admin = () => {
-  const [leads, setLeads] = useState<QuizLead[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [pendingAdmins, setPendingAdmins] = useState<PendingAdmin[]>([]);
-  const [loading, setLoading] = useState(true);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
@@ -98,7 +87,6 @@ const Admin = () => {
 
         if (data) {
           setIsAdmin(true);
-          fetchLeads();
           fetchAdmins();
           return;
         }
@@ -124,27 +112,6 @@ const Admin = () => {
     }
   };
 
-  const fetchLeads = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("quiz_leads")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setLeads(data || []);
-    } catch (error: any) {
-      console.error("Error fetching leads:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch quiz leads",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchAdmins = async () => {
     setAdminsLoading(true);
@@ -314,69 +281,9 @@ const Admin = () => {
     }
   };
 
-  const deleteLead = async (leadId: string, email: string) => {
-    try {
-      const { error } = await supabase
-        .from("quiz_leads")
-        .delete()
-        .eq("id", leadId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Lead deleted",
-        description: `Removed submission from ${email}`,
-      });
-
-      setLeads(leads.filter(lead => lead.id !== leadId));
-    } catch (error: any) {
-      console.error("Error deleting lead:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete lead",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
-  };
-
-  const downloadCSV = () => {
-    if (leads.length === 0) {
-      toast({
-        title: "No data",
-        description: "There are no leads to download",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const headers = ["Email", "Score", "Total Questions", "Result Category", "Date"];
-    const csvContent = [
-      headers.join(","),
-      ...leads.map((lead) =>
-        [
-          `"${lead.email}"`,
-          lead.score,
-          lead.total_questions,
-          `"${lead.result_category}"`,
-          `"${new Date(lead.created_at).toLocaleString()}"`,
-        ].join(",")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `quiz-leads-${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const getInitials = (name: string, email: string) => {
@@ -395,12 +302,6 @@ const Admin = () => {
       minute: "2-digit",
     });
   };
-
-  // Filter logic
-  const filteredLeads = leads.filter(lead => 
-    lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const filteredAdmins = admins.filter(admin =>
     admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -465,119 +366,7 @@ const Admin = () => {
         <div className="flex-1 p-8 overflow-auto">
           {/* Respondents Tab */}
           {activeTab === "leads" && (
-            <div className="max-w-6xl">
-              <div className="flex items-start justify-between mb-8">
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">Respondents</h1>
-                  <p className="text-muted-foreground mt-1">View quiz submissions</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button onClick={fetchLeads} variant="outline" size="sm" disabled={loading}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                    Refresh
-                  </Button>
-                  <Button onClick={downloadCSV} variant="default" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download CSV
-                  </Button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search by email or category..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-secondary/50 border-border"
-                  />
-                </div>
-                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
-                  {filteredLeads.length} respondent{filteredLeads.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading respondents...</p>
-                </div>
-              ) : filteredLeads.length === 0 ? (
-                <div className="text-center py-12 bg-card rounded-xl border border-border">
-                  <p className="text-muted-foreground">No submissions found.</p>
-                </div>
-              ) : (
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Score</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Result</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Openness</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Lang</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Submitted</th>
-                        <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {filteredLeads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9 bg-secondary">
-                                <AvatarFallback className="text-xs bg-secondary text-foreground">
-                                  {lead.email.slice(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm text-foreground">{lead.email}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-foreground">
-                            {lead.score}/{lead.total_questions}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {lead.result_category}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            {lead.openness_score !== null ? (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                {lead.openness_score}/4
-                              </span>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-foreground uppercase">
-                              {lead.language || 'en'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-muted-foreground">
-                            {formatDate(lead.created_at)}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteLead(lead.id, lead.email)}
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <RespondentsList />
           )}
 
           {/* Quizzes Tab */}
