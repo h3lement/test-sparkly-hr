@@ -496,11 +496,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   };
 
   const handleQuizClick = (quizId: string | null) => {
-    if (!quizId) return;
+    console.log("handleQuizClick called with quizId:", quizId);
+    if (!quizId) {
+      console.log("quizId is null, returning early");
+      return;
+    }
+    console.log("Available quizzes:", quizzes.map(q => ({ id: q.id, slug: q.slug })));
     const quiz = quizzes.find((q) => q.id === quizId);
+    console.log("Found quiz:", quiz);
     if (quiz) {
+      console.log("Setting editingQuiz and opening dialog");
       setEditingQuiz(quiz);
       setIsQuizEditorOpen(true);
+    } else {
+      console.log("Quiz not found in quizzes array");
     }
   };
 
