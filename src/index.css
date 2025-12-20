@@ -190,6 +190,7 @@
 }
 
 @layer utilities {
+  /* Quiz utilities */
   .gradient-primary {
     background: hsl(var(--primary));
   }
@@ -215,6 +216,169 @@
     padding: 0.5rem 1.25rem;
     font-size: 0.875rem;
     color: hsl(var(--muted-foreground));
+  }
+
+  /* Admin Layout Utilities */
+  .admin-page {
+    @apply max-w-6xl;
+  }
+
+  .admin-page-header {
+    @apply flex flex-wrap items-start justify-between gap-4 mb-8;
+  }
+
+  .admin-page-title {
+    @apply text-3xl font-bold text-foreground;
+    font-family: var(--font-heading);
+  }
+
+  .admin-page-description {
+    @apply text-muted-foreground mt-1;
+  }
+
+  .admin-card {
+    @apply bg-card rounded-xl border border-border overflow-hidden;
+  }
+
+  .admin-card-header {
+    @apply flex items-center justify-between border-b border-border;
+    padding: var(--density-padding);
+  }
+
+  .admin-card-title {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  .admin-card-content {
+    padding: var(--density-padding);
+  }
+
+  /* Admin Table Utilities */
+  .admin-table {
+    @apply w-full;
+  }
+
+  .admin-table-header {
+    @apply border-b border-border;
+  }
+
+  .admin-table-th {
+    @apply text-left text-sm font-medium text-muted-foreground;
+    padding: var(--density-padding-sm) var(--density-padding);
+  }
+
+  .admin-table-row {
+    @apply hover:bg-secondary/30 transition-colors;
+  }
+
+  .admin-table-row-inactive {
+    @apply opacity-60;
+  }
+
+  .admin-table-td {
+    padding: var(--density-padding-sm) var(--density-padding);
+  }
+
+  /* Admin Stats Card */
+  .admin-stat-card {
+    @apply bg-card rounded-xl border border-border p-4;
+  }
+
+  .admin-stat-icon {
+    @apply p-2 rounded-lg;
+  }
+
+  .admin-stat-value {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  .admin-stat-label {
+    @apply text-sm text-muted-foreground;
+  }
+
+  /* Admin Action Button Group */
+  .admin-actions {
+    @apply flex items-center;
+    gap: var(--density-gap);
+  }
+
+  /* Admin Search */
+  .admin-search-wrapper {
+    @apply relative flex-1 max-w-md;
+  }
+
+  .admin-search-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground;
+  }
+
+  .admin-search-input {
+    @apply pl-10 bg-secondary/50 border-border;
+  }
+
+  /* Admin Filter Bar */
+  .admin-filters {
+    @apply flex flex-wrap items-center gap-3 mb-6;
+  }
+
+  .admin-count-badge {
+    @apply px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium;
+  }
+
+  /* Admin Status Badges */
+  .admin-status-active {
+    @apply bg-green-500/10 text-green-600 border-green-500/20;
+  }
+
+  .admin-status-inactive {
+    @apply bg-secondary text-muted-foreground;
+  }
+
+  .admin-status-pending {
+    @apply bg-amber-500/10 text-amber-600 border-amber-500/20;
+  }
+
+  .admin-status-error {
+    @apply bg-red-500/10 text-red-600 border-red-500/20;
+  }
+
+  /* Admin Empty State */
+  .admin-empty-state {
+    @apply text-center py-12;
+  }
+
+  .admin-empty-icon {
+    @apply h-12 w-12 text-muted-foreground/50 mx-auto mb-4;
+  }
+
+  .admin-empty-title {
+    @apply text-lg font-medium text-foreground mb-2;
+  }
+
+  .admin-empty-description {
+    @apply text-muted-foreground;
+  }
+
+  /* Admin Loading State */
+  .admin-loading {
+    @apply text-center py-12;
+  }
+
+  .admin-loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4;
+  }
+
+  /* Admin Pagination */
+  .admin-pagination {
+    @apply flex items-center justify-between mt-6 pt-6 border-t border-border;
+  }
+
+  .admin-pagination-info {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .admin-pagination-controls {
+    @apply flex items-center;
+    gap: var(--density-gap);
   }
 
   /* Density-aware utility classes */
