@@ -776,16 +776,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                               className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left"
                               title="Click to edit quiz"
                             >
-                              ✏️ {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
+                              {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
                             </button>
                             <a
-                              href={`/${quiz.slug}`}
+                              href={`/${quiz.slug.replace(/^\/+/, "")}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
                             >
-                              /{quiz.slug}
+                              /{quiz.slug.replace(/^\/+/, "")}
                             </a>
                           </div>
                         ) : (
