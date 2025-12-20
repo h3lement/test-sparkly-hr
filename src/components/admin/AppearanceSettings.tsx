@@ -1863,11 +1863,13 @@ function QuizDesignReference() {
           <div className="p-4 bg-secondary/50 rounded-lg border border-border space-y-3">
             <p className="text-sm font-medium text-foreground">Critical Rules</p>
             <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+              <li><strong>Save vertical height:</strong> Keep controls on same row (e.g., filters + period + live indicator together). Avoid stacking elements that can fit horizontally.</li>
               <li><strong>Responsive width:</strong> Use <code className="text-xs bg-muted px-1 py-0.5 rounded">admin-page</code> class which adapts to screen size with proper padding</li>
               <li><strong>Mobile padding:</strong> px-4 on mobile, sm:px-6, lg:px-8 for larger screens</li>
               <li><strong>Flex wrap:</strong> Always use <code className="text-xs bg-muted px-1 py-0.5 rounded">flex-wrap</code> on action button containers</li>
               <li><strong>Tables:</strong> Wrap in <code className="text-xs bg-muted px-1 py-0.5 rounded">overflow-x-auto</code> container for horizontal scroll on mobile</li>
               <li><strong>Avoid duplications:</strong> Never show the same data in multiple places (e.g., counts in stats AND filters)</li>
+              <li><strong>Compact controls:</strong> Use h-9 for inputs/selects, text-sm for labels, gap-2 between elements</li>
             </ul>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
