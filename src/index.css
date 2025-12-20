@@ -74,6 +74,25 @@
     --input: 230 25% 22%;
     --ring: 235 60% 60%;
   }
+
+  /* UI Density modes */
+  .density-compact {
+    --density-spacing: 0.75;
+    --density-text-scale: 0.9;
+    font-size: 14px;
+  }
+  
+  .density-default {
+    --density-spacing: 1;
+    --density-text-scale: 1;
+    font-size: 16px;
+  }
+  
+  .density-comfortable {
+    --density-spacing: 1.25;
+    --density-text-scale: 1.1;
+    font-size: 18px;
+  }
 }
 
 @layer base {

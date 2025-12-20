@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { RotateCcw, Save, Sun, Moon, Monitor, Type, Palette, Box, Loader2, Sparkles, Copy, Check } from "lucide-react";
+import { RotateCcw, Save, Sun, Moon, Monitor, Type, Palette, Box, Loader2, Sparkles, Copy, Check, Maximize2, Minimize2, Square } from "lucide-react";
 
 interface ColorToken {
   key: string;
@@ -25,6 +25,7 @@ interface FontOption {
 
 interface AppearancePreferences {
   themeMode: "light" | "dark" | "system";
+  uiDensity: "compact" | "default" | "comfortable";
   headingFont: string;
   bodyFont: string;
   borderRadius: number;
@@ -114,6 +115,7 @@ const DEFAULT_COLORS = {
 
 const DEFAULT_PREFERENCES: AppearancePreferences = {
   themeMode: "system",
+  uiDensity: "default",
   headingFont: "'Playfair Display', serif",
   bodyFont: "'DM Sans', sans-serif",
   borderRadius: 0.75,
@@ -322,6 +324,10 @@ export function AppearanceSettings() {
       root.classList.toggle("dark", prefs.themeMode === "dark");
     }
 
+    // Apply UI density
+    root.classList.remove("density-compact", "density-default", "density-comfortable");
+    root.classList.add(`density-${prefs.uiDensity}`);
+
     // Apply fonts
     root.style.setProperty("--font-heading", prefs.headingFont);
     root.style.setProperty("--font-body", prefs.bodyFont);
@@ -474,6 +480,41 @@ export function AppearanceSettings() {
                     <span className={`text-sm font-medium ${localPrefs.themeMode === value ? "text-primary" : ""}`}>
                       {label}
                     </span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Square className="h-5 w-5" />
+                UI Density
+              </CardTitle>
+              <CardDescription>Choose how compact or spacious the interface should be</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { value: "compact", label: "Compact", icon: Minimize2, description: "Dense layout, smaller text" },
+                  { value: "default", label: "Default", icon: Square, description: "Balanced spacing" },
+                  { value: "comfortable", label: "Comfortable", icon: Maximize2, description: "Spacious, larger text" },
+                ].map(({ value, label, icon: Icon, description }) => (
+                  <button
+                    key={value}
+                    onClick={() => updateLocalPref("uiDensity", value as AppearancePreferences["uiDensity"])}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                      localPrefs.uiDensity === value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <Icon className={`h-6 w-6 ${localPrefs.uiDensity === value ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`text-sm font-medium ${localPrefs.uiDensity === value ? "text-primary" : ""}`}>
+                      {label}
+                    </span>
+                    <span className="text-xs text-muted-foreground text-center">{description}</span>
                   </button>
                 ))}
               </div>
