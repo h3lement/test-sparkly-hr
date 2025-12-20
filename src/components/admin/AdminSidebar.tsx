@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList, PieChart, Activity, Pencil, GripVertical, Check, X } from "lucide-react";
+import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList, PieChart, Activity, Pencil, GripVertical, Check, X, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +56,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "web-stats", label: "Web Stats", icon: BarChart3, count: null },
   { id: "email", label: "Email Settings", icon: Mail, count: null },
   { id: "email-logs", label: "Email History", icon: History, count: null },
+  { id: "appearance", label: "Appearance", icon: Palette, count: null },
 ];
 
 interface SortableMenuItemProps {

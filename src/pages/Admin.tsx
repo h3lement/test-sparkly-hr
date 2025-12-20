@@ -18,6 +18,7 @@ import { QuizManager } from "@/components/admin/QuizManager";
 import { QuizAnalytics } from "@/components/admin/QuizAnalytics";
 import { RespondentsList } from "@/components/admin/RespondentsList";
 import { ActivityDashboard } from "@/components/admin/ActivityDashboard";
+import { AppearanceSettings } from "@/components/admin/AppearanceSettings";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 
@@ -624,6 +625,11 @@ const Admin = () => {
                 onEmailFilterCleared={() => setEmailHistoryFilter(null)}
               />
             </div>
+          )}
+
+          {/* Appearance Tab */}
+          {activeTab === "appearance" && (
+            <AppearanceSettings />
           )}
         </div>
       </main>
