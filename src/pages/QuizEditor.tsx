@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
+import { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
 import { RegenerationDialog, type RegenerationType } from "@/components/admin/RegenerationDialog";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
@@ -212,6 +213,10 @@ export default function QuizEditor() {
   }>>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [regenerationProgress, setRegenerationProgress] = useState(0);
+
+  // Error checking state
+  const [errorCheckResult, setErrorCheckResult] = useState<CheckErrorsResult | null>(null);
+  const [isCheckingErrors, setIsCheckingErrors] = useState(false);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1063,6 +1068,44 @@ export default function QuizEditor() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Error checking hook
+  const errorChecker = QuizErrorChecker({
+    quizId: quizId || "",
+    slug,
+    title,
+    description,
+    headline,
+    headlineHighlight,
+    ctaText,
+    ctaUrl,
+    durationText,
+    questions,
+    resultLevels,
+    includeOpenMindedness,
+    primaryLanguage,
+    getLocalizedValue,
+  });
+
+  const handleCheckErrors = async () => {
+    setIsCheckingErrors(true);
+    const result = await errorChecker.checkErrors();
+    setErrorCheckResult(result);
+    setIsCheckingErrors(false);
+    
+    if (result.isValid) {
+      toast({
+        title: "All checks passed!",
+        description: "Your quiz is ready to launch.",
+      });
+    } else {
+      toast({
+        title: `Found ${result.errors.length} issue${result.errors.length > 1 ? "s" : ""}`,
+        description: "Please review and fix the errors before launching.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle AI model change
   const handleAiModelChange = (newModel: AiModelId) => {
     if (newModel !== selectedAiModel) {
@@ -1223,6 +1266,15 @@ export default function QuizEditor() {
               <div className="flex items-center gap-3">
                 {/* Auto-save indicator for existing quizzes */}
                 {!isCreating && <AutoSaveIndicator status={autoSaveStatus} />}
+                
+                {/* Check Errors button */}
+                {!isCreating && (
+                  <CheckErrorsButton
+                    onClick={handleCheckErrors}
+                    isChecking={isCheckingErrors}
+                    lastCheck={errorCheckResult}
+                  />
+                )}
                 
                 {!isCreating && slug && (
                   <Button
@@ -1442,6 +1494,11 @@ export default function QuizEditor() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-3">
+            {/* Error display for this tab */}
+            {errorCheckResult && !errorCheckResult.isValid && (
+              <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="general" />
+            )}
+            
             <div className="grid grid-cols-6 gap-3">
               <div>
                 <Label htmlFor="slug" className="text-xs">Slug</Label>
@@ -1617,6 +1674,11 @@ export default function QuizEditor() {
           </TabsContent>
 
           <TabsContent value="questions" className="space-y-3">
+            {/* Error display for this tab */}
+            {errorCheckResult && !errorCheckResult.isValid && (
+              <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="questions" />
+            )}
+            
             {/* Question Settings */}
             <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg border">
               <div className="flex items-center gap-2">
@@ -1666,6 +1728,11 @@ export default function QuizEditor() {
           </TabsContent>
 
           <TabsContent value="mindedness" className="space-y-3">
+            {/* Error display for this tab */}
+            {errorCheckResult && !errorCheckResult.isValid && (
+              <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="mindedness" />
+            )}
+            
             {/* Toggle control */}
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
               <div className="flex items-center gap-3">
@@ -1709,6 +1776,11 @@ export default function QuizEditor() {
           </TabsContent>
 
           <TabsContent value="results" className="space-y-3">
+            {/* Error display for this tab */}
+            {errorCheckResult && !errorCheckResult.isValid && (
+              <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="results" />
+            )}
+            
             {/* Compact Results Header */}
             <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg border">
               {/* Point Range Validator */}
