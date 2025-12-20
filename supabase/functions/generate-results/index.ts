@@ -47,10 +47,10 @@ serve(async (req) => {
 
     console.log('Generating results for quiz:', quizId, 'with params:', { numberOfLevels, toneOfVoice, higherScoreMeaning, language });
 
-    // Fetch quiz with questions and answers
+    // Fetch quiz with questions and answers, including tone settings
     const { data: quiz, error: quizError } = await supabaseClient
       .from('quizzes')
-      .select('title, description')
+      .select('title, description, tone_of_voice, use_tone_for_ai')
       .eq('id', quizId)
       .single();
 
@@ -102,6 +102,11 @@ serve(async (req) => {
       ? 'Higher scores indicate better/more positive outcomes.'
       : 'Higher scores indicate worse/more concerning outcomes.';
 
+    // Use quiz's saved tone if available and enabled, otherwise use the provided one
+    const effectiveTone = (quiz.use_tone_for_ai && quiz.tone_of_voice) 
+      ? quiz.tone_of_voice 
+      : toneOfVoice;
+
     const prompt = `You are creating result levels for a personality/assessment quiz. Generate exactly ${numberOfLevels} distinct result levels.
 
 Quiz: "${quizTitle}"
@@ -113,7 +118,7 @@ ${questionsContext}
 Score Range: ${minPossibleScore} to ${maxPossibleScore} points
 ${scoreMeaningInstruction}
 
-Tone of voice: ${toneOfVoice}
+Tone of voice: ${effectiveTone}
 Language: ${language === 'et' ? 'Estonian' : 'English'}
 
 Create ${numberOfLevels} result levels that:

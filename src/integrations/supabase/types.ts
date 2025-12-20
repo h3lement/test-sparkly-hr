@@ -464,8 +464,11 @@ export type Database = {
           shuffle_questions: boolean
           slug: string
           title: Json
+          tone_of_voice: string | null
+          tone_source: string | null
           translation_meta: Json
           updated_at: string
+          use_tone_for_ai: boolean | null
         }
         Insert: {
           badge_text?: Json
@@ -486,8 +489,11 @@ export type Database = {
           shuffle_questions?: boolean
           slug: string
           title?: Json
+          tone_of_voice?: string | null
+          tone_source?: string | null
           translation_meta?: Json
           updated_at?: string
+          use_tone_for_ai?: boolean | null
         }
         Update: {
           badge_text?: Json
@@ -508,8 +514,11 @@ export type Database = {
           shuffle_questions?: boolean
           slug?: string
           title?: Json
+          tone_of_voice?: string | null
+          tone_source?: string | null
           translation_meta?: Json
           updated_at?: string
+          use_tone_for_ai?: boolean | null
         }
         Relationships: []
       }
