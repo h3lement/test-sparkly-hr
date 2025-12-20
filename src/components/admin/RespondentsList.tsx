@@ -16,8 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
-  Upload,
-  Mail
+  Upload
 } from "lucide-react";
 import {
   Select,
@@ -103,7 +102,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
-  const [emailCounts, setEmailCounts] = useState<Record<string, number>>({});
+  
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -189,9 +188,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     return emailQuizCounts[email.toLowerCase()] || 1;
   };
 
-  const getEmailSentCount = (email: string) => {
-    return emailCounts[email.toLowerCase()] || 0;
-  };
 
   // Get all submissions for a specific email, ordered by latest first (case-insensitive)
   const getSubmissionsForEmail = (email: string) => {
@@ -233,7 +229,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [leadsRes, quizzesRes, questionsRes, answersRes, emailLogsRes] = await Promise.all([
+      const [leadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
         supabase
           .from("quiz_leads")
           .select("*")
@@ -249,27 +245,12 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .from("quiz_answers")
           .select("*")
           .order("answer_order", { ascending: true }),
-        supabase
-          .from("email_logs")
-          .select("recipient_email"),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
       if (quizzesRes.error) throw quizzesRes.error;
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
-
-      // Calculate total emails sent per recipient email (case-insensitive)
-      const counts: Record<string, number> = {};
-      if (emailLogsRes.data) {
-        emailLogsRes.data.forEach((log) => {
-          if (log.recipient_email) {
-            const key = String(log.recipient_email).toLowerCase();
-            counts[key] = (counts[key] || 0) + 1;
-          }
-        });
-      }
-      setEmailCounts(counts);
 
       setLeads(leadsRes.data || []);
       setQuizzes(quizzesRes.data || []);
@@ -697,29 +678,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {onViewEmailHistory && (
-                            <div className="relative">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onViewEmailHistory(lead.id, lead.email);
-                                }}
-                                className="h-8 w-8"
-                                title="View email history"
-                              >
-                                <Mail className="w-4 h-4" />
-                              </Button>
-                              {getEmailSentCount(lead.email) > 0 && (
-                                <span 
-                                  className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground"
-                                >
-                                  {getEmailSentCount(lead.email)}
-                                </span>
-                              )}
-                            </div>
-                          )}
                           <Button
                             variant="ghost"
                             size="icon"
