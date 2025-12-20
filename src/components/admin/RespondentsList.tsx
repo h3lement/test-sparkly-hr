@@ -29,6 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { QuizEditorDialog } from "./QuizEditorDialog";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -90,6 +92,8 @@ export function RespondentsList() {
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [isQuizEditorOpen, setIsQuizEditorOpen] = useState(false);
+  const [showUniqueEmails, setShowUniqueEmails] = useState(false);
+  const [showUniqueEmailQuiz, setShowUniqueEmailQuiz] = useState(false);
   const { toast } = useToast();
 
   // Calculate quiz count per email
@@ -256,10 +260,39 @@ export function RespondentsList() {
     return answersJson as Record<string, string>;
   };
 
-  const filteredLeads = leads.filter(lead =>
+  // Apply search filter first
+  const searchFilteredLeads = leads.filter(lead =>
     lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Apply unique filters
+  const filteredLeads = useMemo(() => {
+    let result = [...searchFilteredLeads].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    if (showUniqueEmails) {
+      // Keep only the latest submission for each email
+      const seen = new Set<string>();
+      result = result.filter((lead) => {
+        if (seen.has(lead.email)) return false;
+        seen.add(lead.email);
+        return true;
+      });
+    } else if (showUniqueEmailQuiz) {
+      // Keep only the latest submission for each email+quiz combo
+      const seen = new Set<string>();
+      result = result.filter((lead) => {
+        const key = `${lead.email}::${lead.quiz_id || "unknown"}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    return result;
+  }, [searchFilteredLeads, showUniqueEmails, showUniqueEmailQuiz]);
 
   // Pagination calculations
   const totalItems = filteredLeads.length;
@@ -268,10 +301,10 @@ export function RespondentsList() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, showUniqueEmails, showUniqueEmailQuiz]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -345,8 +378,8 @@ export function RespondentsList() {
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Search bar and filters */}
+      <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -357,6 +390,37 @@ export function RespondentsList() {
             className="pl-10 bg-secondary/50 border-border"
           />
         </div>
+        
+        {/* Toggle filters */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="unique-emails"
+              checked={showUniqueEmails}
+              onCheckedChange={(checked) => {
+                setShowUniqueEmails(checked);
+                if (checked) setShowUniqueEmailQuiz(false);
+              }}
+            />
+            <Label htmlFor="unique-emails" className="text-sm text-muted-foreground cursor-pointer">
+              Unique emails
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="unique-email-quiz"
+              checked={showUniqueEmailQuiz}
+              onCheckedChange={(checked) => {
+                setShowUniqueEmailQuiz(checked);
+                if (checked) setShowUniqueEmails(false);
+              }}
+            />
+            <Label htmlFor="unique-email-quiz" className="text-sm text-muted-foreground cursor-pointer">
+              Unique email + quiz
+            </Label>
+          </div>
+        </div>
+
         <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
           {filteredLeads.length} respondent{filteredLeads.length !== 1 ? "s" : ""}
         </span>
