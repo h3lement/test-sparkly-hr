@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
@@ -10,7 +10,17 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, User, Users } from "lucide-react";
+import { TrendingUp, User, Users, Wifi, WifiOff, Calendar } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -35,6 +45,7 @@ interface RespondentsGrowthChartProps {
   quizzes: Quiz[];
   leads: QuizLead[];
   loading: boolean;
+  onLeadInserted?: () => void;
 }
 
 // Color palette for quiz lines
@@ -51,6 +62,8 @@ const QUIZ_COLORS = [
   "#84CC16", // lime
 ];
 
+type DateRangeOption = "30" | "90" | "365" | "all";
+
 const getLocalizedText = (json: Json, lang: string = "en"): string => {
   if (typeof json === "string") return json;
   if (json && typeof json === "object" && !Array.isArray(json)) {
@@ -59,56 +72,84 @@ const getLocalizedText = (json: Json, lang: string = "en"): string => {
   return "";
 };
 
-const get13MonthsAgo = () => {
+const getCutoffDate = (range: DateRangeOption) => {
+  if (range === "all") return null;
   const date = new Date();
-  date.setMonth(date.getMonth() - 12);
-  date.setDate(1);
+  date.setDate(date.getDate() - Number(range));
   date.setHours(0, 0, 0, 0);
   return date;
 };
 
-export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsGrowthChartProps) {
-  // Filter leads to last 13 months
-  const recentLeads = useMemo(() => {
-    const cutoff = get13MonthsAgo();
-    return leads.filter((lead) => new Date(lead.created_at) >= cutoff);
-  }, [leads]);
+export function RespondentsGrowthChart({ quizzes, leads, loading, onLeadInserted }: RespondentsGrowthChartProps) {
+  const [dateRange, setDateRange] = useState<DateRangeOption>("365");
+  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
 
-  // Generate 13-month chart data with a line per quiz + cumulative unique respondents
+  // Realtime subscription
+  useEffect(() => {
+    if (!realtimeEnabled) return;
+
+    const channel = supabase
+      .channel("respondents-chart-leads")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "quiz_leads" },
+        () => {
+          onLeadInserted?.();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [realtimeEnabled, onLeadInserted]);
+
+  // Filter leads based on date range
+  const filteredLeads = useMemo(() => {
+    const cutoff = getCutoffDate(dateRange);
+    if (!cutoff) return leads;
+    return leads.filter((lead) => new Date(lead.created_at) >= cutoff);
+  }, [leads, dateRange]);
+
+  // Calculate how many months to display
+  const monthsToDisplay = useMemo(() => {
+    if (dateRange === "30") return 2;
+    if (dateRange === "90") return 4;
+    if (dateRange === "365") return 13;
+    return 24; // "all"
+  }, [dateRange]);
+
+  // Generate chart data
   const chartData = useMemo(() => {
     const months: ChartDataPoint[] = [];
     const now = new Date();
-    
-    // First pass: collect all emails before the 13-month window for accurate cumulative count
+
+    // First pass: collect all emails before the chart window for accurate cumulative count
+    const chartWindowStart = new Date(now.getFullYear(), now.getMonth() - monthsToDisplay + 1, 1);
     const emailsBeforeWindow = new Set<string>();
-    const windowStart = get13MonthsAgo();
     leads.forEach((lead) => {
-      if (new Date(lead.created_at) < windowStart) {
+      if (new Date(lead.created_at) < chartWindowStart) {
         emailsBeforeWindow.add(lead.email);
       }
     });
-    
-    // Track cumulative unique emails
+
     const cumulativeEmails = new Set<string>(emailsBeforeWindow);
-    
-    // Generate last 13 months
-    for (let i = 12; i >= 0; i--) {
+
+    for (let i = monthsToDisplay - 1; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM (local)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       const monthLabel = date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-      
+
       const dataPoint: ChartDataPoint = { month: monthLabel };
-      
-      // Initialize counts for each quiz
       quizzes.forEach((quiz) => {
         dataPoint[quiz.slug] = 0;
       });
       dataPoint["total"] = 0;
-      
-      // Count leads for this month and add new emails to cumulative set
-      recentLeads.forEach((lead) => {
-        const leadMonth = lead.created_at.slice(0, 7);
-        if (leadMonth === monthKey) {
+
+      leads.forEach((lead) => {
+        const leadDate = new Date(lead.created_at);
+        const leadMonthKey = `${leadDate.getFullYear()}-${String(leadDate.getMonth() + 1).padStart(2, "0")}`;
+        if (leadMonthKey === monthKey) {
           const quiz = quizzes.find((q) => q.id === lead.quiz_id);
           if (quiz) {
             dataPoint[quiz.slug] = (dataPoint[quiz.slug] as number) + 1;
@@ -117,35 +158,68 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
           cumulativeEmails.add(lead.email);
         }
       });
-      
+
       dataPoint["cumulativeUnique"] = cumulativeEmails.size;
-      
       months.push(dataPoint);
     }
-    
-    return months;
-  }, [recentLeads, quizzes, leads]);
 
-  // Calculate totals for stats
-  const totalResponses = recentLeads.length;
-  const uniqueRespondents = new Set(recentLeads.map((l) => l.email)).size;
-  const thisMonthLeads = recentLeads.filter((l) => {
+    return months;
+  }, [leads, quizzes, monthsToDisplay]);
+
+  // Calculate stats based on filtered leads
+  const totalResponses = filteredLeads.length;
+  const uniqueRespondents = new Set(filteredLeads.map((l) => l.email)).size;
+  const now = new Date();
+  const thisMonthLeads = filteredLeads.filter((l) => {
     const leadDate = new Date(l.created_at);
-    const now = new Date();
     return leadDate.getMonth() === now.getMonth() && leadDate.getFullYear() === now.getFullYear();
   }).length;
   const thisMonthUniqueEmails = new Set(
-    recentLeads
+    filteredLeads
       .filter((l) => {
         const leadDate = new Date(l.created_at);
-        const now = new Date();
         return leadDate.getMonth() === now.getMonth() && leadDate.getFullYear() === now.getFullYear();
       })
       .map((l) => l.email)
   ).size;
 
+  const rangeLabel = dateRange === "all" ? "All Time" : `Last ${dateRange} days`;
+
   return (
     <div className="space-y-6 mb-8">
+      {/* Controls: Date Range + Realtime Toggle */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeOption)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="365">Last 365 days</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="realtime-respondents"
+            checked={realtimeEnabled}
+            onCheckedChange={setRealtimeEnabled}
+          />
+          <Label htmlFor="realtime-respondents" className="flex items-center gap-1.5 text-sm cursor-pointer">
+            {realtimeEnabled ? (
+              <Wifi className="h-4 w-4 text-green-600" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-muted-foreground" />
+            )}
+            Realtime
+          </Label>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -156,7 +230,7 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
               </div>
               <div>
                 <p className="text-2xl font-bold">{totalResponses}</p>
-                <p className="text-sm text-muted-foreground">Responses (13mo)</p>
+                <p className="text-sm text-muted-foreground">Responses ({rangeLabel})</p>
               </div>
             </div>
           </CardContent>
@@ -169,7 +243,7 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
               </div>
               <div>
                 <p className="text-2xl font-bold">{uniqueRespondents}</p>
-                <p className="text-sm text-muted-foreground">Unique (13mo)</p>
+                <p className="text-sm text-muted-foreground">Unique ({rangeLabel})</p>
               </div>
             </div>
           </CardContent>
@@ -202,15 +276,15 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
         </Card>
       </div>
 
-      {/* 13-Month Responses Growth Chart */}
+      {/* Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Responses Growth (13 Months)
+            Responses Growth
           </CardTitle>
           <CardDescription>
-            Based on {recentLeads.length} submissions from the last 13 months.
+            Based on {filteredLeads.length} submissions ({rangeLabel}).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -222,15 +296,8 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis 
-                  dataKey="month" 
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
-                />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} className="text-muted-foreground" />
+                <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",

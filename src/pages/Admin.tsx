@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Trash2, Clock, Search, LogOut } from "lucide-react";
+import { logActivity } from "@/hooks/useActivityLog";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
@@ -165,6 +166,13 @@ const Admin = () => {
 
   const removePendingAdmin = async (id: string, email: string) => {
     try {
+      await logActivity({
+        actionType: "DELETE",
+        tableName: "pending_admin_emails",
+        recordId: id,
+        description: `Pending admin "${email}" removed from invite list`,
+      });
+
       const { error } = await supabase
         .from("pending_admin_emails")
         .delete()
@@ -225,6 +233,16 @@ const Admin = () => {
         return;
       }
 
+      await logActivity({
+        actionType: "STATUS_CHANGE",
+        tableName: "user_roles",
+        recordId: admin.id,
+        fieldName: "is_active",
+        oldValue: admin.is_active ? "active" : "inactive",
+        newValue: admin.is_active ? "inactive" : "active",
+        description: `Admin "${admin.email}" ${admin.is_active ? "deactivated" : "activated"}`,
+      });
+
       setAdmins(admins.map(a => 
         a.id === admin.id ? { ...a, is_active: !a.is_active } : a
       ));
@@ -259,6 +277,13 @@ const Admin = () => {
     }
 
     try {
+      await logActivity({
+        actionType: "DELETE",
+        tableName: "user_roles",
+        recordId: roleId,
+        description: `Admin privileges removed from "${email}"`,
+      });
+
       const { error } = await supabase
         .from("user_roles")
         .delete()

@@ -450,16 +450,14 @@ export function RespondentsList() {
           </div>
         </div>
 
-        <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
-          {filteredLeads.length} respondent{filteredLeads.length !== 1 ? "s" : ""}
-        </span>
       </div>
 
       {/* Respondents Growth Chart */}
       <RespondentsGrowthChart 
         quizzes={quizzes} 
         leads={leads} 
-        loading={loading} 
+        loading={loading}
+        onLeadInserted={fetchData}
       />
 
       {loading ? (
