@@ -74,13 +74,22 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
     return leads.filter((lead) => new Date(lead.created_at) >= cutoff);
   }, [leads]);
 
-  // Generate 13-month chart data with a line per quiz + unique respondents
+  // Generate 13-month chart data with a line per quiz + cumulative unique respondents
   const chartData = useMemo(() => {
     const months: ChartDataPoint[] = [];
     const now = new Date();
     
-    // Track unique emails seen up to each month for cumulative unique count
-    const cumulativeEmails = new Set<string>();
+    // First pass: collect all emails before the 13-month window for accurate cumulative count
+    const emailsBeforeWindow = new Set<string>();
+    const windowStart = get13MonthsAgo();
+    leads.forEach((lead) => {
+      if (new Date(lead.created_at) < windowStart) {
+        emailsBeforeWindow.add(lead.email);
+      }
+    });
+    
+    // Track cumulative unique emails
+    const cumulativeEmails = new Set<string>(emailsBeforeWindow);
     
     // Generate last 13 months
     for (let i = 12; i >= 0; i--) {
@@ -96,10 +105,7 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
       });
       dataPoint["total"] = 0;
       
-      // Track new unique emails this month
-      const monthUniqueEmails = new Set<string>();
-      
-      // Count leads for this month
+      // Count leads for this month and add new emails to cumulative set
       recentLeads.forEach((lead) => {
         const leadMonth = lead.created_at.slice(0, 7);
         if (leadMonth === monthKey) {
@@ -108,22 +114,17 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
             dataPoint[quiz.slug] = (dataPoint[quiz.slug] as number) + 1;
           }
           dataPoint["total"] = (dataPoint["total"] as number) + 1;
-          
-          // Track new unique respondents
-          if (!cumulativeEmails.has(lead.email)) {
-            monthUniqueEmails.add(lead.email);
-            cumulativeEmails.add(lead.email);
-          }
+          cumulativeEmails.add(lead.email);
         }
       });
       
-      dataPoint["uniqueNew"] = monthUniqueEmails.size;
+      dataPoint["cumulativeUnique"] = cumulativeEmails.size;
       
       months.push(dataPoint);
     }
     
     return months;
-  }, [recentLeads, quizzes]);
+  }, [recentLeads, quizzes, leads]);
 
   // Calculate totals for stats
   const totalResponses = recentLeads.length;
@@ -260,10 +261,10 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
                   activeDot={{ r: 6 }}
                 />
                 <Line
-                  key="uniqueNew"
+                  key="cumulativeUnique"
                   type="monotone"
-                  dataKey="uniqueNew"
-                  name="New Unique Respondents"
+                  dataKey="cumulativeUnique"
+                  name="Cumulative Unique Respondents"
                   stroke="#0EA5E9"
                   strokeWidth={2}
                   dot={{ r: 4, fill: "#0EA5E9" }}
