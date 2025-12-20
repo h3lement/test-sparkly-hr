@@ -628,8 +628,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                 e.stopPropagation();
                                 setSelectedEmail(lead.email);
                               }}
+                              title={`${emailQuizCounts[lead.email] || 1} quiz submission${(emailQuizCounts[lead.email] || 1) !== 1 ? 's' : ''}`}
                             >
-                              {emailQuizCounts[lead.email] || 1}
+                              {emailQuizCounts[lead.email] || 1} quiz{(emailQuizCounts[lead.email] || 1) !== 1 ? 'zes' : ''}
                             </Badge>
                             {hasAnswers && (
                               isExpanded ? (
@@ -693,12 +694,15 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                   onViewEmailHistory(lead.id, lead.email);
                                 }}
                                 className="h-8 w-8"
-                                title="View email history"
+                                title={`${emailCounts[lead.id] || 0} email${(emailCounts[lead.id] || 0) !== 1 ? 's' : ''} sent`}
                               >
                                 <Mail className="w-4 h-4" />
                               </Button>
                               {emailCounts[lead.id] > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                                <span 
+                                  className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground"
+                                  title={`${emailCounts[lead.id]} email${emailCounts[lead.id] !== 1 ? 's' : ''} sent`}
+                                >
                                   {emailCounts[lead.id]}
                                 </span>
                               )}
