@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3 } from "lucide-react";
+import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import sparklyLogo from "@/assets/sparkly-logo.png";
 
@@ -20,6 +20,7 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const menuItems = [
     { id: "leads", label: "Respondents", icon: Users },
+    { id: "quizzes", label: "Quizzes", icon: ClipboardList },
     { id: "admins", label: "Admin Users", icon: Shield },
     { id: "web-stats", label: "Web Stats", icon: BarChart3 },
     { id: "email", label: "Email Settings", icon: Mail },
