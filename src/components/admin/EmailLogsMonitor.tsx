@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RefreshCw, Search, Mail, AlertCircle, CheckCircle2, TestTube, User, Shield, RotateCcw, Info, Eye } from "lucide-react";
+import { ActivityLogDialog } from "./ActivityLogDialog";
 
 interface EmailLog {
   id: string;
@@ -44,6 +45,7 @@ export function EmailLogsMonitor() {
   const [filterType, setFilterType] = useState<string>("quiz_result_user");
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
+  const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -332,16 +334,27 @@ export function EmailLogsMonitor() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => resendEmail(log.id)}
-                            disabled={resendingId === log.id}
-                            className="gap-1"
-                          >
-                            <RotateCcw className={`w-3 h-3 ${resendingId === log.id ? "animate-spin" : ""}`} />
-                            {resendingId === log.id ? "Sending..." : "Resend"}
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setActivityLogEmail(log)}
+                              title="Activity log"
+                            >
+                              <Info className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => resendEmail(log.id)}
+                              disabled={resendingId === log.id}
+                              className="gap-1"
+                            >
+                              <RotateCcw className={`w-3 h-3 ${resendingId === log.id ? "animate-spin" : ""}`} />
+                              {resendingId === log.id ? "Sending..." : "Resend"}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -430,6 +443,14 @@ export function EmailLogsMonitor() {
             )}
           </DialogContent>
         </Dialog>
+
+        <ActivityLogDialog
+          open={!!activityLogEmail}
+          onClose={() => setActivityLogEmail(null)}
+          tableName="email_logs"
+          recordId={activityLogEmail?.id || ""}
+          recordTitle={activityLogEmail?.recipient_email}
+        />
       </div>
     </TooltipProvider>
   );
