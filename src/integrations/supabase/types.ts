@@ -408,6 +408,7 @@ export type Database = {
           headline_highlight: Json
           id: string
           is_active: boolean
+          primary_language: string
           slug: string
           title: Json
           updated_at: string
@@ -425,6 +426,7 @@ export type Database = {
           headline_highlight?: Json
           id?: string
           is_active?: boolean
+          primary_language?: string
           slug: string
           title?: Json
           updated_at?: string
@@ -442,6 +444,7 @@ export type Database = {
           headline_highlight?: Json
           id?: string
           is_active?: boolean
+          primary_language?: string
           slug?: string
           title?: Json
           updated_at?: string
