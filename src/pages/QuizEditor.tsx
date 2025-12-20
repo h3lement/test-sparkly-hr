@@ -177,6 +177,7 @@ export default function QuizEditor() {
   const [toneOfVoice, setToneOfVoice] = useState("");
   const [toneSource, setToneSource] = useState<"ai" | "extracted" | "manual">("manual");
   const [useToneForAi, setUseToneForAi] = useState(true);
+  const [toneIntensity, setToneIntensity] = useState(4); // Default to "Balanced"
   
   // AI headline assistance
   const [suggestingHeadline, setSuggestingHeadline] = useState(false);
@@ -224,6 +225,7 @@ export default function QuizEditor() {
       tone_of_voice: toneOfVoice,
       tone_source: toneSource,
       use_tone_for_ai: useToneForAi,
+      tone_intensity: toneIntensity,
     };
 
     // Update quiz
@@ -341,7 +343,7 @@ export default function QuizEditor() {
           .eq("id", level.id);
       }
     }
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, questions, resultLevels]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, questions, resultLevels]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -355,7 +357,7 @@ export default function QuizEditor() {
     if (!initialLoadComplete.current) return;
     if (isCreating) return;
     triggerSave();
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, questions, resultLevels, triggerSave, isCreating]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -435,6 +437,7 @@ export default function QuizEditor() {
       setToneOfVoice((quiz as any).tone_of_voice || "");
       setToneSource((quiz as any).tone_source || "manual");
       setUseToneForAi((quiz as any).use_tone_for_ai !== false);
+      setToneIntensity((quiz as any).tone_intensity ?? 4);
 
       // Load questions with answers
       const { data: questionsData } = await supabase
@@ -1090,7 +1093,16 @@ export default function QuizEditor() {
                   {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
                 </h1>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* AI Cost indicator */}
+                {!isCreating && totalAiCost > 0 && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary text-xs">
+                    <Euro className="w-3.5 h-3.5" />
+                    <span className="font-medium">{totalAiCost.toFixed(4)}</span>
+                    <span className="text-muted-foreground">AI cost</span>
+                  </div>
+                )}
+                
                 {/* Auto-save indicator for existing quizzes */}
                 {!isCreating && <AutoSaveIndicator status={autoSaveStatus} />}
                 
@@ -1428,11 +1440,13 @@ export default function QuizEditor() {
               toneOfVoice={toneOfVoice}
               toneSource={toneSource}
               useToneForAi={useToneForAi}
+              toneIntensity={toneIntensity}
               quizId={isCreating ? undefined : quizId}
               isPreviewMode={isPreviewMode}
               onToneChange={setToneOfVoice}
               onSourceChange={setToneSource}
               onUseToneChange={setUseToneForAi}
+              onIntensityChange={setToneIntensity}
             />
 
             <div className="grid grid-cols-3 gap-3">
