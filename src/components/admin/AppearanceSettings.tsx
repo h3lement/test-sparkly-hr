@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { RotateCcw, Save, Sun, Moon } from "lucide-react";
+import { RotateCcw, Save, Sun, Moon, Type } from "lucide-react";
 
 interface ColorToken {
   key: string;
@@ -13,6 +14,38 @@ interface ColorToken {
   lightValue: string;
   darkValue: string;
 }
+
+interface FontOption {
+  value: string;
+  label: string;
+  category: "serif" | "sans-serif" | "display" | "monospace";
+}
+
+const HEADING_FONTS: FontOption[] = [
+  { value: "'Playfair Display', serif", label: "Playfair Display", category: "serif" },
+  { value: "'Merriweather', serif", label: "Merriweather", category: "serif" },
+  { value: "'Lora', serif", label: "Lora", category: "serif" },
+  { value: "'Crimson Text', serif", label: "Crimson Text", category: "serif" },
+  { value: "'Source Serif Pro', serif", label: "Source Serif Pro", category: "serif" },
+  { value: "'Poppins', sans-serif", label: "Poppins", category: "sans-serif" },
+  { value: "'Montserrat', sans-serif", label: "Montserrat", category: "sans-serif" },
+  { value: "'Raleway', sans-serif", label: "Raleway", category: "sans-serif" },
+  { value: "'Oswald', sans-serif", label: "Oswald", category: "display" },
+  { value: "'Bebas Neue', sans-serif", label: "Bebas Neue", category: "display" },
+];
+
+const BODY_FONTS: FontOption[] = [
+  { value: "'DM Sans', sans-serif", label: "DM Sans", category: "sans-serif" },
+  { value: "'Inter', sans-serif", label: "Inter", category: "sans-serif" },
+  { value: "'Roboto', sans-serif", label: "Roboto", category: "sans-serif" },
+  { value: "'Open Sans', sans-serif", label: "Open Sans", category: "sans-serif" },
+  { value: "'Lato', sans-serif", label: "Lato", category: "sans-serif" },
+  { value: "'Nunito', sans-serif", label: "Nunito", category: "sans-serif" },
+  { value: "'Source Sans Pro', sans-serif", label: "Source Sans Pro", category: "sans-serif" },
+  { value: "'Work Sans', sans-serif", label: "Work Sans", category: "sans-serif" },
+  { value: "'IBM Plex Sans', sans-serif", label: "IBM Plex Sans", category: "sans-serif" },
+  { value: "'Fira Sans', sans-serif", label: "Fira Sans", category: "sans-serif" },
+];
 
 const DEFAULT_TOKENS: ColorToken[] = [
   { key: "--background", label: "Background", lightValue: "340 30% 97%", darkValue: "230 25% 10%" },
@@ -145,6 +178,8 @@ function ColorInput({ token, mode, value, onChange }: ColorInputProps) {
 
 export function AppearanceSettings() {
   const [tokens, setTokens] = useState<ColorToken[]>([...DEFAULT_TOKENS, ...QUIZ_TOKENS]);
+  const [headingFont, setHeadingFont] = useState("'Playfair Display', serif");
+  const [bodyFont, setBodyFont] = useState("'DM Sans', sans-serif");
   const [hasChanges, setHasChanges] = useState(false);
   const { toast } = useToast();
 
@@ -167,8 +202,21 @@ export function AppearanceSettings() {
     }
   };
 
+  const handleFontChange = (type: "heading" | "body", value: string) => {
+    if (type === "heading") {
+      setHeadingFont(value);
+      document.documentElement.style.setProperty("--font-heading", value);
+    } else {
+      setBodyFont(value);
+      document.documentElement.style.setProperty("--font-body", value);
+    }
+    setHasChanges(true);
+  };
+
   const handleReset = () => {
     setTokens([...DEFAULT_TOKENS, ...QUIZ_TOKENS]);
+    setHeadingFont("'Playfair Display', serif");
+    setBodyFont("'DM Sans', sans-serif");
     setHasChanges(false);
     
     // Reset CSS variables
@@ -177,15 +225,16 @@ export function AppearanceSettings() {
       const isDark = root.classList.contains("dark");
       root.style.setProperty(token.key, isDark ? token.darkValue : token.lightValue);
     });
+    root.style.setProperty("--font-heading", "'Playfair Display', serif");
+    root.style.setProperty("--font-body", "'DM Sans', sans-serif");
     
     toast({
       title: "Reset complete",
-      description: "All colors have been reset to defaults",
+      description: "All settings have been reset to defaults",
     });
   };
 
   const handleSave = () => {
-    // In a real implementation, this would save to database or generate CSS
     toast({
       title: "Changes saved",
       description: "Your appearance settings have been applied",
@@ -201,7 +250,7 @@ export function AppearanceSettings() {
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Appearance</h1>
-          <p className="text-muted-foreground mt-1">Customize design tokens and theme colors</p>
+          <p className="text-muted-foreground mt-1">Customize design tokens, fonts, and theme colors</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={handleReset} disabled={!hasChanges}>
@@ -214,6 +263,57 @@ export function AppearanceSettings() {
           </Button>
         </div>
       </div>
+
+      {/* Typography Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Type className="h-5 w-5" />
+            Typography
+          </CardTitle>
+          <CardDescription>Choose fonts for headings and body text</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Heading Font</Label>
+            <Select value={headingFont} onValueChange={(v) => handleFontChange("heading", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {HEADING_FONTS.map(font => (
+                  <SelectItem key={font.value} value={font.value}>
+                    <span style={{ fontFamily: font.value }}>{font.label}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">({font.category})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-2xl mt-3" style={{ fontFamily: headingFont }}>
+              Preview Heading
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Body Font</Label>
+            <Select value={bodyFont} onValueChange={(v) => handleFontChange("body", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BODY_FONTS.map(font => (
+                  <SelectItem key={font.value} value={font.value}>
+                    <span style={{ fontFamily: font.value }}>{font.label}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">({font.category})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-base mt-3" style={{ fontFamily: bodyFont }}>
+              Preview body text for reading content.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="light" className="space-y-6">
         <TabsList className="bg-secondary">
