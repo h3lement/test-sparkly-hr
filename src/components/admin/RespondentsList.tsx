@@ -189,6 +189,10 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     return emailQuizCounts[email.toLowerCase()] || 1;
   };
 
+  const getEmailSentCount = (email: string) => {
+    return emailCounts[email.toLowerCase()] || 0;
+  };
+
   // Get all submissions for a specific email, ordered by latest first (case-insensitive)
   const getSubmissionsForEmail = (email: string) => {
     return leads
@@ -247,7 +251,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .order("answer_order", { ascending: true }),
         supabase
           .from("email_logs")
-          .select("quiz_lead_id"),
+          .select("recipient_email"),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
@@ -255,12 +259,13 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
 
-      // Calculate email counts per quiz_lead_id
+      // Calculate total emails sent per recipient email (case-insensitive)
       const counts: Record<string, number> = {};
       if (emailLogsRes.data) {
         emailLogsRes.data.forEach((log) => {
-          if (log.quiz_lead_id) {
-            counts[log.quiz_lead_id] = (counts[log.quiz_lead_id] || 0) + 1;
+          if (log.recipient_email) {
+            const key = String(log.recipient_email).toLowerCase();
+            counts[key] = (counts[key] || 0) + 1;
           }
         });
       }
@@ -633,9 +638,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                 e.stopPropagation();
                                 setSelectedEmail(lead.email);
                               }}
-                              title={`${getEmailQuizCount(lead.email)} quiz submission${getEmailQuizCount(lead.email) !== 1 ? 's' : ''}`}
                             >
-                              {getEmailQuizCount(lead.email)} quiz{getEmailQuizCount(lead.email) !== 1 ? 'zes' : ''}
+                              {getEmailQuizCount(lead.email)}
                             </Badge>
                             {hasAnswers && (
                               isExpanded ? (
@@ -699,16 +703,15 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                   onViewEmailHistory(lead.id, lead.email);
                                 }}
                                 className="h-8 w-8"
-                                title={`${emailCounts[lead.id] || 0} email${(emailCounts[lead.id] || 0) !== 1 ? 's' : ''} sent`}
+                                title="View email history"
                               >
                                 <Mail className="w-4 h-4" />
                               </Button>
-                              {emailCounts[lead.id] > 0 && (
+                              {getEmailSentCount(lead.email) > 0 && (
                                 <span 
                                   className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground"
-                                  title={`${emailCounts[lead.id]} email${emailCounts[lead.id] !== 1 ? 's' : ''} sent`}
                                 >
-                                  {emailCounts[lead.id]}
+                                  {getEmailSentCount(lead.email)}
                                 </span>
                               )}
                             </div>
