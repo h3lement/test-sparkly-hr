@@ -103,6 +103,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
+  const [emailCounts, setEmailCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -223,7 +224,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [leadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
+      const [leadsRes, quizzesRes, questionsRes, answersRes, emailLogsRes] = await Promise.all([
         supabase
           .from("quiz_leads")
           .select("*")
@@ -239,12 +240,26 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .from("quiz_answers")
           .select("*")
           .order("answer_order", { ascending: true }),
+        supabase
+          .from("email_logs")
+          .select("quiz_lead_id"),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
       if (quizzesRes.error) throw quizzesRes.error;
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
+
+      // Calculate email counts per quiz_lead_id
+      const counts: Record<string, number> = {};
+      if (emailLogsRes.data) {
+        emailLogsRes.data.forEach((log) => {
+          if (log.quiz_lead_id) {
+            counts[log.quiz_lead_id] = (counts[log.quiz_lead_id] || 0) + 1;
+          }
+        });
+      }
+      setEmailCounts(counts);
 
       setLeads(leadsRes.data || []);
       setQuizzes(quizzesRes.data || []);
@@ -669,18 +684,25 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {onViewEmailHistory && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onViewEmailHistory(lead.id, lead.email);
-                              }}
-                              className="h-8 w-8"
-                              title="View email history"
-                            >
-                              <Mail className="w-4 h-4" />
-                            </Button>
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onViewEmailHistory(lead.id, lead.email);
+                                }}
+                                className="h-8 w-8"
+                                title="View email history"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </Button>
+                              {emailCounts[lead.id] > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                                  {emailCounts[lead.id]}
+                                </span>
+                              )}
+                            </div>
                           )}
                           <Button
                             variant="ghost"
