@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
   Line,
@@ -94,7 +94,7 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
     // Generate last 13 months
     for (let i = 12; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = date.toISOString().slice(0, 7); // YYYY-MM
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM (local)
       const monthLabel = date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
       
       const dataPoint: ChartDataPoint = { month: monthLabel };
@@ -209,6 +209,9 @@ export function RespondentsGrowthChart({ quizzes, leads, loading }: RespondentsG
             <TrendingUp className="h-5 w-5 text-primary" />
             Responses Growth (13 Months)
           </CardTitle>
+          <CardDescription>
+            Based on {recentLeads.length} submissions from the last 13 months.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
