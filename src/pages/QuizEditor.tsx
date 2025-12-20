@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2 } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft, Languages, Loader2, Eye } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import {
   Select,
@@ -109,6 +109,9 @@ export default function QuizEditor() {
   
   const primaryLanguage = editorPrefs.language || "en";
   const setPrimaryLanguage = (lang: string) => updateEditorPref("language", lang);
+  
+  // Preview language for viewing translations
+  const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
 
   // Quiz details state
   const [slug, setSlug] = useState("");
@@ -559,6 +562,10 @@ export default function QuizEditor() {
     setResultLevels(resultLevels.filter((_, i) => i !== index));
   };
 
+  // Display language: use preview language if set, otherwise primary language
+  const displayLanguage = previewLanguage || primaryLanguage;
+  const isPreviewMode = !!previewLanguage;
+
   const getLocalizedValue = (obj: Json | Record<string, string>, lang: string): string => {
     if (typeof obj === "string") return obj;
     if (obj && typeof obj === "object" && !Array.isArray(obj)) {
@@ -636,8 +643,9 @@ export default function QuizEditor() {
               </Button>
             </div>
 
-        {/* Language Toggle */}
+        {/* Language Controls */}
         <div className="flex flex-wrap items-center gap-4 mb-6 pb-4 border-b">
+          {/* Edit Language Toggle */}
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">Edit in:</Label>
             <div className="flex items-center rounded-md border bg-muted p-0.5">
@@ -645,9 +653,12 @@ export default function QuizEditor() {
                 <button
                   key={lang.code}
                   type="button"
-                  onClick={() => setPrimaryLanguage(lang.code)}
+                  onClick={() => {
+                    setPrimaryLanguage(lang.code);
+                    setPreviewLanguage(null);
+                  }}
                   className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                    primaryLanguage === lang.code
+                    primaryLanguage === lang.code && !previewLanguage
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -657,8 +668,43 @@ export default function QuizEditor() {
               ))}
             </div>
           </div>
-          
+
+          {/* Preview Language Dropdown */}
           {!isCreating && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium whitespace-nowrap flex items-center gap-1">
+                <Eye className="w-3.5 h-3.5" />
+                Preview:
+              </Label>
+              <Select 
+                value={previewLanguage || ""} 
+                onValueChange={(val) => setPreviewLanguage(val || null)}
+              >
+                <SelectTrigger className="w-[130px] h-8 text-sm">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_LANGUAGES.map(lang => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {previewLanguage && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setPreviewLanguage(null)}
+                >
+                  Exit Preview
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {!isCreating && !previewLanguage && (
             <Button
               variant="outline"
               size="sm"
@@ -673,6 +719,12 @@ export default function QuizEditor() {
               )}
               {translating ? "Translating..." : "AI Translate to All Languages"}
             </Button>
+          )}
+          
+          {previewLanguage && (
+            <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 px-2 py-1 rounded">
+              Preview mode - changes disabled
+            </span>
           )}
         </div>
 
@@ -704,74 +756,81 @@ export default function QuizEditor() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Title ({primaryLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">Title ({displayLanguage.toUpperCase()})</Label>
                 <Input
-                  value={title[primaryLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setTitle, primaryLanguage, e.target.value)}
+                  value={title[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setTitle, displayLanguage, e.target.value)}
                   placeholder="Quiz title"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
               <div>
-                <Label className="text-xs">Badge Text ({primaryLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">Badge Text ({displayLanguage.toUpperCase()})</Label>
                 <Input
-                  value={badgeText[primaryLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setBadgeText, primaryLanguage, e.target.value)}
+                  value={badgeText[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setBadgeText, displayLanguage, e.target.value)}
                   placeholder="Free Assessment"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Headline ({primaryLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">Headline ({displayLanguage.toUpperCase()})</Label>
                 <Input
-                  value={headline[primaryLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setHeadline, primaryLanguage, e.target.value)}
+                  value={headline[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setHeadline, displayLanguage, e.target.value)}
                   placeholder="Discover your"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
               <div>
-                <Label className="text-xs">Headline Highlight ({primaryLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">Headline Highlight ({displayLanguage.toUpperCase()})</Label>
                 <Input
-                  value={headlineHighlight[primaryLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setHeadlineHighlight, primaryLanguage, e.target.value)}
+                  value={headlineHighlight[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setHeadlineHighlight, displayLanguage, e.target.value)}
                   placeholder="team's potential"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
             </div>
 
             <div>
-              <Label className="text-xs">Description ({primaryLanguage.toUpperCase()})</Label>
+              <Label className="text-xs">Description ({displayLanguage.toUpperCase()})</Label>
               <Textarea
-                value={description[primaryLanguage] || ""}
-                onChange={(e) => setLocalizedValue(setDescription, primaryLanguage, e.target.value)}
+                value={description[displayLanguage] || ""}
+                onChange={(e) => setLocalizedValue(setDescription, displayLanguage, e.target.value)}
                 placeholder="Quiz description"
                 rows={2}
                 className="resize-none"
+                disabled={isPreviewMode}
               />
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs">Duration Text ({primaryLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">Duration Text ({displayLanguage.toUpperCase()})</Label>
                 <Input
-                  value={durationText[primaryLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setDurationText, primaryLanguage, e.target.value)}
+                  value={durationText[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setDurationText, displayLanguage, e.target.value)}
                   placeholder="Takes only 2 minutes"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
               <div>
-                <Label className="text-xs">CTA Text ({primaryLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">CTA Text ({displayLanguage.toUpperCase()})</Label>
                 <Input
-                  value={ctaText[primaryLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setCtaText, primaryLanguage, e.target.value)}
+                  value={ctaText[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setCtaText, displayLanguage, e.target.value)}
                   placeholder="Start Quiz"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
               <div>
@@ -781,16 +840,19 @@ export default function QuizEditor() {
                   onChange={(e) => setCtaUrl(e.target.value)}
                   placeholder="https://sparkly.hr"
                   className="h-8"
+                  disabled={isPreviewMode}
                 />
               </div>
             </div>
           </TabsContent>
 
           <TabsContent value="questions" className="space-y-2">
-            <Button onClick={addQuestion} variant="outline" size="sm" className="w-full h-8 text-xs">
-              <Plus className="w-3 h-3 mr-1" />
-              Add Question
-            </Button>
+            {!isPreviewMode && (
+              <Button onClick={addQuestion} variant="outline" size="sm" className="w-full h-8 text-xs">
+                <Plus className="w-3 h-3 mr-1" />
+                Add Question
+              </Button>
+            )}
 
             <Accordion type="single" collapsible className="space-y-1">
               {questions.map((question, qIndex) => (
@@ -803,7 +865,7 @@ export default function QuizEditor() {
                     <div className="flex items-center gap-1.5 text-left text-sm">
                       <GripVertical className="w-3 h-3 text-muted-foreground" />
                       <span className="font-medium">
-                        Q{qIndex + 1}: {getLocalizedValue(question.question_text, primaryLanguage) || "New Question"}
+                        Q{qIndex + 1}: {getLocalizedValue(question.question_text, displayLanguage) || "New Question"}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         ({question.answers.length})
@@ -812,31 +874,34 @@ export default function QuizEditor() {
                   </AccordionTrigger>
                   <AccordionContent className="space-y-2 pt-2 pb-3">
                     <div>
-                      <Label className="text-xs">Question ({primaryLanguage.toUpperCase()})</Label>
+                      <Label className="text-xs">Question ({displayLanguage.toUpperCase()})</Label>
                       <Textarea
-                        value={getLocalizedValue(question.question_text, primaryLanguage)}
+                        value={getLocalizedValue(question.question_text, displayLanguage)}
                         onChange={(e) => {
-                          const updated = { ...jsonToRecord(question.question_text), [primaryLanguage]: e.target.value };
+                          const updated = { ...jsonToRecord(question.question_text), [displayLanguage]: e.target.value };
                           updateQuestion(qIndex, { question_text: updated });
                         }}
                         placeholder="Enter question text"
                         rows={2}
                         className="resize-none text-sm"
+                        disabled={isPreviewMode}
                       />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <Label className="text-xs">Answers</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2"
-                          onClick={() => addAnswer(qIndex)}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add
-                        </Button>
+                        {!isPreviewMode && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-xs px-2"
+                            onClick={() => addAnswer(qIndex)}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Add
+                          </Button>
+                        )}
                       </div>
 
                       {question.answers.map((answer, aIndex) => (
@@ -846,13 +911,14 @@ export default function QuizEditor() {
                         >
                           <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                           <Input
-                            value={getLocalizedValue(answer.answer_text, primaryLanguage)}
+                            value={getLocalizedValue(answer.answer_text, displayLanguage)}
                             onChange={(e) => {
-                              const updated = { ...jsonToRecord(answer.answer_text), [primaryLanguage]: e.target.value };
+                              const updated = { ...jsonToRecord(answer.answer_text), [displayLanguage]: e.target.value };
                               updateAnswer(qIndex, aIndex, { answer_text: updated });
                             }}
                             placeholder={`Answer ${aIndex + 1}`}
                             className="flex-1 h-7 text-sm"
+                            disabled={isPreviewMode}
                           />
                           <Input
                             type="number"
@@ -864,28 +930,33 @@ export default function QuizEditor() {
                             }
                             className="w-14 h-7 text-sm text-center"
                             title="Score"
+                            disabled={isPreviewMode}
                           />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                            onClick={() => deleteAnswer(qIndex, aIndex)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {!isPreviewMode && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => deleteAnswer(qIndex, aIndex)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
 
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => deleteQuestion(qIndex)}
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Delete
-                    </Button>
+                    {!isPreviewMode && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => deleteQuestion(qIndex)}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               ))}
@@ -893,10 +964,12 @@ export default function QuizEditor() {
           </TabsContent>
 
           <TabsContent value="results" className="space-y-2">
-            <Button onClick={addResultLevel} variant="outline" size="sm" className="w-full h-8 text-xs">
-              <Plus className="w-3 h-3 mr-1" />
-              Add Result Level
-            </Button>
+            {!isPreviewMode && (
+              <Button onClick={addResultLevel} variant="outline" size="sm" className="w-full h-8 text-xs">
+                <Plus className="w-3 h-3 mr-1" />
+                Add Result Level
+              </Button>
+            )}
 
             {resultLevels.map((level, index) => (
               <div
@@ -905,16 +978,18 @@ export default function QuizEditor() {
               >
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">
-                    {level.emoji} {getLocalizedValue(level.title, primaryLanguage) || `Level ${index + 1}`}
+                    {level.emoji} {getLocalizedValue(level.title, displayLanguage) || `Level ${index + 1}`}
                   </h4>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => deleteResultLevel(index)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+                  {!isPreviewMode && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={() => deleteResultLevel(index)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-4 gap-2">
@@ -929,6 +1004,7 @@ export default function QuizEditor() {
                         })
                       }
                       className="h-7 text-sm"
+                      disabled={isPreviewMode}
                     />
                   </div>
                   <div>
@@ -942,6 +1018,7 @@ export default function QuizEditor() {
                         })
                       }
                       className="h-7 text-sm"
+                      disabled={isPreviewMode}
                     />
                   </div>
                   <div>
@@ -952,6 +1029,7 @@ export default function QuizEditor() {
                         updateResultLevel(index, { emoji: e.target.value })
                       }
                       className="h-7 text-sm"
+                      disabled={isPreviewMode}
                     />
                   </div>
                   <div>
@@ -963,34 +1041,37 @@ export default function QuizEditor() {
                       }
                       placeholder="from-emerald-500 to-green-600"
                       className="h-7 text-sm"
+                      disabled={isPreviewMode}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Title ({primaryLanguage.toUpperCase()})</Label>
+                  <Label className="text-xs">Title ({displayLanguage.toUpperCase()})</Label>
                   <Input
-                    value={getLocalizedValue(level.title, primaryLanguage)}
+                    value={getLocalizedValue(level.title, displayLanguage)}
                     onChange={(e) => {
-                      const updated = { ...jsonToRecord(level.title), [primaryLanguage]: e.target.value };
+                      const updated = { ...jsonToRecord(level.title), [displayLanguage]: e.target.value };
                       updateResultLevel(index, { title: updated });
                     }}
                     placeholder="Result title"
                     className="h-7 text-sm"
+                    disabled={isPreviewMode}
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs">Description ({primaryLanguage.toUpperCase()})</Label>
+                  <Label className="text-xs">Description ({displayLanguage.toUpperCase()})</Label>
                   <Textarea
-                    value={getLocalizedValue(level.description, primaryLanguage)}
+                    value={getLocalizedValue(level.description, displayLanguage)}
                     onChange={(e) => {
-                      const updated = { ...jsonToRecord(level.description), [primaryLanguage]: e.target.value };
+                      const updated = { ...jsonToRecord(level.description), [displayLanguage]: e.target.value };
                       updateResultLevel(index, { description: updated });
                     }}
                     placeholder="Result description"
                     rows={2}
                     className="resize-none text-sm"
+                    disabled={isPreviewMode}
                   />
                 </div>
               </div>
