@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import type { Json } from "@/integrations/supabase/types";
 
 interface ResultLevel {
@@ -23,6 +28,7 @@ interface SortableResultLevelProps {
   isEven: boolean;
   displayLanguage: string;
   isPreviewMode: boolean;
+  quizId?: string;
   onUpdateLevel: (index: number, updates: Partial<ResultLevel>) => void;
   onDeleteLevel: (index: number) => void;
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
@@ -35,11 +41,17 @@ export function SortableResultLevel({
   isEven,
   displayLanguage,
   isPreviewMode,
+  quizId,
   onUpdateLevel,
   onDeleteLevel,
   getLocalizedValue,
   jsonToRecord,
 }: SortableResultLevelProps) {
+  const [showAiPopover, setShowAiPopover] = useState(false);
+  const [aiInstructions, setAiInstructions] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const { toast } = useToast();
+
   const {
     attributes,
     listeners,
@@ -53,6 +65,62 @@ export function SortableResultLevel({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  // Handle score input - allow empty string for clearing
+  const handleScoreChange = (field: 'min_score' | 'max_score', value: string) => {
+    // Allow empty input while typing
+    if (value === '' || value === '-') {
+      onUpdateLevel(index, { [field]: 0 });
+      return;
+    }
+    const parsed = parseInt(value, 10);
+    if (!isNaN(parsed)) {
+      onUpdateLevel(index, { [field]: parsed });
+    }
+  };
+
+  const handleAiFill = async () => {
+    if (!quizId) return;
+    
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fill-result-level", {
+        body: {
+          quizId,
+          minScore: level.min_score,
+          maxScore: level.max_score,
+          instructions: aiInstructions,
+          language: displayLanguage,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      onUpdateLevel(index, {
+        title: { ...jsonToRecord(level.title), [displayLanguage]: data.title },
+        description: { ...jsonToRecord(level.description), [displayLanguage]: data.description },
+        emoji: data.emoji || level.emoji,
+        insights: data.insights || [],
+      });
+
+      toast({
+        title: "Content generated",
+        description: `AI filled in the result level content`,
+      });
+      setShowAiPopover(false);
+      setAiInstructions("");
+    } catch (error: any) {
+      console.error("AI fill error:", error);
+      toast({
+        title: "Generation failed",
+        description: error.message || "Failed to generate content",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -89,28 +157,88 @@ export function SortableResultLevel({
         />
         <div className="flex items-center gap-2 flex-shrink-0 bg-secondary/50 rounded px-2 py-1">
           <span className="text-xs text-muted-foreground">Score:</span>
-          <Input
-            type="number"
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={level.min_score}
-            onChange={(e) =>
-              onUpdateLevel(index, { min_score: parseInt(e.target.value) || 0 })
-            }
-            className="h-7 w-14 text-sm text-center"
+            onChange={(e) => handleScoreChange('min_score', e.target.value)}
+            onFocus={(e) => e.target.select()}
+            className="h-7 w-14 text-sm text-center rounded border border-input bg-background px-2 focus:outline-none focus:ring-2 focus:ring-ring"
             title="Min score"
             disabled={isPreviewMode}
           />
           <span className="text-sm text-muted-foreground">–</span>
-          <Input
-            type="number"
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={level.max_score}
-            onChange={(e) =>
-              onUpdateLevel(index, { max_score: parseInt(e.target.value) || 0 })
-            }
-            className="h-7 w-14 text-sm text-center"
+            onChange={(e) => handleScoreChange('max_score', e.target.value)}
+            onFocus={(e) => e.target.select()}
+            className="h-7 w-14 text-sm text-center rounded border border-input bg-background px-2 focus:outline-none focus:ring-2 focus:ring-ring"
             title="Max score"
             disabled={isPreviewMode}
           />
         </div>
+        
+        {/* AI Fill Button */}
+        {!isPreviewMode && quizId && (
+          <Popover open={showAiPopover} onOpenChange={setShowAiPopover}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary flex-shrink-0"
+                title="AI fill content"
+              >
+                <Sparkles className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-medium text-sm flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    AI Fill Content
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Generate title, description & emoji for score range {level.min_score}–{level.max_score}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Instructions (optional)</Label>
+                  <Textarea
+                    value={aiInstructions}
+                    onChange={(e) => setAiInstructions(e.target.value)}
+                    placeholder="e.g., Make it encouraging, focus on growth potential..."
+                    rows={2}
+                    className="text-sm resize-none"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleAiFill}
+                  disabled={generating}
+                  className="w-full gap-1.5"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {!isPreviewMode && (
           <Button
             variant="ghost"

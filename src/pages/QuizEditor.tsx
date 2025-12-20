@@ -1432,6 +1432,7 @@ export default function QuizEditor() {
               resultLevels={resultLevels}
               displayLanguage={displayLanguage}
               isPreviewMode={isPreviewMode}
+              quizId={quizId}
               onReorderLevels={(reorderedLevels) => setResultLevels(reorderedLevels)}
               onUpdateLevel={updateResultLevel}
               onDeleteLevel={deleteResultLevel}
