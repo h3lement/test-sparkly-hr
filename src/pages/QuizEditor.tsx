@@ -627,22 +627,26 @@ export default function QuizEditor() {
               </Button>
             </div>
 
-        {/* Primary Language selector + Translate button */}
+        {/* Language Toggle */}
         <div className="flex flex-wrap items-center gap-4 mb-6 pb-4 border-b">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">Edit in:</Label>
-            <Select value={primaryLanguage} onValueChange={setPrimaryLanguage}>
-              <SelectTrigger className="w-[140px] h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIMARY_LANGUAGES.map(lang => (
-                  <SelectItem key={lang.code} value={lang.code}>
-                    {lang.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center rounded-md border bg-muted p-0.5">
+              {PRIMARY_LANGUAGES.map(lang => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => setPrimaryLanguage(lang.code)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                    primaryLanguage === lang.code
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
           </div>
           
           {!isCreating && (
@@ -661,11 +665,6 @@ export default function QuizEditor() {
               {translating ? "Translating..." : "AI Translate to All Languages"}
             </Button>
           )}
-          
-          <p className="text-xs text-muted-foreground">
-            Edit content in {PRIMARY_LANGUAGES.find(l => l.code === primaryLanguage)?.label}. 
-            Other languages will be AI-translated.
-          </p>
         </div>
 
         {/* Tabs */}
