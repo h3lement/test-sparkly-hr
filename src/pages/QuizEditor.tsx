@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, Euro } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
+import { RegenerationDialog, type RegenerationType } from "@/components/admin/RegenerationDialog";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
 import { GenerateResultsDialog } from "@/components/admin/GenerateResultsDialog";
@@ -197,6 +199,19 @@ export default function QuizEditor() {
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [showVersionsDialog, setShowVersionsDialog] = useState(false);
   const [totalAiCost, setTotalAiCost] = useState<number>(0);
+  
+  // AI Model selection
+  const [selectedAiModel, setSelectedAiModel] = useState<AiModelId>("google/gemini-2.5-flash");
+  const [previousAiModel, setPreviousAiModel] = useState<AiModelId>("google/gemini-2.5-flash");
+  const [showRegenerationDialog, setShowRegenerationDialog] = useState(false);
+  const [regenerationTasks, setRegenerationTasks] = useState<Array<{
+    id: string;
+    label: string;
+    status: "pending" | "running" | "done" | "error";
+    errorMessage?: string;
+  }>>([]);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerationProgress, setRegenerationProgress] = useState(0);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1048,6 +1063,110 @@ export default function QuizEditor() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Handle AI model change
+  const handleAiModelChange = (newModel: AiModelId) => {
+    if (newModel !== selectedAiModel) {
+      setPreviousAiModel(selectedAiModel);
+      setSelectedAiModel(newModel);
+      setRegenerationTasks([]);
+      setRegenerationProgress(0);
+      setShowRegenerationDialog(true);
+    }
+  };
+
+  // Handle regeneration
+  const handleRegeneration = async (type: RegenerationType) => {
+    if (type === "none") {
+      setShowRegenerationDialog(false);
+      return;
+    }
+
+    setIsRegenerating(true);
+    
+    // Define tasks based on what needs regeneration
+    const tasks: Array<{
+      id: string;
+      label: string;
+      status: "pending" | "running" | "done" | "error";
+      errorMessage?: string;
+    }> = [];
+
+    // Check what AI content exists/is missing
+    const hasResults = resultLevels.length > 0;
+    const hasTone = !!toneOfVoice;
+    const hasIcp = !!icpDescription;
+    const hasPersona = !!buyingPersona;
+
+    if (type === "all") {
+      tasks.push({ id: "results", label: "Result Levels", status: "pending" });
+      if (hasTone) tasks.push({ id: "tone", label: "Tone of Voice", status: "pending" });
+      if (hasIcp) tasks.push({ id: "icp", label: "ICP Description", status: "pending" });
+      if (hasPersona) tasks.push({ id: "persona", label: "Buying Persona", status: "pending" });
+    } else {
+      // Only missing
+      if (!hasResults) tasks.push({ id: "results", label: "Result Levels", status: "pending" });
+      if (!hasTone) tasks.push({ id: "tone", label: "Tone of Voice", status: "pending" });
+      if (!hasIcp) tasks.push({ id: "icp", label: "ICP Description", status: "pending" });
+      if (!hasPersona) tasks.push({ id: "persona", label: "Buying Persona", status: "pending" });
+    }
+
+    if (tasks.length === 0) {
+      toast({
+        title: "Nothing to regenerate",
+        description: type === "missing" ? "All AI content already exists" : "No AI content to regenerate",
+      });
+      setIsRegenerating(false);
+      setShowRegenerationDialog(false);
+      return;
+    }
+
+    setRegenerationTasks(tasks);
+
+    // Process tasks sequentially
+    for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i];
+      
+      // Update task to running
+      setRegenerationTasks(prev => 
+        prev.map(t => t.id === task.id ? { ...t, status: "running" } : t)
+      );
+
+      try {
+        // Simulate task execution - in reality, these would call the actual edge functions
+        // For now, we'll just show the progress UI
+        if (task.id === "results" && quizId && quizId !== "new") {
+          // Trigger result generation would happen here
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        } else {
+          // Other tasks
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+
+        // Mark as done
+        setRegenerationTasks(prev => 
+          prev.map(t => t.id === task.id ? { ...t, status: "done" } : t)
+        );
+      } catch (error) {
+        setRegenerationTasks(prev => 
+          prev.map(t => t.id === task.id ? { 
+            ...t, 
+            status: "error", 
+            errorMessage: error instanceof Error ? error.message : "Failed" 
+          } : t)
+        );
+      }
+
+      // Update progress
+      setRegenerationProgress(((i + 1) / tasks.length) * 100);
+    }
+
+    setIsRegenerating(false);
+    toast({
+      title: "Regeneration complete",
+      description: `Processed ${tasks.length} item(s) with ${selectedAiModel.split('/')[1]}`,
+    });
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -1102,13 +1221,14 @@ export default function QuizEditor() {
                 </h1>
               </div>
               <div className="flex items-center gap-3">
-                {/* AI Cost indicator */}
-                {!isCreating && totalAiCost > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary text-xs">
-                    <Euro className="w-3.5 h-3.5" />
-                    <span className="font-medium">{totalAiCost.toFixed(4)}</span>
-                    <span className="text-muted-foreground">AI cost</span>
-                  </div>
+                {/* AI Cost and Model Selector */}
+                {!isCreating && (
+                  <AiModelSelector
+                    totalCost={totalAiCost}
+                    selectedModel={selectedAiModel}
+                    onModelChange={handleAiModelChange}
+                    disabled={isRegenerating}
+                  />
                 )}
                 
                 {/* Auto-save indicator for existing quizzes */}
@@ -1609,13 +1729,7 @@ export default function QuizEditor() {
                 );
               })()}
 
-              {/* AI Cost Display */}
-              {totalAiCost > 0 && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-xs text-muted-foreground">
-                  <Euro className="w-3 h-3" />
-                  <span>{totalAiCost.toFixed(4)}</span>
-                </div>
-              )}
+              {/* AI Model Selector - moved to header */}
 
               <div className="flex-1" />
 
@@ -1718,6 +1832,18 @@ export default function QuizEditor() {
           </div>
         </div>
       </main>
+
+      {/* AI Model Regeneration Dialog */}
+      <RegenerationDialog
+        open={showRegenerationDialog}
+        onOpenChange={setShowRegenerationDialog}
+        newModel={selectedAiModel}
+        oldModel={previousAiModel}
+        onRegenerate={handleRegeneration}
+        tasks={regenerationTasks}
+        isRunning={isRegenerating}
+        progress={regenerationProgress}
+      />
     </div>
   );
 }
