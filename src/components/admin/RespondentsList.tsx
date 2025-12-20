@@ -105,6 +105,15 @@ export function RespondentsList() {
     return counts;
   }, [leads]);
 
+  // Calculate unique counts for toggle labels
+  const uniqueEmailCount = useMemo(() => {
+    return new Set(leads.map((lead) => lead.email)).size;
+  }, [leads]);
+
+  const uniqueEmailQuizCount = useMemo(() => {
+    return new Set(leads.map((lead) => `${lead.email}::${lead.quiz_id || "unknown"}`)).size;
+  }, [leads]);
+
   // Get all submissions for a specific email, ordered by latest first
   const getSubmissionsForEmail = (email: string) => {
     return leads
@@ -405,6 +414,9 @@ export function RespondentsList() {
             <Label htmlFor="unique-emails" className="text-sm text-muted-foreground cursor-pointer">
               Unique emails
             </Label>
+            <Badge variant="secondary" className="text-xs">
+              {uniqueEmailCount}
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
             <Switch
@@ -418,6 +430,9 @@ export function RespondentsList() {
             <Label htmlFor="unique-email-quiz" className="text-sm text-muted-foreground cursor-pointer">
               Unique email + quiz
             </Label>
+            <Badge variant="secondary" className="text-xs">
+              {uniqueEmailQuizCount}
+            </Badge>
           </div>
         </div>
 
