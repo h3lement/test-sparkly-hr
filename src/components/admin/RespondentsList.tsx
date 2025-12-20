@@ -91,7 +91,12 @@ interface RespondentsPreferences {
   showUniqueEmailQuiz: boolean;
 }
 
-export function RespondentsList() {
+interface RespondentsListProps {
+  highlightedLeadId?: string | null;
+  onHighlightCleared?: () => void;
+}
+
+export function RespondentsList({ highlightedLeadId, onHighlightCleared }: RespondentsListProps = {}) {
   const [leads, setLeads] = useState<QuizLead[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -186,6 +191,32 @@ export function RespondentsList() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Handle highlighted lead from Email History
+  useEffect(() => {
+    if (highlightedLeadId && leads.length > 0) {
+      // Find the lead and scroll to it
+      const leadIndex = leads.findIndex(l => l.id === highlightedLeadId);
+      if (leadIndex >= 0) {
+        // Calculate which page the lead is on
+        const pageNumber = Math.floor(leadIndex / (preferences.itemsPerPage ?? 25)) + 1;
+        setCurrentPage(pageNumber);
+        
+        // Scroll to the row after a short delay
+        setTimeout(() => {
+          const element = document.getElementById(`lead-row-${highlightedLeadId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
+      }
+      
+      // Clear highlight after a few seconds
+      setTimeout(() => {
+        onHighlightCleared?.();
+      }, 3000);
+    }
+  }, [highlightedLeadId, leads, preferences.itemsPerPage, onHighlightCleared]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -551,8 +582,9 @@ export function RespondentsList() {
                 return (
                   <>
                     <tr 
-                      key={lead.id} 
-                      className={`hover:bg-secondary/30 transition-colors ${hasAnswers ? 'cursor-pointer' : ''}`}
+                      key={lead.id}
+                      id={`lead-row-${lead.id}`}
+                      className={`hover:bg-secondary/30 transition-all ${hasAnswers ? 'cursor-pointer' : ''} ${highlightedLeadId === lead.id ? 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse' : ''}`}
                       onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
                     >
                       <td className="px-6 py-4">
