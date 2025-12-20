@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Save, ArrowLeft } from "lucide-react";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import {
   Tabs,
   TabsContent,
@@ -513,6 +514,13 @@ export default function QuizEditor() {
     setter(prev => ({ ...prev, [lang]: value }));
   };
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
   if (checkingRole || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -529,29 +537,43 @@ export default function QuizEditor() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/admin")}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Admin
-            </Button>
-            <h1 className="text-2xl font-bold">
-              {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
-            </h1>
-          </div>
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Quiz"}
-          </Button>
-        </div>
+    <div className="fixed inset-0 bg-background flex overflow-hidden">
+      <AdminSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeTab="quizzes"
+        onTabChange={(tab) => {
+          if (tab !== "quizzes") {
+            navigate("/admin");
+          }
+        }}
+        onLogout={handleLogout}
+      />
+
+      <main className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 density-padding-lg overflow-y-auto min-h-0">
+          <div className="admin-page">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/admin")}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </Button>
+                <h1 className="text-2xl font-bold">
+                  {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
+                </h1>
+              </div>
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? "Saving..." : "Save Quiz"}
+              </Button>
+            </div>
 
         {/* Language selector */}
         <div className="flex items-center gap-2 mb-6 pb-4 border-b">
@@ -874,7 +896,9 @@ export default function QuizEditor() {
             ))}
           </TabsContent>
         </Tabs>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

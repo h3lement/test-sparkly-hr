@@ -1863,6 +1863,7 @@ function QuizDesignReference() {
           <div className="p-4 bg-secondary/50 rounded-lg border border-border space-y-3">
             <p className="text-sm font-medium text-foreground">Critical Rules</p>
             <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+              <li><strong>Consistent sidebar:</strong> All admin pages (lists AND editors) must show the left sidebar. Never hide sidebar on edit/detail pages.</li>
               <li><strong>Save vertical height:</strong> Keep controls on same row (e.g., filters + period + live indicator together). Avoid stacking elements that can fit horizontally.</li>
               <li><strong>Responsive width:</strong> Use <code className="text-xs bg-muted px-1 py-0.5 rounded">admin-page</code> class which adapts to screen size with proper padding</li>
               <li><strong>Mobile padding:</strong> px-4 on mobile, sm:px-6, lg:px-8 for larger screens</li>
