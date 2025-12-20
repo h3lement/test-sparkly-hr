@@ -772,8 +772,10 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                 handleQuizClick(effectiveQuizId);
                               }}
                               className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                              title="Edit quiz"
+                              aria-label={`Edit quiz ${quiz.slug}`}
                             >
-                              {getLocalizedText(quiz.title, lead.language || "en")}
+                              {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
                             </button>
                             <a
                               href={`/${quiz.slug}`}
