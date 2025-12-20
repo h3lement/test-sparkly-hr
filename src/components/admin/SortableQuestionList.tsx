@@ -40,6 +40,7 @@ interface SortableQuestionListProps {
   onReorderQuestions: (questions: Question[]) => void;
   onUpdateQuestion: (index: number, updates: Partial<Question>) => void;
   onDeleteQuestion: (index: number) => void;
+  onDuplicateQuestion: (index: number) => void;
   onAddAnswer: (questionIndex: number) => void;
   onUpdateAnswer: (questionIndex: number, answerIndex: number, updates: Partial<Answer>) => void;
   onDeleteAnswer: (questionIndex: number, answerIndex: number) => void;
@@ -56,6 +57,7 @@ export function SortableQuestionList({
   onReorderQuestions,
   onUpdateQuestion,
   onDeleteQuestion,
+  onDuplicateQuestion,
   onAddAnswer,
   onUpdateAnswer,
   onDeleteAnswer,
@@ -133,6 +135,7 @@ export function SortableQuestionList({
                 enableScoring={enableScoring}
                 onUpdateQuestion={(_, updates) => onUpdateQuestion(qIndex, updates)}
                 onDeleteQuestion={() => onDeleteQuestion(qIndex)}
+                onDuplicateQuestion={() => onDuplicateQuestion(qIndex)}
                 onAddAnswer={() => onAddAnswer(qIndex)}
                 onUpdateAnswer={(_, answerIndex, updates) =>
                   onUpdateAnswer(qIndex, answerIndex, updates)

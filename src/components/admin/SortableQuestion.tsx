@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,7 @@ interface SortableQuestionProps {
   enableScoring: boolean;
   onUpdateQuestion: (index: number, updates: Partial<Question>) => void;
   onDeleteQuestion: (index: number) => void;
+  onDuplicateQuestion: (index: number) => void;
   onAddAnswer: (questionIndex: number) => void;
   onUpdateAnswer: (questionIndex: number, answerIndex: number, updates: Partial<Answer>) => void;
   onDeleteAnswer: (questionIndex: number, answerIndex: number) => void;
@@ -54,6 +55,7 @@ export function SortableQuestion({
   enableScoring,
   onUpdateQuestion,
   onDeleteQuestion,
+  onDuplicateQuestion,
   onAddAnswer,
   onUpdateAnswer,
   onDeleteAnswer,
@@ -148,15 +150,26 @@ export function SortableQuestion({
         </div>
 
         {!isPreviewMode && (
-          <Button
-            variant="destructive"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => onDeleteQuestion(index)}
-          >
-            <Trash2 className="w-3 h-3 mr-1" />
-            Delete
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => onDuplicateQuestion(index)}
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              Duplicate
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => onDeleteQuestion(index)}
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Delete
+            </Button>
+          </div>
         )}
       </AccordionContent>
     </AccordionItem>
