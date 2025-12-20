@@ -265,6 +265,7 @@ export function RespondentsList() {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Quiz</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Score</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Result</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Openness</th>
@@ -279,6 +280,7 @@ export function RespondentsList() {
                 const quizQuestions = getQuestionsForQuiz(lead.quiz_id);
                 const leadAnswers = parseLeadAnswers(lead.answers);
                 const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
+                const quiz = quizzes.find(q => q.id === lead.quiz_id);
 
                 return (
                   <>
@@ -305,6 +307,11 @@ export function RespondentsList() {
                             )}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-foreground">
+                          {quiz ? getLocalizedText(quiz.title, lead.language || "en") : "Unknown"}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-foreground">
                         {lead.score}/{lead.total_questions}
@@ -347,7 +354,7 @@ export function RespondentsList() {
                     </tr>
                     {isExpanded && hasAnswers && (
                       <tr key={`${lead.id}-expanded`}>
-                        <td colSpan={7} className="px-6 py-4 bg-secondary/20">
+                        <td colSpan={8} className="px-6 py-4 bg-secondary/20">
                           <div className="space-y-3">
                             <p className="text-sm font-medium text-foreground">Quiz Answers</p>
                             <div className="grid gap-2">
