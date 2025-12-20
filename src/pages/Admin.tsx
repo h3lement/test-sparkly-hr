@@ -644,16 +644,16 @@ const Admin = () => {
                           >
                             <td className="px-6 py-4">
                               <div 
-                                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                                className="flex items-center gap-3 cursor-pointer group"
                                 onClick={() => openEditDialog(admin)}
                               >
-                                <Avatar className="h-9 w-9 bg-secondary">
+                                <Avatar className="h-9 w-9 bg-secondary group-hover:ring-2 group-hover:ring-primary/30 transition-all">
                                   <AvatarFallback className="text-xs bg-secondary text-foreground">
                                     {getInitials(admin.name, admin.email)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                                  <p className="text-sm font-medium text-foreground group-hover:text-primary group-hover:underline underline-offset-2 transition-colors">
                                     {admin.name || <span className="text-muted-foreground italic">No name</span>}
                                     {admin.user_id === currentUserId && (
                                       <span className="ml-2 text-xs text-muted-foreground">(you)</span>
