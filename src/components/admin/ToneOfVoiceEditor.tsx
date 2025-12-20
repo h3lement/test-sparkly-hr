@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { Sparkles, FileText, History, Loader2, Wand2, Users, UserCircle } from "lucide-react";
+import { Sparkles, FileText, History, Loader2, Wand2, Users, UserCircle, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -119,13 +120,47 @@ export function ToneOfVoiceEditor({
   const [showExtractPopover, setShowExtractPopover] = useState(false);
   const [showIcpExtractPopover, setShowIcpExtractPopover] = useState(false);
   const [showPersonaExtractPopover, setShowPersonaExtractPopover] = useState(false);
+  const [showUrlPopover, setShowUrlPopover] = useState(false);
   const [extractText, setExtractText] = useState("");
   const [icpExtractText, setIcpExtractText] = useState("");
   const [personaExtractText, setPersonaExtractText] = useState("");
+  const [urlInput, setUrlInput] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generatingIcp, setGeneratingIcp] = useState(false);
   const [generatingPersona, setGeneratingPersona] = useState(false);
+  const [generatingFromUrl, setGeneratingFromUrl] = useState(false);
   const { toast } = useToast();
+
+  // URL extraction handler
+  const handleExtractFromUrl = async () => {
+    if (!urlInput.trim()) {
+      toast({ title: "No URL provided", description: "Enter a website URL to extract from", variant: "destructive" });
+      return;
+    }
+    setGeneratingFromUrl(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-from-url", {
+        body: { url: urlInput },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      if (data.icpDescription) onIcpChange(data.icpDescription);
+      if (data.buyingPersona) onBuyingPersonaChange(data.buyingPersona);
+      
+      setShowUrlPopover(false);
+      setUrlInput("");
+      toast({ 
+        title: "Extracted from website", 
+        description: `ICP and Persona extracted from ${data.sourceTitle || data.sourceUrl}` 
+      });
+    } catch (error: any) {
+      console.error("URL extraction error:", error);
+      toast({ title: "Extraction failed", description: error.message || "Failed to extract from URL", variant: "destructive" });
+    } finally {
+      setGeneratingFromUrl(false);
+    }
+  };
 
   // Get current tone examples based on intensity
   const currentExamples = useMemo(() => TONE_EXAMPLES[toneIntensity] || TONE_EXAMPLES[4], [toneIntensity]);
@@ -391,6 +426,63 @@ export function ToneOfVoiceEditor({
           />
         </div>
       </div>
+
+      {/* URL Extraction - Full Width */}
+      {!isPreviewMode && (
+        <div className="mb-4 p-2 rounded bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            <Label className="text-xs font-medium flex-1">Extract from Company Website</Label>
+            <Popover open={showUrlPopover} onOpenChange={setShowUrlPopover}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1.5">
+                  <Globe className="w-3 h-3" />
+                  Enter URL
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-medium text-sm flex items-center gap-1.5">
+                      <Globe className="w-4 h-4 text-primary" />
+                      Extract ICP & Persona from Website
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter a company website URL to automatically extract ICP and Buying Persona
+                    </p>
+                  </div>
+                  <Input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://example.com"
+                    className="text-sm"
+                    onKeyDown={(e) => e.key === "Enter" && handleExtractFromUrl()}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleExtractFromUrl}
+                    disabled={generatingFromUrl || !urlInput.trim()}
+                    className="w-full gap-1.5"
+                  >
+                    {generatingFromUrl ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Extracting...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Extract ICP & Persona
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         {/* Left Column: ICP & Buying Persona */}
