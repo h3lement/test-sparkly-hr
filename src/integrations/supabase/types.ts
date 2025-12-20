@@ -404,11 +404,14 @@ export type Database = {
           description: Json
           discover_items: Json
           duration_text: Json
+          enable_scoring: boolean
           headline: Json
           headline_highlight: Json
           id: string
+          include_open_mindedness: boolean
           is_active: boolean
           primary_language: string
+          shuffle_questions: boolean
           slug: string
           title: Json
           translation_meta: Json
@@ -423,11 +426,14 @@ export type Database = {
           description?: Json
           discover_items?: Json
           duration_text?: Json
+          enable_scoring?: boolean
           headline?: Json
           headline_highlight?: Json
           id?: string
+          include_open_mindedness?: boolean
           is_active?: boolean
           primary_language?: string
+          shuffle_questions?: boolean
           slug: string
           title?: Json
           translation_meta?: Json
@@ -442,11 +448,14 @@ export type Database = {
           description?: Json
           discover_items?: Json
           duration_text?: Json
+          enable_scoring?: boolean
           headline?: Json
           headline_highlight?: Json
           id?: string
+          include_open_mindedness?: boolean
           is_active?: boolean
           primary_language?: string
+          shuffle_questions?: boolean
           slug?: string
           title?: Json
           translation_meta?: Json
