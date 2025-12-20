@@ -1802,7 +1802,7 @@ function QuizDesignReference() {
           <CardDescription>CSS classes for consistent admin styling (defined in index.css)</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
-          <DesignToken label="Page Container" value="admin-page" cssVar="max-w-6xl" />
+          <DesignToken label="Page Container" value="admin-page" cssVar="w-full px-4 sm:px-6 lg:px-8 max-w-6xl" />
           <DesignToken label="Page Header" value="admin-page-header" cssVar="flex justify-between mb-8" />
           <DesignToken label="Page Title" value="admin-page-title" cssVar="text-3xl font-bold" />
           <DesignToken label="Page Description" value="admin-page-description" cssVar="text-muted mt-1" />
@@ -1849,6 +1849,36 @@ function QuizDesignReference() {
   onItemsPerPageChange={handleItemsPerPageChange}
   minItems={25} // Optional: defaults to 25
 />`}</pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Responsive Requirements */}
+      <Card className="border-orange-500/30 bg-orange-500/5">
+        <CardHeader>
+          <CardTitle className="text-orange-600">Responsive Requirements</CardTitle>
+          <CardDescription>Admin must be mobile-friendly and work on all screen sizes</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-secondary/50 rounded-lg border border-border space-y-3">
+            <p className="text-sm font-medium text-foreground">Critical Rules</p>
+            <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+              <li><strong>Responsive width:</strong> Use <code className="text-xs bg-muted px-1 py-0.5 rounded">admin-page</code> class which adapts to screen size with proper padding</li>
+              <li><strong>Mobile padding:</strong> px-4 on mobile, sm:px-6, lg:px-8 for larger screens</li>
+              <li><strong>Flex wrap:</strong> Always use <code className="text-xs bg-muted px-1 py-0.5 rounded">flex-wrap</code> on action button containers</li>
+              <li><strong>Tables:</strong> Wrap in <code className="text-xs bg-muted px-1 py-0.5 rounded">overflow-x-auto</code> container for horizontal scroll on mobile</li>
+              <li><strong>Avoid duplications:</strong> Never show the same data in multiple places (e.g., counts in stats AND filters)</li>
+            </ul>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium text-green-600">✓ Do</p>
+              <p className="text-xs text-muted-foreground">w-full, max-w-6xl, responsive padding, flex-wrap</p>
+            </div>
+            <div className="p-3 bg-card rounded-md border border-border">
+              <p className="text-sm font-medium text-red-600">✗ Don't</p>
+              <p className="text-xs text-muted-foreground">Fixed widths, no padding, unwrapped flex rows</p>
+            </div>
           </div>
         </CardContent>
       </Card>
