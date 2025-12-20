@@ -5,9 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { 
   RefreshCw, 
@@ -15,10 +12,7 @@ import {
   Trash2, 
   ChevronDown, 
   ChevronUp,
-  FileText,
   Upload,
-  CalendarIcon,
-  X,
   Users
 } from "lucide-react";
 import {
@@ -49,7 +43,6 @@ import {
   AdminCardContent,
   AdminFilters,
   AdminSearch,
-  AdminCountBadge,
   AdminTable,
   AdminTableHeader,
   AdminTableBody,
@@ -126,8 +119,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -406,22 +397,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     return leads.filter(lead => lead.quiz_id === selectedQuizFilter);
   }, [leads, selectedQuizFilter]);
 
-  // Apply date range filter
-  const dateFilteredLeads = useMemo(() => {
-    return quizFilteredLeads.filter(lead => {
-      const leadDate = new Date(lead.created_at);
-      if (dateFrom && leadDate < dateFrom) return false;
-      if (dateTo) {
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (leadDate > endOfDay) return false;
-      }
-      return true;
-    });
-  }, [quizFilteredLeads, dateFrom, dateTo]);
-
   // Apply search filter
-  const searchFilteredLeads = dateFilteredLeads.filter(lead =>
+  const searchFilteredLeads = quizFilteredLeads.filter(lead =>
     lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lead.result_category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -473,7 +450,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedQuizFilter, showUniqueEmails, showUniqueEmailQuiz, dateFrom, dateTo]);
+  }, [searchQuery, selectedQuizFilter, showUniqueEmails, showUniqueEmailQuiz]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -549,69 +526,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           </SelectContent>
         </Select>
         
-        {/* Date Range Filter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-9 bg-secondary/50 border-border text-sm justify-start text-left font-normal",
-                !dateFrom && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-              {dateFrom ? format(dateFrom, "MMM d") : "From"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 bg-popover border-border z-50" align="start">
-            <Calendar
-              mode="single"
-              selected={dateFrom}
-              onSelect={setDateFrom}
-              initialFocus
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-9 bg-secondary/50 border-border text-sm justify-start text-left font-normal",
-                !dateTo && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-              {dateTo ? format(dateTo, "MMM d") : "To"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 bg-popover border-border z-50" align="start">
-            <Calendar
-              mode="single"
-              selected={dateTo}
-              onSelect={setDateTo}
-              initialFocus
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-        {(dateFrom || dateTo) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 px-2"
-            onClick={() => {
-              setDateFrom(undefined);
-              setDateTo(undefined);
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/50 border border-border">
           <Switch
             id="unique-emails"
@@ -646,14 +560,12 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             {uniqueEmailQuizCount}
           </Badge>
         </div>
-        
-        <AdminCountBadge count={totalItems} singular="respondent" />
       </AdminFilters>
 
       {/* Respondents Growth Chart */}
       <RespondentsGrowthChart 
         quizzes={quizzes} 
-        leads={dateFilteredLeads} 
+        leads={filteredLeads} 
         loading={loading}
         onLeadInserted={fetchData}
       />
