@@ -859,18 +859,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
               </AdminTableBody>
             </AdminTable>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <AdminPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-              />
-            )}
+            {/* Pagination Controls - auto-hides when <= 25 items */}
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
           </AdminCardContent>
         </AdminCard>
       )}

@@ -10,6 +10,8 @@ interface AdminPaginationProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: number) => void;
   itemsPerPageOptions?: number[];
+  /** Minimum items required to show pagination. Default: 25. Set to 0 to always show. */
+  minItems?: number;
 }
 
 export function AdminPagination({
@@ -20,6 +22,7 @@ export function AdminPagination({
   onPageChange,
   onItemsPerPageChange,
   itemsPerPageOptions = [10, 25, 50, 100],
+  minItems = 25,
 }: AdminPaginationProps) {
   const startIndex = (currentPage - 1) * itemsPerPage + 1;
   const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
@@ -43,7 +46,8 @@ export function AdminPagination({
     return pages;
   };
 
-  if (totalItems === 0) return null;
+  // Hide pagination if no items or if below minimum threshold
+  if (totalItems === 0 || totalItems <= minItems) return null;
 
   return (
     <div className="admin-pagination">
