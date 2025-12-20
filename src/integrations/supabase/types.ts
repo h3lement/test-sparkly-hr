@@ -447,6 +447,7 @@ export type Database = {
       quizzes: {
         Row: {
           badge_text: Json
+          buying_persona: string | null
           created_at: string
           created_by: string | null
           cta_text: Json
@@ -457,6 +458,7 @@ export type Database = {
           enable_scoring: boolean
           headline: Json
           headline_highlight: Json
+          icp_description: string | null
           id: string
           include_open_mindedness: boolean
           is_active: boolean
@@ -473,6 +475,7 @@ export type Database = {
         }
         Insert: {
           badge_text?: Json
+          buying_persona?: string | null
           created_at?: string
           created_by?: string | null
           cta_text?: Json
@@ -483,6 +486,7 @@ export type Database = {
           enable_scoring?: boolean
           headline?: Json
           headline_highlight?: Json
+          icp_description?: string | null
           id?: string
           include_open_mindedness?: boolean
           is_active?: boolean
@@ -499,6 +503,7 @@ export type Database = {
         }
         Update: {
           badge_text?: Json
+          buying_persona?: string | null
           created_at?: string
           created_by?: string | null
           cta_text?: Json
@@ -509,6 +514,7 @@ export type Database = {
           enable_scoring?: boolean
           headline?: Json
           headline_highlight?: Json
+          icp_description?: string | null
           id?: string
           include_open_mindedness?: boolean
           is_active?: boolean

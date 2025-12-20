@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Sparkles, FileText, History, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, FileText, History, Loader2, Wand2, Users, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -88,12 +88,16 @@ interface ToneOfVoiceEditorProps {
   toneSource: ToneSource;
   useToneForAi: boolean;
   toneIntensity: number;
+  icpDescription: string;
+  buyingPersona: string;
   quizId?: string;
   isPreviewMode?: boolean;
   onToneChange: (tone: string) => void;
   onSourceChange: (source: ToneSource) => void;
   onUseToneChange: (use: boolean) => void;
   onIntensityChange: (intensity: number) => void;
+  onIcpChange: (icp: string) => void;
+  onBuyingPersonaChange: (persona: string) => void;
 }
 
 export function ToneOfVoiceEditor({
@@ -101,12 +105,16 @@ export function ToneOfVoiceEditor({
   toneSource,
   useToneForAi,
   toneIntensity,
+  icpDescription,
+  buyingPersona,
   quizId,
   isPreviewMode,
   onToneChange,
   onSourceChange,
   onUseToneChange,
   onIntensityChange,
+  onIcpChange,
+  onBuyingPersonaChange,
 }: ToneOfVoiceEditorProps) {
   const [showExtractPopover, setShowExtractPopover] = useState(false);
   const [extractText, setExtractText] = useState("");
@@ -246,12 +254,9 @@ export function ToneOfVoiceEditor({
   };
 
   return (
-    <div className="space-y-4 p-3 rounded-lg border bg-muted/30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Label className="text-xs font-medium">Tone of Voice</Label>
-          {getSourceBadge()}
-        </div>
+    <div className="p-3 rounded-lg border bg-muted/30">
+      <div className="flex items-center justify-between mb-4">
+        <Label className="text-sm font-medium">AI Context & Tone Settings</Label>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground">Use for AI</span>
           <Switch
@@ -262,6 +267,47 @@ export function ToneOfVoiceEditor({
           />
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Left Column: ICP & Buying Persona */}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-muted-foreground" />
+              <Label className="text-xs font-medium">Ideal Customer Profile (ICP)</Label>
+            </div>
+            <Textarea
+              value={icpDescription}
+              onChange={(e) => onIcpChange(e.target.value)}
+              placeholder="e.g., Mid-level HR managers at companies with 50-500 employees, looking to improve employee engagement and reduce turnover..."
+              rows={4}
+              className="text-sm resize-none"
+              disabled={isPreviewMode}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <UserCircle className="w-3.5 h-3.5 text-muted-foreground" />
+              <Label className="text-xs font-medium">Buying Persona</Label>
+            </div>
+            <Textarea
+              value={buyingPersona}
+              onChange={(e) => onBuyingPersonaChange(e.target.value)}
+              placeholder="e.g., Decision-maker who values data-driven insights, time-constrained, skeptical of generic solutions, prefers actionable recommendations..."
+              rows={4}
+              className="text-sm resize-none"
+              disabled={isPreviewMode}
+            />
+          </div>
+        </div>
+
+        {/* Right Column: Tone of Voice */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium">Tone of Voice</Label>
+            {getSourceBadge()}
+          </div>
 
       {/* Tone Intensity Slider */}
       <div className="space-y-2">
@@ -401,9 +447,12 @@ export function ToneOfVoiceEditor({
         </div>
       )}
 
-      {!useToneForAi && toneOfVoice && (
-        <p className="text-[10px] text-amber-600 dark:text-amber-400">
-          Note: This tone will not be used for AI generation. Toggle "Use for AI" to enable.
+        </div>
+      </div>
+
+      {!useToneForAi && (toneOfVoice || icpDescription || buyingPersona) && (
+        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-3">
+          Note: These settings will not be used for AI generation. Toggle "Use for AI" to enable.
         </p>
       )}
     </div>
