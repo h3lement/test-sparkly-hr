@@ -101,6 +101,11 @@ export function SortableQuestion({
           <span className="text-xs text-muted-foreground">
             ({question.answers.length})
           </span>
+          {enableScoring && question.answers.length > 0 && (
+            <span className="text-xs text-primary/70 font-medium ml-1">
+              {Math.max(...question.answers.map(a => a.score_value))} pts
+            </span>
+          )}
         </div>
       </AccordionTrigger>
       <AccordionContent className="space-y-2 pt-2 pb-3">
