@@ -776,15 +776,17 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         {quiz ? (
                           <div className="flex flex-col gap-0.5">
                             <button
+                              type="button"
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
+                                console.log("QUIZ TITLE CLICKED - effectiveQuizId:", effectiveQuizId);
                                 handleQuizClick(effectiveQuizId);
                               }}
-                              className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
-                              title="Edit quiz"
-                              aria-label={`Edit quiz ${quiz.slug}`}
+                              className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left"
+                              title="Click to edit quiz"
                             >
-                              {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
+                              ✏️ {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
                             </button>
                             <a
                               href={`/${quiz.slug}`}
