@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink } from "lucide-react";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
+import { SortableResultList } from "@/components/admin/SortableResultList";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import {
@@ -682,6 +683,23 @@ export default function QuizEditor() {
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
+  const duplicateQuestion = (index: number) => {
+    const question = questions[index];
+    const newQuestion: Question = {
+      id: `new-${Date.now()}`,
+      question_text: { ...jsonToRecord(question.question_text) },
+      question_order: questions.length + 1,
+      question_type: question.question_type,
+      answers: question.answers.map((a, i) => ({
+        id: `new-${Date.now()}-${i}`,
+        answer_text: { ...jsonToRecord(a.answer_text) },
+        answer_order: a.answer_order,
+        score_value: a.score_value,
+      })),
+    };
+    setQuestions([...questions, newQuestion]);
+  };
+
   const addAnswer = (questionIndex: number) => {
     const question = questions[questionIndex];
     const newAnswer: Answer = {
@@ -1218,6 +1236,7 @@ export default function QuizEditor() {
               onReorderQuestions={(reorderedQuestions) => setQuestions(reorderedQuestions)}
               onUpdateQuestion={updateQuestion}
               onDeleteQuestion={deleteQuestion}
+              onDuplicateQuestion={duplicateQuestion}
               onAddAnswer={addAnswer}
               onUpdateAnswer={updateAnswer}
               onDeleteAnswer={deleteAnswer}
@@ -1281,88 +1300,16 @@ export default function QuizEditor() {
               </Button>
             )}
 
-            {resultLevels.length === 0 ? (
-              <div className="text-center py-8 border border-dashed rounded-lg">
-                <p className="text-muted-foreground text-sm">No result levels yet. Add your first level!</p>
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                {resultLevels.map((level, index) => (
-                  <div
-                    key={level.id}
-                    className={`px-4 py-3 border-b last:border-b-0 space-y-3 ${index % 2 === 1 ? 'bg-muted/40' : ''}`}
-                  >
-                    {/* Row 1: Title and controls */}
-                    <div className="flex items-center gap-3">
-                      <Input
-                        value={level.emoji}
-                        onChange={(e) => updateResultLevel(index, { emoji: e.target.value })}
-                        className="h-8 w-12 text-center text-base"
-                        title="Emoji"
-                        disabled={isPreviewMode}
-                      />
-                      <Input
-                        value={getLocalizedValue(level.title, displayLanguage)}
-                        onChange={(e) => {
-                          const updated = { ...jsonToRecord(level.title), [displayLanguage]: e.target.value };
-                          updateResultLevel(index, { title: updated });
-                        }}
-                        placeholder={`Result title (${displayLanguage.toUpperCase()})`}
-                        className="h-8 text-sm flex-1"
-                        disabled={isPreviewMode}
-                      />
-                      <div className="flex items-center gap-2 flex-shrink-0 bg-secondary/50 rounded px-2 py-1">
-                        <span className="text-xs text-muted-foreground">Score:</span>
-                        <Input
-                          type="number"
-                          value={level.min_score}
-                          onChange={(e) =>
-                            updateResultLevel(index, { min_score: parseInt(e.target.value) || 0 })
-                          }
-                          className="h-7 w-14 text-sm text-center"
-                          title="Min score"
-                          disabled={isPreviewMode}
-                        />
-                        <span className="text-sm text-muted-foreground">–</span>
-                        <Input
-                          type="number"
-                          value={level.max_score}
-                          onChange={(e) =>
-                            updateResultLevel(index, { max_score: parseInt(e.target.value) || 0 })
-                          }
-                          className="h-7 w-14 text-sm text-center"
-                          title="Max score"
-                          disabled={isPreviewMode}
-                        />
-                      </div>
-                      {!isPreviewMode && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive flex-shrink-0"
-                          onClick={() => deleteResultLevel(index)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Row 2: Description */}
-                    <Textarea
-                      value={getLocalizedValue(level.description, displayLanguage)}
-                      onChange={(e) => {
-                        const updated = { ...jsonToRecord(level.description), [displayLanguage]: e.target.value };
-                        updateResultLevel(index, { description: updated });
-                      }}
-                      placeholder={`Description (${displayLanguage.toUpperCase()})`}
-                      rows={2}
-                      className="resize-none text-sm"
-                      disabled={isPreviewMode}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <SortableResultList
+              resultLevels={resultLevels}
+              displayLanguage={displayLanguage}
+              isPreviewMode={isPreviewMode}
+              onReorderLevels={(reorderedLevels) => setResultLevels(reorderedLevels)}
+              onUpdateLevel={updateResultLevel}
+              onDeleteLevel={deleteResultLevel}
+              getLocalizedValue={getLocalizedValue}
+              jsonToRecord={jsonToRecord}
+            />
           </TabsContent>
         </Tabs>
           </div>
