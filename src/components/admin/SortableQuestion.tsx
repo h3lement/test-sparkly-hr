@@ -31,6 +31,7 @@ interface Question {
 interface SortableQuestionProps {
   question: Question;
   index: number;
+  isEven: boolean;
   displayLanguage: string;
   isPreviewMode: boolean;
   enableScoring: boolean;
@@ -47,6 +48,7 @@ interface SortableQuestionProps {
 export function SortableQuestion({
   question,
   index,
+  isEven,
   displayLanguage,
   isPreviewMode,
   enableScoring,
@@ -79,7 +81,7 @@ export function SortableQuestion({
       ref={setNodeRef}
       style={style}
       value={question.id}
-      className="border rounded px-3 py-0"
+      className={`border-b last:border-b-0 px-3 py-0 ${isEven ? 'bg-muted/40' : ''}`}
     >
       <AccordionTrigger className="hover:no-underline py-2">
         <div className="flex items-center gap-1.5 text-left text-sm">

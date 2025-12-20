@@ -119,7 +119,7 @@ export function SortableQuestionList({
         items={regularQuestions.map((q) => q.id)}
         strategy={verticalListSortingStrategy}
       >
-        <Accordion type="single" collapsible className="space-y-1">
+        <Accordion type="single" collapsible className="space-y-0 border rounded-lg overflow-hidden">
           {regularQuestions.map((question, filteredIndex) => {
             const qIndex = questions.findIndex((q) => q.id === question.id);
             return (
@@ -127,6 +127,7 @@ export function SortableQuestionList({
                 key={question.id}
                 question={question}
                 index={filteredIndex}
+                isEven={filteredIndex % 2 === 1}
                 displayLanguage={displayLanguage}
                 isPreviewMode={isPreviewMode}
                 enableScoring={enableScoring}

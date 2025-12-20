@@ -92,13 +92,14 @@ export function SortableAnswerList({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={answers.map((a) => a.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-1">
+        <div className="space-y-0 border rounded overflow-hidden">
           {answers.map((answer, aIndex) => (
             <SortableAnswer
               key={answer.id}
               answer={answer}
               questionIndex={questionIndex}
               answerIndex={aIndex}
+              isEven={aIndex % 2 === 1}
               displayLanguage={displayLanguage}
               isPreviewMode={isPreviewMode}
               enableScoring={enableScoring}
