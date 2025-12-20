@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,7 +24,9 @@ import {
   ToggleLeft,
   Shield,
   Users,
-  Activity
+  Activity,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 
 interface ActivityLog {
@@ -50,12 +54,9 @@ export function ActivityDashboard() {
   const [loading, setLoading] = useState(true);
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [adminFilter, setAdminFilter] = useState<string>("all");
+  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [activitiesRes, adminsRes] = await Promise.all([
@@ -91,7 +92,32 @@ export function ActivityDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Realtime subscription for activity_logs
+  useEffect(() => {
+    if (!realtimeEnabled) return;
+
+    const channel = supabase
+      .channel("activity-dashboard-logs")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "activity_logs" },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [realtimeEnabled, fetchData]);
+
 
   const filteredActivities = useMemo(() => {
     let result = activities;
@@ -229,15 +255,32 @@ export function ActivityDashboard() {
 
   return (
     <div className="max-w-6xl space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Admin Activity</h1>
           <p className="text-muted-foreground mt-1">Track what admin users are doing</p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="realtime-activity"
+              checked={realtimeEnabled}
+              onCheckedChange={setRealtimeEnabled}
+            />
+            <Label htmlFor="realtime-activity" className="flex items-center gap-1.5 text-sm cursor-pointer">
+              {realtimeEnabled ? (
+                <Wifi className="h-4 w-4 text-green-600" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-muted-foreground" />
+              )}
+              Realtime
+            </Label>
+          </div>
+          <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
