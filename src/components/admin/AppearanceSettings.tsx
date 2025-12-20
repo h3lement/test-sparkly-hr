@@ -494,7 +494,7 @@ export function AppearanceSettings() {
               </CardTitle>
               <CardDescription>Choose how compact or spacious the interface should be</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { value: "compact", label: "Compact", icon: Minimize2, description: "Dense layout, smaller text" },
@@ -517,6 +517,61 @@ export function AppearanceSettings() {
                     <span className="text-xs text-muted-foreground text-center">{description}</span>
                   </button>
                 ))}
+              </div>
+
+              {/* Live Preview */}
+              <div className="space-y-3">
+                <Label className="text-muted-foreground">Live Preview</Label>
+                <div className="border border-border rounded-lg overflow-hidden bg-card">
+                  {/* Preview Header */}
+                  <div 
+                    className="border-b border-border bg-secondary/30 flex items-center justify-between"
+                    style={{ padding: "var(--density-padding)" }}
+                  >
+                    <span className="font-medium">Sample Card Header</span>
+                    <div className="flex items-center" style={{ gap: "var(--density-gap)" }}>
+                      <div className="h-6 w-6 rounded bg-primary/20" />
+                      <div className="h-6 w-6 rounded bg-primary/20" />
+                    </div>
+                  </div>
+                  {/* Preview Content */}
+                  <div style={{ padding: "var(--density-padding)" }}>
+                    <div className="space-y-2" style={{ gap: "var(--density-gap)" }}>
+                      <p className="text-muted-foreground">This is how content spacing will look with your selected density.</p>
+                      <div className="flex flex-wrap" style={{ gap: "var(--density-gap)" }}>
+                        <button 
+                          className="bg-primary text-primary-foreground rounded font-medium"
+                          style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
+                        >
+                          Button
+                        </button>
+                        <button 
+                          className="border border-border rounded font-medium"
+                          style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
+                        >
+                          Secondary
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Preview Table Row */}
+                  <div className="border-t border-border">
+                    <div 
+                      className="flex items-center justify-between border-b border-border/50 last:border-0"
+                      style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
+                    >
+                      <span>Table Row Item</span>
+                      <span className="text-muted-foreground text-sm">Value</span>
+                    </div>
+                    <div 
+                      className="flex items-center justify-between border-b border-border/50 last:border-0"
+                      style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
+                    >
+                      <span>Another Row</span>
+                      <span className="text-muted-foreground text-sm">Data</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
