@@ -15,7 +15,6 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Info,
   Upload
 } from "lucide-react";
 import {
@@ -527,20 +526,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-4 flex items-center gap-3">
-        <div className="relative max-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Filters - all on one row */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative w-[160px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-secondary/50 border-border"
+            className="pl-8 h-9 bg-secondary/50 border-border text-sm"
           />
         </div>
         <Select value={selectedQuizFilter} onValueChange={setSelectedQuizFilter}>
-          <SelectTrigger className="w-[200px] bg-secondary/50 border-border">
+          <SelectTrigger className="w-[160px] h-9 bg-secondary/50 border-border text-sm">
             <SelectValue placeholder="All quizzes" />
           </SelectTrigger>
           <SelectContent className="bg-popover border-border z-50">
@@ -552,6 +551,40 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             ))}
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/50 border border-border">
+          <Switch
+            id="unique-emails"
+            checked={showUniqueEmails}
+            onCheckedChange={(checked) => {
+              setShowUniqueEmails(checked);
+              if (checked) setShowUniqueEmailQuiz(false);
+            }}
+            className="scale-90"
+          />
+          <Label htmlFor="unique-emails" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+            Unique
+          </Label>
+          <Badge variant="secondary" className="text-[10px] px-1 py-0">
+            {uniqueEmailCount}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/50 border border-border">
+          <Switch
+            id="unique-email-quiz"
+            checked={showUniqueEmailQuiz}
+            onCheckedChange={(checked) => {
+              setShowUniqueEmailQuiz(checked);
+              if (checked) setShowUniqueEmails(false);
+            }}
+            className="scale-90"
+          />
+          <Label htmlFor="unique-email-quiz" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+            Unique+Quiz
+          </Label>
+          <Badge variant="secondary" className="text-[10px] px-1 py-0">
+            {uniqueEmailQuizCount}
+          </Badge>
+        </div>
       </div>
 
       {/* Respondents Growth Chart */}
@@ -560,18 +593,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         leads={quizFilteredLeads} 
         loading={loading}
         onLeadInserted={fetchData}
-        showUniqueEmails={showUniqueEmails}
-        showUniqueEmailQuiz={showUniqueEmailQuiz}
-        onUniqueEmailsChange={(checked) => {
-          setShowUniqueEmails(checked);
-          if (checked) setShowUniqueEmailQuiz(false);
-        }}
-        onUniqueEmailQuizChange={(checked) => {
-          setShowUniqueEmailQuiz(checked);
-          if (checked) setShowUniqueEmails(false);
-        }}
-        uniqueEmailCount={uniqueEmailCount}
-        uniqueEmailQuizCount={uniqueEmailQuizCount}
       />
 
       {loading ? (
@@ -697,31 +718,17 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         {formatDate(lead.created_at)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActivityLogLead(lead);
-                            }}
-                            className="h-8 w-8"
-                            title="Activity log"
-                          >
-                            <Info className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteLead(lead.id, lead.email);
-                            }}
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteLead(lead.id, lead.email);
+                          }}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </td>
                     </tr>
                     {isExpanded && hasAnswers && (

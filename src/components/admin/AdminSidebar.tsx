@@ -198,16 +198,29 @@ export function AdminSidebar({
     }
   }
 
-  // Keep Respondents count in sync while the admin is active
+  // Keep sidebar counters in sync in real time
   useEffect(() => {
     const channel = supabase
       .channel("admin-sidebar-counts")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "quiz_leads" },
-        () => {
-          fetchCounts();
-        }
+        () => fetchCounts()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "email_logs" },
+        () => fetchCounts()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "page_views" },
+        () => fetchCounts()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "activity_logs" },
+        () => fetchCounts()
       )
       .subscribe();
 

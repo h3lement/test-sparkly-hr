@@ -11,9 +11,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, User, Users, Wifi, Calendar } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -47,12 +44,6 @@ interface RespondentsGrowthChartProps {
   leads: QuizLead[];
   loading: boolean;
   onLeadInserted?: () => void;
-  showUniqueEmails: boolean;
-  showUniqueEmailQuiz: boolean;
-  onUniqueEmailsChange: (value: boolean) => void;
-  onUniqueEmailQuizChange: (value: boolean) => void;
-  uniqueEmailCount: number;
-  uniqueEmailQuizCount: number;
 }
 
 // Color palette for quiz lines
@@ -92,12 +83,6 @@ export function RespondentsGrowthChart({
   leads, 
   loading, 
   onLeadInserted,
-  showUniqueEmails,
-  showUniqueEmailQuiz,
-  onUniqueEmailsChange,
-  onUniqueEmailQuizChange,
-  uniqueEmailCount,
-  uniqueEmailQuizCount,
 }: RespondentsGrowthChartProps) {
   const [dateRange, setDateRange] = useState<DateRangeOption>("365");
 
@@ -202,45 +187,15 @@ export function RespondentsGrowthChart({
 
   return (
     <div className="space-y-6 mb-8">
-      {/* Toggle filters + Date Range + Live indicator */}
+      {/* Date Range + Live indicator */}
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Switch
-            id="unique-emails"
-            checked={showUniqueEmails}
-            onCheckedChange={(checked) => {
-              onUniqueEmailsChange(checked);
-            }}
-          />
-          <Label htmlFor="unique-emails" className="text-sm text-muted-foreground cursor-pointer">
-            Unique emails
-          </Label>
-          <Badge variant="secondary" className="text-xs">
-            {uniqueEmailCount}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="unique-email-quiz"
-            checked={showUniqueEmailQuiz}
-            onCheckedChange={(checked) => {
-              onUniqueEmailQuizChange(checked);
-            }}
-          />
-          <Label htmlFor="unique-email-quiz" className="text-sm text-muted-foreground cursor-pointer">
-            Unique email + quiz
-          </Label>
-          <Badge variant="secondary" className="text-xs">
-            {uniqueEmailQuizCount}
-          </Badge>
-        </div>
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeOption)}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px] h-9 bg-secondary/50 border-border">
               <SelectValue placeholder="Date range" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover border-border z-50">
               <SelectItem value="30">Last 30 days</SelectItem>
               <SelectItem value="90">Last 90 days</SelectItem>
               <SelectItem value="365">Last 365 days</SelectItem>
