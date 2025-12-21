@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, MessageSquare, Check, X, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type AnswerValue = boolean | null;
@@ -29,7 +29,6 @@ export function HypothesisQuestionScreen() {
   const { language } = useLanguage();
 
   const [pageAnswers, setPageAnswers] = useState<PageAnswers>({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentPage = getCurrentPage();
@@ -48,25 +47,20 @@ export function HypothesisQuestionScreen() {
     if (!currentPage) return;
     
     const initialAnswers: PageAnswers = {};
-    let hasExistingResponses = false;
     
     pageQuestions.forEach((q) => {
       const existingResponse = responses.find(r => r.questionId === q.id);
       if (existingResponse) {
         initialAnswers[q.id] = existingResponse.answerWoman;
-        hasExistingResponses = true;
       } else {
         initialAnswers[q.id] = null;
       }
     });
     
     setPageAnswers(initialAnswers);
-    setIsSubmitted(hasExistingResponses && pageQuestions.every(q => responses.some(r => r.questionId === q.id)));
   }, [currentPage?.id, pageQuestions.length]);
 
   const handleAnswer = (questionId: string, value: boolean) => {
-    if (isSubmitted) return;
-    
     setPageAnswers(prev => ({
       ...prev,
       [questionId]: value,
@@ -75,7 +69,7 @@ export function HypothesisQuestionScreen() {
 
   const allQuestionsAnswered = pageQuestions.every(q => pageAnswers[q.id] !== null && pageAnswers[q.id] !== undefined);
 
-  const handleSubmitPage = async () => {
+  const handleSubmitAndContinue = async () => {
     if (!allQuestionsAnswered || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -103,7 +97,14 @@ export function HypothesisQuestionScreen() {
         });
       });
 
-      setIsSubmitted(true);
+      // Immediately proceed to next page or complete
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      if (currentPageIndex < sortedPages.length - 1) {
+        setCurrentPageIndex(currentPageIndex + 1);
+      } else {
+        setCurrentStep('email');
+      }
     } catch (error) {
       console.error('Error saving responses:', error);
     } finally {
@@ -111,15 +112,6 @@ export function HypothesisQuestionScreen() {
     }
   };
 
-  const handleNextPage = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    if (currentPageIndex < sortedPages.length - 1) {
-      setCurrentPageIndex(currentPageIndex + 1);
-    } else {
-      setCurrentStep('email');
-    }
-  };
 
   const answeredCount = Object.values(pageAnswers).filter(v => v !== null).length;
 
@@ -167,52 +159,50 @@ export function HypothesisQuestionScreen() {
           </div>
           <div className="text-center">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {isSubmitted ? 'Result' : 'Answer'}
+              Answer
             </span>
           </div>
         </div>
 
         {/* Status Bar with Bulk Actions - inside table, before questions */}
-        {!isSubmitted && (
-          <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-2 bg-muted/30 border-b border-border items-center">
-            <div className="col-span-2 flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                This page: {answeredCount} of {pageQuestions.length} answered
-              </span>
-              {allQuestionsAnswered && (
-                <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
-              )}
-            </div>
-            
-            {/* Bulk True/False Buttons - aligned with answer column */}
-            <div className="flex justify-center items-center gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
-                onClick={() => {
-                  const newAnswers: PageAnswers = {};
-                  pageQuestions.forEach(q => { newAnswers[q.id] = true; });
-                  setPageAnswers(newAnswers);
-                }}
-              >
-                All True
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs font-semibold border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
-                onClick={() => {
-                  const newAnswers: PageAnswers = {};
-                  pageQuestions.forEach(q => { newAnswers[q.id] = false; });
-                  setPageAnswers(newAnswers);
-                }}
-              >
-                All False
-              </Button>
-            </div>
+        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-2 bg-muted/30 border-b border-border items-center">
+          <div className="col-span-2 flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              This page: {answeredCount} of {pageQuestions.length} answered
+            </span>
+            {allQuestionsAnswered && (
+              <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
+            )}
           </div>
-        )}
+          
+          {/* Bulk True/False Buttons - aligned with answer column */}
+          <div className="flex justify-center items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+              onClick={() => {
+                const newAnswers: PageAnswers = {};
+                pageQuestions.forEach(q => { newAnswers[q.id] = true; });
+                setPageAnswers(newAnswers);
+              }}
+            >
+              All True
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs font-semibold border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+              onClick={() => {
+                const newAnswers: PageAnswers = {};
+                pageQuestions.forEach(q => { newAnswers[q.id] = false; });
+                setPageAnswers(newAnswers);
+              }}
+            >
+              All False
+            </Button>
+          </div>
+        </div>
 
         {/* Question Rows */}
         <div className="divide-y divide-border">
@@ -232,11 +222,7 @@ export function HypothesisQuestionScreen() {
             const overallNumber = previousPagesQuestions + idx + 1;
 
             return (
-              <div key={question.id} className={cn(
-                "relative transition-all",
-                isSubmitted && isCorrect && "bg-green-500/5",
-                isSubmitted && !isCorrect && "bg-red-500/5"
-              )}>
+              <div key={question.id} className="relative transition-all">
                 {/* Single Row: Women | Men | Answer */}
                 <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 items-start">
                   {/* Women Hypothesis */}
@@ -255,50 +241,32 @@ export function HypothesisQuestionScreen() {
                     </p>
                   </div>
 
-                  {/* Answer Buttons / Result */}
+                  {/* Answer Buttons */}
                   <div className="flex justify-center items-start pt-2">
-                    {!isSubmitted ? (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant={answer === true ? "default" : "outline"}
-                          className={cn(
-                            "h-9 px-3 text-sm font-semibold",
-                            answer === true && "bg-blue-600 hover:bg-blue-700"
-                          )}
-                          onClick={() => handleAnswer(question.id, true)}
-                        >
-                          True
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={answer === false ? "default" : "outline"}
-                          className={cn(
-                            "h-9 px-3 text-sm font-semibold",
-                            answer === false && "bg-orange-600 hover:bg-orange-700"
-                          )}
-                          onClick={() => handleAnswer(question.id, false)}
-                        >
-                          False
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-xs font-semibold px-2 py-1 rounded",
-                          answer === true 
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
-                            : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
-                        )}>
-                          {answer ? "True" : "False"}
-                        </span>
-                        {isCorrect ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <X className="w-5 h-5 text-red-500" />
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant={answer === true ? "default" : "outline"}
+                        className={cn(
+                          "h-9 px-3 text-sm font-semibold",
+                          answer === true && "bg-blue-600 hover:bg-blue-700"
                         )}
-                      </div>
-                    )}
+                        onClick={() => handleAnswer(question.id, true)}
+                      >
+                        True
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={answer === false ? "default" : "outline"}
+                        className={cn(
+                          "h-9 px-3 text-sm font-semibold",
+                          answer === false && "bg-orange-600 hover:bg-orange-700"
+                        )}
+                        onClick={() => handleAnswer(question.id, false)}
+                      >
+                        False
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -308,46 +276,35 @@ export function HypothesisQuestionScreen() {
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Button */}
       <div className="mt-6">
-        {!isSubmitted ? (
-          <Button
-            onClick={handleSubmitPage}
-            disabled={!allQuestionsAnswered || isSubmitting}
-            size="lg"
-            className="w-full h-14 text-lg font-semibold"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                Submit Answers ({answeredCount}/{pageQuestions.length})
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button
-            onClick={handleNextPage}
-            size="lg"
-            className="w-full h-14 text-lg font-semibold animate-fade-in"
-          >
-            {currentPageIndex < sortedPages.length - 1 ? (
-              <>
-                Next Page
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </>
-            ) : (
-              <>
-                Complete & See Results
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </>
-            )}
-          </Button>
-        )}
+        <Button
+          onClick={handleSubmitAndContinue}
+          disabled={!allQuestionsAnswered || isSubmitting}
+          size="lg"
+          className="w-full h-14 text-lg font-semibold"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              {currentPageIndex < sortedPages.length - 1 ? (
+                <>
+                  Submit & Next Page ({answeredCount}/{pageQuestions.length})
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              ) : (
+                <>
+                  Submit & See Results ({answeredCount}/{pageQuestions.length})
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </>
+          )}
+        </Button>
       </div>
     </main>
   );
