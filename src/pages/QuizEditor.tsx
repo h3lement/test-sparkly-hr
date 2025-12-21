@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,7 +144,11 @@ interface TranslationMeta {
 export default function QuizEditor() {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isCreating = quizId === "new";
+  
+  // Get return path from location state, fallback to quizzes tab
+  const returnPath = (location.state as { from?: string })?.from || "/admin?tab=quizzes";
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("general");
@@ -1951,11 +1955,11 @@ export default function QuizEditor() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate("/admin?tab=quizzes")}
+                  onClick={() => navigate(returnPath)}
                   className="gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Quizzes
+                  Back
                 </Button>
                 <h1 className="text-2xl font-bold">
                   {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
