@@ -16,6 +16,7 @@ export interface QuizData {
   cta_title: Record<string, string>;
   cta_description: Record<string, string>;
   shuffle_questions: boolean;
+  shuffle_answers: boolean;
   enable_scoring: boolean;
   include_open_mindedness: boolean;
 }
@@ -114,6 +115,7 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           cta_title: (quizData as any).cta_title as Record<string, string> || {},
           cta_description: (quizData as any).cta_description as Record<string, string> || {},
           shuffle_questions: quizData.shuffle_questions ?? false,
+          shuffle_answers: (quizData as any).shuffle_answers ?? false,
           enable_scoring: quizData.enable_scoring ?? true,
           include_open_mindedness: quizData.include_open_mindedness ?? false,
         });
