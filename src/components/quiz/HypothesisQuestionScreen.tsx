@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, ArrowLeft, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, ThumbsUp, ThumbsDown, ArrowUp, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type AnswerValue = boolean | null;
@@ -30,6 +30,11 @@ export function HypothesisQuestionScreen() {
 
   const [pageAnswers, setPageAnswers] = useState<PageAnswers>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showScrollHelper, setShowScrollHelper] = useState(false);
+  const [firstUnansweredIndex, setFirstUnansweredIndex] = useState<number | null>(null);
+  
+  const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentPage = getCurrentPage();
   const progress = getProgress();
@@ -59,6 +64,48 @@ export function HypothesisQuestionScreen() {
     
     setPageAnswers(initialAnswers);
   }, [currentPage?.id, pageQuestions.length]);
+
+  // Track first unanswered question and scroll visibility
+  useEffect(() => {
+    const unansweredIdx = pageQuestions.findIndex(q => pageAnswers[q.id] === null || pageAnswers[q.id] === undefined);
+    setFirstUnansweredIndex(unansweredIdx >= 0 ? unansweredIdx : null);
+  }, [pageAnswers, pageQuestions]);
+
+  // Scroll observer for mobile floating button
+  useEffect(() => {
+    if (firstUnansweredIndex === null) {
+      setShowScrollHelper(false);
+      return;
+    }
+
+    const question = pageQuestions[firstUnansweredIndex];
+    if (!question) return;
+
+    const element = questionRefs.current.get(question.id);
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show helper when the unanswered question is NOT visible
+        setShowScrollHelper(!entry.isIntersecting);
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [firstUnansweredIndex, pageQuestions]);
+
+  const scrollToUnanswered = useCallback(() => {
+    if (firstUnansweredIndex === null) return;
+    const question = pageQuestions[firstUnansweredIndex];
+    if (!question) return;
+    
+    const element = questionRefs.current.get(question.id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [firstUnansweredIndex, pageQuestions]);
 
   const handleAnswer = (questionId: string, value: boolean) => {
     setPageAnswers(prev => ({
@@ -232,7 +279,10 @@ export function HypothesisQuestionScreen() {
 
             return (
               <div 
-                key={question.id} 
+                key={question.id}
+                ref={(el) => {
+                  if (el) questionRefs.current.set(question.id, el);
+                }}
                 className="relative transition-all hover:bg-muted/20 animate-slide-up"
                 style={{ animationDelay: `${idx * 0.05}s` }}
               >
@@ -441,6 +491,23 @@ export function HypothesisQuestionScreen() {
           )}
         </Button>
       </div>
+
+      {/* Mobile Floating Scroll Helper Button */}
+      {showScrollHelper && firstUnansweredIndex !== null && (
+        <div className="md:hidden fixed bottom-24 right-4 z-50 animate-bounce-subtle">
+          <Button
+            onClick={scrollToUnanswered}
+            size="sm"
+            className="h-12 px-4 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center gap-2"
+          >
+            <CircleDot className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              Q{firstUnansweredIndex + 1}
+            </span>
+            <ArrowUp className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </main>
   );
 }
