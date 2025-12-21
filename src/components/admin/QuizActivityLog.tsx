@@ -2,7 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   RefreshCw, 
   Clock, 
@@ -14,7 +22,9 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
-  Check
+  Search,
+  X,
+  Filter
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -38,6 +48,22 @@ interface QuizActivityLogProps {
 
 const ITEMS_PER_PAGE = 30;
 
+const ACTION_TYPES = [
+  { value: "all", label: "All Actions" },
+  { value: "CREATE", label: "Create" },
+  { value: "UPDATE", label: "Update" },
+  { value: "DELETE", label: "Delete" },
+  { value: "STATUS_CHANGE", label: "Status Change" },
+];
+
+const TABLE_TYPES = [
+  { value: "all", label: "All Tables" },
+  { value: "quizzes", label: "Quizzes" },
+  { value: "quiz_questions", label: "Questions" },
+  { value: "quiz_answers", label: "Answers" },
+  { value: "quiz_result_levels", label: "Results" },
+];
+
 const ACTION_ICONS: Record<string, React.ReactNode> = {
   CREATE: <Plus className="w-3 h-3" />,
   UPDATE: <FileEdit className="w-3 h-3" />,
@@ -57,24 +83,67 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [actionFilter, setActionFilter] = useState("all");
+  const [tableFilter, setTableFilter] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // Reset to first page on search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [actionFilter, tableFilter]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      // Get count
-      const { count, error: countError } = await supabase
+      // Build query
+      let countQuery = supabase
         .from("activity_logs")
         .select("*", { count: "exact", head: true })
         .eq("record_id", quizId);
 
+      let dataQuery = supabase
+        .from("activity_logs")
+        .select("*")
+        .eq("record_id", quizId);
+
+      // Apply action filter
+      if (actionFilter !== "all") {
+        countQuery = countQuery.eq("action_type", actionFilter);
+        dataQuery = dataQuery.eq("action_type", actionFilter);
+      }
+
+      // Apply table filter
+      if (tableFilter !== "all") {
+        countQuery = countQuery.eq("table_name", tableFilter);
+        dataQuery = dataQuery.eq("table_name", tableFilter);
+      }
+
+      // Apply search filter (search in description, field_name, user_email)
+      if (debouncedSearch) {
+        const searchPattern = `%${debouncedSearch}%`;
+        countQuery = countQuery.or(`description.ilike.${searchPattern},field_name.ilike.${searchPattern},user_email.ilike.${searchPattern}`);
+        dataQuery = dataQuery.or(`description.ilike.${searchPattern},field_name.ilike.${searchPattern},user_email.ilike.${searchPattern}`);
+      }
+
+      // Get count
+      const { count, error: countError } = await countQuery;
       if (countError) throw countError;
       setTotalCount(count || 0);
 
       // Get paginated logs
-      const { data, error } = await supabase
-        .from("activity_logs")
-        .select("*")
-        .eq("record_id", quizId)
+      const { data, error } = await dataQuery
         .order("created_at", { ascending: false })
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
 
@@ -85,7 +154,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
     } finally {
       setLoading(false);
     }
-  }, [quizId, currentPage]);
+  }, [quizId, currentPage, actionFilter, tableFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchLogs();
@@ -104,12 +173,22 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
           filter: `record_id=eq.${quizId}`
         },
         (payload) => {
-          // Add new log to the top if on first page
-          if (currentPage === 1) {
-            setLogs(prev => [payload.new as ActivityLog, ...prev.slice(0, ITEMS_PER_PAGE - 1)]);
-            setTotalCount(prev => prev + 1);
-          } else {
-            // Just update count if not on first page
+          const newLog = payload.new as ActivityLog;
+          
+          // Check if the new log matches current filters
+          const matchesAction = actionFilter === "all" || newLog.action_type === actionFilter;
+          const matchesTable = tableFilter === "all" || newLog.table_name === tableFilter;
+          const matchesSearch = !debouncedSearch || 
+            (newLog.description?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+             newLog.field_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+             newLog.user_email?.toLowerCase().includes(debouncedSearch.toLowerCase()));
+
+          if (matchesAction && matchesTable && matchesSearch && currentPage === 1) {
+            setLogs(prev => [newLog, ...prev.slice(0, ITEMS_PER_PAGE - 1)]);
+          }
+          
+          // Always update count if it matches filters
+          if (matchesAction && matchesTable && matchesSearch) {
             setTotalCount(prev => prev + 1);
           }
         }
@@ -119,7 +198,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [quizId, currentPage]);
+  }, [quizId, currentPage, actionFilter, tableFilter, debouncedSearch]);
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
@@ -132,6 +211,14 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
     return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
   };
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setActionFilter("all");
+    setTableFilter("all");
+  };
+
+  const hasActiveFilters = searchQuery || actionFilter !== "all" || tableFilter !== "all";
+
   if (loading && logs.length === 0) {
     return (
       <div className="space-y-2">
@@ -139,7 +226,8 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
           <Skeleton className="h-5 w-28" />
           <Skeleton className="h-6 w-16" />
         </div>
-        {[...Array(8)].map((_, i) => (
+        <Skeleton className="h-8 w-full" />
+        {[...Array(6)].map((_, i) => (
           <Skeleton key={i} className="h-8" />
         ))}
       </div>
@@ -169,10 +257,86 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
         </Button>
       </div>
 
+      {/* Search and Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[150px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+          <Input
+            placeholder="Search logs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-7 text-xs pl-7 pr-7"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+        
+        <Select value={actionFilter} onValueChange={setActionFilter}>
+          <SelectTrigger className="h-7 text-xs w-[110px]">
+            <SelectValue placeholder="Action" />
+          </SelectTrigger>
+          <SelectContent>
+            {ACTION_TYPES.map((type) => (
+              <SelectItem key={type.value} value={type.value} className="text-xs">
+                {type.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={tableFilter} onValueChange={setTableFilter}>
+          <SelectTrigger className="h-7 text-xs w-[100px]">
+            <SelectValue placeholder="Table" />
+          </SelectTrigger>
+          <SelectContent>
+            {TABLE_TYPES.map((type) => (
+              <SelectItem key={type.value} value={type.value} className="text-xs">
+                {type.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-7 text-[10px] gap-1 px-2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3 h-3" />
+            Clear
+          </Button>
+        )}
+      </div>
+
       {logs.length === 0 ? (
         <div className="text-center py-6 border rounded-lg border-dashed">
-          <Activity className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-          <p className="text-xs text-muted-foreground">No activity recorded yet</p>
+          {hasActiveFilters ? (
+            <>
+              <Filter className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
+              <p className="text-xs text-muted-foreground">No logs match your filters</p>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={clearFilters}
+                className="text-xs h-6 mt-1"
+              >
+                Clear filters
+              </Button>
+            </>
+          ) : (
+            <>
+              <Activity className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
+              <p className="text-xs text-muted-foreground">No activity recorded yet</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
