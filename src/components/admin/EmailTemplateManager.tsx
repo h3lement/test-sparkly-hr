@@ -466,6 +466,20 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
       return;
     }
 
+    // Get the primary language subject
+    const selectedQuiz = quizzes.find(q => q.id === currentQuizId);
+    const primaryLanguage = selectedQuiz?.primary_language || "en";
+    const primarySubject = subjects[primaryLanguage];
+
+    if (!primarySubject?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Subject line is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       // Get next version number for this specific quiz
@@ -480,29 +494,67 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         .eq("template_type", "quiz_results")
         .eq("quiz_id", currentQuizId);
 
-      // Insert new version as live
+      // Insert new version as live (with just the primary language subject initially)
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await supabase
+      const { data: insertedTemplate, error } = await supabase
         .from("email_templates")
         .insert({
           version_number: maxVersion + 1,
           template_type: "quiz_results",
           sender_name: senderName.trim(),
           sender_email: senderEmail.trim(),
-          subjects: subjects,
+          subjects: { [primaryLanguage]: primarySubject },
           is_live: true,
           created_by: user?.id,
           created_by_email: user?.email || currentUserEmail,
           quiz_id: currentQuizId,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // Now trigger AI translation for the subject line
       toast({
         title: "Template saved",
-        description: `Version ${maxVersion + 1} is now live for this quiz`,
+        description: "Translating subject line to other languages...",
       });
+
+      try {
+        const { data: translateData, error: translateError } = await supabase.functions.invoke(
+          "translate-email-template",
+          {
+            body: {
+              templateId: insertedTemplate.id,
+              sourceLanguage: primaryLanguage,
+              sourceSubject: primarySubject,
+            },
+          }
+        );
+
+        if (translateError) {
+          console.error("Translation error:", translateError);
+          toast({
+            title: "Translation warning",
+            description: "Template saved but translation failed. You can manually add translations later.",
+            variant: "destructive",
+          });
+        } else {
+          const cost = translateData?.cost || 0;
+          toast({
+            title: "Template saved & translated",
+            description: `Version ${maxVersion + 1} is now live. Translation cost: €${cost.toFixed(4)}`,
+          });
+        }
+      } catch (translateErr) {
+        console.error("Translation error:", translateErr);
+        toast({
+          title: "Translation warning", 
+          description: "Template saved but translation failed.",
+          variant: "destructive",
+        });
+      }
 
       fetchTemplates();
     } catch (error: any) {
