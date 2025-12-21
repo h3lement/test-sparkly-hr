@@ -243,42 +243,37 @@ export function HypothesisQuestionScreen() {
 
                   {/* Answer Buttons with Feedback */}
                   <div className="flex justify-center items-start pt-2 gap-2">
-                    {answer === null ? (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 px-3 text-sm font-semibold"
-                          onClick={() => handleAnswer(question.id, true)}
-                        >
-                          True
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 px-3 text-sm font-semibold"
-                          onClick={() => handleAnswer(question.id, false)}
-                        >
-                          False
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-xs font-semibold px-2 py-1 rounded",
-                          answer === true 
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
-                            : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
-                        )}>
-                          {answer ? "True" : "False"}
-                        </span>
-                        {isCorrect ? (
-                          <ThumbsUp className="w-5 h-5 text-green-600 animate-fade-in" />
-                        ) : (
-                          <ThumbsDown className="w-5 h-5 text-red-500 animate-fade-in" />
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant={answer === true ? "default" : "outline"}
+                        className={cn(
+                          "h-9 px-3 text-sm font-semibold",
+                          answer === true && "bg-blue-600 hover:bg-blue-700"
                         )}
-                      </div>
-                    )}
+                        onClick={() => handleAnswer(question.id, true)}
+                      >
+                        True
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={answer === false ? "default" : "outline"}
+                        className={cn(
+                          "h-9 px-3 text-sm font-semibold",
+                          answer === false && "bg-orange-600 hover:bg-orange-700"
+                        )}
+                        onClick={() => handleAnswer(question.id, false)}
+                      >
+                        False
+                      </Button>
+                      {answer !== null && (
+                        isCorrect ? (
+                          <ThumbsUp className="w-5 h-5 text-green-600 animate-fade-in ml-1" />
+                        ) : (
+                          <ThumbsDown className="w-5 h-5 text-red-500 animate-fade-in ml-1" />
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
 
