@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type AnswerValue = boolean | null;
@@ -276,13 +276,27 @@ export function HypothesisQuestionScreen() {
         </div>
       </div>
 
-      {/* Action Button */}
-      <div className="mt-6">
+      {/* Action Buttons */}
+      <div className="mt-6 flex gap-3">
+        {currentPageIndex > 0 && (
+          <Button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              setCurrentPageIndex(currentPageIndex - 1);
+            }}
+            variant="outline"
+            size="lg"
+            className="h-14 px-6 text-lg font-semibold"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Previous
+          </Button>
+        )}
         <Button
           onClick={handleSubmitAndContinue}
           disabled={!allQuestionsAnswered || isSubmitting}
           size="lg"
-          className="w-full h-14 text-lg font-semibold"
+          className="flex-1 h-14 text-lg font-semibold"
         >
           {isSubmitting ? (
             <>
