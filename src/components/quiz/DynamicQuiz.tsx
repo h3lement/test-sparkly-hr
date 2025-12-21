@@ -7,13 +7,14 @@ import { DynamicQuizQuestion } from './DynamicQuizQuestion';
 import { DynamicOpenMindedness } from './DynamicOpenMindedness';
 import { DynamicEmailCapture } from './DynamicEmailCapture';
 import { DynamicResultsScreen } from './DynamicResultsScreen';
+import { EmotionalResultsScreen } from './EmotionalResultsScreen';
 import { HypothesisQuiz } from './HypothesisQuiz';
 import { useQuizData } from '@/hooks/useQuizData';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
 
-function StandardQuizContent({ slug }: { slug: string }) {
+function StandardQuizContent({ slug, quizType }: { slug: string; quizType: string }) {
   const navigate = useNavigate();
   const { quiz, questions, resultLevels, openMindednessResultLevels, loading, error } = useQuizData(slug);
   const { 
@@ -56,6 +57,9 @@ function StandardQuizContent({ slug }: { slug: string }) {
     );
   }
 
+  // Use custom results screen for emotional quiz type
+  const ResultsComponent = quizType === 'emotional' ? EmotionalResultsScreen : DynamicResultsScreen;
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="pt-6 pb-4 px-4">
@@ -67,7 +71,7 @@ function StandardQuizContent({ slug }: { slug: string }) {
           {currentStep === 'quiz' && <DynamicQuizQuestion />}
           {currentStep === 'mindedness' && <DynamicOpenMindedness />}
           {currentStep === 'email' && <DynamicEmailCapture />}
-          {currentStep === 'results' && <DynamicResultsScreen />}
+          {currentStep === 'results' && <ResultsComponent />}
         </div>
       </main>
       <div className="px-4 pb-6">
@@ -153,7 +157,7 @@ function QuizTypeRouter() {
   // (emotional quiz uses average-based scoring but same components)
   return (
     <DynamicQuizProvider>
-      <StandardQuizContent slug={slug} />
+      <StandardQuizContent slug={slug} quizType={quizType || 'standard'} />
     </DynamicQuizProvider>
   );
 }
