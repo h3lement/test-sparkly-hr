@@ -1950,13 +1950,26 @@ export default function QuizEditor() {
             <div className="grid grid-cols-7 gap-3">
               <div>
                 <Label htmlFor="slug" className="text-xs">Slug</Label>
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="quiz-url"
-                  className="h-8"
-                />
+                <div className="flex gap-1">
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="quiz-url"
+                    className="h-8 flex-1"
+                  />
+                  {slug && !isCreating && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => window.open(`/${slug}`, '_blank')}
+                      title={`Open /${slug}`}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <div>
                 <Label className="text-xs">Quiz Type</Label>
