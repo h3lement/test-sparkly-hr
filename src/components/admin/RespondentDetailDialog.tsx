@@ -240,58 +240,68 @@ export function RespondentDetailDialog({
                   </div>
                 ) : (
                   <div className="space-y-4 p-1">
-                    {/* Header - matches public quiz */}
-                    <div className="text-center">
+                    {/* Header - exact match to DynamicResultsScreen */}
+                    <header className="text-center mb-4">
                       <p className="text-sm text-muted-foreground mb-1">Results for {lead.email}</p>
                       {resultLevel && (
-                        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-                          <span>{resultLevel.emoji}</span>
-                          <span>{getLocalizedText(resultLevel.title, respondentLang)}</span>
+                        <h2 className="font-heading text-2xl md:text-3xl font-bold mb-1">
+                          <span>{resultLevel.emoji}</span> {getLocalizedText(resultLevel.title, respondentLang)}
                         </h2>
                       )}
-                    </div>
+                    </header>
 
-                    {/* Score visualization - matches public quiz "glass" section */}
-                    <div className="bg-muted/30 rounded-2xl p-6 border">
+                    {/* Score visualization - exact match to DynamicResultsScreen "glass" section */}
+                    <section className="glass rounded-2xl p-6">
                       <div className="text-center mb-4">
-                        <div className="text-5xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                        <div className="text-5xl font-bold gradient-text mb-1">
                           {lead.score}
                         </div>
                         <p className="text-muted-foreground text-sm">out of {maxScore} points</p>
                       </div>
                       
-                      <div className="h-3 bg-secondary rounded-full overflow-hidden mb-2">
+                      <div 
+                        className="h-4 bg-secondary rounded-full overflow-hidden mb-3"
+                        role="progressbar"
+                        aria-valuenow={percentage}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
                         <div 
                           className={cn(
-                            "h-full bg-gradient-to-r transition-all duration-500",
+                            "h-full bg-gradient-to-r transition-all duration-1000",
                             resultLevel?.color_class || "from-primary to-purple-600"
                           )}
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
                       
-                      <div className="flex justify-between text-xs text-muted-foreground">
+                      <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Best</span>
                         <span>Needs Work</span>
                       </div>
-                    </div>
+                    </section>
 
-                    {/* Leadership Open-Mindedness - matches public quiz */}
+                    {/* Leadership Open-Mindedness - exact match to DynamicResultsScreen */}
                     {lead.openness_score !== null && (
-                      <div className="bg-muted/30 rounded-2xl p-6 border">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          <span>{openMindednessLevel?.emoji || "🧠"}</span>
-                          <span>{openMindednessLevel ? getLocalizedText(openMindednessLevel.title, respondentLang) : "Leadership Open-Mindedness"}</span>
+                      <section className="glass rounded-2xl p-6">
+                        <h3 className="font-heading text-xl font-semibold mb-3">
+                          <span>{openMindednessLevel?.emoji || "🧠"}</span> {openMindednessLevel ? getLocalizedText(openMindednessLevel.title, respondentLang) : "Leadership Open-Mindedness"}
                         </h3>
                         <div className="flex items-center gap-4 mb-3">
-                          <div className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                          <div className="text-4xl font-bold gradient-text">
                             {lead.openness_score}/{omMaxScore}
                           </div>
                           <div className="flex-1">
-                            <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+                            <div 
+                              className="h-3 bg-secondary rounded-full overflow-hidden"
+                              role="progressbar"
+                              aria-valuenow={omPercentage}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
                               <div 
                                 className={cn(
-                                  "h-full bg-gradient-to-r transition-all duration-500",
+                                  "h-full bg-gradient-to-r transition-all duration-1000",
                                   openMindednessLevel?.color_class || "from-blue-500 to-indigo-600"
                                 )}
                                 style={{ width: `${omPercentage}%` }}
@@ -300,55 +310,59 @@ export function RespondentDetailDialog({
                           </div>
                         </div>
                         {openMindednessLevel && (
-                          <p className="text-muted-foreground text-sm">
+                          <p className="text-muted-foreground">
                             {getLocalizedText(openMindednessLevel.description, respondentLang)}
                           </p>
                         )}
-                      </div>
+                      </section>
                     )}
 
-                    {/* Result description - matches public quiz "What This Means" */}
+                    {/* Result description - exact match to DynamicResultsScreen "What This Means" */}
                     {resultLevel && (
-                      <div className="bg-muted/30 rounded-2xl p-6 border">
-                        <h3 className="text-lg font-semibold mb-3">What This Means</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                      <section className="glass rounded-2xl p-6">
+                        <h3 className="font-heading text-xl font-semibold mb-3">What This Means</h3>
+                        <p className="text-muted-foreground leading-relaxed mb-5">
                           {getLocalizedText(resultLevel.description, respondentLang)}
                         </p>
                         
-                        {resultLevel.insights && (
+                        {resultLevel.insights && getInsights(resultLevel.insights, respondentLang).length > 0 && (
                           <>
-                            <h4 className="font-semibold mb-2 text-sm">Key Insights:</h4>
-                            <ol className="space-y-2">
+                            <h4 className="font-semibold mb-3">Key Insights:</h4>
+                            <ol className="space-y-3" role="list">
                               {getInsights(resultLevel.insights, respondentLang).map((insight, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm">
-                                  <span className="bg-gradient-to-r from-primary to-purple-600 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5">
+                                <li key={i} className="flex items-start gap-3">
+                                  <span className="gradient-primary w-6 h-6 rounded-full flex items-center justify-center text-primary-foreground text-sm shrink-0 mt-0.5">
                                     {i + 1}
                                   </span>
-                                  <span className="text-muted-foreground">{insight}</span>
+                                  <span>{insight}</span>
                                 </li>
                               ))}
                             </ol>
                           </>
                         )}
-                      </div>
+                      </section>
                     )}
 
-                    {/* CTA section - matches public quiz */}
-                    <div className="bg-muted/30 rounded-2xl p-6 border text-center">
-                      <h3 className="text-lg font-semibold mb-2">Ready for Precise Employee Assessment?</h3>
-                      <p className="text-muted-foreground text-sm mb-4">
+                    {/* CTA section - exact match to DynamicResultsScreen */}
+                    <section className="glass rounded-2xl p-6 text-center">
+                      <h3 className="font-heading text-xl font-semibold mb-2">
+                        Ready for Precise Employee Assessment?
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
                         This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.
                       </p>
-                      <a 
-                        href={quizData?.cta_url || "https://sparkly.hr"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium"
-                      >
-                        {quizData?.cta_text ? getLocalizedText(quizData.cta_text, respondentLang) : "Continue to Sparkly.hr"}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <a 
+                          href={quizData?.cta_url || "https://sparkly.hr"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 gradient-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity"
+                        >
+                          {quizData?.cta_text ? getLocalizedText(quizData.cta_text, respondentLang) : "Continue to Sparkly.hr"}
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </section>
 
                     {/* Metadata */}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-3">
