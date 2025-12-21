@@ -1859,20 +1859,22 @@ export default function QuizEditor() {
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="questions" className="admin-tab-trigger gap-1.5">
-              Questions
-              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
-                {questions.filter(q => q.question_type !== "open_mindedness").length}
-              </span>
-              {errorCheckResult && !errorCheckResult.isValid && (() => {
-                const count = errorCheckResult.errors.filter(e => e.tab === "questions").length;
-                return count > 0 ? (
-                  <span className="admin-tab-trigger-badge admin-tab-trigger-badge-error">
-                    {count}
-                  </span>
-                ) : null;
-              })()}
-            </TabsTrigger>
+            {quizType !== "hypothesis" && (
+              <TabsTrigger value="questions" className="admin-tab-trigger gap-1.5">
+                Questions
+                <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                  {questions.filter(q => q.question_type !== "open_mindedness").length}
+                </span>
+                {errorCheckResult && !errorCheckResult.isValid && (() => {
+                  const count = errorCheckResult.errors.filter(e => e.tab === "questions").length;
+                  return count > 0 ? (
+                    <span className="admin-tab-trigger-badge admin-tab-trigger-badge-error">
+                      {count}
+                    </span>
+                  ) : null;
+                })()}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="results" className="admin-tab-trigger gap-1.5">
               Results
               <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
@@ -2135,100 +2137,79 @@ export default function QuizEditor() {
             </div>
           </TabsContent>
 
-          <TabsContent value="questions" className="admin-tab-content space-y-3">
-            {/* Error display for this tab */}
-            {errorCheckResult && !errorCheckResult.isValid && (
-              <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="questions" />
-            )}
+          {quizType !== "hypothesis" && (
+            <TabsContent value="questions" className="admin-tab-content space-y-3">
+              {/* Error display for this tab */}
+              {errorCheckResult && !errorCheckResult.isValid && (
+                <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="questions" />
+              )}
 
-            {quizType === "hypothesis" ? (
-              <div className="rounded-lg border bg-muted/40 p-4">
-                <div className="flex flex-col gap-2">
-                  <p className="text-sm font-medium text-foreground">This is a Hypothesis quiz</p>
-                  <p className="text-sm text-muted-foreground">
-                    Hypothesis content (pages + hypotheses) is managed in the <span className="font-medium">Hypotheses</span> tab.
-                  </p>
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setActiveTab("hypothesis")}
-                    >
-                      Go to Hypotheses
-                    </Button>
+              {/* Question Settings and Points Summary */}
+              <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Switch 
+                      checked={shuffleQuestions} 
+                      onCheckedChange={setShuffleQuestions}
+                      disabled={isPreviewMode}
+                    />
+                    <Label className="text-xs">Shuffle order each time</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch 
+                      checked={includeOpenMindedness} 
+                      onCheckedChange={handleOpenMindednessToggle}
+                      disabled={isPreviewMode || isCreating}
+                    />
+                    <Label className="text-xs">Include Open-Mindedness module</Label>
                   </div>
                 </div>
+
+                {/* Total Points Summary */}
+                {enableScoring && (() => {
+                  const regularQuestions = questions.filter(q => q.question_type !== "open_mindedness");
+                  const totalMaxPoints = regularQuestions.reduce((sum, q) => {
+                    const maxScore = q.answers.length > 0 ? Math.max(...q.answers.map(a => a.score_value)) : 0;
+                    return sum + maxScore;
+                  }, 0);
+                  const questionCount = regularQuestions.length;
+                  return (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">{questionCount} questions</span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="font-medium text-primary">{totalMaxPoints} max pts</span>
+                    </div>
+                  );
+                })()}
               </div>
-            ) : (
-              <>
-                {/* Question Settings and Points Summary */}
-                <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        checked={shuffleQuestions} 
-                        onCheckedChange={setShuffleQuestions}
-                        disabled={isPreviewMode}
-                      />
-                      <Label className="text-xs">Shuffle order each time</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        checked={includeOpenMindedness} 
-                        onCheckedChange={handleOpenMindednessToggle}
-                        disabled={isPreviewMode || isCreating}
-                      />
-                      <Label className="text-xs">Include Open-Mindedness module</Label>
-                    </div>
-                  </div>
 
-                  {/* Total Points Summary */}
-                  {enableScoring && (() => {
-                    const regularQuestions = questions.filter(q => q.question_type !== "open_mindedness");
-                    const totalMaxPoints = regularQuestions.reduce((sum, q) => {
-                      const maxScore = q.answers.length > 0 ? Math.max(...q.answers.map(a => a.score_value)) : 0;
-                      return sum + maxScore;
-                    }, 0);
-                    const questionCount = regularQuestions.length;
-                    return (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">{questionCount} questions</span>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="font-medium text-primary">{totalMaxPoints} max pts</span>
-                      </div>
-                    );
-                  })()}
-                </div>
+              {!isPreviewMode && (
+                <Button onClick={addQuestion} variant="outline" size="sm" className="w-full h-8 text-xs">
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Question
+                </Button>
+              )}
 
-                {!isPreviewMode && (
-                  <Button onClick={addQuestion} variant="outline" size="sm" className="w-full h-8 text-xs">
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Question
-                  </Button>
-                )}
-
-                <SortableQuestionList
-                  questions={questions}
-                  displayLanguage={displayLanguage}
-                  isPreviewMode={isPreviewMode}
-                  enableScoring={enableScoring}
-                  onReorderQuestions={(reorderedQuestions) => setQuestions(reorderedQuestions)}
-                  onUpdateQuestion={updateQuestion}
-                  onDeleteQuestion={deleteQuestion}
-                  onDuplicateQuestion={duplicateQuestion}
-                  onAddAnswer={addAnswer}
-                  onUpdateAnswer={updateAnswer}
-                  onDeleteAnswer={deleteAnswer}
-                  onReorderAnswers={(qIndex, reorderedAnswers) => {
-                    updateQuestion(qIndex, { answers: reorderedAnswers });
-                  }}
-                  getLocalizedValue={getLocalizedValue}
-                  jsonToRecord={jsonToRecord}
-                />
-              </>
-            )}
-          </TabsContent>
+              <SortableQuestionList
+                questions={questions}
+                displayLanguage={displayLanguage}
+                isPreviewMode={isPreviewMode}
+                enableScoring={enableScoring}
+                onReorderQuestions={(reorderedQuestions) => setQuestions(reorderedQuestions)}
+                onUpdateQuestion={updateQuestion}
+                onDeleteQuestion={deleteQuestion}
+                onDuplicateQuestion={duplicateQuestion}
+                onAddAnswer={addAnswer}
+                onUpdateAnswer={updateAnswer}
+                onDeleteAnswer={deleteAnswer}
+                onReorderAnswers={(qIndex, reorderedAnswers) => {
+                  updateQuestion(qIndex, { answers: reorderedAnswers });
+                }}
+                getLocalizedValue={getLocalizedValue}
+                jsonToRecord={jsonToRecord}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="mindedness" className="admin-tab-content space-y-3">
             {/* Error display for this tab */}
