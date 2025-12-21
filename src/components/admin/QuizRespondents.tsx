@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,16 +16,9 @@ import {
   Search,
   Users,
   Mail,
-  Calendar,
-  Brain
+  Brain,
+  ExternalLink
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { RespondentDetailDialog } from "./RespondentDetailDialog";
 import { logActivity } from "@/hooks/useActivityLog";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -49,6 +43,7 @@ interface QuizLead {
   language: string | null;
   created_at: string;
   answers: Json;
+  quiz_id: string | null;
 }
 
 interface QuizRespondentsProps {
@@ -68,6 +63,8 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
   const [totalCount, setTotalCount] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<QuizLead | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailLead, setDetailLead] = useState<QuizLead | null>(null);
   const { toast } = useToast();
 
   const fetchLeads = useCallback(async () => {
@@ -152,6 +149,11 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
       setDeleteDialogOpen(false);
       setSelectedLead(null);
     }
+  };
+
+  const handleEmailClick = (lead: QuizLead) => {
+    setDetailLead(lead);
+    setDetailDialogOpen(true);
   };
 
   const exportToCsv = () => {
@@ -312,7 +314,13 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
                             {lead.email.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate max-w-[180px]">{lead.email}</span>
+                        <button
+                          onClick={() => handleEmailClick(lead)}
+                          className="truncate max-w-[180px] text-primary hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          {lead.email}
+                          <ExternalLink className="w-3 h-3 opacity-50" />
+                        </button>
                         {lead.language && (
                           <Badge variant="outline" className="text-[10px] h-4 px-1">
                             {lead.language.toUpperCase()}
@@ -410,6 +418,14 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Respondent Detail Dialog */}
+      <RespondentDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        lead={detailLead}
+        displayLanguage={displayLanguage}
+      />
     </div>
   );
 }
