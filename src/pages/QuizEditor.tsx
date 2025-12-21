@@ -1657,11 +1657,11 @@ export default function QuizEditor() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(`/quiz/${slug}`, '_blank')}
+                    onClick={() => window.open(`/${slug}`, '_blank')}
                     className="gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Preview Quiz
+                    Open Quiz
                   </Button>
                 )}
                 {/* Manual save only for new quizzes */}
