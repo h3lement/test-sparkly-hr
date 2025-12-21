@@ -400,7 +400,10 @@ export function QuizManager() {
                         {getLocalizedText(quiz.title) || quiz.slug}
                       </button>
                       {quiz.quiz_type === "hypothesis" && (
-                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-primary/10 text-primary border-primary/20"
+                        >
                           Hypothesis
                         </Badge>
                       )}
