@@ -531,6 +531,36 @@ export function HypothesisQuestionScreen() {
         </Button>
       </div>
 
+      {/* Mobile Floating Progress Indicator */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50 px-4 py-2 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          {/* Progress bar */}
+          <div className="flex-1">
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-sparkly-indigo-light transition-all duration-300 rounded-full"
+                style={{ width: `${(answeredCount / pageQuestions.length) * 100}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* Counter */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className={cn(
+              "text-sm font-bold transition-colors",
+              allQuestionsAnswered ? "text-green-600" : "text-primary"
+            )}>
+              {answeredCount}
+            </span>
+            <span className="text-xs text-muted-foreground">/</span>
+            <span className="text-sm text-muted-foreground">{pageQuestions.length}</span>
+            {allQuestionsAnswered && (
+              <span className="text-green-600 text-sm ml-1">✓</span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Mobile Floating Scroll Helper Button */}
       {showScrollHelper && firstUnansweredIndex !== null && (
         <div className="md:hidden fixed bottom-24 right-4 z-50 animate-bounce-subtle">
