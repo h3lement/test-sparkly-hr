@@ -224,9 +224,10 @@ export default function QuizEditor() {
   const [errorCheckResult, setErrorCheckResult] = useState<CheckErrorsResult | null>(null);
   const [isCheckingErrors, setIsCheckingErrors] = useState(false);
 
-  // Tab counts for Respondents and Log
+  // Tab counts for Respondents, Log, and Web
   const [respondentsCount, setRespondentsCount] = useState(0);
   const [activityLogsCount, setActivityLogsCount] = useState(0);
+  const [pageViewsCount, setPageViewsCount] = useState(0);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -696,6 +697,13 @@ export default function QuizEditor() {
         .select("*", { count: "exact", head: true })
         .eq("record_id", id);
       setActivityLogsCount(logsCount || 0);
+
+      // Load page views count for Web tab
+      const { count: viewsCount } = await supabase
+        .from("page_views")
+        .select("*", { count: "exact", head: true })
+        .like("page_slug", `${quiz.slug}%`);
+      setPageViewsCount(viewsCount || 0);
 
       // Mark loaded data as clean for dirty tracking
       questionsDirtyTracking.markClean(questionsWithAnswers);
@@ -1759,10 +1767,10 @@ export default function QuizEditor() {
               Respondents ({respondentsCount})
             </TabsTrigger>
             <TabsTrigger value="stats" className="text-xs flex-1">
-              Stats
+              Stats ({respondentsCount})
             </TabsTrigger>
             <TabsTrigger value="web" className="text-xs flex-1">
-              Web
+              Web ({pageViewsCount})
             </TabsTrigger>
             <TabsTrigger value="log" className="text-xs flex-1">
               Log ({activityLogsCount})
