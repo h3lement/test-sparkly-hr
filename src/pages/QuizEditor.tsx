@@ -2226,6 +2226,12 @@ export default function QuizEditor() {
                 })()}
               </TabsTrigger>
             )}
+            {quizType === "hypothesis" && (
+              <TabsTrigger value="hypothesis" className="admin-tab-trigger gap-1.5">
+                <FileQuestion className="w-4 h-4" />
+                Hypotheses
+              </TabsTrigger>
+            )}
             <TabsTrigger value="results" className="admin-tab-trigger gap-1.5">
               Results
               <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
@@ -2240,12 +2246,6 @@ export default function QuizEditor() {
                 ) : null;
               })()}
             </TabsTrigger>
-            {quizType === "hypothesis" && (
-              <TabsTrigger value="hypothesis" className="admin-tab-trigger gap-1.5">
-                <FileQuestion className="w-4 h-4" />
-                Hypotheses
-              </TabsTrigger>
-            )}
             <TabsTrigger value="mindedness" className="admin-tab-trigger gap-1.5">
               Open-Mind
               <span className={`admin-tab-trigger-badge ${includeOpenMindedness ? 'admin-tab-trigger-badge-success' : 'admin-tab-trigger-badge-muted'}`}>
