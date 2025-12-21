@@ -182,7 +182,7 @@ export function HypothesisEmailCapture() {
           <div>
             <label htmlFor="action-plan" className="flex items-center gap-2 text-sm font-medium mb-2">
               <Target className="w-4 h-4 text-primary" />
-              How will you apply this in interviews?
+              What will you do differently since today?
             </label>
             <Textarea
               id="action-plan"
