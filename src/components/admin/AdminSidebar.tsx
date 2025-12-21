@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, BarChart3, ClipboardList, PieChart, Activity, Pencil, GripVertical, Check, X, Palette } from "lucide-react";
+import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, ClipboardList, PieChart, Activity, Pencil, GripVertical, Check, X, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +36,6 @@ interface TableCounts {
   quizzes: number;
   admins: number;
   emailLogs: number;
-  pageViews: number;
   activity: number;
 }
 
@@ -53,7 +52,6 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "quizzes", label: "Quizzes", icon: ClipboardList, count: null },
   { id: "analytics", label: "Quiz Analytics", icon: PieChart, count: null },
   { id: "admins", label: "Admin Users", icon: Shield, count: null },
-  { id: "web-stats", label: "Web Stats", icon: BarChart3, count: null },
   { id: "email", label: "Email Settings", icon: Mail, count: null },
   { id: "email-logs", label: "Email History", icon: History, count: null },
   { id: "appearance", label: "Appearance", icon: Palette, count: null },
@@ -135,7 +133,6 @@ export function AdminSidebar({
     quizzes: 0,
     admins: 0,
     emailLogs: 0,
-    pageViews: 0,
     activity: 0,
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -178,12 +175,11 @@ export function AdminSidebar({
 
   async function fetchCounts() {
     try {
-      const [leadsRes, quizzesRes, adminsRes, emailLogsRes, pageViewsRes, activityRes] = await Promise.all([
+      const [leadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes] = await Promise.all([
         supabase.from("quiz_leads").select("*", { count: "exact", head: true }),
         supabase.from("quizzes").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
-        supabase.from("page_views").select("*", { count: "exact", head: true }),
         supabase.from("activity_logs").select("*", { count: "exact", head: true }),
       ]);
 
@@ -192,7 +188,6 @@ export function AdminSidebar({
         quizzes: quizzesRes.count || 0,
         admins: adminsRes.count || 0,
         emailLogs: emailLogsRes.count || 0,
-        pageViews: pageViewsRes.count || 0,
         activity: activityRes.count || 0,
       });
     } catch (error) {
@@ -216,11 +211,6 @@ export function AdminSidebar({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "page_views" },
-        () => fetchCounts()
-      )
-      .on(
-        "postgres_changes",
         { event: "*", schema: "public", table: "activity_logs" },
         () => fetchCounts()
       )
@@ -231,33 +221,32 @@ export function AdminSidebar({
     };
   }, []);
 
-  const menuItems: MenuItem[] = menuOrder.map(id => {
-    const defaultItem = DEFAULT_MENU_ITEMS.find(item => item.id === id)!;
-    let count: number | null = null;
-    
-    switch (id) {
-      case "activity":
-        count = counts.activity;
-        break;
-      case "leads":
-        count = counts.leads;
-        break;
-      case "quizzes":
-        count = counts.quizzes;
-        break;
-      case "admins":
-        count = counts.admins;
-        break;
-      case "email-logs":
-        count = counts.emailLogs;
-        break;
-      case "web-stats":
-        count = counts.pageViews;
-        break;
-    }
-    
-    return { ...defaultItem, count };
-  });
+  const menuItems: MenuItem[] = menuOrder
+    .filter(id => DEFAULT_MENU_ITEMS.some(item => item.id === id))
+    .map(id => {
+      const defaultItem = DEFAULT_MENU_ITEMS.find(item => item.id === id)!;
+      let count: number | null = null;
+      
+      switch (id) {
+        case "activity":
+          count = counts.activity;
+          break;
+        case "leads":
+          count = counts.leads;
+          break;
+        case "quizzes":
+          count = counts.quizzes;
+          break;
+        case "admins":
+          count = counts.admins;
+          break;
+        case "email-logs":
+          count = counts.emailLogs;
+          break;
+      }
+      
+      return { ...defaultItem, count };
+    });
 
   const formatCount = (count: number) => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
