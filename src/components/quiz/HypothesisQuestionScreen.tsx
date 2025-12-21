@@ -212,9 +212,8 @@ export function HypothesisQuestionScreen() {
             const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
             const manHypothesis = getText(question.hypothesis_text_man) || getText(question.hypothesis_text);
 
-            // Get gender-specific interview questions
-            const womanInterview = getText(question.interview_question_woman) || getText(question.interview_question);
-            const manInterview = getText(question.interview_question_man) || getText(question.interview_question);
+            // Get shared interview question
+            const interviewQuestion = getText(question.interview_question);
 
             return (
               <div key={question.id} className="relative">
@@ -229,7 +228,7 @@ export function HypothesisQuestionScreen() {
                 {/* Main Row - Two Columns */}
                 <div 
                   className={cn(
-                    "grid grid-cols-2 gap-4 px-4 pb-4 transition-all",
+                    "grid grid-cols-2 gap-4 px-4 transition-all",
                     isActive && "bg-primary/5",
                     isLocked && "opacity-50",
                     isComplete && "bg-green-500/5"
@@ -292,23 +291,6 @@ export function HypothesisQuestionScreen() {
                         </div>
                       )}
                     </div>
-
-                    {/* Interview Question for Women */}
-                    {isComplete && womanInterview && (
-                      <div className="bg-pink-100/50 dark:bg-pink-900/20 rounded-lg p-2 animate-fade-in">
-                        <div className="flex items-start gap-2">
-                          <MessageSquare className="w-3.5 h-3.5 text-pink-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-[10px] font-semibold text-pink-600 uppercase tracking-wide mb-0.5">
-                              Interview Question
-                            </p>
-                            <p className="text-xs text-foreground/90 italic">
-                              "{womanInterview}"
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Men Column */}
@@ -368,25 +350,27 @@ export function HypothesisQuestionScreen() {
                         </div>
                       )}
                     </div>
-
-                    {/* Interview Question for Men */}
-                    {isComplete && manInterview && (
-                      <div className="bg-blue-100/50 dark:bg-blue-900/20 rounded-lg p-2 animate-fade-in">
-                        <div className="flex items-start gap-2">
-                          <MessageSquare className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide mb-0.5">
-                              Interview Question
-                            </p>
-                            <p className="text-xs text-foreground/90 italic">
-                              "{manInterview}"
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
+
+                {/* Shared Interview Question - Full Width Below Both Columns */}
+                {isComplete && interviewQuestion && (
+                  <div className="px-4 py-3 animate-fade-in">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
+                            Interview Question
+                          </p>
+                          <p className="text-sm text-foreground/90 italic">
+                            "{interviewQuestion}"
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
