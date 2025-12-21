@@ -320,6 +320,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   const [testLanguage, setTestLanguage] = useState("en");
   const [sendingTest, setSendingTest] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   // Fetch quizzes and set default based on most recent activity
   useEffect(() => {
@@ -412,14 +413,22 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
 
       setTemplates(typedData);
 
-      // Load live template into form
+      // Load live template into form and set as default for test emails
       const liveTemplate = typedData.find(t => t.is_live);
       if (liveTemplate) {
         setSenderName(liveTemplate.sender_name);
         setSenderEmail(liveTemplate.sender_email);
         setSubjects(liveTemplate.subjects);
+        setSelectedTemplateId(liveTemplate.id);
+      } else if (typedData.length > 0) {
+        // If no live template, use the most recent one
+        setSelectedTemplateId(typedData[0].id);
+        setSenderName("");
+        setSenderEmail("");
+        setSubjects({});
       } else {
         // Reset form if no templates exist for this quiz
+        setSelectedTemplateId("");
         setSenderName("");
         setSenderEmail("");
         setSubjects({});
@@ -568,6 +577,26 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
       return;
     }
 
+    if (!selectedTemplateId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a template version",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the selected template
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+    if (!selectedTemplate) {
+      toast({
+        title: "Error",
+        description: "Selected template not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSendingTest(true);
     try {
       // Get translated sample data for the selected language
@@ -588,6 +617,12 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         language: testLanguage,
         opennessScore: 3,
         isTest: true, // Flag to indicate this is a test email
+        // Pass the selected template settings
+        templateOverride: {
+          sender_name: selectedTemplate.sender_name,
+          sender_email: selectedTemplate.sender_email,
+          subject: selectedTemplate.subjects[testLanguage] || selectedTemplate.subjects.en || "Your Quiz Results",
+        },
       };
 
       const { error } = await supabase.functions.invoke("send-quiz-results", {
@@ -598,7 +633,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
 
       toast({
         title: "Test email sent",
-        description: `Email sent to ${testEmail} in ${SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name || testLanguage}`,
+        description: `Email sent to ${testEmail} using Version ${selectedTemplate.version_number} in ${SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name || testLanguage}`,
       });
     } catch (error: any) {
       console.error("Error sending test email:", error);
@@ -612,9 +647,15 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     }
   };
 
+  // Get the selected template for preview
+  const getSelectedTemplate = () => templates.find(t => t.id === selectedTemplateId);
+
   const getEmailPreviewHtml = () => {
     const trans = emailTranslations[testLanguage] || emailTranslations.en;
-    const currentSubject = subjects[testLanguage] || trans.yourResults;
+    const selectedTemplate = getSelectedTemplate();
+    const previewSenderName = selectedTemplate?.sender_name || senderName || "Sparkly.hr";
+    const previewSenderEmail = selectedTemplate?.sender_email || senderEmail || "support@sparkly.hr";
+    const currentSubject = selectedTemplate?.subjects?.[testLanguage] || subjects[testLanguage] || trans.yourResults;
     const logoUrl = "/sparkly-logo.png";
     const sampleScore = 15;
     const maxScore = 24;
@@ -623,7 +664,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 20px;">
         <div style="max-width: 600px; margin: 0 auto;">
           <div style="background: #f3f4f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-            <p style="margin: 0; font-size: 13px; color: #6b7280;"><strong>From:</strong> ${senderName || "Sparkly.hr"} &lt;${senderEmail || "support@sparkly.hr"}&gt;</p>
+            <p style="margin: 0; font-size: 13px; color: #6b7280;"><strong>From:</strong> ${previewSenderName} &lt;${previewSenderEmail}&gt;</p>
             <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280;"><strong>Subject:</strong> ${currentSubject}: ${trans.sampleResultTitle}</p>
           </div>
           <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
@@ -859,8 +900,45 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Send a test email using sample quiz data and the current live template settings.
+            Select a template version and send a test email with sample quiz data.
           </p>
+          
+          {/* Template Version Selection */}
+          <div className="mb-4 p-4 bg-muted/50 rounded-lg border">
+            <Label htmlFor="templateVersion" className="text-sm font-medium mb-2 block">
+              Template Version
+            </Label>
+            {templates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No templates available. Create one above first.</p>
+            ) : (
+              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <SelectTrigger id="templateVersion" className="bg-background">
+                  <SelectValue placeholder="Select a template version..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      <div className="flex items-center gap-2">
+                        <span>Version {template.version_number}</span>
+                        {template.is_live && (
+                          <Badge variant="default" className="bg-primary text-xs ml-1">LIVE</Badge>
+                        )}
+                        <span className="text-muted-foreground text-xs">
+                          • {formatDate(template.created_at)}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {selectedTemplateId && getSelectedTemplate() && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                <span className="font-medium">Sender:</span> {getSelectedTemplate()?.sender_name} &lt;{getSelectedTemplate()?.sender_email}&gt;
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[200px] space-y-2">
               <Label htmlFor="testEmail">Recipient Email</Label>
@@ -897,7 +975,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
             </div>
             <Button 
               onClick={sendTestEmail} 
-              disabled={sendingTest}
+              disabled={sendingTest || !selectedTemplateId}
               className="gap-2"
             >
               <Send className="w-4 h-4" />
@@ -906,6 +984,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
             <Button 
               variant="outline"
               onClick={() => setShowPreview(!showPreview)}
+              disabled={!selectedTemplateId}
               className="gap-2"
             >
               <Eye className="w-4 h-4" />

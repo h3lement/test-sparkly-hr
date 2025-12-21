@@ -400,6 +400,12 @@ const emailTranslations: Record<string, {
   },
 };
 
+interface TemplateOverride {
+  sender_name?: string;
+  sender_email?: string;
+  subject?: string;
+}
+
 interface QuizResultsRequest {
   email: string;
   totalScore: number;
@@ -415,6 +421,7 @@ interface QuizResultsRequest {
   opennessDescription?: string;
   quizId?: string;
   quizSlug?: string;
+  templateOverride?: TemplateOverride;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -466,7 +473,8 @@ const handler = async (req: Request): Promise<Response> => {
       opennessTitle = '',
       opennessDescription = '',
       quizId,
-      isTest = false 
+      isTest = false,
+      templateOverride 
     }: QuizResultsRequest & { isTest?: boolean } = await req.json();
 
     console.log("Processing quiz results for:", email);
@@ -476,6 +484,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Quiz ID:", quizId);
     console.log("Language:", language);
     console.log("Is Test Email:", isTest);
+    console.log("Template Override:", templateOverride);
     console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
 
     // Get translations for the language
@@ -520,13 +529,19 @@ const handler = async (req: Request): Promise<Response> => {
       templateData = globalTemplate;
       console.log("Using global email template");
     }
-    // Use template values or fallback to defaults - ensure no undefined/null values
-    const senderName = (templateData?.sender_name && templateData.sender_name.trim()) || "Sparkly.hr";
-    const senderEmail = (templateData?.sender_email && templateData.sender_email.trim()) || "support@sparkly.hr";
+    // Use template override (for test emails) > template values > fallback defaults
+    const senderName = templateOverride?.sender_name?.trim() 
+      || (templateData?.sender_name && templateData.sender_name.trim()) 
+      || "Sparkly.hr";
+    const senderEmail = templateOverride?.sender_email?.trim() 
+      || (templateData?.sender_email && templateData.sender_email.trim()) 
+      || "support@sparkly.hr";
     const templateSubjects = templateData?.subjects as Record<string, string> || {};
-    const emailSubject = templateSubjects[language] || trans.subject;
+    const emailSubject = templateOverride?.subject?.trim() 
+      || templateSubjects[language] 
+      || trans.subject;
 
-    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
+    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject, usingOverride: !!templateOverride });
 
     let quizLeadId: string | null = null;
 
