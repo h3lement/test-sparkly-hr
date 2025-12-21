@@ -353,6 +353,15 @@ export default function QuizEditor() {
             .update(currentQuizFields)
             .eq("id", savedQuizIdRef.current!);
           if (error) throw error;
+          
+          // Log activity for quiz update
+          await logActivity({
+            actionType: "UPDATE",
+            tableName: "quizzes",
+            recordId: savedQuizIdRef.current!,
+            description: `Quiz auto-saved`,
+          });
+          
           quizFieldsRef.current = currentQuizFields;
         })()
       );
