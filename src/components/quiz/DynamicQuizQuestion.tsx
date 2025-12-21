@@ -29,6 +29,7 @@ export function DynamicQuizQuestion() {
     addAnswer, 
     setCurrentStep, 
     answers,
+    quizData,
     getRegularQuestions,
     getOpenMindednessQuestion,
     getTotalQuestionCount
@@ -38,17 +39,19 @@ export function DynamicQuizQuestion() {
   const regularQuestions = getRegularQuestions();
   const hasOpenMindedness = !!getOpenMindednessQuestion();
   const currentQuestionData = regularQuestions[currentQuestion];
+  const shouldShuffleAnswers = quizData?.shuffle_answers ?? false;
   
   // Generate a unique seed per question for shuffling (changes each render to truly randomize)
   const shuffleSeed = useMemo(() => {
     return Date.now() + (currentQuestionData?.id?.charCodeAt(0) || 0);
   }, [currentQuestionData?.id, currentQuestion]);
   
-  // Shuffle answers for display
+  // Shuffle answers for display only if enabled
   const shuffledAnswers = useMemo(() => {
     if (!currentQuestionData?.answers) return [];
+    if (!shouldShuffleAnswers) return currentQuestionData.answers;
     return shuffleArray(currentQuestionData.answers, shuffleSeed);
-  }, [currentQuestionData?.answers, shuffleSeed]);
+  }, [currentQuestionData?.answers, shuffleSeed, shouldShuffleAnswers]);
   
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(
     answers.find((a) => a.questionId === currentQuestionData?.id)?.answerId ?? null

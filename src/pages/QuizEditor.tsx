@@ -189,6 +189,7 @@ export default function QuizEditor() {
   // Quiz behavior settings
   const [quizType, setQuizType] = useState<"standard" | "hypothesis" | "emotional">("standard");
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
+  const [shuffleAnswers, setShuffleAnswers] = useState(false);
   const [enableScoring, setEnableScoring] = useState(true);
   const [includeOpenMindedness, setIncludeOpenMindedness] = useState(true);
   
@@ -261,7 +262,7 @@ export default function QuizEditor() {
       title, description, headline, headline_highlight: headlineHighlight,
       badge_text: badgeText, cta_text: ctaText, cta_title: ctaTitle, cta_description: ctaDescription, cta_url: ctaUrl,
       duration_text: durationText, is_active: isActive, primary_language: primaryLanguage,
-      quiz_type: quizType, shuffle_questions: shuffleQuestions, enable_scoring: enableScoring,
+      quiz_type: quizType, shuffle_questions: shuffleQuestions, shuffle_answers: shuffleAnswers, enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness, tone_of_voice: toneOfVoice,
       tone_source: toneSource, use_tone_for_ai: useToneForAi, tone_intensity: toneIntensity,
       icp_description: icpDescription, buying_persona: buyingPersona,
@@ -285,7 +286,7 @@ export default function QuizEditor() {
     count += resultLevelsDirtyTracking.getDeletedIds(resultLevels).length;
     
     return count;
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   const pendingChangesCount = getPendingChangesCount();
 
@@ -310,6 +311,7 @@ export default function QuizEditor() {
       primary_language: primaryLanguage,
       quiz_type: quizType,
       shuffle_questions: shuffleQuestions,
+      shuffle_answers: shuffleAnswers,
       enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness,
       tone_of_voice: toneOfVoice,
@@ -550,7 +552,7 @@ export default function QuizEditor() {
     // Mark everything as clean after successful save
     questionsDirtyTracking.markClean(questions);
     resultLevelsDirtyTracking.markClean(resultLevels);
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -564,7 +566,7 @@ export default function QuizEditor() {
     if (!initialLoadComplete.current) return;
     if (isCreating) return;
     triggerSave();
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -743,6 +745,7 @@ export default function QuizEditor() {
       setTranslationMeta((quiz as any).translation_meta || {});
       setQuizType((quiz as any).quiz_type || "standard");
       setShuffleQuestions((quiz as any).shuffle_questions || false);
+      setShuffleAnswers((quiz as any).shuffle_answers || false);
       setEnableScoring((quiz as any).enable_scoring !== false);
       setIncludeOpenMindedness((quiz as any).include_open_mindedness || false);
       setToneOfVoice((quiz as any).tone_of_voice || "");
@@ -1257,6 +1260,7 @@ export default function QuizEditor() {
         primary_language: primaryLanguage,
         quiz_type: quizType,
         shuffle_questions: shuffleQuestions,
+        shuffle_answers: shuffleAnswers,
         enable_scoring: enableScoring,
         include_open_mindedness: includeOpenMindedness,
         tone_of_voice: toneOfVoice,
@@ -2553,7 +2557,15 @@ export default function QuizEditor() {
                       onCheckedChange={setShuffleQuestions}
                       disabled={isPreviewMode}
                     />
-                    <Label className="text-xs">Shuffle order each time</Label>
+                    <Label className="text-xs">Shuffle questions</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch 
+                      checked={shuffleAnswers} 
+                      onCheckedChange={setShuffleAnswers}
+                      disabled={isPreviewMode}
+                    />
+                    <Label className="text-xs">Shuffle answers</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch 

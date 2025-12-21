@@ -714,6 +714,7 @@ export type Database = {
           is_active: boolean
           primary_language: string
           quiz_type: string
+          shuffle_answers: boolean
           shuffle_questions: boolean
           slug: string
           title: Json
@@ -746,6 +747,7 @@ export type Database = {
           is_active?: boolean
           primary_language?: string
           quiz_type?: string
+          shuffle_answers?: boolean
           shuffle_questions?: boolean
           slug: string
           title?: Json
@@ -778,6 +780,7 @@ export type Database = {
           is_active?: boolean
           primary_language?: string
           quiz_type?: string
+          shuffle_answers?: boolean
           shuffle_questions?: boolean
           slug?: string
           title?: Json
