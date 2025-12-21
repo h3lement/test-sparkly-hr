@@ -95,15 +95,15 @@ export function HypothesisEmailCapture() {
   // Get assessment category based on percentage
   const getAssessment = () => {
     if (percentage >= 90) {
-      return { label: "Expert", emoji: "🏆", color: "text-emerald-600 dark:text-emerald-400", description: "Outstanding knowledge of 50+ workforce dynamics" };
+      return { label: "Bias Champion", emoji: "🏆", bgColor: "bg-emerald-500", description: "Excellent awareness! You see through most common biases about 50+ employees." };
     } else if (percentage >= 70) {
-      return { label: "Advanced", emoji: "⭐", color: "text-blue-600 dark:text-blue-400", description: "Strong understanding with room for refinement" };
+      return { label: "Bias Aware", emoji: "⭐", bgColor: "bg-blue-500", description: "Strong understanding with room for refinement on 50+ workforce dynamics." };
     } else if (percentage >= 50) {
-      return { label: "Intermediate", emoji: "📚", color: "text-amber-600 dark:text-amber-400", description: "Solid foundation — the full material will deepen your insights" };
+      return { label: "Bias Curious", emoji: "📚", bgColor: "bg-amber-500", description: "Solid foundation — the full material will deepen your insights about 50+ employees." };
     } else if (percentage >= 30) {
-      return { label: "Developing", emoji: "🌱", color: "text-orange-600 dark:text-orange-400", description: "Common misconceptions detected — valuable learning ahead" };
+      return { label: "Bias Discoverer", emoji: "🌱", bgColor: "bg-orange-500", description: "Common misconceptions detected — valuable learning ahead about 50+ workforce." };
     } else {
-      return { label: "Beginner", emoji: "🔍", color: "text-red-600 dark:text-red-400", description: "Many beliefs to reconsider — this material will be eye-opening" };
+      return { label: "Bias Explorer", emoji: "🔍", bgColor: "bg-red-500", description: "Many beliefs to reconsider — this material will be eye-opening about 50+ employees." };
     }
   };
 
@@ -112,23 +112,23 @@ export function HypothesisEmailCapture() {
   return (
     <main className="animate-fade-in max-w-xl mx-auto px-4" role="main" aria-labelledby="email-heading">
       
-      {/* Score Preview */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-center shadow-lg">
-        <div className="text-5xl font-bold text-primary mb-2">
-          {correct}/{total}
+      {/* Score Result Card */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden mb-6 shadow-lg">
+        {/* Header with gradient */}
+        <div className={cn("p-6 text-center text-white", assessment.bgColor)}>
+          <span className="text-4xl mb-2 block">{assessment.emoji}</span>
+          <h2 className="text-2xl md:text-3xl font-bold mb-1">{assessment.label}</h2>
+          <p className="text-white/90 text-sm font-medium">
+            {percentage}% · {correct} of {total} correct
+          </p>
         </div>
-        <p className="text-muted-foreground mb-4">
-          Hypotheses answered correctly
-        </p>
         
-        {/* Assessment Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full mb-2">
-          <span className="text-xl">{assessment.emoji}</span>
-          <span className={cn("font-semibold", assessment.color)}>{assessment.label}</span>
+        {/* Description */}
+        <div className="p-4 text-center bg-muted/30">
+          <p className="text-sm text-foreground/80">
+            {assessment.description}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {assessment.description}
-        </p>
       </div>
 
       {/* Value Proposition */}
