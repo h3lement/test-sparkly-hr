@@ -6,23 +6,23 @@
 
 @layer base {
   :root {
-    --background: 340 30% 97%;
-    --foreground: 230 25% 18%;
+    --background: 220 20% 96%;
+    --foreground: 220 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 18%;
+    --card-foreground: 220 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 18%;
+    --popover-foreground: 220 25% 12%;
 
     --primary: 235 60% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 340 25% 94%;
-    --secondary-foreground: 230 25% 25%;
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 25% 20%;
 
-    --muted: 340 20% 92%;
-    --muted-foreground: 230 15% 45%;
+    --muted: 220 15% 88%;
+    --muted-foreground: 220 15% 40%;
 
     --accent: 235 50% 58%;
     --accent-foreground: 0 0% 100%;
@@ -30,8 +30,8 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 340 20% 88%;
-    --input: 340 20% 88%;
+    --border: 220 15% 85%;
+    --input: 220 15% 85%;
     --ring: 235 60% 52%;
 
     --radius: 0.75rem;
@@ -260,18 +260,18 @@
    * 5. Ensure sufficient contrast between row backgrounds in both light/dark modes
    */
 
-  /* Zebra-striped list rows */
+  /* Zebra-striped list rows - better contrast */
   .list-row:nth-child(even) {
-    @apply bg-muted/40;
+    @apply bg-muted/30;
   }
 
   .list-row:nth-child(odd) {
-    @apply bg-transparent;
+    @apply bg-card;
   }
 
   /* Manual alternate row class (for non-sequential lists) */
   .list-row-alt {
-    @apply bg-muted/40;
+    @apply bg-muted/30;
   }
 
   .admin-card-content {
@@ -293,7 +293,7 @@
   }
 
   .admin-table-row {
-    @apply hover:bg-secondary/30 transition-colors;
+    @apply bg-card hover:bg-muted/40 transition-colors;
   }
 
   .admin-table-row-inactive {

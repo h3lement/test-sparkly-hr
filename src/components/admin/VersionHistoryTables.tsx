@@ -159,7 +159,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   }
 
   return (
-    <Card className="bg-background">
+    <Card className="bg-card shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -195,9 +195,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
             <p className="text-sm text-muted-foreground mt-1">Save a template to get started</p>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden bg-background">
+          <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+            <div className="grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b">
               <span>Version</span>
               <span>Sender</span>
               <span>Created</span>
@@ -212,7 +212,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                   <div
                     key={template.id}
                     className={`grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
-                      template.is_live ? "bg-primary/5" : "bg-background"
+                      template.is_live ? "bg-primary/5" : "bg-card"
                     }`}
                   >
                     {/* Version */}
@@ -334,7 +334,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
 
 
   return (
-    <Card className="bg-background">
+    <Card className="bg-card shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -370,9 +370,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
             <p className="text-sm text-muted-foreground mt-1">Generate results to create versions</p>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden bg-background">
+          <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+            <div className="grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b">
               <span>Version</span>
               <span>Levels</span>
               <span>Created</span>
@@ -388,7 +388,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-background`}
+                      className={`grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-card`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
