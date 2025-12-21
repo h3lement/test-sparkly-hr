@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ClipboardList, Lightbulb, Heart } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -56,6 +56,7 @@ export default function AllQuizzes() {
       case "hypothesis":
         return {
           label: "Hypothesis",
+          icon: Lightbulb,
           badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
           card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
           accent: "group-hover:text-purple-700 dark:group-hover:text-purple-400",
@@ -63,6 +64,7 @@ export default function AllQuizzes() {
       case "emotional":
         return {
           label: "Emotional",
+          icon: Heart,
           badge: "bg-teal-600/20 text-teal-700 dark:text-teal-300 border-teal-600/30 font-medium",
           card: "hover:border-teal-600/60 hover:shadow-teal-600/15",
           accent: "group-hover:text-teal-700 dark:group-hover:text-teal-400",
@@ -70,6 +72,7 @@ export default function AllQuizzes() {
       default:
         return {
           label: "Quiz",
+          icon: ClipboardList,
           badge: "bg-primary/20 text-primary border-primary/30 font-medium",
           card: "hover:border-primary/60 hover:shadow-primary/15",
           accent: "group-hover:text-primary",
@@ -107,6 +110,7 @@ export default function AllQuizzes() {
           <div className="grid gap-4">
             {quizzes.map((quiz) => {
               const typeStyle = getQuizTypeStyle(quiz.quiz_type);
+              const TypeIcon = typeStyle.icon;
               const title = getLocalizedText(quiz.title) || quiz.slug;
               const description = getLocalizedText(quiz.description);
               const badgeText = getLocalizedText(quiz.badge_text);
@@ -123,7 +127,8 @@ export default function AllQuizzes() {
                         <h2 className={`text-xl font-bold text-foreground transition-colors ${typeStyle.accent}`}>
                           {title}
                         </h2>
-                        <Badge variant="outline" className={typeStyle.badge}>
+                        <Badge variant="outline" className={`${typeStyle.badge} flex items-center gap-1`}>
+                          <TypeIcon className="w-3 h-3" />
                           {typeStyle.label}
                         </Badge>
                         {badgeText && (
