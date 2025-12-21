@@ -18,6 +18,8 @@ export interface HypothesisQuestion {
   hypothesis_text: Record<string, string>;
   interview_question: Record<string, string>;
   truth_explanation: Record<string, string>;
+  correct_answer_woman: boolean;
+  correct_answer_man: boolean;
 }
 
 export interface UseHypothesisQuizDataReturn {
@@ -97,6 +99,8 @@ export function useHypothesisQuizData(quizId: string | undefined): UseHypothesis
             hypothesis_text: jsonToRecord(q.hypothesis_text),
             interview_question: jsonToRecord(q.interview_question),
             truth_explanation: jsonToRecord(q.truth_explanation),
+            correct_answer_woman: q.correct_answer_woman ?? false,
+            correct_answer_man: q.correct_answer_man ?? false,
           })),
       }));
 
@@ -154,6 +158,8 @@ export function useHypothesisQuizData(quizId: string | undefined): UseHypothesis
       hypothesis_text: question.hypothesis_text || {},
       interview_question: question.interview_question || {},
       truth_explanation: question.truth_explanation || {},
+      correct_answer_woman: question.correct_answer_woman ?? false,
+      correct_answer_man: question.correct_answer_man ?? false,
     };
 
     if (question.id && !question.id.startsWith("new-")) {

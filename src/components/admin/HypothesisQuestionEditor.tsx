@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, GripVertical, MessageSquare, Lightbulb, HelpCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Trash2, GripVertical, MessageSquare, Lightbulb, HelpCircle, CheckCircle2 } from "lucide-react";
 import type { HypothesisQuestion } from "@/hooks/useHypothesisQuizData";
 import {
   AccordionContent,
@@ -83,7 +84,50 @@ export function HypothesisQuestionEditor({
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              This is the statement users will answer Yes/No to for both Women and Men.
+              This is the statement users will answer True/False to for both Women and Men.
+            </p>
+          </div>
+
+          {/* Correct Answers */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <Label className="font-medium">Correct Answers</Label>
+            </div>
+            <div className="flex gap-6 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">👩 Women 50+:</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${!question.correct_answer_woman ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                    False
+                  </span>
+                  <Switch
+                    checked={question.correct_answer_woman}
+                    onCheckedChange={(checked) => onUpdate({ correct_answer_woman: checked })}
+                  />
+                  <span className={`text-sm ${question.correct_answer_woman ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                    True
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">👨 Men 50+:</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${!question.correct_answer_man ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                    False
+                  </span>
+                  <Switch
+                    checked={question.correct_answer_man}
+                    onCheckedChange={(checked) => onUpdate({ correct_answer_man: checked })}
+                  />
+                  <span className={`text-sm ${question.correct_answer_man ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
+                    True
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Set the correct answer for each gender. Users will see if they got it right after answering.
             </p>
           </div>
 
