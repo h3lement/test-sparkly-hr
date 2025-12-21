@@ -1697,8 +1697,8 @@ export default function QuizEditor() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7 mb-4">
-            <TabsTrigger value="general" className="text-xs gap-1">
+          <TabsList className="flex w-full mb-4">
+            <TabsTrigger value="general" className="text-xs gap-1 flex-1">
               General
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "general").length;
@@ -1709,7 +1709,7 @@ export default function QuizEditor() {
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="questions" className="text-xs gap-1">
+            <TabsTrigger value="questions" className="text-xs gap-1 flex-1">
               Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "questions").length;
@@ -1720,7 +1720,7 @@ export default function QuizEditor() {
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="results" className="text-xs gap-1">
+            <TabsTrigger value="results" className="text-xs gap-1 flex-1">
               Results ({resultLevels.length})
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "results").length;
@@ -1731,22 +1731,22 @@ export default function QuizEditor() {
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="mindedness" className="text-xs gap-1">
+            <TabsTrigger value="mindedness" className="text-xs gap-1 flex-1">
               Open-Mind
               <span className={`text-[10px] px-1 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
                 {includeOpenMindedness ? 'ON' : 'OFF'}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="respondents" className="text-xs gap-1">
+            <TabsTrigger value="respondents" className="text-xs flex-1">
               Respondents
             </TabsTrigger>
-            <TabsTrigger value="stats" className="text-xs gap-1">
+            <TabsTrigger value="stats" className="text-xs flex-1">
               Stats
             </TabsTrigger>
-            <TabsTrigger value="web" className="text-xs gap-1">
+            <TabsTrigger value="web" className="text-xs flex-1">
               Web
             </TabsTrigger>
-            <TabsTrigger value="log" className="text-xs gap-1">
+            <TabsTrigger value="log" className="text-xs flex-1">
               Log
             </TabsTrigger>
           </TabsList>
