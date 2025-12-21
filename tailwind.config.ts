@@ -56,6 +56,12 @@ export default {
           light: "hsl(var(--quiz-primary-light))",
           glow: "hsl(var(--quiz-glow))",
         },
+        sparkly: {
+          blush: "hsl(var(--sparkly-blush))",
+          cream: "hsl(var(--sparkly-cream))",
+          indigo: "hsl(var(--sparkly-indigo))",
+          "indigo-light": "hsl(var(--sparkly-indigo-light))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

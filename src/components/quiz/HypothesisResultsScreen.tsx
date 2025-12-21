@@ -104,49 +104,49 @@ export function HypothesisResultsScreen() {
 
   return (
     <main className="animate-fade-in max-w-4xl mx-auto px-4" role="main" aria-labelledby="results-heading">
-      {/* Hero Score Card */}
-      <div className={cn("rounded-2xl p-6 mb-6 text-center border", resultLevel.bgColor)}>
-        <span className="text-5xl block mb-3">{resultLevel.emoji}</span>
-        <h1 id="results-heading" className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-2">
+      {/* Hero Score Card - Sparkly style */}
+      <div className={cn("rounded-2xl p-8 mb-8 text-center border shadow-lg", resultLevel.bgColor)}>
+        <span className="text-6xl block mb-4">{resultLevel.emoji}</span>
+        <h1 id="results-heading" className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-3">
           {resultLevel.title}
         </h1>
-        <div className="inline-flex items-center gap-2 bg-background/80 backdrop-blur rounded-full px-4 py-2 mb-3">
-          <span className="text-2xl font-bold text-foreground">{percentage}%</span>
+        <div className="inline-flex items-center gap-3 bg-card/90 backdrop-blur rounded-full px-6 py-3 mb-4 shadow-sm">
+          <span className="text-3xl font-bold text-primary">{percentage}%</span>
           <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground">{correct} {t.of} {total} {t.correct}</span>
+          <span className="text-muted-foreground font-medium">{correct} {t.of} {total} {t.correct}</span>
         </div>
-        <p className="text-foreground/80 max-w-md mx-auto text-sm">
+        <p className="text-foreground/80 max-w-lg mx-auto leading-relaxed">
           {resultLevel.description}
         </p>
       </div>
 
-      {/* User Reflections */}
+      {/* User Reflections - Sparkly card style */}
       {(feedbackNewLearnings || feedbackActionPlan) && (
-        <div className="bg-card border border-border rounded-xl p-5 mb-6 shadow">
-          <h2 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+        <div className="bg-card border border-border/50 rounded-2xl p-6 mb-8 shadow-md">
+          <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2 mb-4">
             <Award className="w-5 h-5 text-primary" />
             {t.yourReflections}
           </h2>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-4">
             {feedbackNewLearnings && (
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">{t.keyInsight}</p>
-                <p className="text-foreground italic">"{feedbackNewLearnings}"</p>
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.keyInsight}</p>
+                <p className="text-foreground italic leading-relaxed">"{feedbackNewLearnings}"</p>
               </div>
             )}
             {feedbackActionPlan && (
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">{t.actionPlan}</p>
-                <p className="text-foreground italic">"{feedbackActionPlan}"</p>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.actionPlan}</p>
+                <p className="text-foreground italic leading-relaxed">"{feedbackActionPlan}"</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Truth Reveals by Category */}
-      <div className="space-y-4 mb-6">
-        <h2 className="font-semibold text-foreground flex items-center gap-2">
+      {/* Truth Reveals by Category - Sparkly styling */}
+      <div className="space-y-5 mb-8">
+        <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2">
           <Lightbulb className="w-5 h-5 text-amber-500" />
           {t.truthBehind}
         </h2>
@@ -158,37 +158,37 @@ export function HypothesisResultsScreen() {
           const pageQuestions = questions.filter(q => q.page_id === page.id);
 
           return (
-            <div key={page.id} className="bg-card border border-border rounded-xl overflow-hidden shadow">
+            <div key={page.id} className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md">
               {/* Page Header */}
               <button
                 onClick={() => togglePage(page.id)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                className="w-full flex items-center justify-between px-5 py-4 bg-sparkly-blush hover:bg-sparkly-cream transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <span className="font-medium text-sm text-foreground">{getText(page.title)}</span>
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  <span className="font-heading font-semibold text-foreground">{getText(page.title)}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className={cn(
-                    "text-xs font-semibold px-2 py-0.5 rounded-full",
+                    "text-sm font-bold px-3 py-1 rounded-full",
                     pagePercentage >= 80 ? "bg-green-500/20 text-green-600" :
                     pagePercentage >= 50 ? "bg-amber-500/20 text-amber-600" : "bg-red-500/20 text-red-600"
                   )}>
                     {stats.correct}/{stats.total}
                   </span>
                   {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
                   )}
                 </div>
               </button>
 
               {/* Questions Table */}
               {isExpanded && (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border/50">
                   {/* Table Header */}
-                  <div className="grid grid-cols-[1fr_1fr_1fr] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-3 bg-muted/30 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <div>{t.columnHypothesis}</div>
                     <div>{t.columnReality}</div>
                     <div>{t.columnInterview}</div>
@@ -204,28 +204,28 @@ export function HypothesisResultsScreen() {
 
                     return (
                       <div key={question.id} className={cn(
-                        "grid grid-cols-[1fr_1fr_1fr] gap-2 px-3 py-3 items-start",
+                        "grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-4 items-start",
                         isCorrect ? "bg-green-500/5" : "bg-red-500/5"
                       )}>
                         {/* Hypothesis */}
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 mb-1">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 mb-2">
                             {isCorrect ? (
-                              <CheckCircle className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
                             ) : (
-                              <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                              <XCircle className="w-4 h-4 text-red-500 shrink-0" />
                             )}
-                            <span className="text-xs text-muted-foreground font-medium">#{idx + 1}</span>
+                            <span className="text-xs text-muted-foreground font-semibold">#{idx + 1}</span>
                           </div>
-                          <div className="text-xs space-y-1">
-                            <div className="p-1.5 bg-pink-500/10 border border-pink-500/20 rounded">
-                              <p className="text-pink-700 dark:text-pink-400">
-                                <span className="font-medium">👩</span> {womanHypothesis}
+                          <div className="space-y-2">
+                            <div className="p-2.5 bg-pink-500/10 border border-pink-500/20 rounded-xl">
+                              <p className="text-xs text-pink-700 dark:text-pink-400 leading-relaxed">
+                                <span className="font-semibold">👩</span> {womanHypothesis}
                               </p>
                             </div>
-                            <div className="p-1.5 bg-blue-500/10 border border-blue-500/20 rounded">
-                              <p className="text-blue-700 dark:text-blue-400">
-                                <span className="font-medium">👨</span> {manHypothesis}
+                            <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+                                <span className="font-semibold">👨</span> {manHypothesis}
                               </p>
                             </div>
                           </div>
@@ -233,7 +233,7 @@ export function HypothesisResultsScreen() {
 
                         {/* Reality for 50+ */}
                         <div className="text-xs leading-relaxed">
-                          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg h-full">
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl h-full">
                             <p className="text-emerald-700 dark:text-emerald-400">
                               {truthExplanation}
                             </p>
@@ -242,7 +242,7 @@ export function HypothesisResultsScreen() {
 
                         {/* Interview Question */}
                         <div className="text-xs leading-relaxed">
-                          <div className="p-2 bg-violet-500/10 border border-violet-500/20 rounded-lg h-full">
+                          <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl h-full">
                             <p className="text-violet-700 dark:text-violet-400 italic">
                               {interviewQuestion}
                             </p>
@@ -258,20 +258,20 @@ export function HypothesisResultsScreen() {
         })}
       </div>
 
-      {/* CTA Section */}
-      <section className="bg-card border border-border rounded-xl p-6 mb-6 text-center shadow">
-        <h2 className="font-heading text-xl font-semibold mb-3">
+      {/* CTA Section - Sparkly style */}
+      <section className="bg-card border border-border/50 rounded-2xl p-8 mb-8 text-center shadow-lg">
+        <h2 className="font-heading text-2xl font-bold text-foreground mb-4">
           {getText(quizData?.cta_title, 'Ready for Precise Employee Assessment?')}
         </h2>
-        <p className="text-muted-foreground text-sm mb-5 max-w-lg mx-auto">
+        <p className="text-muted-foreground mb-6 max-w-lg mx-auto leading-relaxed">
           {getText(quizData?.cta_description, 'This quiz provides a general overview. For accurate, in-depth analysis of your team\'s performance and actionable improvement strategies, continue with professional testing.')}
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             asChild
             size="lg"
-            className="h-12"
+            className="h-14 px-8 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
           >
             <a 
               href={quizData?.cta_url || 'https://sparkly.hr'} 
@@ -279,16 +279,16 @@ export function HypothesisResultsScreen() {
               rel="noopener noreferrer"
             >
               {getText(quizData?.cta_text, 'Continue to Sparkly.hr')}
-              <ExternalLink className="w-4 h-4 ml-2" />
+              <ExternalLink className="w-5 h-5 ml-2" />
             </a>
           </Button>
           <Button
             onClick={resetQuiz}
             variant="outline"
             size="lg"
-            className="h-12"
+            className="h-14 px-8 text-lg font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all"
           >
-            <RotateCcw className="w-4 h-4 mr-2" />
+            <RotateCcw className="w-5 h-5 mr-2" />
             {t.takeAgain}
           </Button>
         </div>
