@@ -227,16 +227,16 @@ export function HypothesisQuestionScreen() {
                 <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 items-start">
                   {/* Women Hypothesis */}
                   <div className="p-2 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/30 dark:border-pink-800/30">
-                    <p className="text-xs text-muted-foreground mb-1">{overallNumber}.</p>
                     <p className="text-sm leading-snug font-medium">
+                      <span className="text-muted-foreground mr-1">{overallNumber}.</span>
                       {womanHypothesis}
                     </p>
                   </div>
 
                   {/* Men Hypothesis */}
                   <div className="p-2 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/30 dark:border-blue-800/30">
-                    <p className="text-xs text-muted-foreground mb-1">{overallNumber}.</p>
                     <p className="text-sm leading-snug font-medium">
+                      <span className="text-muted-foreground mr-1">{overallNumber}.</span>
                       {manHypothesis}
                     </p>
                   </div>
