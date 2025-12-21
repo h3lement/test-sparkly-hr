@@ -4,8 +4,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Table,
   TableBody,
@@ -43,6 +60,196 @@ interface Quiz {
   pages_count?: number;
   respondents_count?: number;
   updated_by_email?: string;
+  display_order?: number;
+}
+
+// Sortable Row Component
+interface SortableQuizRowProps {
+  quiz: Quiz;
+  isDragEnabled: boolean;
+  getLocalizedText: (json: Json) => string;
+  handleEditQuiz: (quiz: Quiz) => void;
+  toggleQuizStatus: (quiz: Quiz) => void;
+  duplicateQuiz: (quiz: Quiz) => void;
+  deleteQuiz: (quiz: Quiz) => void;
+  formatDateTime: (dateString: string, userEmail?: string) => { date: string; user: string | null };
+  setActivityLogQuiz: (quiz: Quiz | null) => void;
+}
+
+function SortableQuizRow({
+  quiz,
+  isDragEnabled,
+  getLocalizedText,
+  handleEditQuiz,
+  toggleQuizStatus,
+  duplicateQuiz,
+  deleteQuiz,
+  formatDateTime,
+  setActivityLogQuiz,
+}: SortableQuizRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: quiz.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="hover:bg-secondary/30 group"
+    >
+      {isDragEnabled && (
+        <TableCell className="w-10 px-2">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors"
+            title="Drag to reorder"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        </TableCell>
+      )}
+      <TableCell className="font-medium">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleEditQuiz(quiz)}
+            className="text-left text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
+            title="Edit quiz"
+          >
+            {getLocalizedText(quiz.title) || quiz.slug}
+          </button>
+          {quiz.quiz_type === "hypothesis" && (
+            <Badge
+              variant="outline"
+              className="text-xs bg-primary/10 text-primary border-primary/20"
+            >
+              Hypothesis
+            </Badge>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="text-muted-foreground font-mono text-sm">
+        <a
+          href={`/${quiz.slug.replace(/^\/+/, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-primary hover:underline transition-colors"
+          title="Open public quiz"
+        >
+          /{quiz.slug.replace(/^\/+/, "")}
+        </a>
+      </TableCell>
+      <TableCell className="text-center">
+        {quiz.questions_count}
+      </TableCell>
+      <TableCell className="text-center">
+        {quiz.quiz_type === "hypothesis" ? (
+          <span>
+            {quiz.pages_count || 0}
+            {quiz.include_open_mindedness && (
+              <span className="text-muted-foreground ml-1">+1</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell className="text-center">
+        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+          {quiz.respondents_count}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleQuizStatus(quiz)}
+          className="px-0 h-auto hover:bg-transparent"
+        >
+          <Badge 
+            variant={quiz.is_active ? "default" : "secondary"}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+          >
+            {quiz.is_active ? "Active" : "Inactive"}
+          </Badge>
+        </Button>
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {(() => {
+          const { date, user } = formatDateTime(quiz.updated_at, quiz.updated_by_email);
+          return (
+            <div className="flex flex-col text-sm">
+              <span>{date}</span>
+              {user && <span className="text-xs text-muted-foreground/70 capitalize">{user}</span>}
+            </div>
+          );
+        })()}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setActivityLogQuiz(quiz)}
+            title="Activity log"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => duplicateQuiz(quiz)}
+            title="Duplicate quiz"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                title="Delete quiz"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{getLocalizedText(quiz.title)}"? 
+                  This will also delete all questions, answers, and result levels. 
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteQuiz(quiz)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 export function QuizManager() {
@@ -51,9 +258,21 @@ export function QuizManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activityLogQuiz, setActivityLogQuiz] = useState<Quiz | null>(null);
-  const [sortColumn, setSortColumn] = useState<string>("updated_at");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sortColumn, setSortColumn] = useState<string>("display_order");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const { toast } = useToast();
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchQuizzes();
@@ -371,6 +590,8 @@ export function QuizManager() {
       const multiplier = sortDirection === "asc" ? 1 : -1;
       
       switch (sortColumn) {
+        case "display_order":
+          return multiplier * ((a.display_order || 0) - (b.display_order || 0));
         case "title":
           return multiplier * getLocalizedText(a.title).localeCompare(getLocalizedText(b.title));
         case "slug":
@@ -384,11 +605,67 @@ export function QuizManager() {
         case "status":
           return multiplier * ((a.is_active ? 1 : 0) - (b.is_active ? 1 : 0));
         case "updated_at":
-        default:
           return multiplier * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+        default:
+          return multiplier * ((a.display_order || 0) - (b.display_order || 0));
       }
     });
   }, [quizzes, searchQuery, sortColumn, sortDirection]);
+
+  // Handle drag end for reordering
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = sortedAndFilteredQuizzes.findIndex(q => q.id === active.id);
+    const newIndex = sortedAndFilteredQuizzes.findIndex(q => q.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+    
+    // Reorder locally first for instant UI feedback
+    const reorderedQuizzes = arrayMove(sortedAndFilteredQuizzes, oldIndex, newIndex);
+    
+    // Update display_order for all affected quizzes
+    const updates = reorderedQuizzes.map((quiz, index) => ({
+      id: quiz.id,
+      display_order: index + 1,
+    }));
+    
+    // Update local state
+    setQuizzes(prev => {
+      const updated = [...prev];
+      updates.forEach(upd => {
+        const idx = updated.findIndex(q => q.id === upd.id);
+        if (idx !== -1) {
+          updated[idx] = { ...updated[idx], display_order: upd.display_order };
+        }
+      });
+      return updated;
+    });
+    
+    // Persist to database
+    try {
+      for (const upd of updates) {
+        await supabase
+          .from("quizzes")
+          .update({ display_order: upd.display_order })
+          .eq("id", upd.id);
+      }
+      toast({
+        title: "Order updated",
+        description: "Quiz order has been saved",
+      });
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save order",
+        variant: "destructive",
+      });
+      fetchQuizzes(); // Revert on error
+    }
+  };
 
   const handleCreateQuiz = () => {
     navigate("/admin/quiz/new", { state: { from: "/admin?tab=quizzes" } });
@@ -397,6 +674,9 @@ export function QuizManager() {
   const handleEditQuiz = (quiz: Quiz) => {
     navigate(`/admin/quiz/${quiz.id}`, { state: { from: "/admin?tab=quizzes" } });
   };
+
+  // Check if drag is enabled (only when sorting by display_order)
+  const isDragEnabled = sortColumn === "display_order" && !searchQuery;
 
   return (
     <div className="max-w-6xl">
@@ -444,191 +724,87 @@ export function QuizManager() {
           {searchQuery ? "No quizzes match your search" : "No quizzes yet. Create your first quiz!"}
         </div>
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-secondary/50">
-                <TableHead 
-                  className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("title")}
-                >
-                  <span className="flex items-center">Title <SortIcon column="title" /></span>
-                </TableHead>
-                <TableHead 
-                  className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("slug")}
-                >
-                  <span className="flex items-center">Slug <SortIcon column="slug" /></span>
-                </TableHead>
-                <TableHead 
-                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("questions")}
-                >
-                  <span className="flex items-center justify-center">Questions <SortIcon column="questions" /></span>
-                </TableHead>
-                <TableHead 
-                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("pages")}
-                >
-                  <span className="flex items-center justify-center">Pages <SortIcon column="pages" /></span>
-                </TableHead>
-                <TableHead 
-                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("respondents")}
-                >
-                  <span className="flex items-center justify-center">Respondents <SortIcon column="respondents" /></span>
-                </TableHead>
-                <TableHead 
-                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("status")}
-                >
-                  <span className="flex items-center justify-center">Status <SortIcon column="status" /></span>
-                </TableHead>
-                <TableHead 
-                  className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
-                  onClick={() => handleSort("updated_at")}
-                >
-                  <span className="flex items-center">Updated <SortIcon column="updated_at" /></span>
-                </TableHead>
-                <TableHead className="font-semibold text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedAndFilteredQuizzes.map((quiz) => (
-                <TableRow key={quiz.id} className="hover:bg-secondary/30 group">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEditQuiz(quiz)}
-                        className="text-left text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
-                        title="Edit quiz"
-                      >
-                        {getLocalizedText(quiz.title) || quiz.slug}
-                      </button>
-                      {quiz.quiz_type === "hypothesis" && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-primary/10 text-primary border-primary/20"
-                        >
-                          Hypothesis
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-sm">
-                    <a
-                      href={`/${quiz.slug.replace(/^\/+/, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-primary hover:underline transition-colors"
-                      title="Open public quiz"
-                    >
-                      /{quiz.slug.replace(/^\/+/, "")}
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {quiz.questions_count}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {quiz.quiz_type === "hypothesis" ? (
-                      <span>
-                        {quiz.pages_count || 0}
-                        {quiz.include_open_mindedness && (
-                          <span className="text-muted-foreground ml-1">+1</span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                      {quiz.respondents_count}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleQuizStatus(quiz)}
-                      className="px-0 h-auto hover:bg-transparent"
-                    >
-                      <Badge 
-                        variant={quiz.is_active ? "default" : "secondary"}
-                        className="cursor-pointer hover:opacity-80 transition-opacity"
-                      >
-                        {quiz.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {(() => {
-                      const { date, user } = formatDateTime(quiz.updated_at, quiz.updated_by_email);
-                      return (
-                        <div className="flex flex-col text-sm">
-                          <span>{date}</span>
-                          {user && <span className="text-xs text-muted-foreground/70 capitalize">{user}</span>}
-                        </div>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setActivityLogQuiz(quiz)}
-                        title="Activity log"
-                      >
-                        <Info className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => duplicateQuiz(quiz)}
-                        title="Duplicate quiz"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            title="Delete quiz"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{getLocalizedText(quiz.title)}"? 
-                              This will also delete all questions, answers, and result levels. 
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteQuiz(quiz)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="rounded-lg border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/50">
+                  {isDragEnabled && (
+                    <TableHead className="w-10"></TableHead>
+                  )}
+                  <TableHead 
+                    className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("title")}
+                  >
+                    <span className="flex items-center">Title <SortIcon column="title" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("slug")}
+                  >
+                    <span className="flex items-center">Slug <SortIcon column="slug" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("questions")}
+                  >
+                    <span className="flex items-center justify-center">Questions <SortIcon column="questions" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("pages")}
+                  >
+                    <span className="flex items-center justify-center">Pages <SortIcon column="pages" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("respondents")}
+                  >
+                    <span className="flex items-center justify-center">Respondents <SortIcon column="respondents" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("status")}
+                  >
+                    <span className="flex items-center justify-center">Status <SortIcon column="status" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("updated_at")}
+                  >
+                    <span className="flex items-center">Updated <SortIcon column="updated_at" /></span>
+                  </TableHead>
+                  <TableHead className="font-semibold text-center">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <SortableContext
+                items={sortedAndFilteredQuizzes.map(q => q.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <TableBody>
+                  {sortedAndFilteredQuizzes.map((quiz) => (
+                    <SortableQuizRow
+                      key={quiz.id}
+                      quiz={quiz}
+                      isDragEnabled={isDragEnabled}
+                      getLocalizedText={getLocalizedText}
+                      handleEditQuiz={handleEditQuiz}
+                      toggleQuizStatus={toggleQuizStatus}
+                      duplicateQuiz={duplicateQuiz}
+                      deleteQuiz={deleteQuiz}
+                      formatDateTime={formatDateTime}
+                      setActivityLogQuiz={setActivityLogQuiz}
+                    />
+                  ))}
+                </TableBody>
+              </SortableContext>
+            </Table>
+          </div>
+        </DndContext>
       )}
 
       <ActivityLogDialog
