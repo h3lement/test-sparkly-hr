@@ -859,27 +859,24 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
             </div>
           </div>
 
-          {/* Subject Lines by Language */}
-          <div className="space-y-4">
-            <Label className="text-base font-semibold">Subject Lines by Language</Label>
-            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2">
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <div key={lang.code} className="flex items-center gap-3">
-                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0">
-                    {lang.name}
-                  </span>
-                  <Badge variant="outline" className="uppercase w-8 justify-center flex-shrink-0">
-                    {lang.code}
-                  </Badge>
-                  <Input
-                    value={subjects[lang.code] || ""}
-                    onChange={(e) => updateSubject(lang.code, e.target.value)}
-                    placeholder={`Subject in ${lang.name}`}
-                    className="flex-1"
-                  />
-                </div>
-              ))}
-            </div>
+          {/* Subject Line - Primary Language Only */}
+          <div className="space-y-2">
+            <Label htmlFor="subjectLine" className="text-base font-semibold">
+              Email Subject 
+              <span className="text-muted-foreground font-normal ml-2">
+                ({selectedQuiz?.primary_language === 'et' ? 'Estonian' : 'English'} - will be auto-translated)
+              </span>
+            </Label>
+            <Input
+              id="subjectLine"
+              value={subjects[selectedQuiz?.primary_language || 'en'] || ''}
+              onChange={(e) => updateSubject(selectedQuiz?.primary_language || 'en', e.target.value)}
+              placeholder={`Enter subject in ${selectedQuiz?.primary_language === 'et' ? 'Estonian' : 'English'}...`}
+              className="text-base"
+            />
+            <p className="text-xs text-muted-foreground">
+              Other language subjects will be automatically translated from this primary language subject when sending emails.
+            </p>
           </div>
 
           {/* Save Button */}
