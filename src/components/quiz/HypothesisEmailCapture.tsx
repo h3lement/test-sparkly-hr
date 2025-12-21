@@ -107,7 +107,7 @@ export function HypothesisEmailCapture() {
       {/* Unlock Message */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 text-center">
         <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
-          🔓 Submit your email to unlock the <strong>truth behind each belief</strong> and see how you scored!
+          🔓 You may find it valuable to receive the complete material — including the correct answers, common misconceptions, and suggested interview questions designed to uncover what truly matters. Discover why professionals aged 50+ are often perceived as challenging by younger generations, and how to navigate these dynamics with confidence.
         </p>
       </div>
 
