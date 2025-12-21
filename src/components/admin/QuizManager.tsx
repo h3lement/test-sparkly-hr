@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DndContext,
@@ -67,6 +67,7 @@ interface Quiz {
 interface SortableQuizRowProps {
   quiz: Quiz;
   isDragEnabled: boolean;
+  compactView: boolean;
   getLocalizedText: (json: Json) => string;
   handleEditQuiz: (quiz: Quiz) => void;
   toggleQuizStatus: (quiz: Quiz) => void;
@@ -79,6 +80,7 @@ interface SortableQuizRowProps {
 function SortableQuizRow({
   quiz,
   isDragEnabled,
+  compactView,
   getLocalizedText,
   handleEditQuiz,
   toggleQuizStatus,
@@ -102,6 +104,8 @@ function SortableQuizRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const cellPadding = compactView ? "py-1.5 px-2" : "py-3 px-4";
+
   return (
     <TableRow
       ref={setNodeRef}
@@ -109,18 +113,18 @@ function SortableQuizRow({
       className="hover:bg-secondary/30 group"
     >
       {isDragEnabled && (
-        <TableCell className="w-10 px-2">
+        <TableCell className={`w-10 ${compactView ? "px-1" : "px-2"}`}>
           <button
             {...attributes}
             {...listeners}
             className="cursor-grab active:cursor-grabbing p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors"
             title="Drag to reorder"
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className={compactView ? "h-3 w-3" : "h-4 w-4"} />
           </button>
         </TableCell>
       )}
-      <TableCell className="font-medium">
+      <TableCell className={`font-medium ${cellPadding}`}>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -140,7 +144,7 @@ function SortableQuizRow({
           )}
         </div>
       </TableCell>
-      <TableCell className="text-muted-foreground font-mono text-sm">
+      <TableCell className={`text-muted-foreground font-mono ${compactView ? "text-xs" : "text-sm"} ${cellPadding}`}>
         <a
           href={`/${quiz.slug.replace(/^\/+/, "")}`}
           target="_blank"
@@ -151,10 +155,10 @@ function SortableQuizRow({
           /{quiz.slug.replace(/^\/+/, "")}
         </a>
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className={`text-center ${cellPadding}`}>
         {quiz.questions_count}
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className={`text-center ${cellPadding}`}>
         {quiz.quiz_type === "hypothesis" ? (
           <span>
             {quiz.pages_count || 0}
@@ -166,12 +170,12 @@ function SortableQuizRow({
           <span className="text-muted-foreground">—</span>
         )}
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className={`text-center ${cellPadding}`}>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
           {quiz.respondents_count}
         </Badge>
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className={`text-center ${cellPadding}`}>
         <Button
           variant="ghost"
           size="sm"
@@ -186,44 +190,46 @@ function SortableQuizRow({
           </Badge>
         </Button>
       </TableCell>
-      <TableCell className="text-muted-foreground">
+      <TableCell className={`text-muted-foreground ${cellPadding}`}>
         {(() => {
           const { date, user } = formatDateTime(quiz.updated_at, quiz.updated_by_email);
           return (
-            <div className="flex flex-col text-sm">
+            <div className={`flex flex-col ${compactView ? "text-xs" : "text-sm"}`}>
               <span>{date}</span>
               {user && <span className="text-xs text-muted-foreground/70 capitalize">{user}</span>}
             </div>
           );
         })()}
       </TableCell>
-      <TableCell>
-        <div className="flex items-center justify-center gap-1">
+      <TableCell className={cellPadding}>
+        <div className={`flex items-center justify-center ${compactView ? "gap-0" : "gap-1"}`}>
           <Button
             variant="ghost"
-            size="icon"
+            size={compactView ? "sm" : "icon"}
+            className={compactView ? "h-7 w-7 p-0" : ""}
             onClick={() => setActivityLogQuiz(quiz)}
             title="Activity log"
           >
-            <Info className="h-4 w-4" />
+            <Info className={compactView ? "h-3 w-3" : "h-4 w-4"} />
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size={compactView ? "sm" : "icon"}
+            className={compactView ? "h-7 w-7 p-0" : ""}
             onClick={() => duplicateQuiz(quiz)}
             title="Duplicate quiz"
           >
-            <Copy className="h-4 w-4" />
+            <Copy className={compactView ? "h-3 w-3" : "h-4 w-4"} />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="text-destructive hover:text-destructive"
+                size={compactView ? "sm" : "icon"}
+                className={`text-destructive hover:text-destructive ${compactView ? "h-7 w-7 p-0" : ""}`}
                 title="Delete quiz"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className={compactView ? "h-3 w-3" : "h-4 w-4"} />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -260,6 +266,7 @@ export function QuizManager() {
   const [activityLogQuiz, setActivityLogQuiz] = useState<Quiz | null>(null);
   const [sortColumn, setSortColumn] = useState<string>("display_order");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [compactView, setCompactView] = useState(false);
   const { toast } = useToast();
 
   // DnD sensors
@@ -709,6 +716,16 @@ export function QuizManager() {
             className="pl-10 bg-secondary/50 border-border"
           />
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCompactView(!compactView)}
+          title={compactView ? "Switch to normal view" : "Switch to compact view"}
+          className="gap-1.5"
+        >
+          {compactView ? <Rows3 className="h-4 w-4" /> : <Rows4 className="h-4 w-4" />}
+          <span className="hidden sm:inline">{compactView ? "Normal" : "Compact"}</span>
+        </Button>
         <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium whitespace-nowrap">
           {sortedAndFilteredQuizzes.length} quiz{sortedAndFilteredQuizzes.length !== 1 ? "zes" : ""}
         </span>
@@ -791,6 +808,7 @@ export function QuizManager() {
                       key={quiz.id}
                       quiz={quiz}
                       isDragEnabled={isDragEnabled}
+                      compactView={compactView}
                       getLocalizedText={getLocalizedText}
                       handleEditQuiz={handleEditQuiz}
                       toggleQuizStatus={toggleQuizStatus}
