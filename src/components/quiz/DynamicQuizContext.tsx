@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { QuizData, QuestionData, ResultLevelData } from '@/hooks/useQuizData';
+import { QuizData, QuestionData, ResultLevelData, OpenMindednessResultLevelData } from '@/hooks/useQuizData';
 
 export interface QuizAnswer {
   questionId: string;
@@ -16,9 +16,11 @@ interface DynamicQuizContextType {
   quizData: QuizData | null;
   questions: QuestionData[];
   resultLevels: ResultLevelData[];
+  openMindednessResultLevels: OpenMindednessResultLevelData[];
   setQuizData: (data: QuizData | null) => void;
   setQuestions: (questions: QuestionData[]) => void;
   setResultLevels: (levels: ResultLevelData[]) => void;
+  setOpenMindednessResultLevels: (levels: OpenMindednessResultLevelData[]) => void;
   
   // Quiz state
   currentStep: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results';
@@ -62,6 +64,7 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [shuffledQuestions, setShuffledQuestions] = useState<QuestionData[]>([]);
   const [resultLevels, setResultLevels] = useState<ResultLevelData[]>([]);
+  const [openMindednessResultLevels, setOpenMindednessResultLevels] = useState<OpenMindednessResultLevelData[]>([]);
   
   const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'mindedness' | 'email' | 'results'>('welcome');
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -141,9 +144,11 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
         quizData,
         questions,
         resultLevels,
+        openMindednessResultLevels,
         setQuizData,
         setQuestions,
         setResultLevels,
+        setOpenMindednessResultLevels,
         currentStep,
         currentQuestion,
         answers,
