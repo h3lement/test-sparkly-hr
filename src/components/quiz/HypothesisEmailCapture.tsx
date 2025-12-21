@@ -112,93 +112,93 @@ export function HypothesisEmailCapture() {
   return (
     <main className="animate-fade-in max-w-xl mx-auto px-4" role="main" aria-labelledby="email-heading">
       
-      {/* Score Result Card */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden mb-6 shadow-lg">
+      {/* Score Result Card - Mobile optimized */}
+      <div className="bg-card border border-border/50 rounded-2xl overflow-hidden mb-6 shadow-lg animate-slide-up">
         {/* Header with gradient */}
-        <div className={cn("p-6 text-center text-white", assessment.bgColor)}>
-          <span className="text-4xl mb-2 block">{assessment.emoji}</span>
-          <h2 className="text-2xl md:text-3xl font-bold mb-1">{assessment.label}</h2>
-          <p className="text-white/90 text-sm font-medium">
+        <div className={cn("p-5 md:p-6 text-center text-white", assessment.bgColor)}>
+          <span className="text-4xl md:text-5xl mb-2 block">{assessment.emoji}</span>
+          <h2 className="text-xl md:text-3xl font-bold mb-1 font-heading">{assessment.label}</h2>
+          <p className="text-white/90 text-sm md:text-base font-medium">
             {percentage}% · {correct} of {total} correct
           </p>
         </div>
         
         {/* Description */}
-        <div className="p-4 text-center bg-muted/30">
-          <p className="text-sm text-foreground/80">
+        <div className="p-4 text-center bg-sparkly-blush">
+          <p className="text-sm text-foreground/80 leading-relaxed">
             {assessment.description}
           </p>
         </div>
       </div>
 
-      {/* Value Proposition */}
-      <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5 mb-6">
-        <p className="text-sm font-medium text-foreground mb-3">Submit your email to receive:</p>
-        <ul className="space-y-2 text-sm text-foreground/90">
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Correct answers with detailed explanations for each hypothesis</span>
+      {/* Value Proposition - Mobile optimized */}
+      <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 md:p-5 mb-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <p className="text-sm font-semibold text-foreground mb-3">Submit your email to receive:</p>
+        <ul className="space-y-2.5 text-sm text-foreground/90">
+          <li className="flex items-start gap-2.5">
+            <span className="text-primary mt-0.5 text-base">✓</span>
+            <span>Correct answers with detailed explanations</span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Common misconceptions debunked with research-backed insights</span>
+          <li className="flex items-start gap-2.5">
+            <span className="text-primary mt-0.5 text-base">✓</span>
+            <span>Research-backed insights on 50+ workforce</span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Interview questions designed to reveal what truly drives 50+ candidates</span>
+          <li className="flex items-start gap-2.5">
+            <span className="text-primary mt-0.5 text-base">✓</span>
+            <span>Interview questions for 50+ candidates</span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">✓</span>
-            <span>Practical guidance on navigating generational dynamics with confidence</span>
+          <li className="flex items-start gap-2.5">
+            <span className="text-primary mt-0.5 text-base">✓</span>
+            <span>Practical guidance on generational dynamics</span>
           </li>
         </ul>
       </div>
 
-      <h1 id="email-heading" className="font-heading text-2xl md:text-3xl font-bold mb-3 text-center">
+      <h1 id="email-heading" className="font-heading text-xl md:text-3xl font-bold mb-2 text-center animate-slide-up" style={{ animationDelay: '0.15s' }}>
         Before we reveal the answers...
       </h1>
       
-      <p className="text-muted-foreground mb-6 text-center" id="email-description">
-        Take a moment to reflect on what you've learned so far.
+      <p className="text-muted-foreground mb-5 text-center text-sm md:text-base animate-slide-up" id="email-description" style={{ animationDelay: '0.2s' }}>
+        Take a moment to reflect on what you've learned.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Reflection Questions */}
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4 shadow">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Reflection Questions - Collapsible on mobile for quicker submission */}
+        <div className="bg-card border border-border/50 rounded-xl p-4 md:p-5 space-y-4 shadow-md animate-slide-up" style={{ animationDelay: '0.25s' }}>
           <div>
             <label htmlFor="new-learnings" className="flex items-center gap-2 text-sm font-medium mb-2">
-              <Lightbulb className="w-4 h-4 text-primary" />
-              What new insight surprised you the most?
+              <Lightbulb className="w-4 h-4 text-amber-500" />
+              What new insight surprised you most?
             </label>
             <Textarea
               id="new-learnings"
               placeholder="Share what you learned..."
               value={feedbackNewLearnings}
               onChange={(e) => setFeedbackNewLearnings(e.target.value)}
-              className="min-h-[80px] resize-none"
+              className="min-h-[70px] md:min-h-[80px] resize-none text-sm"
             />
           </div>
 
           <div>
             <label htmlFor="action-plan" className="flex items-center gap-2 text-sm font-medium mb-2">
               <Target className="w-4 h-4 text-primary" />
-              What will you do differently since today?
+              What will you do differently?
             </label>
             <Textarea
               id="action-plan"
               placeholder="Your action plan..."
               value={feedbackActionPlan}
               onChange={(e) => setFeedbackActionPlan(e.target.value)}
-              className="min-h-[80px] resize-none"
+              className="min-h-[70px] md:min-h-[80px] resize-none text-sm"
             />
           </div>
         </div>
 
-        {/* Email Input */}
-        <div className="bg-card border border-border rounded-xl p-5 shadow">
+        {/* Email Input - Prominent on mobile */}
+        <div className="bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md animate-slide-up" style={{ animationDelay: '0.3s' }}>
           <label htmlFor="email-input" className="flex items-center gap-2 text-sm font-medium mb-3">
             <Mail className="w-4 h-4 text-primary" />
-            Enter your email to see the results
+            Enter your email to see results
           </label>
           <Input
             id="email-input"
@@ -206,23 +206,26 @@ export function HypothesisEmailCapture() {
             placeholder="your@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="text-center text-lg h-12 border-2 focus:border-primary"
+            className="text-center text-base md:text-lg h-12 border-2 focus:border-primary rounded-xl"
             required
             autoComplete="email"
           />
         </div>
         
-        <Button 
-          type="submit"
-          size="lg"
-          disabled={isSubmitting}
-          className="w-full h-14 text-lg font-semibold"
-        >
-          {isSubmitting ? 'Saving...' : 'Reveal the Truth'}
-        </Button>
+        {/* Submit Button - Sticky on mobile */}
+        <div className="animate-slide-up" style={{ animationDelay: '0.35s' }}>
+          <Button 
+            type="submit"
+            size="lg"
+            disabled={isSubmitting}
+            className="w-full h-14 text-base md:text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-xl transition-all"
+          >
+            {isSubmitting ? 'Saving...' : 'Reveal the Truth'}
+          </Button>
+        </div>
       </form>
 
-      <p className="text-xs text-muted-foreground mt-4 text-center">
+      <p className="text-xs text-muted-foreground mt-4 text-center pb-4">
         🔒 Your data is secure. We never share your information.
       </p>
     </main>
