@@ -391,11 +391,11 @@ export function QuizManager() {
   }, [quizzes, searchQuery, sortColumn, sortDirection]);
 
   const handleCreateQuiz = () => {
-    navigate("/admin/quiz/new");
+    navigate("/admin/quiz/new", { state: { from: "/admin?tab=quizzes" } });
   };
 
   const handleEditQuiz = (quiz: Quiz) => {
-    navigate(`/admin/quiz/${quiz.id}`);
+    navigate(`/admin/quiz/${quiz.id}`, { state: { from: "/admin?tab=quizzes" } });
   };
 
   return (
