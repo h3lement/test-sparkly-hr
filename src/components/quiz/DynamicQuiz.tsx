@@ -149,7 +149,8 @@ function QuizTypeRouter() {
     return <HypothesisQuiz />;
   }
 
-  // Default to standard quiz
+  // Emotional and standard quizzes use the same flow
+  // (emotional quiz uses average-based scoring but same components)
   return (
     <DynamicQuizProvider>
       <StandardQuizContent slug={slug} />
