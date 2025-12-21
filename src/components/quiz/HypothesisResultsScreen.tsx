@@ -184,11 +184,11 @@ export function HypothesisResultsScreen() {
                 </div>
               </button>
 
-              {/* Questions Table */}
+              {/* Questions - Responsive layout */}
               {isExpanded && (
                 <div className="divide-y divide-border/50">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-3 bg-muted/30 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {/* Desktop Table Header - hidden on mobile */}
+                  <div className="hidden md:grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-3 bg-muted/30 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <div>{t.columnHypothesis}</div>
                     <div>{t.columnReality}</div>
                     <div>{t.columnInterview}</div>
@@ -204,46 +204,111 @@ export function HypothesisResultsScreen() {
 
                     return (
                       <div key={question.id} className={cn(
-                        "grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-4 items-start",
                         isCorrect ? "bg-green-500/5" : "bg-red-500/5"
                       )}>
-                        {/* Hypothesis */}
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 mb-2">
-                            {isCorrect ? (
-                              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-red-500 shrink-0" />
-                            )}
-                            <span className="text-xs text-muted-foreground font-semibold">#{idx + 1}</span>
+                        {/* Desktop Layout: 3-column grid */}
+                        <div className="hidden md:grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-4 items-start">
+                          {/* Hypothesis */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              {isCorrect ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                              )}
+                              <span className="text-xs text-muted-foreground font-semibold">#{idx + 1}</span>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="p-2.5 bg-pink-500/10 border border-pink-500/20 rounded-xl">
+                                <p className="text-xs text-pink-700 dark:text-pink-400 leading-relaxed">
+                                  <span className="font-semibold">👩</span> {womanHypothesis}
+                                </p>
+                              </div>
+                              <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                                <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+                                  <span className="font-semibold">👨</span> {manHypothesis}
+                                </p>
+                              </div>
+                            </div>
                           </div>
+
+                          {/* Reality for 50+ */}
+                          <div className="text-xs leading-relaxed">
+                            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl h-full">
+                              <p className="text-emerald-700 dark:text-emerald-400">
+                                {truthExplanation}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Interview Question */}
+                          <div className="text-xs leading-relaxed">
+                            <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl h-full">
+                              <p className="text-violet-700 dark:text-violet-400 italic">
+                                {interviewQuestion}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mobile Layout: Stacked vertically */}
+                        <div className="md:hidden p-4 space-y-3">
+                          {/* Question header with status */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {isCorrect ? (
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              )}
+                              <span className="text-sm font-semibold text-foreground">Question #{idx + 1}</span>
+                            </div>
+                            <span className={cn(
+                              "text-xs font-medium px-2 py-0.5 rounded-full",
+                              isCorrect ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
+                            )}>
+                              {isCorrect ? "Correct" : "Incorrect"}
+                            </span>
+                          </div>
+
+                          {/* Hypotheses */}
                           <div className="space-y-2">
                             <div className="p-2.5 bg-pink-500/10 border border-pink-500/20 rounded-xl">
+                              <div className="flex items-center gap-1 mb-1">
+                                <span>👩</span>
+                                <span className="text-[10px] font-semibold text-pink-600 uppercase">Women</span>
+                              </div>
                               <p className="text-xs text-pink-700 dark:text-pink-400 leading-relaxed">
-                                <span className="font-semibold">👩</span> {womanHypothesis}
+                                {womanHypothesis}
                               </p>
                             </div>
                             <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                              <div className="flex items-center gap-1 mb-1">
+                                <span>👨</span>
+                                <span className="text-[10px] font-semibold text-blue-600 uppercase">Men</span>
+                              </div>
                               <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
-                                <span className="font-semibold">👨</span> {manHypothesis}
+                                {manHypothesis}
                               </p>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Reality for 50+ */}
-                        <div className="text-xs leading-relaxed">
-                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl h-full">
-                            <p className="text-emerald-700 dark:text-emerald-400">
+                          {/* Reality */}
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                            <div className="text-[10px] font-semibold text-emerald-600 uppercase mb-1">
+                              {t.columnReality}
+                            </div>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
                               {truthExplanation}
                             </p>
                           </div>
-                        </div>
 
-                        {/* Interview Question */}
-                        <div className="text-xs leading-relaxed">
-                          <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl h-full">
-                            <p className="text-violet-700 dark:text-violet-400 italic">
+                          {/* Interview Question */}
+                          <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
+                            <div className="text-[10px] font-semibold text-violet-600 uppercase mb-1">
+                              {t.columnInterview}
+                            </div>
+                            <p className="text-xs text-violet-700 dark:text-violet-400 italic leading-relaxed">
                               {interviewQuestion}
                             </p>
                           </div>
