@@ -345,7 +345,7 @@ export function RespondentDetailDialog({
                           <span className="text-muted-foreground">To:</span>
                           <p className="font-medium">{lead.email}</p>
                         </div>
-                        <div>
+                        <div className="col-span-2">
                           <span className="text-muted-foreground">Subject:</span>
                           <p className="font-medium">{emailLog.subject}</p>
                         </div>
@@ -358,15 +358,23 @@ export function RespondentDetailDialog({
                       </div>
                     </div>
 
-                    {/* Email Content Preview */}
+                    {/* Email Content Preview - Exact HTML as sent */}
                     <div className="border rounded-lg overflow-hidden">
-                      <div className="bg-muted/50 px-3 py-2 border-b">
-                        <span className="text-xs font-medium">Email Content</span>
+                      <div className="bg-muted/50 px-3 py-2 border-b flex items-center justify-between">
+                        <span className="text-xs font-medium">Email Preview (as sent)</span>
+                        {emailLog.language && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {emailLog.language.toUpperCase()}
+                          </Badge>
+                        )}
                       </div>
                       {emailLog.html_body ? (
-                        <div 
-                          className="p-4 bg-white dark:bg-background prose prose-sm max-w-none dark:prose-invert"
-                          dangerouslySetInnerHTML={{ __html: emailLog.html_body }}
+                        <iframe
+                          srcDoc={emailLog.html_body}
+                          className="w-full border-0 bg-white"
+                          style={{ height: "450px" }}
+                          title="Email Preview"
+                          sandbox="allow-same-origin"
                         />
                       ) : (
                         <div className="p-4 text-center text-muted-foreground">

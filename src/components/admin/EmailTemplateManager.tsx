@@ -747,12 +747,15 @@ export function EmailTemplateManager() {
           {showPreview && (
             <div className="mt-6 border rounded-lg overflow-hidden">
               <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                <span className="text-sm font-medium">Email Preview</span>
+                <span className="text-sm font-medium">Email Preview (as it will appear)</span>
                 <Badge variant="outline">{SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name}</Badge>
               </div>
-              <div 
-                className="bg-[#faf7f5] max-h-[600px] overflow-y-auto"
-                dangerouslySetInnerHTML={{ __html: getEmailPreviewHtml() }}
+              <iframe
+                srcDoc={getEmailPreviewHtml()}
+                className="w-full border-0"
+                style={{ height: "600px", backgroundColor: "#faf7f5" }}
+                title="Email Preview"
+                sandbox="allow-same-origin"
               />
             </div>
           )}
