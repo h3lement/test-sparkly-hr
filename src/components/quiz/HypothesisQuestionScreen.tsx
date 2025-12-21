@@ -210,81 +210,90 @@ export function HypothesisQuestionScreen() {
                   isSubmitted && isCorrect && "bg-green-500/5",
                   isSubmitted && !isCorrect && "bg-red-500/5"
                 )}>
-                  {/* Hypotheses Display */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {/* Women Hypothesis */}
-                    <div className="p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
-                      <div className="flex items-center gap-2 mb-2">
+                  {/* Hypotheses with inline answers */}
+                  <div className="space-y-3">
+                    {/* Women Hypothesis Row */}
+                    <div className="flex items-center gap-3 p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="text-lg">👩</span>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-pink-600 dark:text-pink-400">Women 50+</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-pink-600 dark:text-pink-400 hidden sm:inline">Women 50+</span>
                       </div>
-                      <p className="text-sm leading-relaxed font-medium">
+                      <p className="flex-1 text-sm leading-relaxed font-medium">
                         {womanHypothesis}
                       </p>
+                      {!isSubmitted && (
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            variant={answer === true ? "default" : "outline"}
+                            className={cn(
+                              "h-9 px-4 text-sm font-semibold transition-all",
+                              answer === true && "bg-blue-600 hover:bg-blue-700"
+                            )}
+                            onClick={() => handleAnswer(question.id, true)}
+                          >
+                            True
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={answer === false ? "default" : "outline"}
+                            className={cn(
+                              "h-9 px-4 text-sm font-semibold transition-all",
+                              answer === false && "bg-orange-600 hover:bg-orange-700"
+                            )}
+                            onClick={() => handleAnswer(question.id, false)}
+                          >
+                            False
+                          </Button>
+                        </div>
+                      )}
+                      {isSubmitted && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={cn(
+                            "text-xs font-semibold px-3 py-1.5 rounded",
+                            answer === true 
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
+                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+                          )}>
+                            {answer ? "True" : "False"}
+                          </span>
+                          {isCorrect ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <X className="w-5 h-5 text-red-500" />
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Men Hypothesis */}
-                    <div className="p-3 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-                      <div className="flex items-center gap-2 mb-2">
+                    {/* Men Hypothesis Row */}
+                    <div className="flex items-center gap-3 p-3 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="text-lg">👨</span>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Men 50+</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 hidden sm:inline">Men 50+</span>
                       </div>
-                      <p className="text-sm leading-relaxed font-medium">
+                      <p className="flex-1 text-sm leading-relaxed font-medium">
                         {manHypothesis}
                       </p>
+                      {/* No buttons for men row - same answer applies */}
+                      {isSubmitted && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={cn(
+                            "text-xs font-semibold px-3 py-1.5 rounded",
+                            answer === true 
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
+                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+                          )}>
+                            {answer ? "True" : "False"}
+                          </span>
+                          {isCorrect ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <X className="w-5 h-5 text-red-500" />
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Answer Buttons / Results */}
-                  <div className="flex justify-center">
-                    {isSubmitted ? (
-                      <div className="flex items-center gap-3">
-                        <span className={cn(
-                          "text-sm font-semibold px-4 py-2 rounded-lg",
-                          answer === true 
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
-                            : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
-                        )}>
-                          Your answer: {answer ? "True" : "False"}
-                        </span>
-                        {isCorrect ? (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <Check className="w-5 h-5" />
-                            <span className="text-sm font-medium">Correct!</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-red-500">
-                            <X className="w-5 h-5" />
-                            <span className="text-sm font-medium">Incorrect</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex gap-3">
-                        <Button
-                          size="lg"
-                          variant={answer === true ? "default" : "outline"}
-                          className={cn(
-                            "h-12 px-8 text-base font-semibold transition-all",
-                            answer === true && "bg-blue-600 hover:bg-blue-700 ring-2 ring-blue-600 ring-offset-2"
-                          )}
-                          onClick={() => handleAnswer(question.id, true)}
-                        >
-                          True
-                        </Button>
-                        <Button
-                          size="lg"
-                          variant={answer === false ? "default" : "outline"}
-                          className={cn(
-                            "h-12 px-8 text-base font-semibold transition-all",
-                            answer === false && "bg-orange-600 hover:bg-orange-700 ring-2 ring-orange-600 ring-offset-2"
-                          )}
-                          onClick={() => handleAnswer(question.id, false)}
-                        >
-                          False
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </div>
 
