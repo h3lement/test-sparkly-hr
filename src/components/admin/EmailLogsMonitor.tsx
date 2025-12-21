@@ -57,6 +57,15 @@ interface EmailLog {
   last_attempt_at: string | null;
   original_log_id: string | null;
   html_body: string | null;
+  quiz_lead?: {
+    quiz_id: string | null;
+  } | null;
+}
+
+interface Quiz {
+  id: string;
+  title: Record<string, string>;
+  slug: string;
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
@@ -69,10 +78,12 @@ interface EmailLogsMonitorProps {
 
 export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFilterCleared }: EmailLogsMonitorProps = {}) {
   const [logs, setLogs] = useState<EmailLog[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(initialEmailFilter || "");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterQuiz, setFilterQuiz] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [resendingId, setResendingId] = useState<string | null>(null);
@@ -118,14 +129,22 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("email_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1000);
+      const [logsRes, quizzesRes] = await Promise.all([
+        supabase
+          .from("email_logs")
+          .select("*, quiz_lead:quiz_leads(quiz_id)")
+          .order("created_at", { ascending: false })
+          .limit(1000),
+        supabase
+          .from("quizzes")
+          .select("id, title, slug"),
+      ]);
 
-      if (error) throw error;
-      setLogs((data as EmailLog[]) || []);
+      if (logsRes.error) throw logsRes.error;
+      if (quizzesRes.error) throw quizzesRes.error;
+      
+      setLogs((logsRes.data as EmailLog[]) || []);
+      setQuizzes((quizzesRes.data as Quiz[]) || []);
     } catch (error: any) {
       console.error("Error fetching email logs:", error);
       toast({
@@ -238,6 +257,15 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     });
   };
 
+  const getQuizTitle = (log: EmailLog) => {
+    const quizId = log.quiz_lead?.quiz_id;
+    if (!quizId) return null;
+    const quiz = quizzes.find(q => q.id === quizId);
+    if (!quiz) return null;
+    const title = quiz.title as Record<string, string>;
+    return title?.en || title?.et || quiz.slug;
+  };
+
   // Filter and search
   const filteredLogs = useMemo(() => {
     let result = logs;
@@ -264,8 +292,13 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       result = result.filter((log) => log.status === filterStatus);
     }
 
+    // Quiz filter
+    if (filterQuiz !== "all") {
+      result = result.filter((log) => log.quiz_lead?.quiz_id === filterQuiz);
+    }
+
     return result;
-  }, [logs, searchQuery, filterType, filterStatus]);
+  }, [logs, searchQuery, filterType, filterStatus, filterQuiz]);
 
   // Pagination
   const totalItems = filteredLogs.length;
@@ -277,7 +310,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, filterStatus]);
+  }, [searchQuery, filterType, filterStatus, filterQuiz]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -472,6 +505,22 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filterQuiz} onValueChange={setFilterQuiz}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Quiz" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Quizzes</SelectItem>
+            {quizzes.map((quiz) => {
+              const title = quiz.title as Record<string, string>;
+              return (
+                <SelectItem key={quiz.id} value={quiz.id}>
+                  {title?.en || title?.et || quiz.slug}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
         <Badge variant="secondary" className="text-sm">
           {filteredLogs.length} results
         </Badge>
@@ -501,6 +550,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Quiz</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Recipient</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Subject</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Sent</th>
@@ -513,6 +563,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   const TypeIcon = typeInfo.icon;
                   const totalAttempts = 1 + (log.resend_attempts || 0);
                   const isResend = !!log.original_log_id;
+                  const quizTitle = getQuizTitle(log);
 
                   return (
                     <tr key={log.id} className="border-b border-border last:border-b-0 hover:bg-muted/30">
@@ -546,6 +597,11 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                             <span className="text-xs text-amber-600 font-medium">×{totalAttempts}</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-muted-foreground max-w-[120px] truncate block" title={quizTitle || "—"}>
+                          {quizTitle || "—"}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-foreground">{log.recipient_email}</span>
