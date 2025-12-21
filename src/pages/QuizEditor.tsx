@@ -28,6 +28,7 @@ import { OpenMindednessResultLevels } from "@/components/admin/OpenMindednessRes
 import { QuizRespondents } from "@/components/admin/QuizRespondents";
 import { QuizStats } from "@/components/admin/QuizStats";
 import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
+import { QuizWebStats } from "@/components/admin/QuizWebStats";
 import {
   Select,
   SelectContent,
@@ -1742,6 +1743,9 @@ export default function QuizEditor() {
             <TabsTrigger value="stats" className="text-xs gap-1">
               Stats
             </TabsTrigger>
+            <TabsTrigger value="web" className="text-xs gap-1">
+              Web
+            </TabsTrigger>
             <TabsTrigger value="log" className="text-xs gap-1">
               Log
             </TabsTrigger>
@@ -2237,6 +2241,23 @@ export default function QuizEditor() {
                   includeOpenMindedness={includeOpenMindedness}
                 />
               </>
+            ) : null}
+          </TabsContent>
+
+          {/* Web Stats Tab */}
+          <TabsContent value="web" className="space-y-4">
+            {isCreating ? (
+              <div className="text-center py-8 border rounded-lg border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Save the quiz first to view web statistics.
+                </p>
+              </div>
+            ) : quizId ? (
+              <QuizWebStats 
+                quizId={quizId} 
+                quizSlug={slug}
+                includeOpenMindedness={includeOpenMindedness}
+              />
             ) : null}
           </TabsContent>
 
