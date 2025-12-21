@@ -129,28 +129,6 @@ export function HypothesisQuestionScreen() {
 
   return (
     <main className="animate-fade-in max-w-4xl mx-auto px-4" role="main">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-xl font-bold text-foreground">{getText(currentPage.title)}</h1>
-          <span className="text-sm text-muted-foreground">
-            Page {currentPageIndex + 1} of {sortedPages.length}
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground">{getText(currentPage.description)}</p>
-        
-        {/* Progress bar */}
-        <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${(progress.current / progress.total) * 100}%` }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-1 text-right">
-          {progress.current} of {progress.total} hypotheses completed
-        </p>
-      </div>
-
       {/* Page Progress Indicator & Bulk Actions */}
       {!isSubmitted && (
         <div className="mb-4 p-3 bg-muted/50 rounded-lg">
@@ -194,6 +172,28 @@ export function HypothesisQuestionScreen() {
           </div>
         </div>
       )}
+
+      {/* Page Header */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-xl font-bold text-foreground">{getText(currentPage.title)}</h1>
+          <span className="text-sm text-muted-foreground">
+            Page {currentPageIndex + 1} of {sortedPages.length}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">{getText(currentPage.description)}</p>
+        
+        {/* Progress bar */}
+        <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-500"
+            style={{ width: `${(progress.current / progress.total) * 100}%` }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1 text-right">
+          {progress.current} of {progress.total} hypotheses completed
+        </p>
+      </div>
 
       {/* Questions Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
