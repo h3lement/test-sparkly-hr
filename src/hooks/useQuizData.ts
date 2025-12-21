@@ -44,10 +44,21 @@ export interface ResultLevelData {
   color_class: string;
 }
 
+export interface OpenMindednessResultLevelData {
+  id: string;
+  min_score: number;
+  max_score: number;
+  title: Record<string, string>;
+  description: Record<string, string>;
+  emoji: string;
+  color_class: string;
+}
+
 interface UseQuizDataReturn {
   quiz: QuizData | null;
   questions: QuestionData[];
   resultLevels: ResultLevelData[];
+  openMindednessResultLevels: OpenMindednessResultLevelData[];
   loading: boolean;
   error: string | null;
 }
@@ -56,6 +67,7 @@ export function useQuizData(slug: string): UseQuizDataReturn {
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [resultLevels, setResultLevels] = useState<ResultLevelData[]>([]);
+  const [openMindednessResultLevels, setOpenMindednessResultLevels] = useState<OpenMindednessResultLevelData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,6 +171,25 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           color_class: l.color_class || 'from-emerald-500 to-green-600',
         })));
 
+        // Fetch open-mindedness result levels
+        const { data: omLevelsData, error: omLevelsError } = await supabase
+          .from('open_mindedness_result_levels')
+          .select('*')
+          .eq('quiz_id', quizData.id)
+          .order('min_score', { ascending: true });
+
+        if (omLevelsError) throw omLevelsError;
+
+        setOpenMindednessResultLevels((omLevelsData || []).map(l => ({
+          id: l.id,
+          min_score: l.min_score,
+          max_score: l.max_score,
+          title: l.title as Record<string, string>,
+          description: l.description as Record<string, string>,
+          emoji: l.emoji || '🧠',
+          color_class: l.color_class || 'from-blue-500 to-indigo-600',
+        })));
+
       } catch (err: any) {
         console.error('Error fetching quiz data:', err);
         setError(err.message || 'Failed to load quiz');
@@ -170,5 +201,5 @@ export function useQuizData(slug: string): UseQuizDataReturn {
     fetchQuizData();
   }, [slug]);
 
-  return { quiz, questions, resultLevels, loading, error };
+  return { quiz, questions, resultLevels, openMindednessResultLevels, loading, error };
 }

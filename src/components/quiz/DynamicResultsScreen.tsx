@@ -10,6 +10,7 @@ export function DynamicResultsScreen() {
     resetQuiz, 
     openMindednessScore,
     resultLevels,
+    openMindednessResultLevels,
     quizData
   } = useDynamicQuiz();
   const { language } = useLanguage();
@@ -28,14 +29,35 @@ export function DynamicResultsScreen() {
     : 24;
   const percentage = Math.round((totalScore / maxScore) * 100);
 
+  // Get open-mindedness result from DB levels or fallback to default
   const getOpenMindednessResult = () => {
-    if (openMindednessScore === 4) return { label: 'Highly open-minded - You embrace diverse approaches', color: 'from-emerald-500 to-green-600', emoji: '🌟' };
-    if (openMindednessScore >= 2) return { label: 'Moderately open-minded - You consider alternative methods', color: 'from-amber-500 to-orange-600', emoji: '⚡' };
-    if (openMindednessScore === 1) return { label: 'Somewhat rigid - You prefer traditional approaches', color: 'from-rose-500 to-red-600', emoji: '🔥' };
-    return { label: 'Very rigid - You rely solely on conventional methods', color: 'from-red-600 to-rose-700', emoji: '🚨' };
+    // Try to find from DB levels first
+    const dbLevel = openMindednessResultLevels.find(
+      (level) => openMindednessScore >= level.min_score && openMindednessScore <= level.max_score
+    );
+    
+    if (dbLevel) {
+      return {
+        title: getText(dbLevel.title, 'Open-Mindedness Result'),
+        description: getText(dbLevel.description, ''),
+        color: dbLevel.color_class || 'from-blue-500 to-indigo-600',
+        emoji: dbLevel.emoji || '🧠'
+      };
+    }
+
+    // Fallback to default interpretation
+    if (openMindednessScore === 4) return { title: 'Highly Open-Minded', description: 'You embrace diverse approaches', color: 'from-emerald-500 to-green-600', emoji: '🌟' };
+    if (openMindednessScore >= 2) return { title: 'Moderately Open-Minded', description: 'You consider alternative methods', color: 'from-amber-500 to-orange-600', emoji: '⚡' };
+    if (openMindednessScore === 1) return { title: 'Somewhat Rigid', description: 'You prefer traditional approaches', color: 'from-rose-500 to-red-600', emoji: '🔥' };
+    return { title: 'Very Rigid', description: 'You rely solely on conventional methods', color: 'from-red-600 to-rose-700', emoji: '🚨' };
   };
 
   const openMindednessResult = getOpenMindednessResult();
+  
+  // Calculate OM max score from DB levels or default
+  const omMaxScore = openMindednessResultLevels.length > 0
+    ? Math.max(...openMindednessResultLevels.map(l => l.max_score))
+    : 4;
 
   return (
     <main className="animate-fade-in max-w-2xl mx-auto" role="main" aria-labelledby="results-heading">
@@ -82,29 +104,29 @@ export function DynamicResultsScreen() {
       {/* Leadership Open-Mindedness */}
       <section className="glass rounded-2xl p-8 mb-8">
         <h2 className="font-heading text-xl font-semibold mb-4">
-          <span aria-hidden="true">{openMindednessResult.emoji}</span> Open-Minded Leadership
+          <span aria-hidden="true">{openMindednessResult.emoji}</span> {openMindednessResult.title}
         </h2>
         <div className="flex items-center gap-4 mb-4">
           <div className="text-4xl font-bold gradient-text">
-            {openMindednessScore}/4
+            {openMindednessScore}/{omMaxScore}
           </div>
           <div className="flex-1">
             <div 
               className="h-3 bg-secondary rounded-full overflow-hidden"
               role="progressbar"
-              aria-valuenow={(openMindednessScore / 4) * 100}
+              aria-valuenow={(openMindednessScore / omMaxScore) * 100}
               aria-valuemin={0}
               aria-valuemax={100}
             >
               <div 
                 className={cn('h-full bg-gradient-to-r transition-all duration-1000', openMindednessResult.color)}
-                style={{ width: `${(openMindednessScore / 4) * 100}%` }}
+                style={{ width: `${(openMindednessScore / omMaxScore) * 100}%` }}
               />
             </div>
           </div>
         </div>
         <p className="text-muted-foreground">
-          {openMindednessResult.label}
+          {openMindednessResult.description}
         </p>
       </section>
 

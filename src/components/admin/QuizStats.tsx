@@ -11,33 +11,61 @@ import {
   TrendingUp, 
   BarChart3,
   Brain,
-  Calendar
+  Calendar,
+  Percent,
+  Hash
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
+
+interface Question {
+  id: string;
+  question_text: Json;
+  question_order: number;
+  question_type: string;
+  answers: { id: string; answer_text: Json; answer_order: number; score_value: number }[];
+}
 
 interface QuizStatsProps {
   quizId: string;
   displayLanguage: string;
+  questions?: Question[];
+  includeOpenMindedness?: boolean;
 }
 
 interface StatsData {
   totalResponses: number;
   averageScore: number;
+  medianScore: number;
   averagePercentage: number;
+  medianPercentage: number;
   averageOpenness: number | null;
+  medianOpenness: number | null;
+  maxOpennessScore: number;
   resultDistribution: { name: string; count: number; percentage: number }[];
   dailyTrend: { date: string; count: number }[];
   scoreDistribution: { range: string; count: number }[];
+  opennessDistribution: { score: number; count: number }[];
 }
 
 const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
+// Helper to calculate median
+const calculateMedian = (values: number[]): number => {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+export function QuizStats({ quizId, displayLanguage, questions, includeOpenMindedness }: QuizStatsProps) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StatsData | null>(null);
 
+  // Get max openness score from questions
+  const openMindednessQuestion = questions?.find(q => q.question_type === "open_mindedness");
+  const maxOpennessScore = openMindednessQuestion?.answers?.length || 4;
   const fetchStats = async () => {
     setLoading(true);
     try {
@@ -52,27 +80,49 @@ export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
         setStats({
           totalResponses: 0,
           averageScore: 0,
+          medianScore: 0,
           averagePercentage: 0,
+          medianPercentage: 0,
           averageOpenness: null,
+          medianOpenness: null,
+          maxOpennessScore,
           resultDistribution: [],
           dailyTrend: [],
           scoreDistribution: [],
+          opennessDistribution: [],
         });
         setLoading(false);
         return;
       }
 
-      // Calculate averages
+      // Calculate averages and medians
       const totalResponses = leads.length;
-      const avgScore = leads.reduce((sum, l) => sum + l.score, 0) / totalResponses;
-      const avgTotal = leads.reduce((sum, l) => sum + l.total_questions, 0) / totalResponses;
-      const avgPercentage = avgTotal > 0 ? (avgScore / avgTotal) * 100 : 0;
+      const scores = leads.map(l => l.score);
+      const avgScore = scores.reduce((sum, s) => sum + s, 0) / totalResponses;
+      const medianScore = calculateMedian(scores);
+      
+      const percentages = leads.map(l => l.total_questions > 0 ? (l.score / l.total_questions) * 100 : 0);
+      const avgPercentage = percentages.reduce((sum, p) => sum + p, 0) / totalResponses;
+      const medianPercentage = calculateMedian(percentages);
 
-      // Calculate openness average (only for leads that have it)
+      // Calculate openness stats
       const opennessLeads = leads.filter((l) => l.openness_score !== null);
+      const opennessScores = opennessLeads.map(l => l.openness_score || 0);
       const avgOpenness = opennessLeads.length > 0
-        ? opennessLeads.reduce((sum, l) => sum + (l.openness_score || 0), 0) / opennessLeads.length
+        ? opennessScores.reduce((sum, s) => sum + s, 0) / opennessLeads.length
         : null;
+      const medianOpenness = opennessLeads.length > 0
+        ? calculateMedian(opennessScores)
+        : null;
+
+      // Openness distribution
+      const opennessDistMap: Record<number, number> = {};
+      opennessScores.forEach(score => {
+        opennessDistMap[score] = (opennessDistMap[score] || 0) + 1;
+      });
+      const opennessDistribution = Object.entries(opennessDistMap)
+        .map(([score, count]) => ({ score: parseInt(score), count }))
+        .sort((a, b) => a.score - b.score);
 
       // Result distribution
       const resultCounts: Record<string, number> = {};
@@ -107,7 +157,6 @@ export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
       }));
 
       // Score distribution
-      const maxScore = Math.max(...leads.map((l) => l.total_questions));
       const ranges = [
         { range: "0-25%", min: 0, max: 0.25 },
         { range: "26-50%", min: 0.25, max: 0.5 },
@@ -126,11 +175,16 @@ export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
       setStats({
         totalResponses,
         averageScore: avgScore,
+        medianScore,
         averagePercentage: avgPercentage,
+        medianPercentage,
         averageOpenness: avgOpenness,
+        medianOpenness,
+        maxOpennessScore,
         resultDistribution,
         dailyTrend,
         scoreDistribution,
+        opennessDistribution,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -186,7 +240,7 @@ export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-3 text-center">
             <Users className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
@@ -195,26 +249,38 @@ export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-3 text-center">
-            <Target className="w-4 h-4 text-primary mx-auto mb-1" />
-            <p className="text-xl font-bold">{stats.averagePercentage.toFixed(0)}%</p>
-            <p className="text-xs text-muted-foreground">Avg Score</p>
+          <CardContent className="p-3">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Target className="w-4 h-4 text-primary" />
+              <Percent className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold">{stats.averagePercentage.toFixed(0)}%</p>
+              <p className="text-xs text-muted-foreground">Avg | Med: {stats.medianPercentage.toFixed(0)}%</p>
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-3 text-center">
-            <TrendingUp className="w-4 h-4 text-green-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">{stats.averageScore.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">Avg Points</p>
+          <CardContent className="p-3">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              <Hash className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold">{stats.averageScore.toFixed(1)}</p>
+              <p className="text-xs text-muted-foreground">Avg | Med: {stats.medianScore.toFixed(1)}</p>
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 text-center">
             <Brain className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-            <p className="text-xl font-bold">
+            <p className="text-lg font-bold">
               {stats.averageOpenness !== null ? stats.averageOpenness.toFixed(1) : "—"}
             </p>
-            <p className="text-xs text-muted-foreground">Avg Openness</p>
+            <p className="text-xs text-muted-foreground">
+              {stats.medianOpenness !== null ? `Avg OM | Med: ${stats.medianOpenness.toFixed(1)}` : "Avg Openness"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -307,6 +373,42 @@ export function QuizStats({ quizId, displayLanguage }: QuizStatsProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Open-Mindedness Distribution */}
+          {includeOpenMindedness && stats.opennessDistribution.length > 0 && (
+            <Card className="col-span-2">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <Brain className="w-4 h-4 text-purple-500" />
+                  <span className="text-xs font-medium">Open-Mindedness Distribution</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Max: {stats.maxOpennessScore} pts
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {stats.opennessDistribution.map(({ score, count }) => {
+                    const percentage = stats.totalResponses > 0 
+                      ? (count / stats.totalResponses) * 100 
+                      : 0;
+                    return (
+                      <div key={score} className="flex items-center gap-2">
+                        <span className="text-xs w-6 text-right font-medium">{score}</span>
+                        <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="bg-purple-500 h-full rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-xs w-16 text-muted-foreground">
+                          {count} ({percentage.toFixed(0)}%)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>

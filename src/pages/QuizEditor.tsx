@@ -24,7 +24,6 @@ import { AutoSaveIndicator } from "@/components/admin/AutoSaveIndicator";
 import { ToneOfVoiceEditor } from "@/components/admin/ToneOfVoiceEditor";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
-import { OpenMindednessResults } from "@/components/admin/OpenMindednessResults";
 import { OpenMindednessResultLevels } from "@/components/admin/OpenMindednessResultLevels";
 import { QuizRespondents } from "@/components/admin/QuizRespondents";
 import { QuizStats } from "@/components/admin/QuizStats";
@@ -2074,15 +2073,6 @@ export default function QuizEditor() {
                     model={selectedAiModel}
                   />
                 )}
-                
-                {/* Open-Mindedness Statistics */}
-                {includeOpenMindedness && quizId && (
-                  <OpenMindednessResults
-                    quizId={quizId}
-                    questions={questions}
-                    displayLanguage={displayLanguage}
-                  />
-                )}
               </>
             )}
           </TabsContent>
@@ -2231,7 +2221,7 @@ export default function QuizEditor() {
           </TabsContent>
 
           {/* Stats Tab */}
-          <TabsContent value="stats" className="space-y-3">
+          <TabsContent value="stats" className="space-y-4">
             {isCreating ? (
               <div className="text-center py-8 border rounded-lg border-dashed">
                 <p className="text-sm text-muted-foreground">
@@ -2239,7 +2229,14 @@ export default function QuizEditor() {
                 </p>
               </div>
             ) : quizId ? (
-              <QuizStats quizId={quizId} displayLanguage={displayLanguage} />
+              <>
+                <QuizStats 
+                  quizId={quizId} 
+                  displayLanguage={displayLanguage}
+                  questions={questions}
+                  includeOpenMindedness={includeOpenMindedness}
+                />
+              </>
             ) : null}
           </TabsContent>
 

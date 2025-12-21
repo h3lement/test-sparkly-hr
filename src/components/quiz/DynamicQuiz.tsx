@@ -15,12 +15,13 @@ function DynamicQuizContent() {
   const navigate = useNavigate();
   const slug = quizSlug || 'team-performance';
   
-  const { quiz, questions, resultLevels, loading, error } = useQuizData(slug);
+  const { quiz, questions, resultLevels, openMindednessResultLevels, loading, error } = useQuizData(slug);
   const { 
     currentStep, 
     setQuizData, 
     setQuestions, 
-    setResultLevels 
+    setResultLevels,
+    setOpenMindednessResultLevels
   } = useDynamicQuiz();
 
   // Load quiz data into context
@@ -28,7 +29,8 @@ function DynamicQuizContent() {
     if (quiz) setQuizData(quiz);
     if (questions.length) setQuestions(questions);
     if (resultLevels.length) setResultLevels(resultLevels);
-  }, [quiz, questions, resultLevels, setQuizData, setQuestions, setResultLevels]);
+    if (openMindednessResultLevels.length) setOpenMindednessResultLevels(openMindednessResultLevels);
+  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels]);
 
   if (loading) {
     return (
