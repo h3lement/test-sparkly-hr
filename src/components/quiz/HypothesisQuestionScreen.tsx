@@ -120,10 +120,10 @@ export function HypothesisQuestionScreen() {
   return (
     <main className="animate-fade-in max-w-2xl mx-auto px-4" role="main">
       {/* Progress Bar */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
           <span className="font-medium">{getText(currentPage.title)}</span>
-          <span className="tabular-nums">{progress.current} of {progress.total}</span>
+          <span className="tabular-nums">{progress.current} / {progress.total}</span>
         </div>
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div 
@@ -133,69 +133,52 @@ export function HypothesisQuestionScreen() {
         </div>
       </div>
 
-      {/* Main Question Card */}
+      {/* Main Card */}
       <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
-        {/* Header */}
-        <div className="bg-muted/30 px-6 py-4 border-b border-border">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Belief #{progress.current}
-          </span>
+        
+        {/* The Belief/Hypothesis */}
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-600 mb-2">
+            Common Belief #{progress.current}
+          </p>
+          <blockquote className="text-lg md:text-xl font-medium text-foreground leading-relaxed">
+            "{hypothesisText}"
+          </blockquote>
         </div>
 
-        {/* Hypothesis Statement */}
-        <div className="p-6 md:p-8">
-          <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-foreground mb-6 border-l-4 border-primary pl-4">
-            {hypothesisText}
-          </blockquote>
-
-          {/* Interview Context */}
-          <div className="flex items-start gap-3 bg-muted/40 rounded-lg p-4 mb-8">
-            <Users className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
-                What to ask in interviews
-              </p>
-              <p className="text-sm text-foreground/80">{interviewQuestion}</p>
-            </div>
-          </div>
-
-          {/* Answer Section */}
+        <div className="p-6">
           {!showTruth ? (
-            <div className="space-y-8">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-foreground mb-1">
-                  Is this statement true or false?
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Answer for each demographic group
+            /* ANSWERING PHASE */
+            <div className="space-y-6">
+              {/* Question */}
+              <div className="text-center pb-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Do you think this belief is true?
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Answer separately for each group
                 </p>
               </div>
 
-              <div className="grid gap-6">
-                {/* Woman Answer */}
-                <div className="bg-muted/20 rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="font-semibold text-foreground flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center text-lg">👩</span>
-                      Women 50+
-                    </span>
-                    {answerWoman !== null && (
-                      <span className={cn(
-                        "text-sm font-medium px-3 py-1 rounded-full",
-                        answerWoman ? "bg-blue-500/20 text-blue-600" : "bg-orange-500/20 text-orange-600"
-                      )}>
-                        {answerWoman ? 'TRUE' : 'FALSE'}
-                      </span>
-                    )}
+              {/* Two Column Answers */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Women 50+ */}
+                <div className={cn(
+                  "rounded-xl p-5 border-2 transition-all",
+                  answerWoman !== null 
+                    ? "border-primary bg-primary/5" 
+                    : "border-border bg-muted/30"
+                )}>
+                  <div className="text-center mb-4">
+                    <span className="text-3xl block mb-1">👩</span>
+                    <span className="font-semibold text-foreground">For Women 50+</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={answerWoman === true ? "default" : "outline"}
                       className={cn(
-                        "flex-1 h-12 text-base font-medium transition-all",
-                        answerWoman === true 
-                          ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
-                          : "hover:border-blue-400 hover:text-blue-600"
+                        "h-12 text-base font-medium",
+                        answerWoman === true && "bg-blue-600 hover:bg-blue-700 border-blue-600"
                       )}
                       onClick={() => setAnswerWoman(true)}
                     >
@@ -204,10 +187,8 @@ export function HypothesisQuestionScreen() {
                     <Button
                       variant={answerWoman === false ? "default" : "outline"}
                       className={cn(
-                        "flex-1 h-12 text-base font-medium transition-all",
-                        answerWoman === false 
-                          ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600" 
-                          : "hover:border-orange-400 hover:text-orange-600"
+                        "h-12 text-base font-medium",
+                        answerWoman === false && "bg-orange-600 hover:bg-orange-700 border-orange-600"
                       )}
                       onClick={() => setAnswerWoman(false)}
                     >
@@ -216,30 +197,23 @@ export function HypothesisQuestionScreen() {
                   </div>
                 </div>
 
-                {/* Man Answer */}
-                <div className="bg-muted/20 rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="font-semibold text-foreground flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-lg">👨</span>
-                      Men 50+
-                    </span>
-                    {answerMan !== null && (
-                      <span className={cn(
-                        "text-sm font-medium px-3 py-1 rounded-full",
-                        answerMan ? "bg-blue-500/20 text-blue-600" : "bg-orange-500/20 text-orange-600"
-                      )}>
-                        {answerMan ? 'TRUE' : 'FALSE'}
-                      </span>
-                    )}
+                {/* Men 50+ */}
+                <div className={cn(
+                  "rounded-xl p-5 border-2 transition-all",
+                  answerMan !== null 
+                    ? "border-primary bg-primary/5" 
+                    : "border-border bg-muted/30"
+                )}>
+                  <div className="text-center mb-4">
+                    <span className="text-3xl block mb-1">👨</span>
+                    <span className="font-semibold text-foreground">For Men 50+</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={answerMan === true ? "default" : "outline"}
                       className={cn(
-                        "flex-1 h-12 text-base font-medium transition-all",
-                        answerMan === true 
-                          ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
-                          : "hover:border-blue-400 hover:text-blue-600"
+                        "h-12 text-base font-medium",
+                        answerMan === true && "bg-blue-600 hover:bg-blue-700 border-blue-600"
                       )}
                       onClick={() => setAnswerMan(true)}
                     >
@@ -248,10 +222,8 @@ export function HypothesisQuestionScreen() {
                     <Button
                       variant={answerMan === false ? "default" : "outline"}
                       className={cn(
-                        "flex-1 h-12 text-base font-medium transition-all",
-                        answerMan === false 
-                          ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600" 
-                          : "hover:border-orange-400 hover:text-orange-600"
+                        "h-12 text-base font-medium",
+                        answerMan === false && "bg-orange-600 hover:bg-orange-700 border-orange-600"
                       )}
                       onClick={() => setAnswerMan(false)}
                     >
@@ -267,39 +239,39 @@ export function HypothesisQuestionScreen() {
                 size="lg"
                 className="w-full h-14 text-lg font-semibold"
               >
-                {isSubmitting ? 'Checking...' : 'Check My Answer'}
+                {isSubmitting ? 'Checking...' : 'Submit My Answer'}
               </Button>
             </div>
           ) : (
-            /* Truth Reveal */
-            <div className="space-y-6 animate-fade-in">
-              {/* Result Header */}
+            /* TRUTH REVEAL PHASE */
+            <div className="space-y-5 animate-fade-in">
+              {/* Result Banner */}
               <div className={cn(
-                "text-center py-4 px-6 rounded-xl",
+                "text-center py-4 px-6 rounded-xl border",
                 answerWoman === false && answerMan === false
-                  ? "bg-green-500/10 border border-green-500/30"
-                  : "bg-amber-500/10 border border-amber-500/30"
+                  ? "bg-green-500/10 border-green-500/30"
+                  : "bg-amber-500/10 border-amber-500/30"
               )}>
-                <span className="text-2xl mb-2 block">
-                  {answerWoman === false && answerMan === false ? '🎯' : '💡'}
+                <span className="text-3xl block mb-2">
+                  {answerWoman === false && answerMan === false ? '✅' : '💡'}
                 </span>
-                <p className="font-semibold text-lg">
+                <p className="font-semibold text-lg text-foreground">
                   {answerWoman === false && answerMan === false 
-                    ? "You got it right!" 
-                    : "This is a common misconception"}
+                    ? "Correct! This is indeed a false belief." 
+                    : "This belief is actually FALSE for both groups."}
                 </p>
               </div>
 
-              {/* Your Answers */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Your Answers Summary */}
+              <div className="grid grid-cols-2 gap-3">
                 <div className={cn(
                   "rounded-xl p-4 text-center border",
                   answerWoman === false 
                     ? "bg-green-500/10 border-green-500/30" 
                     : "bg-red-500/10 border-red-500/30"
                 )}>
-                  <span className="text-2xl block mb-2">👩</span>
-                  <p className="text-xs text-muted-foreground mb-1">Women 50+</p>
+                  <span className="text-2xl block mb-1">👩</span>
+                  <p className="text-xs text-muted-foreground mb-1">Your answer</p>
                   <p className="font-semibold flex items-center justify-center gap-1">
                     {answerWoman ? 'True' : 'False'}
                     {answerWoman === false ? (
@@ -315,8 +287,8 @@ export function HypothesisQuestionScreen() {
                     ? "bg-green-500/10 border-green-500/30" 
                     : "bg-red-500/10 border-red-500/30"
                 )}>
-                  <span className="text-2xl block mb-2">👨</span>
-                  <p className="text-xs text-muted-foreground mb-1">Men 50+</p>
+                  <span className="text-2xl block mb-1">👨</span>
+                  <p className="text-xs text-muted-foreground mb-1">Your answer</p>
                   <p className="font-semibold flex items-center justify-center gap-1">
                     {answerMan ? 'True' : 'False'}
                     {answerMan === false ? (
@@ -328,19 +300,22 @@ export function HypothesisQuestionScreen() {
                 </div>
               </div>
 
-              {/* Correct Answer Callout */}
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">Correct answer for both</p>
-                <p className="font-bold text-primary text-lg">FALSE</p>
-              </div>
-
-              {/* Truth Explanation */}
-              <div className="bg-muted/30 rounded-xl p-6">
+              {/* The Truth */}
+              <div className="bg-muted/40 rounded-xl p-5 border border-border">
                 <div className="flex items-center gap-2 mb-3">
                   <Lightbulb className="w-5 h-5 text-amber-500" />
-                  <span className="font-semibold">The Truth</span>
+                  <span className="font-semibold text-foreground">The Reality</span>
                 </div>
                 <p className="text-foreground/90 leading-relaxed">{truthExplanation}</p>
+              </div>
+
+              {/* Interview Question */}
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-5 h-5 text-blue-500" />
+                  <span className="font-semibold text-foreground">Interview Question to Ask</span>
+                </div>
+                <p className="text-foreground/90 italic">"{interviewQuestion}"</p>
               </div>
 
               <Button
@@ -354,7 +329,7 @@ export function HypothesisQuestionScreen() {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </>
                 ) : (
-                  'See My Results'
+                  'Complete Quiz'
                 )}
               </Button>
             </div>
