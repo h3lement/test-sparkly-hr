@@ -1951,11 +1951,11 @@ export default function QuizEditor() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate("/admin")}
+                  onClick={() => navigate("/admin?tab=quizzes")}
                   className="gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back
+                  Quizzes
                 </Button>
                 <h1 className="text-2xl font-bold">
                   {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
