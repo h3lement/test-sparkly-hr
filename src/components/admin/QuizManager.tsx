@@ -38,8 +38,11 @@ interface Quiz {
   created_at: string;
   updated_at: string;
   quiz_type: string;
+  include_open_mindedness?: boolean;
   questions_count?: number;
+  pages_count?: number;
   respondents_count?: number;
+  updated_by_email?: string;
 }
 
 export function QuizManager() {
@@ -69,16 +72,17 @@ export function QuizManager() {
         (quizzesData || []).map(async (quiz) => {
           const isHypothesis = quiz.quiz_type === "hypothesis";
           
-          // For hypothesis quizzes, count hypothesis_questions via hypothesis_pages
-          // For standard quizzes, count quiz_questions directly
           let questionsCount = 0;
+          let pagesCount = 0;
           
           if (isHypothesis) {
-            // Get hypothesis pages for this quiz, then count questions
+            // Get hypothesis pages for this quiz
             const { data: pages } = await supabase
               .from("hypothesis_pages")
               .select("id")
               .eq("quiz_id", quiz.id);
+            
+            pagesCount = pages?.length || 0;
             
             if (pages && pages.length > 0) {
               const pageIds = pages.map(p => p.id);
@@ -89,10 +93,12 @@ export function QuizManager() {
               questionsCount = count || 0;
             }
           } else {
+            // For standard/emotional quizzes, count only non-OM questions
             const { count } = await supabase
               .from("quiz_questions")
               .select("*", { count: "exact", head: true })
-              .eq("quiz_id", quiz.id);
+              .eq("quiz_id", quiz.id)
+              .neq("question_type", "open_mindedness");
             questionsCount = count || 0;
           }
           
@@ -103,10 +109,21 @@ export function QuizManager() {
             .select("*", { count: "exact", head: true })
             .eq("quiz_id", quiz.id);
           
+          // Get last editor from activity logs
+          const { data: lastActivity } = await supabase
+            .from("activity_logs")
+            .select("user_email, created_at")
+            .eq("table_name", "quizzes")
+            .eq("record_id", quiz.id)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          
           return { 
             ...quiz, 
             questions_count: questionsCount,
+            pages_count: pagesCount,
             respondents_count: respondentsCount || 0,
+            updated_by_email: lastActivity?.[0]?.user_email || null,
           };
         })
       );
@@ -306,12 +323,22 @@ export function QuizManager() {
     return "";
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDateTime = (dateString: string, userEmail?: string | null) => {
+    const date = new Date(dateString);
+    const formatted = date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
+    
+    if (userEmail) {
+      // Extract name from email (before @)
+      const userName = userEmail.split("@")[0].replace(/[._]/g, " ");
+      return { date: formatted, user: userName };
+    }
+    return { date: formatted, user: null };
   };
 
   const filteredQuizzes = quizzes.filter(quiz =>
@@ -380,6 +407,7 @@ export function QuizManager() {
                 <TableHead className="font-semibold">Title</TableHead>
                 <TableHead className="font-semibold">Slug</TableHead>
                 <TableHead className="font-semibold text-center">Questions</TableHead>
+                <TableHead className="font-semibold text-center">Pages</TableHead>
                 <TableHead className="font-semibold text-center">Respondents</TableHead>
                 <TableHead className="font-semibold text-center">Status</TableHead>
                 <TableHead className="font-semibold">Updated</TableHead>
@@ -424,6 +452,18 @@ export function QuizManager() {
                     {quiz.questions_count}
                   </TableCell>
                   <TableCell className="text-center">
+                    {quiz.quiz_type === "hypothesis" ? (
+                      <span>
+                        {quiz.pages_count || 0}
+                        {quiz.include_open_mindedness && (
+                          <span className="text-muted-foreground ml-1">+1</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                       {quiz.respondents_count}
                     </Badge>
@@ -444,7 +484,15 @@ export function QuizManager() {
                     </Button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatDate(quiz.updated_at)}
+                    {(() => {
+                      const { date, user } = formatDateTime(quiz.updated_at, quiz.updated_by_email);
+                      return (
+                        <div className="flex flex-col text-sm">
+                          <span>{date}</span>
+                          {user && <span className="text-xs text-muted-foreground/70 capitalize">{user}</span>}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1">
