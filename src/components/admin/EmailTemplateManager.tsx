@@ -287,7 +287,7 @@ export function EmailTemplateManager() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true); // Show history by default
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const { toast } = useToast();
 
@@ -762,65 +762,85 @@ export function EmailTemplateManager() {
         </CardContent>
       </Card>
 
-      {/* Version History */}
+      {/* Version History - Now more prominent */}
       <Card>
         <CardHeader 
-          className="cursor-pointer"
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => setShowHistory(!showHistory)}
         >
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <History className="w-5 h-5" />
-              Version History ({templates.length} versions)
+              Version History
+              <Badge variant="secondary" className="ml-2">
+                {templates.length} {templates.length === 1 ? 'version' : 'versions'}
+              </Badge>
             </CardTitle>
             {showHistory ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
         </CardHeader>
         {showHistory && (
           <CardContent>
-            <div className="space-y-3">
-              {templates.map((template) => (
-                <div 
-                  key={template.id} 
-                  className={`flex items-center justify-between p-4 rounded-lg border ${
-                    template.is_live ? "border-primary bg-primary/5" : "border-border"
-                  }`}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">Version {template.version_number}</span>
-                      {template.is_live && (
-                        <Badge variant="default" className="bg-primary text-xs">LIVE</Badge>
+            {templates.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No versions yet</p>
+                <p className="text-sm mt-1">Save your first template version above to get started.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {templates.map((template, index) => (
+                  <div 
+                    key={template.id} 
+                    className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                      template.is_live 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-semibold">Version {template.version_number}</span>
+                        {template.is_live && (
+                          <Badge variant="default" className="bg-primary text-xs">LIVE</Badge>
+                        )}
+                        {index === 0 && !template.is_live && (
+                          <Badge variant="outline" className="text-xs">Latest</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {template.sender_name} &lt;{template.sender_email}&gt;
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Created {formatDate(template.created_at)} by {template.created_by_email || "Unknown"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadVersionToEdit(template)}
+                        className="gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Load
+                      </Button>
+                      {!template.is_live && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => setLiveVersion(template.id, template.version_number)}
+                          className="gap-1"
+                        >
+                          <Check className="w-3 h-3" />
+                          Set Live
+                        </Button>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {template.sender_name} &lt;{template.sender_email}&gt;
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatDate(template.created_at)} by {template.created_by_email || "Unknown"}
-                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => loadVersionToEdit(template)}
-                    >
-                      Load
-                    </Button>
-                    {!template.is_live && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setLiveVersion(template.id, template.version_number)}
-                      >
-                        Set Live
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
