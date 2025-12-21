@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
-import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award } from 'lucide-react';
+import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 export function HypothesisResultsScreen() {
   const { 
@@ -16,6 +17,7 @@ export function HypothesisResultsScreen() {
     feedbackActionPlan,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
+  const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({});
 
   const { correct, total } = calculateScore();
   const percentage = Math.round((correct / total) * 100);
@@ -27,10 +29,10 @@ export function HypothesisResultsScreen() {
 
   // Get result level based on score
   const getResultLevel = () => {
-    if (percentage >= 80) return { title: 'Bias Champion', emoji: '🏆', color: 'text-green-500', description: 'Excellent awareness! You see through most common biases about 50+ employees.' };
-    if (percentage >= 60) return { title: 'Aware Recruiter', emoji: '👁️', color: 'text-blue-500', description: 'Good progress! You recognize many biases but have room to grow.' };
-    if (percentage >= 40) return { title: 'Learning Mindset', emoji: '📚', color: 'text-yellow-500', description: 'You\'re on your way. This test revealed some blind spots to work on.' };
-    return { title: 'Fresh Start', emoji: '🌱', color: 'text-orange-500', description: 'Great that you took this test! Now you know where to focus your learning.' };
+    if (percentage >= 80) return { title: 'Bias Champion', emoji: '🏆', color: 'text-green-500', bgColor: 'bg-green-500/10', description: 'Excellent awareness! You see through most common biases about 50+ employees.' };
+    if (percentage >= 60) return { title: 'Aware Recruiter', emoji: '👁️', color: 'text-blue-500', bgColor: 'bg-blue-500/10', description: 'Good progress! You recognize many biases but have room to grow.' };
+    if (percentage >= 40) return { title: 'Learning Mindset', emoji: '📚', color: 'text-amber-500', bgColor: 'bg-amber-500/10', description: 'You\'re on your way. This test revealed some blind spots to work on.' };
+    return { title: 'Fresh Start', emoji: '🌱', color: 'text-orange-500', bgColor: 'bg-orange-500/10', description: 'Great that you took this test! Now you know where to focus your learning.' };
   };
 
   const resultLevel = getResultLevel();
@@ -44,168 +46,173 @@ export function HypothesisResultsScreen() {
     return { correct: correctCount, total: pageQuestions.length };
   };
 
+  const togglePage = (pageId: string) => {
+    setExpandedPages(prev => ({ ...prev, [pageId]: !prev[pageId] }));
+  };
+
   return (
-    <main className="animate-fade-in max-w-2xl mx-auto px-4" role="main" aria-labelledby="results-heading">
+    <main className="animate-fade-in max-w-3xl mx-auto px-4" role="main" aria-labelledby="results-heading">
       {/* Hero Score Card */}
-      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden mb-6">
-        <div className={cn(
-          "py-8 px-6 text-center",
-          percentage >= 80 ? "bg-green-500/10" :
-          percentage >= 60 ? "bg-blue-500/10" :
-          percentage >= 40 ? "bg-amber-500/10" : "bg-orange-500/10"
-        )}>
-          <span className="text-6xl block mb-4">{resultLevel.emoji}</span>
-          <h1 id="results-heading" className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-2">
-            {resultLevel.title}
-          </h1>
-          <div className="inline-flex items-center gap-2 bg-background/80 backdrop-blur rounded-full px-4 py-2 mb-4">
-            <span className="text-2xl font-bold text-foreground">{percentage}%</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">{correct} of {total} correct</span>
-          </div>
-          <p className="text-foreground/80 max-w-md mx-auto">
-            {resultLevel.description}
-          </p>
+      <div className={cn("rounded-2xl p-6 mb-6 text-center border", resultLevel.bgColor)}>
+        <span className="text-5xl block mb-3">{resultLevel.emoji}</span>
+        <h1 id="results-heading" className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-2">
+          {resultLevel.title}
+        </h1>
+        <div className="inline-flex items-center gap-2 bg-background/80 backdrop-blur rounded-full px-4 py-2 mb-3">
+          <span className="text-2xl font-bold text-foreground">{percentage}%</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground">{correct} of {total} correct</span>
         </div>
-
-        {/* Score Progress Bar */}
-        <div className="px-6 py-5 border-t border-border">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Bias Awareness Score</span>
-            <span className={cn(
-              "text-sm font-semibold",
-              percentage >= 80 ? "text-green-600" :
-              percentage >= 60 ? "text-blue-600" :
-              percentage >= 40 ? "text-amber-600" : "text-orange-600"
-            )}>{percentage}%</span>
-          </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <div 
-              className={cn(
-                "h-full transition-all duration-1000 ease-out rounded-full",
-                percentage >= 80 ? "bg-green-500" :
-                percentage >= 60 ? "bg-blue-500" :
-                percentage >= 40 ? "bg-amber-500" : "bg-orange-500"
-              )}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-        </div>
+        <p className="text-foreground/80 max-w-md mx-auto text-sm">
+          {resultLevel.description}
+        </p>
       </div>
 
-      {/* Category Breakdown Card */}
-      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-border bg-muted/30">
-          <h2 className="font-semibold text-foreground flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            Results by Category
-          </h2>
-        </div>
-        <div className="p-6 space-y-4">
-          {sortedPages.map((page) => {
-            const stats = getPageStats(page.id);
-            const pagePercentage = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
-            return (
-              <div key={page.id} className="bg-muted/20 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-foreground text-sm">{getText(page.title)}</span>
-                  <span className={cn(
-                    "text-sm font-semibold px-2 py-0.5 rounded-full",
-                    pagePercentage >= 80 ? "bg-green-500/20 text-green-600" :
-                    pagePercentage >= 50 ? "bg-amber-500/20 text-amber-600" : "bg-red-500/20 text-red-600"
-                  )}>
-                    {stats.correct}/{stats.total}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      pagePercentage >= 80 ? "bg-green-500" :
-                      pagePercentage >= 50 ? "bg-amber-500" : "bg-red-500"
-                    )}
-                    style={{ width: `${pagePercentage}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* User Reflections Card */}
+      {/* User Reflections */}
       {(feedbackNewLearnings || feedbackActionPlan) && (
-        <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden mb-6">
-          <div className="px-6 py-4 border-b border-border bg-muted/30">
-            <h2 className="font-semibold text-foreground flex items-center gap-2">
-              <Award className="w-5 h-5 text-primary" />
-              Your Reflections
-            </h2>
-          </div>
-          <div className="p-6 space-y-4">
+        <div className="bg-card border border-border rounded-xl p-5 mb-6 shadow">
+          <h2 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+            <Award className="w-5 h-5 text-primary" />
+            Your Reflections
+          </h2>
+          <div className="space-y-3 text-sm">
             {feedbackNewLearnings && (
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-                  Key Insight
-                </p>
-                <p className="text-foreground italic leading-relaxed">"{feedbackNewLearnings}"</p>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Key Insight</p>
+                <p className="text-foreground italic">"{feedbackNewLearnings}"</p>
               </div>
             )}
             {feedbackActionPlan && (
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-                  Action Plan
-                </p>
-                <p className="text-foreground italic leading-relaxed">"{feedbackActionPlan}"</p>
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Action Plan</p>
+                <p className="text-foreground italic">"{feedbackActionPlan}"</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Key Takeaways Card */}
-      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-border bg-muted/30">
-          <h2 className="font-semibold text-foreground">Key Takeaways</h2>
-        </div>
-        <div className="p-6">
-          <ul className="space-y-3">
-            <li className="flex items-start gap-3 bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-              <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-              <span className="text-foreground/90">Age-based assumptions often don't reflect individual capabilities</span>
-            </li>
-            <li className="flex items-start gap-3 bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-              <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-              <span className="text-foreground/90">Experience brings valuable self-awareness and wisdom</span>
-            </li>
-            <li className="flex items-start gap-3 bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-              <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-              <span className="text-foreground/90">Interview questions should focus on evidence, not assumptions</span>
-            </li>
-          </ul>
-        </div>
+      {/* Truth Reveals by Category */}
+      <div className="space-y-4 mb-6">
+        <h2 className="font-semibold text-foreground flex items-center gap-2">
+          <Lightbulb className="w-5 h-5 text-amber-500" />
+          The Truth Behind Each Belief
+        </h2>
+
+        {sortedPages.map((page) => {
+          const stats = getPageStats(page.id);
+          const pagePercentage = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+          const isExpanded = expandedPages[page.id] ?? true; // Default expanded
+          const pageQuestions = questions.filter(q => q.page_id === page.id);
+
+          return (
+            <div key={page.id} className="bg-card border border-border rounded-xl overflow-hidden shadow">
+              {/* Page Header */}
+              <button
+                onClick={() => togglePage(page.id)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <span className="font-medium text-sm text-foreground">{getText(page.title)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "text-xs font-semibold px-2 py-0.5 rounded-full",
+                    pagePercentage >= 80 ? "bg-green-500/20 text-green-600" :
+                    pagePercentage >= 50 ? "bg-amber-500/20 text-amber-600" : "bg-red-500/20 text-red-600"
+                  )}>
+                    {stats.correct}/{stats.total}
+                  </span>
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
+              </button>
+
+              {/* Questions in this page */}
+              {isExpanded && (
+                <div className="divide-y divide-border">
+                  {pageQuestions.map((question, idx) => {
+                    const response = responses.find(r => r.questionId === question.id);
+                    const isCorrect = response?.isCorrect ?? false;
+
+                    return (
+                      <div key={question.id} className="p-4">
+                        {/* Question header */}
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className={cn(
+                            "shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
+                            isCorrect ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
+                          )}>
+                            {isCorrect ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground leading-relaxed">
+                              {getText(question.hypothesis_text)}
+                            </p>
+                            {/* User's answers */}
+                            <div className="flex gap-4 mt-2 text-xs">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded",
+                                response?.answerWoman === false ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
+                              )}>
+                                👩 You: {response?.answerWoman ? 'True' : 'False'}
+                              </span>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded",
+                                response?.answerMan === false ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
+                              )}>
+                                👨 You: {response?.answerMan ? 'True' : 'False'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                                ✓ Correct: FALSE for both
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Truth explanation */}
+                        <div className="ml-9 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                          <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">
+                            The Reality
+                          </p>
+                          <p className="text-sm text-foreground/90 leading-relaxed">
+                            {getText(question.truth_explanation)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <Button
           onClick={resetQuiz}
           variant="outline"
           size="lg"
-          className="flex-1 h-14"
+          className="flex-1 h-12"
         >
-          <RotateCcw className="w-5 h-5 mr-2" />
+          <RotateCcw className="w-4 h-4 mr-2" />
           Take Again
         </Button>
         {quizData?.cta_url && (
           <Button
             asChild
             size="lg"
-            className="flex-1 h-14"
+            className="flex-1 h-12"
           >
             <a href={quizData.cta_url} target="_blank" rel="noopener noreferrer">
               {getText(quizData.cta_text, 'Learn More')}
-              <ExternalLink className="w-5 h-5 ml-2" />
+              <ExternalLink className="w-4 h-4 ml-2" />
             </a>
           </Button>
         )}

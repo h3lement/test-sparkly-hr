@@ -3,24 +3,25 @@ import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, XCircle, ArrowRight, Lightbulb, Users } from 'lucide-react';
+import { ArrowRight, Lock, Unlock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type AnswerValue = boolean | null;
+
+interface RowAnswer {
+  woman: AnswerValue;
+  man: AnswerValue;
+  revealed: boolean;
+}
 
 export function HypothesisQuestionScreen() {
   const {
     quizData,
     pages,
     getCurrentPage,
-    getCurrentQuestion,
     getQuestionsForPage,
     currentPageIndex,
-    currentQuestionIndex,
     setCurrentPageIndex,
-    setCurrentQuestionIndex,
-    showTruth,
-    setShowTruth,
     addResponse,
     responses,
     sessionId,
@@ -29,59 +30,92 @@ export function HypothesisQuestionScreen() {
   } = useHypothesisQuiz();
   const { language } = useLanguage();
 
-  const [answerWoman, setAnswerWoman] = useState<AnswerValue>(null);
-  const [answerMan, setAnswerMan] = useState<AnswerValue>(null);
+  const [rowAnswers, setRowAnswers] = useState<Record<string, RowAnswer>>({});
+  const [activeRowIndex, setActiveRowIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentPage = getCurrentPage();
-  const currentQuestion = getCurrentQuestion();
   const progress = getProgress();
+  const sortedPages = [...pages].sort((a, b) => a.page_number - b.page_number);
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
     return textObj[language] || textObj['en'] || fallback;
   };
 
-  // Reset answers when moving to a new question
-  useEffect(() => {
-    const existingResponse = responses.find(r => r.questionId === currentQuestion?.id);
-    if (existingResponse) {
-      setAnswerWoman(existingResponse.answerWoman);
-      setAnswerMan(existingResponse.answerMan);
-      setShowTruth(true);
-    } else {
-      setAnswerWoman(null);
-      setAnswerMan(null);
-      setShowTruth(false);
-    }
-  }, [currentQuestion?.id, responses, setShowTruth]);
+  const pageQuestions = currentPage ? getQuestionsForPage(currentPage.id) : [];
 
-  const handleSubmitAnswer = async () => {
-    if (!currentQuestion || answerWoman === null || answerMan === null) return;
+  // Initialize row answers when page changes
+  useEffect(() => {
+    if (!currentPage) return;
+    
+    const initialAnswers: Record<string, RowAnswer> = {};
+    let firstUnanswered = 0;
+    
+    pageQuestions.forEach((q, idx) => {
+      const existingResponse = responses.find(r => r.questionId === q.id);
+      if (existingResponse) {
+        initialAnswers[q.id] = {
+          woman: existingResponse.answerWoman,
+          man: existingResponse.answerMan,
+          revealed: true,
+        };
+        firstUnanswered = idx + 1;
+      } else {
+        initialAnswers[q.id] = { woman: null, man: null, revealed: false };
+      }
+    });
+    
+    setRowAnswers(initialAnswers);
+    setActiveRowIndex(Math.min(firstUnanswered, pageQuestions.length - 1));
+  }, [currentPage?.id, pageQuestions.length]);
+
+  const handleAnswer = (questionId: string, type: 'woman' | 'man', value: boolean) => {
+    setRowAnswers(prev => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        [type]: value,
+      },
+    }));
+  };
+
+  const handleRevealInterview = async (questionId: string, questionIndex: number) => {
+    const answer = rowAnswers[questionId];
+    if (answer.woman === null || answer.man === null) return;
 
     setIsSubmitting(true);
-
-    // The correct answer is always FALSE for both (these are biases/wrong beliefs)
-    const isCorrect = answerWoman === false && answerMan === false;
 
     try {
       // Save response to database
       await supabase.from('hypothesis_responses').insert({
         quiz_id: quizData?.id,
         session_id: sessionId,
-        question_id: currentQuestion.id,
-        answer_woman: answerWoman,
-        answer_man: answerMan,
+        question_id: questionId,
+        answer_woman: answer.woman,
+        answer_man: answer.man,
       });
 
+      // The correct answer is always FALSE for both
+      const isCorrect = answer.woman === false && answer.man === false;
+
       addResponse({
-        questionId: currentQuestion.id,
-        answerWoman,
-        answerMan,
+        questionId,
+        answerWoman: answer.woman,
+        answerMan: answer.man,
         isCorrect,
       });
 
-      setShowTruth(true);
+      // Reveal interview question and move to next row
+      setRowAnswers(prev => ({
+        ...prev,
+        [questionId]: { ...prev[questionId], revealed: true },
+      }));
+
+      // Move to next row
+      if (questionIndex < pageQuestions.length - 1) {
+        setActiveRowIndex(questionIndex + 1);
+      }
     } catch (error) {
       console.error('Error saving response:', error);
     } finally {
@@ -89,253 +123,226 @@ export function HypothesisQuestionScreen() {
     }
   };
 
-  const handleNext = () => {
-    if (!currentPage) return;
-
-    const pageQuestions = getQuestionsForPage(currentPage.id);
-    const sortedPages = [...pages].sort((a, b) => a.page_number - b.page_number);
-
-    if (currentQuestionIndex < pageQuestions.length - 1) {
-      // Next question in same page
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else if (currentPageIndex < sortedPages.length - 1) {
-      // Move to next page
+  const handleNextPage = () => {
+    if (currentPageIndex < sortedPages.length - 1) {
       setCurrentPageIndex(currentPageIndex + 1);
-      setCurrentQuestionIndex(0);
+      setActiveRowIndex(0);
     } else {
-      // Quiz complete, go to email capture
+      // All pages complete, go to email capture
       setCurrentStep('email');
     }
-    setShowTruth(false);
   };
 
-  if (!currentPage || !currentQuestion) {
-    return <div className="text-center p-8">Loading question...</div>;
+  const allRowsAnswered = pageQuestions.every(q => rowAnswers[q.id]?.revealed);
+
+  if (!currentPage) {
+    return <div className="text-center p-8">Loading...</div>;
   }
 
-  const hypothesisText = getText(currentQuestion.hypothesis_text);
-  const interviewQuestion = getText(currentQuestion.interview_question);
-  const truthExplanation = getText(currentQuestion.truth_explanation);
-
   return (
-    <main className="animate-fade-in max-w-2xl mx-auto px-4" role="main">
-      {/* Progress Bar */}
+    <main className="animate-fade-in max-w-3xl mx-auto px-4" role="main">
+      {/* Page Header */}
       <div className="mb-6">
-        <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span className="font-medium">{getText(currentPage.title)}</span>
-          <span className="tabular-nums">{progress.current} / {progress.total}</span>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-xl font-bold text-foreground">{getText(currentPage.title)}</h1>
+          <span className="text-sm text-muted-foreground">
+            Page {currentPageIndex + 1} of {sortedPages.length}
+          </span>
         </div>
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <p className="text-sm text-muted-foreground">{getText(currentPage.description)}</p>
+        
+        {/* Progress bar */}
+        <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
           <div 
-            className="h-full bg-primary transition-all duration-500 ease-out"
+            className="h-full bg-primary transition-all duration-500"
             style={{ width: `${(progress.current / progress.total) * 100}%` }}
           />
         </div>
+        <p className="text-xs text-muted-foreground mt-1 text-right">
+          {progress.current} of {progress.total} hypotheses answered
+        </p>
       </div>
 
-      {/* Main Card */}
-      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
-        
-        {/* The Belief/Hypothesis */}
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-600 mb-2">
-            Common Belief #{progress.current}
-          </p>
-          <blockquote className="text-lg md:text-xl font-medium text-foreground leading-relaxed">
-            "{hypothesisText}"
-          </blockquote>
+      {/* Questions Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/50 border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="col-span-6">Hypothesis</div>
+          <div className="col-span-3 text-center">👩 Women 50+</div>
+          <div className="col-span-3 text-center">👨 Men 50+</div>
         </div>
 
-        <div className="p-6">
-          {!showTruth ? (
-            /* ANSWERING PHASE */
-            <div className="space-y-6">
-              {/* Question */}
-              <div className="text-center pb-4 border-b border-border">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Do you think this belief is true?
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Answer separately for each group
-                </p>
-              </div>
+        {/* Question Rows */}
+        <div className="divide-y divide-border">
+          {pageQuestions.map((question, idx) => {
+            const answer = rowAnswers[question.id] || { woman: null, man: null, revealed: false };
+            const isActive = idx === activeRowIndex;
+            const isLocked = idx > activeRowIndex && !answer.revealed;
+            const isComplete = answer.revealed;
+            const canReveal = answer.woman !== null && answer.man !== null && !answer.revealed;
 
-              {/* Two Column Answers */}
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Women 50+ */}
-                <div className={cn(
-                  "rounded-xl p-5 border-2 transition-all",
-                  answerWoman !== null 
-                    ? "border-primary bg-primary/5" 
-                    : "border-border bg-muted/30"
-                )}>
-                  <div className="text-center mb-4">
-                    <span className="text-3xl block mb-1">👩</span>
-                    <span className="font-semibold text-foreground">For Women 50+</span>
+            return (
+              <div key={question.id} className="relative">
+                {/* Main Row */}
+                <div 
+                  className={cn(
+                    "grid grid-cols-12 gap-2 px-4 py-4 transition-all",
+                    isActive && "bg-primary/5",
+                    isLocked && "opacity-50",
+                    isComplete && "bg-green-500/5"
+                  )}
+                >
+                  {/* Hypothesis Text */}
+                  <div className="col-span-6 flex items-start gap-2">
+                    <span className="text-xs font-medium text-muted-foreground mt-1 w-5 shrink-0">
+                      {idx + 1}.
+                    </span>
+                    <p className={cn(
+                      "text-sm leading-relaxed",
+                      isLocked && "text-muted-foreground"
+                    )}>
+                      {getText(question.hypothesis_text)}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={answerWoman === true ? "default" : "outline"}
-                      className={cn(
-                        "h-12 text-base font-medium",
-                        answerWoman === true && "bg-blue-600 hover:bg-blue-700 border-blue-600"
-                      )}
-                      onClick={() => setAnswerWoman(true)}
-                    >
-                      True
-                    </Button>
-                    <Button
-                      variant={answerWoman === false ? "default" : "outline"}
-                      className={cn(
-                        "h-12 text-base font-medium",
-                        answerWoman === false && "bg-orange-600 hover:bg-orange-700 border-orange-600"
-                      )}
-                      onClick={() => setAnswerWoman(false)}
-                    >
-                      False
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Men 50+ */}
-                <div className={cn(
-                  "rounded-xl p-5 border-2 transition-all",
-                  answerMan !== null 
-                    ? "border-primary bg-primary/5" 
-                    : "border-border bg-muted/30"
-                )}>
-                  <div className="text-center mb-4">
-                    <span className="text-3xl block mb-1">👨</span>
-                    <span className="font-semibold text-foreground">For Men 50+</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={answerMan === true ? "default" : "outline"}
-                      className={cn(
-                        "h-12 text-base font-medium",
-                        answerMan === true && "bg-blue-600 hover:bg-blue-700 border-blue-600"
-                      )}
-                      onClick={() => setAnswerMan(true)}
-                    >
-                      True
-                    </Button>
-                    <Button
-                      variant={answerMan === false ? "default" : "outline"}
-                      className={cn(
-                        "h-12 text-base font-medium",
-                        answerMan === false && "bg-orange-600 hover:bg-orange-700 border-orange-600"
-                      )}
-                      onClick={() => setAnswerMan(false)}
-                    >
-                      False
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleSubmitAnswer}
-                disabled={answerWoman === null || answerMan === null || isSubmitting}
-                size="lg"
-                className="w-full h-14 text-lg font-semibold"
-              >
-                {isSubmitting ? 'Checking...' : 'Submit My Answer'}
-              </Button>
-            </div>
-          ) : (
-            /* TRUTH REVEAL PHASE */
-            <div className="space-y-5 animate-fade-in">
-              {/* Result Banner */}
-              <div className={cn(
-                "text-center py-4 px-6 rounded-xl border",
-                answerWoman === false && answerMan === false
-                  ? "bg-green-500/10 border-green-500/30"
-                  : "bg-amber-500/10 border-amber-500/30"
-              )}>
-                <span className="text-3xl block mb-2">
-                  {answerWoman === false && answerMan === false ? '✅' : '💡'}
-                </span>
-                <p className="font-semibold text-lg text-foreground">
-                  {answerWoman === false && answerMan === false 
-                    ? "Correct! This is indeed a false belief." 
-                    : "This belief is actually FALSE for both groups."}
-                </p>
-              </div>
-
-              {/* Your Answers Summary */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className={cn(
-                  "rounded-xl p-4 text-center border",
-                  answerWoman === false 
-                    ? "bg-green-500/10 border-green-500/30" 
-                    : "bg-red-500/10 border-red-500/30"
-                )}>
-                  <span className="text-2xl block mb-1">👩</span>
-                  <p className="text-xs text-muted-foreground mb-1">Your answer</p>
-                  <p className="font-semibold flex items-center justify-center gap-1">
-                    {answerWoman ? 'True' : 'False'}
-                    {answerWoman === false ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
+                  {/* Women Answer */}
+                  <div className="col-span-3 flex justify-center gap-1">
+                    {isLocked ? (
+                      <Lock className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-500" />
+                      <>
+                        <Button
+                          size="sm"
+                          variant={answer.woman === true ? "default" : "outline"}
+                          className={cn(
+                            "h-8 px-3 text-xs",
+                            answer.woman === true && "bg-blue-600 hover:bg-blue-700",
+                            isComplete && "pointer-events-none"
+                          )}
+                          onClick={() => !isComplete && handleAnswer(question.id, 'woman', true)}
+                          disabled={isComplete}
+                        >
+                          T
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={answer.woman === false ? "default" : "outline"}
+                          className={cn(
+                            "h-8 px-3 text-xs",
+                            answer.woman === false && "bg-orange-600 hover:bg-orange-700",
+                            isComplete && "pointer-events-none"
+                          )}
+                          onClick={() => !isComplete && handleAnswer(question.id, 'woman', false)}
+                          disabled={isComplete}
+                        >
+                          F
+                        </Button>
+                      </>
                     )}
-                  </p>
-                </div>
-                <div className={cn(
-                  "rounded-xl p-4 text-center border",
-                  answerMan === false 
-                    ? "bg-green-500/10 border-green-500/30" 
-                    : "bg-red-500/10 border-red-500/30"
-                )}>
-                  <span className="text-2xl block mb-1">👨</span>
-                  <p className="text-xs text-muted-foreground mb-1">Your answer</p>
-                  <p className="font-semibold flex items-center justify-center gap-1">
-                    {answerMan ? 'True' : 'False'}
-                    {answerMan === false ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
+                  </div>
+
+                  {/* Men Answer */}
+                  <div className="col-span-3 flex justify-center gap-1">
+                    {isLocked ? (
+                      <Lock className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-500" />
+                      <>
+                        <Button
+                          size="sm"
+                          variant={answer.man === true ? "default" : "outline"}
+                          className={cn(
+                            "h-8 px-3 text-xs",
+                            answer.man === true && "bg-blue-600 hover:bg-blue-700",
+                            isComplete && "pointer-events-none"
+                          )}
+                          onClick={() => !isComplete && handleAnswer(question.id, 'man', true)}
+                          disabled={isComplete}
+                        >
+                          T
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={answer.man === false ? "default" : "outline"}
+                          className={cn(
+                            "h-8 px-3 text-xs",
+                            answer.man === false && "bg-orange-600 hover:bg-orange-700",
+                            isComplete && "pointer-events-none"
+                          )}
+                          onClick={() => !isComplete && handleAnswer(question.id, 'man', false)}
+                          disabled={isComplete}
+                        >
+                          F
+                        </Button>
+                      </>
                     )}
-                  </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* The Truth */}
-              <div className="bg-muted/40 rounded-xl p-5 border border-border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-5 h-5 text-amber-500" />
-                  <span className="font-semibold text-foreground">The Reality</span>
-                </div>
-                <p className="text-foreground/90 leading-relaxed">{truthExplanation}</p>
-              </div>
-
-              {/* Interview Question */}
-              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold text-foreground">Interview Question to Ask</span>
-                </div>
-                <p className="text-foreground/90 italic">"{interviewQuestion}"</p>
-              </div>
-
-              <Button
-                onClick={handleNext}
-                size="lg"
-                className="w-full h-14 text-lg font-semibold"
-              >
-                {progress.current < progress.total ? (
-                  <>
-                    Next Question
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </>
-                ) : (
-                  'Complete Quiz'
+                {/* Reveal Button (when both answered but not yet revealed) */}
+                {canReveal && (
+                  <div className="px-4 pb-4">
+                    <Button
+                      onClick={() => handleRevealInterview(question.id, idx)}
+                      disabled={isSubmitting}
+                      size="sm"
+                      className="w-full"
+                    >
+                      {isSubmitting ? 'Saving...' : (
+                        <>
+                          <Unlock className="w-4 h-4 mr-2" />
+                          Reveal Interview Question
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
-              </Button>
-            </div>
-          )}
+
+                {/* Interview Question Reward (revealed after answering) */}
+                {isComplete && (
+                  <div className="px-4 pb-4 animate-fade-in">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
+                            Interview Question
+                          </p>
+                          <p className="text-sm text-foreground/90 italic">
+                            "{getText(question.interview_question)}"
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* Next Page Button */}
+      {allRowsAnswered && (
+        <div className="mt-6 animate-fade-in">
+          <Button
+            onClick={handleNextPage}
+            size="lg"
+            className="w-full h-14 text-lg font-semibold"
+          >
+            {currentPageIndex < sortedPages.length - 1 ? (
+              <>
+                Next Page
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </>
+            ) : (
+              <>
+                Complete & See Results
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </main>
   );
 }
