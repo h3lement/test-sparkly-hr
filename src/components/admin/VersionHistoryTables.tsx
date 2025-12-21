@@ -28,6 +28,9 @@ interface EmailTemplate {
   created_at: string;
   created_by_email: string | null;
   quiz_id: string | null;
+  estimated_cost_eur: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
 }
 
 interface WebResultVersion {
@@ -193,10 +196,11 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
         ) : (
           <div className="border rounded-lg overflow-hidden bg-background">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_1fr_140px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+            <div className="grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
               <span>Version</span>
               <span>Sender</span>
               <span>Created</span>
+              <span className="text-right">Cost</span>
               <span className="text-right">Actions</span>
             </div>
 
@@ -206,7 +210,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                 return (
                   <div
                     key={template.id}
-                    className={`grid grid-cols-[70px_1fr_140px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
+                    className={`grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
                       template.is_live ? "bg-primary/5" : "bg-background"
                     }`}
                   >
@@ -228,6 +232,11 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                     {/* Created */}
                     <div className="text-sm text-muted-foreground truncate" title={template.created_by_email || "Unknown"}>
                       {formatDate(template.created_at)}
+                    </div>
+
+                    {/* Cost */}
+                    <div className="text-sm text-muted-foreground text-right">
+                      {template.estimated_cost_eur ? `€${template.estimated_cost_eur.toFixed(4)}` : "-"}
                     </div>
 
                     {/* Actions */}

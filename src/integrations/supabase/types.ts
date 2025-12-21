@@ -133,8 +133,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_by_email: string | null
+          estimated_cost_eur: number | null
           id: string
+          input_tokens: number | null
           is_live: boolean
+          output_tokens: number | null
           quiz_id: string | null
           sender_email: string
           sender_name: string
@@ -146,8 +149,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
+          estimated_cost_eur?: number | null
           id?: string
+          input_tokens?: number | null
           is_live?: boolean
+          output_tokens?: number | null
           quiz_id?: string | null
           sender_email: string
           sender_name: string
@@ -159,8 +165,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
+          estimated_cost_eur?: number | null
           id?: string
+          input_tokens?: number | null
           is_live?: boolean
+          output_tokens?: number | null
           quiz_id?: string | null
           sender_email?: string
           sender_name?: string
