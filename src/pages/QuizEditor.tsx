@@ -1620,6 +1620,17 @@ export default function QuizEditor() {
                 <h1 className="text-2xl font-bold">
                   {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
                 </h1>
+                {!isCreating && quizType === "hypothesis" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 border border-purple-500/20">
+                    <FileQuestion className="w-3.5 h-3.5" />
+                    Hypothesis Quiz
+                  </span>
+                )}
+                {!isCreating && quizType === "standard" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    Standard Quiz
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {/* Auto-save indicator for existing quizzes */}
