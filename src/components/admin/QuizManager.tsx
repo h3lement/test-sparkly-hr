@@ -699,7 +699,7 @@ export function QuizManager() {
 
       {/* Search bar */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
@@ -709,7 +709,7 @@ export function QuizManager() {
             className="pl-10 bg-secondary/50 border-border"
           />
         </div>
-        <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
+        <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium whitespace-nowrap">
           {sortedAndFilteredQuizzes.length} quiz{sortedAndFilteredQuizzes.length !== 1 ? "zes" : ""}
         </span>
       </div>
@@ -729,7 +729,7 @@ export function QuizManager() {
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="rounded-lg border border-border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50">
