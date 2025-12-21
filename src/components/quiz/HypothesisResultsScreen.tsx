@@ -212,30 +212,41 @@ export function HypothesisResultsScreen() {
         })}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button
-          onClick={resetQuiz}
-          variant="outline"
-          size="lg"
-          className="flex-1 h-12"
-        >
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Take Again
-        </Button>
-        {quizData?.cta_url && (
+      {/* CTA Section */}
+      <section className="bg-card border border-border rounded-xl p-6 mb-6 text-center shadow">
+        <h2 className="font-heading text-xl font-semibold mb-3">
+          Ready for Precise Employee Assessment?
+        </h2>
+        <p className="text-muted-foreground text-sm mb-5 max-w-lg mx-auto">
+          This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button
             asChild
             size="lg"
-            className="flex-1 h-12"
+            className="h-12"
           >
-            <a href={quizData.cta_url} target="_blank" rel="noopener noreferrer">
-              {getText(quizData.cta_text, 'Learn More')}
+            <a 
+              href={quizData?.cta_url || 'https://sparkly.hr'} 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              {getText(quizData?.cta_text, 'Continue to Sparkly.hr')}
               <ExternalLink className="w-4 h-4 ml-2" />
             </a>
           </Button>
-        )}
-      </div>
+          <Button
+            onClick={resetQuiz}
+            variant="outline"
+            size="lg"
+            className="h-12"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Take Again
+          </Button>
+        </div>
+      </section>
     </main>
   );
 }
