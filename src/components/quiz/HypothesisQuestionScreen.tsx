@@ -9,8 +9,7 @@ import { cn } from '@/lib/utils';
 type AnswerValue = boolean | null;
 
 interface RowAnswer {
-  woman: AnswerValue;
-  man: AnswerValue;
+  answer: AnswerValue;
   revealed: boolean;
 }
 
@@ -55,14 +54,14 @@ export function HypothesisQuestionScreen() {
     pageQuestions.forEach((q, idx) => {
       const existingResponse = responses.find(r => r.questionId === q.id);
       if (existingResponse) {
+        // Use the woman answer as the single answer (they should be the same)
         initialAnswers[q.id] = {
-          woman: existingResponse.answerWoman,
-          man: existingResponse.answerMan,
+          answer: existingResponse.answerWoman,
           revealed: true,
         };
         firstUnanswered = idx + 1;
       } else {
-        initialAnswers[q.id] = { woman: null, man: null, revealed: false };
+        initialAnswers[q.id] = { answer: null, revealed: false };
       }
     });
     
@@ -70,62 +69,54 @@ export function HypothesisQuestionScreen() {
     setActiveRowIndex(Math.min(firstUnanswered, pageQuestions.length - 1));
   }, [currentPage?.id, pageQuestions.length]);
 
-  // Auto-reveal when both answers are given
-  const handleAnswer = async (questionId: string, type: 'woman' | 'man', value: boolean) => {
-    const currentAnswer = rowAnswers[questionId] || { woman: null, man: null, revealed: false };
-    const newAnswer = {
-      ...currentAnswer,
-      [type]: value,
-    };
+  // Handle single answer selection
+  const handleAnswer = async (questionId: string, value: boolean) => {
+    const currentAnswer = rowAnswers[questionId] || { answer: null, revealed: false };
+    
+    if (currentAnswer.revealed) return; // Already answered
 
     setRowAnswers(prev => ({
       ...prev,
-      [questionId]: newAnswer,
+      [questionId]: { answer: value, revealed: false },
     }));
 
-    // Check if both answers are now given
-    const otherType = type === 'woman' ? 'man' : 'woman';
-    const otherValue = currentAnswer[otherType];
-    
-    if (otherValue !== null && !currentAnswer.revealed) {
-      // Both answers given, auto-reveal
-      await revealInterview(questionId, newAnswer.woman!, newAnswer.man!);
-    }
+    // Immediately reveal after selecting an answer
+    await revealInterview(questionId, value);
   };
 
-  const revealInterview = async (questionId: string, womanAnswer: boolean, manAnswer: boolean) => {
+  const revealInterview = async (questionId: string, answer: boolean) => {
     const questionIndex = pageQuestions.findIndex(q => q.id === questionId);
     if (questionIndex === -1) return;
 
     setIsSubmitting(true);
 
     try {
-      // Save response to database
+      // Save response to database - same answer for both woman and man
       await supabase.from('hypothesis_responses').insert({
         quiz_id: quizData?.id,
         session_id: sessionId,
         question_id: questionId,
-        answer_woman: womanAnswer,
-        answer_man: manAnswer,
+        answer_woman: answer,
+        answer_man: answer,
       });
 
-      // Check correctness against the question's defined correct answers
+      // Check correctness - answer is correct if it matches BOTH correct answers
       const question = pageQuestions.find(q => q.id === questionId);
-      const womanIsCorrect = womanAnswer === (question?.correct_answer_woman ?? false);
-      const manIsCorrect = manAnswer === (question?.correct_answer_man ?? false);
+      const womanIsCorrect = answer === (question?.correct_answer_woman ?? false);
+      const manIsCorrect = answer === (question?.correct_answer_man ?? false);
       const isCorrect = womanIsCorrect && manIsCorrect;
 
       addResponse({
         questionId,
-        answerWoman: womanAnswer,
-        answerMan: manAnswer,
+        answerWoman: answer,
+        answerMan: answer,
         isCorrect,
       });
 
       // Reveal interview question and move to next row
       setRowAnswers(prev => ({
         ...prev,
-        [questionId]: { ...prev[questionId], revealed: true },
+        [questionId]: { answer, revealed: true },
       }));
 
       // Move to next row
@@ -153,9 +144,6 @@ export function HypothesisQuestionScreen() {
   };
 
   const allRowsAnswered = pageQuestions.every(q => rowAnswers[q.id]?.revealed);
-
-  // Check if answer is correct (correct answer is always FALSE)
-  const isAnswerCorrect = (answer: AnswerValue) => answer === false;
 
   if (!currentPage) {
     return <div className="text-center p-8">Loading...</div>;
@@ -185,31 +173,26 @@ export function HypothesisQuestionScreen() {
         </p>
       </div>
 
-      {/* Questions Table */}
+      {/* Questions List */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
-        {/* Table Header */}
-        <div className="grid grid-cols-2 gap-4 px-4 py-3 bg-muted/50 border-b border-border">
-          <div className="text-center">
-            <span className="text-lg">👩</span>
-            <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Women 50+</span>
-          </div>
-          <div className="text-center">
-            <span className="text-lg">👨</span>
-            <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Men 50+</span>
-          </div>
+        {/* Header */}
+        <div className="px-4 py-3 bg-muted/50 border-b border-border">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">
+            Rate each hypothesis: Is it True or False?
+          </p>
         </div>
 
         {/* Question Rows */}
         <div className="divide-y divide-border">
           {pageQuestions.map((question, idx) => {
-            const answer = rowAnswers[question.id] || { woman: null, man: null, revealed: false };
+            const rowAnswer = rowAnswers[question.id] || { answer: null, revealed: false };
             const isActive = idx === activeRowIndex;
-            const isLocked = idx > activeRowIndex && !answer.revealed;
-            const isComplete = answer.revealed;
+            const isLocked = idx > activeRowIndex && !rowAnswer.revealed;
+            const isComplete = rowAnswer.revealed;
 
-            // Check correctness against the question's defined correct answers
-            const womanCorrect = answer.woman === question.correct_answer_woman;
-            const manCorrect = answer.man === question.correct_answer_man;
+            // Check correctness - correct if answer matches both
+            const isCorrect = rowAnswer.answer === question.correct_answer_woman && 
+                             rowAnswer.answer === question.correct_answer_man;
 
             // Get gender-specific hypothesis text, fallback to generic
             const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
@@ -234,137 +217,106 @@ export function HypothesisQuestionScreen() {
                   {overallNumber}. Hypothesis
                 </div>
 
-                {/* Main Row - Two Columns */}
+                {/* Main Row */}
                 <div
                   className={cn(
-                    "grid grid-cols-2 gap-4 px-4 transition-all",
+                    "px-4 pb-4 transition-all",
                     isActive && "bg-primary/5",
                     isLocked && "opacity-50",
                     isComplete && "bg-green-500/5"
                   )}
                 >
-                  {/* Women Column */}
-                  <div className="space-y-3 p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
-                    {/* Hypothesis Text */}
-                    <p className={cn(
-                      "text-sm leading-relaxed font-medium",
-                      isLocked && "text-muted-foreground"
-                    )}>
-                      {womanHypothesis}
-                    </p>
+                  {/* Hypotheses Display - Both in same box */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {/* Women Hypothesis */}
+                    <div className="p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">👩</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-pink-600 dark:text-pink-400">Women 50+</span>
+                      </div>
+                      <p className={cn(
+                        "text-sm leading-relaxed font-medium",
+                        isLocked && "text-muted-foreground"
+                      )}>
+                        {womanHypothesis}
+                      </p>
+                    </div>
 
-                    {/* Answer Buttons / Result */}
-                    <div className="flex justify-center">
-                      {isLocked ? (
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                      ) : isComplete ? (
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "text-sm font-medium px-3 py-1.5 rounded",
-                            answer.woman === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
-                          )}>
-                            {answer.woman ? "True" : "False"}
-                          </span>
-                          {womanCorrect ? (
-                            <Check className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <X className="w-5 h-5 text-red-500" />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={answer.woman === true ? "default" : "outline"}
-                            className={cn(
-                              "h-9 px-4",
-                              answer.woman === true && "bg-blue-600 hover:bg-blue-700"
-                            )}
-                            onClick={() => handleAnswer(question.id, 'woman', true)}
-                            disabled={isSubmitting}
-                          >
-                            True
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={answer.woman === false ? "default" : "outline"}
-                            className={cn(
-                              "h-9 px-4",
-                              answer.woman === false && "bg-orange-600 hover:bg-orange-700"
-                            )}
-                            onClick={() => handleAnswer(question.id, 'woman', false)}
-                            disabled={isSubmitting}
-                          >
-                            False
-                          </Button>
-                        </div>
-                      )}
+                    {/* Men Hypothesis */}
+                    <div className="p-3 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">👨</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Men 50+</span>
+                      </div>
+                      <p className={cn(
+                        "text-sm leading-relaxed font-medium",
+                        isLocked && "text-muted-foreground"
+                      )}>
+                        {manHypothesis}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Men Column */}
-                  <div className="space-y-3 p-3 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-                    {/* Hypothesis Text */}
-                    <p className={cn(
-                      "text-sm leading-relaxed font-medium",
-                      isLocked && "text-muted-foreground"
-                    )}>
-                      {manHypothesis}
-                    </p>
-
-                    {/* Answer Buttons / Result */}
-                    <div className="flex justify-center">
-                      {isLocked ? (
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                      ) : isComplete ? (
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "text-sm font-medium px-3 py-1.5 rounded",
-                            answer.man === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
-                          )}>
-                            {answer.man ? "True" : "False"}
-                          </span>
-                          {manCorrect ? (
-                            <Check className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <X className="w-5 h-5 text-red-500" />
+                  {/* Single Answer Buttons - Centered */}
+                  <div className="flex justify-center">
+                    {isLocked ? (
+                      <Lock className="w-5 h-5 text-muted-foreground" />
+                    ) : isComplete ? (
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "text-sm font-semibold px-4 py-2 rounded-lg",
+                          rowAnswer.answer === true 
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
+                            : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+                        )}>
+                          Your answer: {rowAnswer.answer ? "True" : "False"}
+                        </span>
+                        {isCorrect ? (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <Check className="w-5 h-5" />
+                            <span className="text-sm font-medium">Correct!</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-red-500">
+                            <X className="w-5 h-5" />
+                            <span className="text-sm font-medium">Incorrect</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <Button
+                          size="lg"
+                          variant={rowAnswer.answer === true ? "default" : "outline"}
+                          className={cn(
+                            "h-12 px-8 text-base font-semibold",
+                            rowAnswer.answer === true && "bg-blue-600 hover:bg-blue-700"
                           )}
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={answer.man === true ? "default" : "outline"}
-                            className={cn(
-                              "h-9 px-4",
-                              answer.man === true && "bg-blue-600 hover:bg-blue-700"
-                            )}
-                            onClick={() => handleAnswer(question.id, 'man', true)}
-                            disabled={isSubmitting}
-                          >
-                            True
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={answer.man === false ? "default" : "outline"}
-                            className={cn(
-                              "h-9 px-4",
-                              answer.man === false && "bg-orange-600 hover:bg-orange-700"
-                            )}
-                            onClick={() => handleAnswer(question.id, 'man', false)}
-                            disabled={isSubmitting}
-                          >
-                            False
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                          onClick={() => handleAnswer(question.id, true)}
+                          disabled={isSubmitting}
+                        >
+                          True
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant={rowAnswer.answer === false ? "default" : "outline"}
+                          className={cn(
+                            "h-12 px-8 text-base font-semibold",
+                            rowAnswer.answer === false && "bg-orange-600 hover:bg-orange-700"
+                          )}
+                          onClick={() => handleAnswer(question.id, false)}
+                          disabled={isSubmitting}
+                        >
+                          False
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Shared Interview Question - Full Width Below Both Columns */}
+                {/* Shared Interview Question - Full Width Below */}
                 {isComplete && interviewQuestion && (
-                  <div className="px-4 py-3 animate-fade-in">
+                  <div className="px-4 pb-4 animate-fade-in">
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                       <div className="flex items-start gap-2">
                         <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
