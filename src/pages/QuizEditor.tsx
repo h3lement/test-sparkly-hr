@@ -969,6 +969,11 @@ export default function QuizEditor() {
           recordId: savedQuizId,
           description: `Quiz "${title.en || slug}" created`,
         });
+
+        // Auto-create default OM question and result levels when includeOpenMindedness is enabled
+        if (includeOpenMindedness) {
+          await createDefaultOMQuestionAndLevels(savedQuizId);
+        }
       } else {
         const { error } = await supabase
           .from("quizzes")
