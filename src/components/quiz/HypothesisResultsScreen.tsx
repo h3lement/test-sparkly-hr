@@ -102,7 +102,7 @@ export function HypothesisResultsScreen() {
         {sortedPages.map((page) => {
           const stats = getPageStats(page.id);
           const pagePercentage = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
-          const isExpanded = expandedPages[page.id] ?? true; // Default expanded
+          const isExpanded = expandedPages[page.id] ?? true;
           const pageQuestions = questions.filter(q => q.page_id === page.id);
 
           return (
@@ -132,56 +132,75 @@ export function HypothesisResultsScreen() {
                 </div>
               </button>
 
-              {/* Questions in this page */}
+              {/* Questions Table */}
               {isExpanded && (
                 <div className="divide-y divide-border">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <div>Hypothesis</div>
+                    <div>The Actual Fear</div>
+                    <div>Reality for 50+</div>
+                    <div>Interview Question</div>
+                  </div>
+
                   {pageQuestions.map((question, idx) => {
                     const response = responses.find(r => r.questionId === question.id);
                     const isCorrect = response?.isCorrect ?? false;
+                    const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
+                    const manHypothesis = getText(question.hypothesis_text_man) || getText(question.hypothesis_text);
+                    const truthExplanation = getText(question.truth_explanation);
+                    const interviewQuestion = getText(question.interview_question);
 
                     return (
-                      <div key={question.id} className="p-4">
-                        {/* Question header */}
-                        <div className="flex items-start gap-3 mb-3">
-                          <span className={cn(
-                            "shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
-                            isCorrect ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
-                          )}>
-                            {isCorrect ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                          </span>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground leading-relaxed">
-                              {getText(question.hypothesis_text)}
+                      <div key={question.id} className={cn(
+                        "grid grid-cols-[1fr_1fr_1fr_1fr] gap-2 px-3 py-3 items-start",
+                        isCorrect ? "bg-green-500/5" : "bg-red-500/5"
+                      )}>
+                        {/* Hypothesis */}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 mb-1">
+                            {isCorrect ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                            )}
+                            <span className="text-xs text-muted-foreground font-medium">#{idx + 1}</span>
+                          </div>
+                          <div className="text-xs space-y-1">
+                            <p className="text-pink-700 dark:text-pink-400">
+                              <span className="font-medium">👩</span> {womanHypothesis}
                             </p>
-                            {/* User's answers */}
-                            <div className="flex gap-4 mt-2 text-xs">
-                              <span className={cn(
-                                "px-2 py-0.5 rounded",
-                                response?.answerWoman === false ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
-                              )}>
-                                👩 You: {response?.answerWoman ? 'True' : 'False'}
-                              </span>
-                              <span className={cn(
-                                "px-2 py-0.5 rounded",
-                                response?.answerMan === false ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
-                              )}>
-                                👨 You: {response?.answerMan ? 'True' : 'False'}
-                              </span>
-                              <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                                ✓ Correct: FALSE for both
-                              </span>
-                            </div>
+                            <p className="text-blue-700 dark:text-blue-400">
+                              <span className="font-medium">👨</span> {manHypothesis}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Truth explanation */}
-                        <div className="ml-9 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-                          <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">
-                            The Reality
-                          </p>
-                          <p className="text-sm text-foreground/90 leading-relaxed">
-                            {getText(question.truth_explanation)}
-                          </p>
+                        {/* The Actual Fear */}
+                        <div className="text-xs text-foreground/80 leading-relaxed">
+                          <div className="p-2 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                            <p className="text-orange-700 dark:text-orange-400">
+                              Younger generations often fear that 50+ employees may be resistant to change, less adaptable, or harder to manage.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Reality for 50+ */}
+                        <div className="text-xs leading-relaxed">
+                          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                            <p className="text-emerald-700 dark:text-emerald-400">
+                              {truthExplanation || "50+ professionals bring stability, mentorship, and proven problem-solving skills developed over decades."}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Interview Question */}
+                        <div className="text-xs leading-relaxed">
+                          <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <p className="text-blue-700 dark:text-blue-400 italic">
+                              {interviewQuestion || "What recent change in your field excited you most, and how did you adapt to it?"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );
