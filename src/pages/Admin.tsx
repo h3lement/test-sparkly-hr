@@ -11,7 +11,7 @@ import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
 import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
+import { EmailVersionHistory, WebVersionHistory } from "@/components/admin/VersionHistoryTables";
 import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
 import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
 import { QuizManager } from "@/components/admin/QuizManager";
@@ -605,14 +605,15 @@ const Admin = () => {
             <WebStatsMonitor />
           )}
 
-          {/* Email Settings Tab */}
-          {activeTab === "email" && (
-            <div className="max-w-6xl">
+          {/* Versions Tab */}
+          {activeTab === "versions" && (
+            <div className="max-w-6xl space-y-6">
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-foreground">Email Settings</h1>
-                <p className="text-muted-foreground mt-1">Configure email sender and subjects</p>
+                <h1 className="text-3xl font-bold text-foreground">Versions</h1>
+                <p className="text-muted-foreground mt-1">Web and email template versions across all quizzes</p>
               </div>
-              <EmailTemplateManager />
+              <WebVersionHistory />
+              <EmailVersionHistory />
             </div>
           )}
 
