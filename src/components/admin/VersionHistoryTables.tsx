@@ -56,6 +56,7 @@ interface EmailVersionHistoryProps {
   quizId: string;
   onLoadTemplate?: (template: EmailTemplate) => void;
   onSetLive?: (templateId: string, versionNumber: number) => void;
+  onPreview?: (template: EmailTemplate) => void;
 }
 
 interface WebVersionHistoryProps {
@@ -63,7 +64,7 @@ interface WebVersionHistoryProps {
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
 }
 
-export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: EmailVersionHistoryProps) {
+export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPreview }: EmailVersionHistoryProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -240,7 +241,18 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
+                      {onPreview && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onPreview(template)}
+                          className="h-8 w-8 p-0"
+                          title="Preview & send test"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
                       {onLoadTemplate && (
                         <Button
                           variant="ghost"
@@ -249,7 +261,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                           className="h-8 w-8 p-0"
                           title="Load to editor"
                         >
-                          <Eye className="w-4 h-4" />
+                          <FileText className="w-4 h-4" />
                         </Button>
                       )}
                       {!template.is_live && (
