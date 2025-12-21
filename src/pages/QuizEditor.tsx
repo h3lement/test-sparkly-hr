@@ -1841,61 +1841,79 @@ export default function QuizEditor() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex w-full mb-4">
-            <TabsTrigger value="general" className="text-xs gap-1 flex-1">
+          <TabsList className="admin-tabs-list">
+            <TabsTrigger value="general" className="admin-tab-trigger gap-1.5">
               General
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "general").length;
                 return count > 0 ? (
-                  <span className="text-[10px] px-1 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                  <span className="admin-tab-trigger-badge admin-tab-trigger-badge-error">
                     {count}
                   </span>
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="questions" className="text-xs gap-1 flex-1">
-              Questions ({questions.filter(q => q.question_type !== "open_mindedness").length})
+            <TabsTrigger value="questions" className="admin-tab-trigger gap-1.5">
+              Questions
+              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                {questions.filter(q => q.question_type !== "open_mindedness").length}
+              </span>
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "questions").length;
                 return count > 0 ? (
-                  <span className="text-[10px] px-1 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                  <span className="admin-tab-trigger-badge admin-tab-trigger-badge-error">
                     {count}
                   </span>
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="results" className="text-xs gap-1 flex-1">
-              Results ({resultLevels.length})
+            <TabsTrigger value="results" className="admin-tab-trigger gap-1.5">
+              Results
+              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                {resultLevels.length}
+              </span>
               {errorCheckResult && !errorCheckResult.isValid && (() => {
                 const count = errorCheckResult.errors.filter(e => e.tab === "results").length;
                 return count > 0 ? (
-                  <span className="text-[10px] px-1 py-0.5 rounded-full bg-destructive text-destructive-foreground font-medium">
+                  <span className="admin-tab-trigger-badge admin-tab-trigger-badge-error">
                     {count}
                   </span>
                 ) : null;
               })()}
             </TabsTrigger>
-            <TabsTrigger value="mindedness" className="text-xs gap-1 flex-1">
+            <TabsTrigger value="mindedness" className="admin-tab-trigger gap-1.5">
               Open-Mind
-              <span className={`text-[10px] px-1 py-0.5 rounded ${includeOpenMindedness ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'}`}>
+              <span className={`admin-tab-trigger-badge ${includeOpenMindedness ? 'admin-tab-trigger-badge-success' : 'admin-tab-trigger-badge-muted'}`}>
                 {includeOpenMindedness ? 'ON' : 'OFF'}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="respondents" className="text-xs flex-1">
-              Respondents ({respondentsCount})
+            <TabsTrigger value="respondents" className="admin-tab-trigger gap-1.5">
+              Respondents
+              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                {respondentsCount}
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="text-xs flex-1">
-              Stats ({respondentsCount})
+            <TabsTrigger value="stats" className="admin-tab-trigger gap-1.5">
+              Stats
+              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                {respondentsCount}
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="web" className="text-xs flex-1">
-              Web ({webConversionRate}%)
+            <TabsTrigger value="web" className="admin-tab-trigger gap-1.5">
+              Web
+              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                {webConversionRate}%
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="log" className="text-xs flex-1">
-              Log ({activityLogsCount})
+            <TabsTrigger value="log" className="admin-tab-trigger gap-1.5">
+              Log
+              <span className="admin-tab-trigger-badge admin-tab-trigger-badge-count">
+                {activityLogsCount}
+              </span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general" className="space-y-3">
+          <TabsContent value="general" className="admin-tab-content space-y-3">
             {/* Error display for this tab */}
             {errorCheckResult && !errorCheckResult.isValid && (
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="general" />
@@ -2090,7 +2108,7 @@ export default function QuizEditor() {
             </div>
           </TabsContent>
 
-          <TabsContent value="questions" className="space-y-3">
+          <TabsContent value="questions" className="admin-tab-content space-y-3">
             {/* Error display for this tab */}
             {errorCheckResult && !errorCheckResult.isValid && (
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="questions" />
@@ -2163,7 +2181,7 @@ export default function QuizEditor() {
 
           </TabsContent>
 
-          <TabsContent value="mindedness" className="space-y-3">
+          <TabsContent value="mindedness" className="admin-tab-content space-y-3">
             {/* Error display for this tab */}
             {errorCheckResult && !errorCheckResult.isValid && (
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="mindedness" />
@@ -2225,7 +2243,7 @@ export default function QuizEditor() {
             )}
           </TabsContent>
 
-          <TabsContent value="results" className="space-y-3">
+          <TabsContent value="results" className="admin-tab-content space-y-3">
             {/* Error display for this tab */}
             {errorCheckResult && !errorCheckResult.isValid && (
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="results" />
@@ -2356,7 +2374,7 @@ export default function QuizEditor() {
           </TabsContent>
 
           {/* Respondents Tab */}
-          <TabsContent value="respondents" className="space-y-3">
+          <TabsContent value="respondents" className="admin-tab-content space-y-3">
             {isCreating ? (
               <div className="text-center py-8 border rounded-lg border-dashed">
                 <p className="text-sm text-muted-foreground">
@@ -2369,7 +2387,7 @@ export default function QuizEditor() {
           </TabsContent>
 
           {/* Stats Tab */}
-          <TabsContent value="stats" className="space-y-4">
+          <TabsContent value="stats" className="admin-tab-content space-y-4">
             {isCreating ? (
               <div className="text-center py-8 border rounded-lg border-dashed">
                 <p className="text-sm text-muted-foreground">
@@ -2389,7 +2407,7 @@ export default function QuizEditor() {
           </TabsContent>
 
           {/* Web Stats Tab */}
-          <TabsContent value="web" className="space-y-4">
+          <TabsContent value="web" className="admin-tab-content space-y-4">
             {isCreating ? (
               <div className="text-center py-8 border rounded-lg border-dashed">
                 <p className="text-sm text-muted-foreground">
@@ -2406,7 +2424,7 @@ export default function QuizEditor() {
           </TabsContent>
 
           {/* Activity Log Tab */}
-          <TabsContent value="log" className="space-y-3">
+          <TabsContent value="log" className="admin-tab-content space-y-3">
             {isCreating ? (
               <div className="text-center py-8 border rounded-lg border-dashed">
                 <p className="text-sm text-muted-foreground">
