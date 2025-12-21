@@ -157,10 +157,10 @@ export function DynamicResultsScreen() {
       {/* CTA */}
       <section className="glass rounded-2xl p-8 text-center">
         <h2 className="font-heading text-xl font-semibold mb-3">
-          Ready for Precise Employee Assessment?
+          {getText(quizData?.cta_title, 'Ready for Precise Employee Assessment?')}
         </h2>
         <p className="text-muted-foreground mb-4">
-          This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.
+          {getText(quizData?.cta_description, 'This quiz provides a general overview. For accurate, in-depth analysis of your team\'s performance and actionable improvement strategies, continue with professional testing.')}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

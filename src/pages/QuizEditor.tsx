@@ -65,6 +65,8 @@ interface Quiz {
   headline_highlight?: Json;
   badge_text?: Json;
   cta_text?: Json;
+  cta_title?: Json;
+  cta_description?: Json;
   cta_url?: string;
   duration_text?: Json;
   discover_items?: Json;
@@ -175,6 +177,8 @@ export default function QuizEditor() {
   const [headlineHighlight, setHeadlineHighlight] = useState<Record<string, string>>({});
   const [badgeText, setBadgeText] = useState<Record<string, string>>({});
   const [ctaText, setCtaText] = useState<Record<string, string>>({});
+  const [ctaTitle, setCtaTitle] = useState<Record<string, string>>({});
+  const [ctaDescription, setCtaDescription] = useState<Record<string, string>>({});
   const [ctaUrl, setCtaUrl] = useState("");
   const [durationText, setDurationText] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
@@ -252,7 +256,7 @@ export default function QuizEditor() {
     const currentQuizFields = {
       slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
       title, description, headline, headline_highlight: headlineHighlight,
-      badge_text: badgeText, cta_text: ctaText, cta_url: ctaUrl,
+      badge_text: badgeText, cta_text: ctaText, cta_title: ctaTitle, cta_description: ctaDescription, cta_url: ctaUrl,
       duration_text: durationText, is_active: isActive, primary_language: primaryLanguage,
       quiz_type: quizType, shuffle_questions: shuffleQuestions, enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness, tone_of_voice: toneOfVoice,
@@ -278,7 +282,7 @@ export default function QuizEditor() {
     count += resultLevelsDirtyTracking.getDeletedIds(resultLevels).length;
     
     return count;
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   const pendingChangesCount = getPendingChangesCount();
 
@@ -295,6 +299,8 @@ export default function QuizEditor() {
       headline_highlight: headlineHighlight,
       badge_text: badgeText,
       cta_text: ctaText,
+      cta_title: ctaTitle,
+      cta_description: ctaDescription,
       cta_url: ctaUrl,
       duration_text: durationText,
       is_active: isActive,
@@ -532,7 +538,7 @@ export default function QuizEditor() {
     // Mark everything as clean after successful save
     questionsDirtyTracking.markClean(questions);
     resultLevelsDirtyTracking.markClean(resultLevels);
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, primaryLanguage, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -546,7 +552,7 @@ export default function QuizEditor() {
     if (!initialLoadComplete.current) return;
     if (isCreating) return;
     triggerSave();
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTitle, ctaDescription, ctaUrl, durationText, isActive, shuffleQuestions, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -716,6 +722,8 @@ export default function QuizEditor() {
       setHeadlineHighlight(jsonToRecord(quiz.headline_highlight));
       setBadgeText(jsonToRecord(quiz.badge_text));
       setCtaText(jsonToRecord(quiz.cta_text));
+      setCtaTitle(jsonToRecord((quiz as any).cta_title));
+      setCtaDescription(jsonToRecord((quiz as any).cta_description));
       setCtaUrl(quiz.cta_url || "https://sparkly.hr");
       setDurationText(jsonToRecord(quiz.duration_text));
       setIsActive(quiz.is_active);
@@ -845,6 +853,8 @@ export default function QuizEditor() {
         headline_highlight: jsonToRecord(quiz.headline_highlight),
         badge_text: jsonToRecord(quiz.badge_text),
         cta_text: jsonToRecord(quiz.cta_text),
+        cta_title: jsonToRecord((quiz as any).cta_title),
+        cta_description: jsonToRecord((quiz as any).cta_description),
         cta_url: quiz.cta_url || "https://sparkly.hr",
         duration_text: jsonToRecord(quiz.duration_text),
         is_active: quiz.is_active,
@@ -929,6 +939,8 @@ export default function QuizEditor() {
         headline_highlight: headlineHighlight,
         badge_text: badgeText,
         cta_text: ctaText,
+        cta_title: ctaTitle,
+        cta_description: ctaDescription,
         cta_url: ctaUrl,
         duration_text: durationText,
         is_active: isActive,
@@ -2165,7 +2177,7 @@ export default function QuizEditor() {
                 />
               </div>
               <div>
-                <Label className="text-xs">CTA Text ({displayLanguage.toUpperCase()})</Label>
+                <Label className="text-xs">CTA Button Text ({displayLanguage.toUpperCase()})</Label>
                 <Input
                   value={ctaText[displayLanguage] || ""}
                   onChange={(e) => setLocalizedValue(setCtaText, displayLanguage, e.target.value)}
@@ -2181,6 +2193,26 @@ export default function QuizEditor() {
                   onChange={(e) => setCtaUrl(e.target.value)}
                   placeholder="https://sparkly.hr"
                   className="h-8"
+                  disabled={isPreviewMode}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">CTA Section Title ({displayLanguage.toUpperCase()})</Label>
+                <Input
+                  value={ctaTitle[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setCtaTitle, displayLanguage, e.target.value)}
+                  placeholder="Ready for Precise Employee Assessment?"
+                  className="h-8"
+                  disabled={isPreviewMode}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">CTA Section Description ({displayLanguage.toUpperCase()})</Label>
+                <Textarea
+                  value={ctaDescription[displayLanguage] || ""}
+                  onChange={(e) => setLocalizedValue(setCtaDescription, displayLanguage, e.target.value)}
+                  placeholder="This quiz provides a general overview. For accurate, in-depth analysis..."
+                  className="min-h-[60px]"
                   disabled={isPreviewMode}
                 />
               </div>
