@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Save, Loader2 } from "lucide-react";
+import { Plus, Save, Loader2, RefreshCcw } from "lucide-react";
 import { HypothesisPageEditor } from "./HypothesisPageEditor";
 import { useHypothesisQuizData, type HypothesisPage, type HypothesisQuestion } from "@/hooks/useHypothesisQuizData";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,11 +31,53 @@ export function HypothesisQuizEditor({ quizId, language }: HypothesisQuizEditorP
 
   // Sync local state with saved data
   useEffect(() => {
-    if (savedPages.length > 0 || !loading) {
+    if ((savedPages.length > 0 || !loading) && !hasChanges) {
       setPages(savedPages);
       setHasChanges(false);
     }
-  }, [savedPages, loading]);
+  }, [savedPages, loading, hasChanges]);
+
+  // Reload from database (useful after imports/changes made outside the editor)
+  const handleReload = async () => {
+    if (hasChanges) {
+      toast({
+        title: "Unsaved changes",
+        description: "Save your changes before reloading.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await refetch();
+      toast({ title: "Reloaded latest quiz data" });
+    } catch (err: any) {
+      toast({
+        title: "Reload failed",
+        description: err?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Auto-refresh while there are no local edits (keeps the editor in sync after imports)
+  useEffect(() => {
+    if (hasChanges) return;
+
+    const intervalId = window.setInterval(() => {
+      refetch();
+    }, 15000);
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) refetch();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [hasChanges, refetch]);
 
   const handleAddPage = () => {
     const newPage: HypothesisPage = {
@@ -214,18 +256,15 @@ export function HypothesisQuizEditor({ quizId, language }: HypothesisQuizEditorP
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleAddPage}
-            disabled={pages.length >= 6}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Page {pages.length >= 6 && "(Max 6)"}
+          <Button variant="outline" onClick={handleReload} disabled={saving || hasChanges}>
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Reload
           </Button>
-          <Button
-            onClick={handleSaveAll}
-            disabled={saving || !hasChanges}
-          >
+          <Button variant="outline" onClick={handleAddPage} disabled={saving}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Page
+          </Button>
+          <Button onClick={handleSaveAll} disabled={saving || !hasChanges}>
             {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
