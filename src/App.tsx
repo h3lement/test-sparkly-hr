@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import QuizEditor from "./pages/QuizEditor";
+import AllQuizzes from "./pages/AllQuizzes";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,9 @@ function AppContent() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/quiz/:quizId" element={<QuizEditor />} />
           <Route path="/auth" element={<Auth />} />
+          
+          {/* All quizzes listing */}
+          <Route path="/all" element={<AllQuizzes />} />
           
           {/* Dynamic quiz routes with unique slugs */}
           <Route path="/" element={<DynamicQuiz />} />

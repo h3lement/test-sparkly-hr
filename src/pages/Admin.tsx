@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ interface PendingAdmin {
 }
 
 const Admin = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [pendingAdmins, setPendingAdmins] = useState<PendingAdmin[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
@@ -47,21 +48,28 @@ const Admin = () => {
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState("activity");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "activity");
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
   const [emailHistoryFilter, setEmailHistoryFilter] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Sync tab with URL
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+    setSearchQuery("");
+  };
+
   const handleViewQuizLead = (leadId: string) => {
     setHighlightedLeadId(leadId);
-    setActiveTab("leads");
+    handleTabChange("leads");
   };
 
   const handleViewEmailHistory = (leadId: string, email: string) => {
     setEmailHistoryFilter(email);
-    setActiveTab("email-logs");
+    handleTabChange("email-logs");
   };
 
   useEffect(() => {
@@ -394,10 +402,7 @@ const Admin = () => {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-          setSearchQuery("");
-        }}
+        onTabChange={handleTabChange}
         onLogout={handleLogout}
       />
 

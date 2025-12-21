@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, Info } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -51,6 +51,8 @@ export function QuizManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activityLogQuiz, setActivityLogQuiz] = useState<Quiz | null>(null);
+  const [sortColumn, setSortColumn] = useState<string>("updated_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -341,10 +343,52 @@ export function QuizManager() {
     return { date: formatted, user: null };
   };
 
-  const filteredQuizzes = quizzes.filter(quiz =>
-    getLocalizedText(quiz.title).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    quiz.slug.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-3.5 h-3.5 ml-1 opacity-50" />;
+    }
+    return sortDirection === "asc" 
+      ? <ArrowUp className="w-3.5 h-3.5 ml-1" />
+      : <ArrowDown className="w-3.5 h-3.5 ml-1" />;
+  };
+
+  const sortedAndFilteredQuizzes = useMemo(() => {
+    const filtered = quizzes.filter(quiz =>
+      getLocalizedText(quiz.title).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      quiz.slug.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return filtered.sort((a, b) => {
+      const multiplier = sortDirection === "asc" ? 1 : -1;
+      
+      switch (sortColumn) {
+        case "title":
+          return multiplier * getLocalizedText(a.title).localeCompare(getLocalizedText(b.title));
+        case "slug":
+          return multiplier * a.slug.localeCompare(b.slug);
+        case "questions":
+          return multiplier * ((a.questions_count || 0) - (b.questions_count || 0));
+        case "pages":
+          return multiplier * ((a.pages_count || 0) - (b.pages_count || 0));
+        case "respondents":
+          return multiplier * ((a.respondents_count || 0) - (b.respondents_count || 0));
+        case "status":
+          return multiplier * ((a.is_active ? 1 : 0) - (b.is_active ? 1 : 0));
+        case "updated_at":
+        default:
+          return multiplier * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+      }
+    });
+  }, [quizzes, searchQuery, sortColumn, sortDirection]);
 
   const handleCreateQuiz = () => {
     navigate("/admin/quiz/new");
@@ -386,7 +430,7 @@ export function QuizManager() {
           />
         </div>
         <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium">
-          {filteredQuizzes.length} quiz{filteredQuizzes.length !== 1 ? "zes" : ""}
+          {sortedAndFilteredQuizzes.length} quiz{sortedAndFilteredQuizzes.length !== 1 ? "zes" : ""}
         </span>
       </div>
 
@@ -395,7 +439,7 @@ export function QuizManager() {
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      ) : filteredQuizzes.length === 0 ? (
+      ) : sortedAndFilteredQuizzes.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           {searchQuery ? "No quizzes match your search" : "No quizzes yet. Create your first quiz!"}
         </div>
@@ -404,18 +448,53 @@ export function QuizManager() {
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/50">
-                <TableHead className="font-semibold">Title</TableHead>
-                <TableHead className="font-semibold">Slug</TableHead>
-                <TableHead className="font-semibold text-center">Questions</TableHead>
-                <TableHead className="font-semibold text-center">Pages</TableHead>
-                <TableHead className="font-semibold text-center">Respondents</TableHead>
-                <TableHead className="font-semibold text-center">Status</TableHead>
-                <TableHead className="font-semibold">Updated</TableHead>
+                <TableHead 
+                  className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("title")}
+                >
+                  <span className="flex items-center">Title <SortIcon column="title" /></span>
+                </TableHead>
+                <TableHead 
+                  className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("slug")}
+                >
+                  <span className="flex items-center">Slug <SortIcon column="slug" /></span>
+                </TableHead>
+                <TableHead 
+                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("questions")}
+                >
+                  <span className="flex items-center justify-center">Questions <SortIcon column="questions" /></span>
+                </TableHead>
+                <TableHead 
+                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("pages")}
+                >
+                  <span className="flex items-center justify-center">Pages <SortIcon column="pages" /></span>
+                </TableHead>
+                <TableHead 
+                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("respondents")}
+                >
+                  <span className="flex items-center justify-center">Respondents <SortIcon column="respondents" /></span>
+                </TableHead>
+                <TableHead 
+                  className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("status")}
+                >
+                  <span className="flex items-center justify-center">Status <SortIcon column="status" /></span>
+                </TableHead>
+                <TableHead 
+                  className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                  onClick={() => handleSort("updated_at")}
+                >
+                  <span className="flex items-center">Updated <SortIcon column="updated_at" /></span>
+                </TableHead>
                 <TableHead className="font-semibold text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredQuizzes.map((quiz) => (
+              {sortedAndFilteredQuizzes.map((quiz) => (
                 <TableRow key={quiz.id} className="hover:bg-secondary/30 group">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
