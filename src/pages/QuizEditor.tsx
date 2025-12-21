@@ -29,7 +29,6 @@ import { QuizRespondents } from "@/components/admin/QuizRespondents";
 import { QuizStats } from "@/components/admin/QuizStats";
 import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
 import { QuizWebStats } from "@/components/admin/QuizWebStats";
-import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
 import { HypothesisQuizEditor } from "@/components/admin/HypothesisQuizEditor";
 import {
   Select,
@@ -1974,9 +1973,6 @@ export default function QuizEditor() {
                 {activityLogsCount}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="email" className="admin-tab-trigger gap-1.5">
-              Email
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="admin-tab-content space-y-3">
@@ -2560,19 +2556,6 @@ export default function QuizEditor() {
               </div>
             ) : quizId ? (
               <QuizActivityLog quizId={quizId} />
-            ) : null}
-          </TabsContent>
-
-          {/* Email Template Tab */}
-          <TabsContent value="email" className="admin-tab-content space-y-3">
-            {isCreating ? (
-              <div className="text-center py-8 border rounded-lg border-dashed">
-                <p className="text-sm text-muted-foreground">
-                  Save the quiz first to configure email templates.
-                </p>
-              </div>
-            ) : quizId ? (
-              <EmailTemplateManager quizId={quizId} quizTitle={title[primaryLanguage] || slug} />
             ) : null}
           </TabsContent>
         </Tabs>
