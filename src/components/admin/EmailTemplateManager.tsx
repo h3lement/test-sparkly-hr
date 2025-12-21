@@ -627,13 +627,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   const liveTemplate = templates.find(t => t.is_live);
 
   // Get the selected quiz for display
-  const selectedQuiz = quizzes.find(q => q.id === currentQuizId);
-  const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
-
-  // Handle quiz selection change
-  const handleQuizChange = (quizId: string) => {
-    setSelectedQuizId(quizId);
-  };
+  const selectedQuiz = quizzes.find((q) => q.id === currentQuizId);
 
   if (loading && !quizzesLoading) {
     return (
@@ -646,55 +640,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
 
   return (
     <div className="max-w-4xl space-y-6">
-      {/* Quiz Selection - only show if not passed as prop */}
-      {!propQuizId && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Select Quiz</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quizzesLoading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Loading quizzes...
-              </div>
-            ) : quizzes.length === 0 ? (
-              <p className="text-muted-foreground">No quizzes found. Create a quiz first.</p>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="quizSelect">Quiz <span className="text-destructive">*</span></Label>
-                <Select value={selectedQuizId} onValueChange={handleQuizChange}>
-                  <SelectTrigger id="quizSelect">
-                    <SelectValue placeholder="Select a quiz..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {quizzes.map((quiz) => (
-                      <SelectItem key={quiz.id} value={quiz.id}>
-                        {getQuizTitle(quiz)} ({quiz.slug})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Templates are quiz-specific. Most recently edited quiz is pre-selected.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Show message if no quiz selected */}
-      {!currentQuizId && !propQuizId && (
-        <Card className="border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20">
-          <CardContent className="pt-6">
-            <p className="text-amber-700 dark:text-amber-400">
-              Please select a quiz above to manage its templates.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       {currentQuizId && (
         <Tabs defaultValue="web" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
