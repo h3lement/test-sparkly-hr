@@ -145,10 +145,10 @@ export function HypothesisQuestionScreen() {
         <p className="text-muted-foreground">{getText(currentPage.description)}</p>
       </div>
 
-      {/* Questions Table - Sparkly card style */}
+      {/* Questions Card - Sparkly card style */}
       <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-lg">
-        {/* Table Header with Status Bar & Bulk Actions */}
-        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-4 bg-sparkly-blush border-b border-border/50 text-center">
+        {/* Desktop Table Header - hidden on mobile */}
+        <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-4 bg-sparkly-blush border-b border-border/50 text-center">
           <div className="flex items-center justify-center gap-2">
             <span className="text-xl">👩</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Women 50+</span>
@@ -164,8 +164,18 @@ export function HypothesisQuestionScreen() {
           </div>
         </div>
 
-        {/* Status Bar with Bulk Actions */}
-        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
+        {/* Mobile Header */}
+        <div className="md:hidden px-4 py-3 bg-sparkly-blush border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Hypotheses</span>
+            <span className="text-xs text-muted-foreground">
+              {answeredCount}/{pageQuestions.length} answered
+            </span>
+          </div>
+        </div>
+
+        {/* Status Bar with Bulk Actions - Desktop only */}
+        <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
           <div className="col-span-2 flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               This page: <span className="font-semibold text-foreground">{answeredCount}</span> of {pageQuestions.length} answered
@@ -204,7 +214,7 @@ export function HypothesisQuestionScreen() {
           </div>
         </div>
 
-        {/* Question Rows - Sparkly styling */}
+        {/* Question Rows */}
         <div className="divide-y divide-border/50">
           {pageQuestions.map((question, idx) => {
             const answer = pageAnswers[question.id];
@@ -222,8 +232,8 @@ export function HypothesisQuestionScreen() {
 
             return (
               <div key={question.id} className="relative transition-all hover:bg-muted/20">
-                {/* Single Row: Women | Men | Answer */}
-                <div className="grid grid-cols-[1fr_1fr_140px] gap-3 px-5 py-4 items-start">
+                {/* Desktop Layout: 3-column grid */}
+                <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-3 px-5 py-4 items-start">
                   {/* Women Hypothesis */}
                   <div className="p-3 bg-pink-50/80 dark:bg-pink-950/20 rounded-xl border border-pink-200/50 dark:border-pink-800/30">
                     <p className="text-sm leading-relaxed font-medium text-foreground">
@@ -240,7 +250,7 @@ export function HypothesisQuestionScreen() {
                     </p>
                   </div>
 
-                  {/* Answer Buttons with Feedback */}
+                  {/* Answer Buttons */}
                   <div className="flex justify-center items-start pt-2 gap-2">
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -276,9 +286,110 @@ export function HypothesisQuestionScreen() {
                   </div>
                 </div>
 
+                {/* Mobile Layout: Stacked vertically */}
+                <div className="md:hidden p-4 space-y-3">
+                  {/* Question Number & Answer Feedback */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-primary">Question {overallNumber}</span>
+                    {answer !== null && (
+                      <div className="flex items-center gap-1">
+                        {isCorrect ? (
+                          <>
+                            <ThumbsUp className="w-4 h-4 text-green-500" />
+                            <span className="text-xs text-green-600 font-medium">Correct!</span>
+                          </>
+                        ) : (
+                          <>
+                            <ThumbsDown className="w-4 h-4 text-red-500" />
+                            <span className="text-xs text-red-500 font-medium">Incorrect</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Women Hypothesis */}
+                  <div className="p-3 bg-pink-50/80 dark:bg-pink-950/20 rounded-xl border border-pink-200/50 dark:border-pink-800/30">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-base">👩</span>
+                      <span className="text-xs font-semibold text-pink-600 dark:text-pink-400 uppercase">Women 50+</span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground">
+                      {womanHypothesis}
+                    </p>
+                  </div>
+
+                  {/* Men Hypothesis */}
+                  <div className="p-3 bg-blue-50/80 dark:bg-blue-950/20 rounded-xl border border-blue-200/50 dark:border-blue-800/30">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-base">👨</span>
+                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">Men 50+</span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground">
+                      {manHypothesis}
+                    </p>
+                  </div>
+
+                  {/* Answer Buttons - Full width on mobile */}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant={answer === true ? "default" : "outline"}
+                      className={cn(
+                        "flex-1 h-11 text-sm font-semibold rounded-xl transition-all",
+                        answer === true && "bg-primary hover:bg-primary/90 shadow-md"
+                      )}
+                      onClick={() => handleAnswer(question.id, true)}
+                    >
+                      True
+                    </Button>
+                    <Button
+                      variant={answer === false ? "default" : "outline"}
+                      className={cn(
+                        "flex-1 h-11 text-sm font-semibold rounded-xl transition-all",
+                        answer === false && "bg-orange-500 hover:bg-orange-600 shadow-md text-white"
+                      )}
+                      onClick={() => handleAnswer(question.id, false)}
+                    >
+                      False
+                    </Button>
+                  </div>
+                </div>
               </div>
             );
           })}
+        </div>
+
+        {/* Mobile Bulk Actions - at bottom of card */}
+        <div className="md:hidden px-4 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
+              onClick={() => {
+                const newAnswers: PageAnswers = {};
+                pageQuestions.forEach(q => { newAnswers[q.id] = true; });
+                setPageAnswers(newAnswers);
+              }}
+            >
+              All True
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
+              onClick={() => {
+                const newAnswers: PageAnswers = {};
+                pageQuestions.forEach(q => { newAnswers[q.id] = false; });
+                setPageAnswers(newAnswers);
+              }}
+            >
+              All False
+            </Button>
+          </div>
+          {allQuestionsAnswered && (
+            <span className="text-xs text-green-600 font-semibold">✓ Ready!</span>
+          )}
         </div>
       </div>
 
