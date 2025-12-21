@@ -15,6 +15,8 @@ export interface HypothesisQuestion {
   question_order: number;
   hypothesis_text: Record<string, string>;
   interview_question: Record<string, string>;
+  interview_question_woman: Record<string, string>;
+  interview_question_man: Record<string, string>;
   truth_explanation: Record<string, string>;
   correct_answer_woman: boolean;
   correct_answer_man: boolean;
@@ -112,6 +114,8 @@ export function useHypothesisQuizPublic(slug: string) {
         question_order: q.question_order,
         hypothesis_text: q.hypothesis_text as Record<string, string>,
         interview_question: q.interview_question as Record<string, string>,
+        interview_question_woman: q.interview_question_woman as Record<string, string>,
+        interview_question_man: q.interview_question_man as Record<string, string>,
         truth_explanation: q.truth_explanation as Record<string, string>,
         correct_answer_woman: q.correct_answer_woman ?? false,
         correct_answer_man: q.correct_answer_man ?? false,

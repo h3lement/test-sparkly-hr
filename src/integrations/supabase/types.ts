@@ -277,6 +277,8 @@ export type Database = {
           hypothesis_text: Json
           id: string
           interview_question: Json
+          interview_question_man: Json
+          interview_question_woman: Json
           page_id: string
           question_order: number
           truth_explanation: Json
@@ -288,6 +290,8 @@ export type Database = {
           hypothesis_text?: Json
           id?: string
           interview_question?: Json
+          interview_question_man?: Json
+          interview_question_woman?: Json
           page_id: string
           question_order: number
           truth_explanation?: Json
@@ -299,6 +303,8 @@ export type Database = {
           hypothesis_text?: Json
           id?: string
           interview_question?: Json
+          interview_question_man?: Json
+          interview_question_woman?: Json
           page_id?: string
           question_order?: number
           truth_explanation?: Json
