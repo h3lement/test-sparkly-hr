@@ -16,6 +16,8 @@ export interface HypothesisQuestion {
   page_id: string;
   question_order: number;
   hypothesis_text: Record<string, string>;
+  hypothesis_text_woman: Record<string, string>;
+  hypothesis_text_man: Record<string, string>;
   interview_question: Record<string, string>;
   interview_question_woman: Record<string, string>;
   interview_question_man: Record<string, string>;
@@ -99,6 +101,8 @@ export function useHypothesisQuizData(quizId: string | undefined): UseHypothesis
             page_id: q.page_id,
             question_order: q.question_order,
             hypothesis_text: jsonToRecord(q.hypothesis_text),
+            hypothesis_text_woman: jsonToRecord(q.hypothesis_text_woman),
+            hypothesis_text_man: jsonToRecord(q.hypothesis_text_man),
             interview_question: jsonToRecord(q.interview_question),
             interview_question_woman: jsonToRecord(q.interview_question_woman),
             interview_question_man: jsonToRecord(q.interview_question_man),
@@ -160,6 +164,8 @@ export function useHypothesisQuizData(quizId: string | undefined): UseHypothesis
       page_id: question.page_id,
       question_order: question.question_order || 1,
       hypothesis_text: question.hypothesis_text || {},
+      hypothesis_text_woman: question.hypothesis_text_woman || {},
+      hypothesis_text_man: question.hypothesis_text_man || {},
       interview_question: question.interview_question || {},
       interview_question_woman: question.interview_question_woman || {},
       interview_question_man: question.interview_question_man || {},

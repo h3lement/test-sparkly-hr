@@ -13,6 +13,8 @@ export interface HypothesisQuestion {
   page_id: string;
   question_order: number;
   hypothesis_text: Record<string, string>;
+  hypothesis_text_woman: Record<string, string>;
+  hypothesis_text_man: Record<string, string>;
   interview_question: Record<string, string>;
   interview_question_woman: Record<string, string>;
   interview_question_man: Record<string, string>;

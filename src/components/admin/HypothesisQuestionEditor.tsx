@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, GripVertical, MessageSquare, Lightbulb, HelpCircle, CheckCircle2 } from "lucide-react";
+import { Trash2, GripVertical, MessageSquare, Lightbulb, HelpCircle } from "lucide-react";
 import type { HypothesisQuestion } from "@/hooks/useHypothesisQuizData";
 import {
   AccordionContent,
@@ -43,7 +42,7 @@ export function HypothesisQuestionEditor({
   };
 
   const setLocalizedValue = (
-    field: "hypothesis_text" | "interview_question" | "interview_question_woman" | "interview_question_man" | "truth_explanation",
+    field: "hypothesis_text" | "hypothesis_text_woman" | "hypothesis_text_man" | "interview_question" | "interview_question_woman" | "interview_question_man" | "truth_explanation",
     lang: string,
     value: string
   ) => {
@@ -53,7 +52,10 @@ export function HypothesisQuestionEditor({
     });
   };
 
-  const hypothesisPreview = getLocalizedValue(question.hypothesis_text, language);
+  // Show woman's hypothesis in preview, fallback to generic
+  const hypothesisPreviewWoman = getLocalizedValue(question.hypothesis_text_woman, language);
+  const hypothesisPreviewMan = getLocalizedValue(question.hypothesis_text_man, language);
+  const hypothesisPreview = hypothesisPreviewWoman || hypothesisPreviewMan || getLocalizedValue(question.hypothesis_text, language);
 
   return (
     <AccordionItem value={question.id} className="border rounded-lg bg-secondary/30">
@@ -70,24 +72,6 @@ export function HypothesisQuestionEditor({
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4">
         <div className="space-y-4 pt-2">
-          {/* Hypothesis Text */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <HelpCircle className="h-4 w-4 text-amber-500" />
-              <Label className="font-medium">Hypothesis ({language.toUpperCase()})</Label>
-            </div>
-            <Textarea
-              value={getLocalizedValue(question.hypothesis_text, language)}
-              onChange={(e) => setLocalizedValue("hypothesis_text", language, e.target.value)}
-              placeholder="Enter the hypothesis statement that quiz takers will evaluate..."
-              rows={2}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              This is the statement users will answer True/False to for both Women and Men.
-            </p>
-          </div>
-
           {/* Women and Men Columns - Side by Side */}
           <div className="grid grid-cols-2 gap-4">
             {/* Women Column */}
@@ -97,9 +81,24 @@ export function HypothesisQuestionEditor({
                 <Label className="font-semibold text-pink-700 dark:text-pink-300">Women 50+</Label>
               </div>
               
+              {/* Hypothesis for Women */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-pink-500" />
+                  <Label className="text-sm font-medium">Hypothesis ({language.toUpperCase()})</Label>
+                </div>
+                <Textarea
+                  value={getLocalizedValue(question.hypothesis_text_woman, language)}
+                  onChange={(e) => setLocalizedValue("hypothesis_text_woman", language, e.target.value)}
+                  placeholder="e.g. Cannot maintain long pace"
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
+
               {/* Correct Answer */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Correct Answer:</span>
+              <div className="flex items-center justify-between p-2 bg-pink-100 dark:bg-pink-900/30 rounded">
+                <span className="text-sm font-medium">Correct:</span>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${!question.correct_answer_woman ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
                     False
@@ -137,9 +136,24 @@ export function HypothesisQuestionEditor({
                 <Label className="font-semibold text-blue-700 dark:text-blue-300">Men 50+</Label>
               </div>
               
+              {/* Hypothesis for Men */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-blue-500" />
+                  <Label className="text-sm font-medium">Hypothesis ({language.toUpperCase()})</Label>
+                </div>
+                <Textarea
+                  value={getLocalizedValue(question.hypothesis_text_man, language)}
+                  onChange={(e) => setLocalizedValue("hypothesis_text_man", language, e.target.value)}
+                  placeholder="e.g. Is slow"
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
+
               {/* Correct Answer */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Correct Answer:</span>
+              <div className="flex items-center justify-between p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
+                <span className="text-sm font-medium">Correct:</span>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${!question.correct_answer_man ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
                     False
