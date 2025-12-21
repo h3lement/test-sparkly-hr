@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { Badge } from "@/components/ui/badge";
+import { ChevronRight } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -13,6 +14,7 @@ interface Quiz {
   description: Json;
   quiz_type: string;
   badge_text: Json;
+  display_order?: number;
 }
 
 export default function AllQuizzes() {
@@ -28,9 +30,9 @@ export default function AllQuizzes() {
     try {
       const { data, error } = await supabase
         .from("quizzes")
-        .select("id, slug, title, description, quiz_type, badge_text")
+        .select("id, slug, title, description, quiz_type, badge_text, display_order")
         .eq("is_active", true)
-        .order("created_at", { ascending: false });
+        .order("display_order", { ascending: true });
 
       if (error) throw error;
       setQuizzes(data || []);
@@ -49,20 +51,35 @@ export default function AllQuizzes() {
     return "";
   };
 
-  const getQuizTypeLabel = (type: string) => {
+  const getQuizTypeStyle = (type: string) => {
     switch (type) {
       case "hypothesis":
-        return { label: "Hypothesis", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" };
+        return {
+          label: "Hypothesis",
+          badge: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+          card: "hover:border-purple-500/50 hover:shadow-purple-500/10",
+          accent: "group-hover:text-purple-600",
+        };
       case "emotional":
-        return { label: "Emotional", color: "bg-teal-500/10 text-teal-600 border-teal-500/20" };
+        return {
+          label: "Emotional",
+          badge: "bg-teal-500/10 text-teal-600 border-teal-500/20",
+          card: "hover:border-teal-500/50 hover:shadow-teal-500/10",
+          accent: "group-hover:text-teal-600",
+        };
       default:
-        return { label: "Quiz", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
+        return {
+          label: "Quiz",
+          badge: "bg-primary/10 text-primary border-primary/20",
+          card: "hover:border-primary/50 hover:shadow-primary/10",
+          accent: "group-hover:text-primary",
+        };
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border/50">
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-6 py-6">
           <Logo />
         </div>
@@ -70,7 +87,9 @@ export default function AllQuizzes() {
 
       <main className="flex-1 max-w-4xl mx-auto px-6 py-12 w-full">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Available Quizzes</h1>
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Available Quizzes
+          </h1>
           <p className="text-lg text-muted-foreground">
             Select a quiz to get started
           </p>
@@ -87,7 +106,7 @@ export default function AllQuizzes() {
         ) : (
           <div className="grid gap-4">
             {quizzes.map((quiz) => {
-              const typeInfo = getQuizTypeLabel(quiz.quiz_type);
+              const typeStyle = getQuizTypeStyle(quiz.quiz_type);
               const title = getLocalizedText(quiz.title) || quiz.slug;
               const description = getLocalizedText(quiz.description);
               const badgeText = getLocalizedText(quiz.badge_text);
@@ -96,16 +115,16 @@ export default function AllQuizzes() {
                 <Link
                   key={quiz.id}
                   to={`/${quiz.slug}`}
-                  className="group block p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-lg transition-all"
+                  className={`group block p-6 rounded-xl border border-border bg-card transition-all duration-200 shadow-sm hover:shadow-lg ${typeStyle.card}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h2 className="text-xl font-semibold group-hover:text-primary transition-colors">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h2 className={`text-xl font-semibold transition-colors ${typeStyle.accent}`}>
                           {title}
                         </h2>
-                        <Badge variant="outline" className={typeInfo.color}>
-                          {typeInfo.label}
+                        <Badge variant="outline" className={typeStyle.badge}>
+                          {typeStyle.label}
                         </Badge>
                         {badgeText && (
                           <Badge variant="secondary" className="text-xs">
@@ -119,20 +138,8 @@ export default function AllQuizzes() {
                         </p>
                       )}
                     </div>
-                    <div className="text-muted-foreground group-hover:text-primary transition-colors">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="m9 18 6-6-6-6" />
-                      </svg>
+                    <div className={`text-muted-foreground transition-colors ${typeStyle.accent}`}>
+                      <ChevronRight className="w-6 h-6" />
                     </div>
                   </div>
                 </Link>

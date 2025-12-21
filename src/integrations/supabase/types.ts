@@ -703,6 +703,7 @@ export type Database = {
           cta_url: string | null
           description: Json
           discover_items: Json
+          display_order: number | null
           duration_text: Json
           enable_scoring: boolean
           headline: Json
@@ -734,6 +735,7 @@ export type Database = {
           cta_url?: string | null
           description?: Json
           discover_items?: Json
+          display_order?: number | null
           duration_text?: Json
           enable_scoring?: boolean
           headline?: Json
@@ -765,6 +767,7 @@ export type Database = {
           cta_url?: string | null
           description?: Json
           discover_items?: Json
+          display_order?: number | null
           duration_text?: Json
           enable_scoring?: boolean
           headline?: Json
