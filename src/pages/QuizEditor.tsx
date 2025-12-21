@@ -916,6 +916,89 @@ export default function QuizEditor() {
     setQuestions([getDefaultOMQuestion()]);
   };
 
+  // Create default OM question and result levels for new quizzes
+  const createDefaultOMQuestionAndLevels = async (quizId: string) => {
+    // Create the OM question
+    const { data: questionData, error: questionError } = await supabase
+      .from("quiz_questions")
+      .insert({
+        quiz_id: quizId,
+        question_text: {
+          en: "Which of these assessment methods do you believe can provide valuable insights when used together?",
+          et: "Millised hindamismeetodid võivad Teie arvates koos kasutades anda väärtuslikke teadmisi?",
+        },
+        question_order: 1000,
+        question_type: "open_mindedness",
+      })
+      .select()
+      .single();
+
+    if (questionError) {
+      console.error("Error creating OM question:", questionError);
+      return;
+    }
+
+    // Create default OM answers
+    const defaultAnswers = [
+      { answer_text: { en: "Human judgment and intuition", et: "Inimese otsustusvõime ja intuitsioon" }, answer_order: 1, score_value: 1 },
+      { answer_text: { en: "AI-powered analysis", et: "Tehisintellektil põhinev analüüs" }, answer_order: 2, score_value: 1 },
+      { answer_text: { en: "Psychological assessments", et: "Psühholoogilised hindamised" }, answer_order: 3, score_value: 1 },
+      { answer_text: { en: "Human Design methodology", et: "Human Design metoodika" }, answer_order: 4, score_value: 1 },
+    ];
+
+    const { error: answersError } = await supabase.from("quiz_answers").insert(
+      defaultAnswers.map((a) => ({
+        question_id: questionData.id,
+        answer_text: a.answer_text,
+        answer_order: a.answer_order,
+        score_value: a.score_value,
+      }))
+    );
+
+    if (answersError) {
+      console.error("Error creating OM answers:", answersError);
+    }
+
+    // Create default OM result levels
+    const defaultResultLevels = [
+      {
+        quiz_id: quizId,
+        min_score: 0,
+        max_score: 1,
+        title: { en: "Focused Perspective", et: "Fokuseeritud vaatenurk" },
+        description: { en: "You tend to rely on a single trusted approach. While depth is valuable, exploring additional methods might reveal new insights.", et: "Eelistate toetuda ühele usaldusväärsele lähenemisele. Kuigi sügavus on väärtuslik, võivad täiendavad meetodid pakkuda uusi teadmisi." },
+        emoji: "🎯",
+        color_class: "from-amber-500 to-orange-600",
+      },
+      {
+        quiz_id: quizId,
+        min_score: 2,
+        max_score: 2,
+        title: { en: "Balanced Approach", et: "Tasakaalustatud lähenemine" },
+        description: { en: "You are open to combining a few assessment methods. This balanced view helps you see different perspectives while maintaining focus.", et: "Olete avatud mõne hindamismeetodi kombineerimisele. See tasakaalustatud vaade aitab näha erinevaid vaatenurki, säilitades fookuse." },
+        emoji: "⚖️",
+        color_class: "from-blue-500 to-indigo-600",
+      },
+      {
+        quiz_id: quizId,
+        min_score: 3,
+        max_score: 4,
+        title: { en: "Open-Minded Explorer", et: "Avatud meelega avastaja" },
+        description: { en: "Excellent! You embrace multiple assessment methods and understand that diverse approaches together provide the most complete picture of talent.", et: "Suurepärane! Võtate omaks mitmeid hindamismeetodeid ja mõistate, et erinevad lähenemised koos annavad talendist kõige terviklikuma pildi." },
+        emoji: "🌟",
+        color_class: "from-emerald-500 to-green-600",
+      },
+    ];
+
+    const { error: levelsError } = await supabase
+      .from("open_mindedness_result_levels")
+      .insert(defaultResultLevels);
+
+    if (levelsError) {
+      console.error("Error creating OM result levels:", levelsError);
+    }
+  };
+
   const handleSave = async () => {
     if (!slug.trim()) {
       toast({
