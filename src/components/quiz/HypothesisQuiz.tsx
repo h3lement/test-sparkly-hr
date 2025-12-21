@@ -6,10 +6,13 @@ import { HypothesisQuestionScreen } from './HypothesisQuestionScreen';
 import { HypothesisEmailCapture } from './HypothesisEmailCapture';
 import { HypothesisResultsScreen } from './HypothesisResultsScreen';
 import { useHypothesisQuizPublic } from '@/hooks/useHypothesisQuizPublic';
+import { useForceLightMode } from '@/hooks/useForceLightMode';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
 
 function HypothesisQuizContent() {
+  // Force light mode for public quiz pages
+  useForceLightMode();
   const { quizSlug } = useParams<{ quizSlug: string }>();
   const navigate = useNavigate();
   const slug = quizSlug || '';

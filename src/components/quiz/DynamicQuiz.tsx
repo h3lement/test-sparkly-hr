@@ -9,27 +9,9 @@ import { DynamicEmailCapture } from './DynamicEmailCapture';
 import { DynamicResultsScreen } from './DynamicResultsScreen';
 import { HypothesisQuiz } from './HypothesisQuiz';
 import { useQuizData } from '@/hooks/useQuizData';
+import { useForceLightMode } from '@/hooks/useForceLightMode';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
-
-// Force light mode for public quiz pages
-function useForceLightMode() {
-  useEffect(() => {
-    const root = document.documentElement;
-    // Store original class state
-    const wasDark = root.classList.contains('dark');
-    
-    // Force light mode
-    root.classList.remove('dark');
-    
-    // Cleanup: restore dark mode if it was enabled when navigating away
-    return () => {
-      if (wasDark) {
-        root.classList.add('dark');
-      }
-    };
-  }, []);
-}
 
 function StandardQuizContent({ slug }: { slug: string }) {
   const navigate = useNavigate();
