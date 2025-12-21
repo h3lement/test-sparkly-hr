@@ -397,6 +397,8 @@ interface QuizResultsRequest {
   opennessMaxScore?: number;
   opennessTitle?: string;
   opennessDescription?: string;
+  quizId?: string;
+  quizSlug?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -447,6 +449,7 @@ const handler = async (req: Request): Promise<Response> => {
       opennessMaxScore = 4,
       opennessTitle = '',
       opennessDescription = '',
+      quizId,
       isTest = false 
     }: QuizResultsRequest & { isTest?: boolean } = await req.json();
 
@@ -454,6 +457,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Score:", totalScore, "/", maxScore);
     console.log("Openness Score:", opennessScore, "/", opennessMaxScore);
     console.log("Openness Title:", opennessTitle);
+    console.log("Quiz ID:", quizId);
     console.log("Language:", language);
     console.log("Is Test Email:", isTest);
     console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
@@ -467,14 +471,39 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch live email template configuration
-    const { data: templateData, error: templateError } = await supabase
-      .from("email_templates")
-      .select("*")
-      .eq("template_type", "quiz_results")
-      .eq("is_live", true)
-      .limit(1)
-      .maybeSingle();
-
+    // First try quiz-specific template, then fall back to global template
+    let templateData = null;
+    
+    if (quizId) {
+      const { data: quizTemplate } = await supabase
+        .from("email_templates")
+        .select("*")
+        .eq("template_type", "quiz_results")
+        .eq("quiz_id", quizId)
+        .eq("is_live", true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (quizTemplate) {
+        templateData = quizTemplate;
+        console.log("Using quiz-specific email template");
+      }
+    }
+    
+    // Fall back to global template if no quiz-specific template found
+    if (!templateData) {
+      const { data: globalTemplate } = await supabase
+        .from("email_templates")
+        .select("*")
+        .eq("template_type", "quiz_results")
+        .is("quiz_id", null)
+        .eq("is_live", true)
+        .limit(1)
+        .maybeSingle();
+      
+      templateData = globalTemplate;
+      console.log("Using global email template");
+    }
     // Use template values or fallback to defaults - ensure no undefined/null values
     const senderName = (templateData?.sender_name && templateData.sender_name.trim()) || "Sparkly.hr";
     const senderEmail = (templateData?.sender_email && templateData.sender_email.trim()) || "support@sparkly.hr";

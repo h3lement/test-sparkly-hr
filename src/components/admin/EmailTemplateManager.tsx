@@ -19,6 +19,12 @@ interface EmailTemplate {
   is_live: boolean;
   created_at: string;
   created_by_email: string | null;
+  quiz_id: string | null;
+}
+
+interface EmailTemplateManagerProps {
+  quizId?: string;
+  quizTitle?: string;
 }
 
 const SUPPORTED_LANGUAGES = [
@@ -283,7 +289,7 @@ const emailTranslations: Record<string, {
   },
 };
 
-export function EmailTemplateManager() {
+export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManagerProps = {}) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -305,7 +311,7 @@ export function EmailTemplateManager() {
   useEffect(() => {
     fetchTemplates();
     fetchCurrentUser();
-  }, []);
+  }, [quizId]);
 
   const fetchCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -318,17 +324,26 @@ export function EmailTemplateManager() {
   const fetchTemplates = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("email_templates")
         .select("*")
-        .eq("template_type", "quiz_results")
-        .order("version_number", { ascending: false });
+        .eq("template_type", "quiz_results");
+      
+      // Filter by quiz_id if provided, otherwise get global templates (quiz_id is null)
+      if (quizId) {
+        query = query.eq("quiz_id", quizId);
+      } else {
+        query = query.is("quiz_id", null);
+      }
+      
+      const { data, error } = await query.order("version_number", { ascending: false });
 
       if (error) throw error;
 
       const typedData = (data || []).map(item => ({
         ...item,
-        subjects: item.subjects as Record<string, string>
+        subjects: item.subjects as Record<string, string>,
+        quiz_id: item.quiz_id as string | null
       }));
 
       setTemplates(typedData);
@@ -339,6 +354,11 @@ export function EmailTemplateManager() {
         setSenderName(liveTemplate.sender_name);
         setSenderEmail(liveTemplate.sender_email);
         setSubjects(liveTemplate.subjects);
+      } else {
+        // Reset form if no templates exist for this quiz
+        setSenderName("");
+        setSenderEmail("");
+        setSubjects({});
       }
     } catch (error: any) {
       console.error("Error fetching templates:", error);
@@ -364,16 +384,24 @@ export function EmailTemplateManager() {
 
     setSaving(true);
     try {
-      // Get next version number
+      // Get next version number for this specific quiz (or global)
       const maxVersion = templates.length > 0 
         ? Math.max(...templates.map(t => t.version_number)) 
         : 0;
 
-      // First, set all existing templates to not live
-      await supabase
+      // First, set all existing templates for this quiz/global to not live
+      let updateQuery = supabase
         .from("email_templates")
         .update({ is_live: false })
         .eq("template_type", "quiz_results");
+      
+      if (quizId) {
+        updateQuery = updateQuery.eq("quiz_id", quizId);
+      } else {
+        updateQuery = updateQuery.is("quiz_id", null);
+      }
+      
+      await updateQuery;
 
       // Insert new version as live
       const { data: { user } } = await supabase.auth.getUser();
@@ -389,13 +417,14 @@ export function EmailTemplateManager() {
           is_live: true,
           created_by: user?.id,
           created_by_email: user?.email || currentUserEmail,
+          quiz_id: quizId || null,
         });
 
       if (error) throw error;
 
       toast({
         title: "Template saved",
-        description: `Version ${maxVersion + 1} is now live`,
+        description: `Version ${maxVersion + 1} is now live${quizId ? ' for this quiz' : ' (global)'}`,
       });
 
       fetchTemplates();
@@ -413,11 +442,19 @@ export function EmailTemplateManager() {
 
   const setLiveVersion = async (templateId: string, versionNumber: number) => {
     try {
-      // Set all to not live
-      await supabase
+      // Set all templates for this quiz/global to not live
+      let updateQuery = supabase
         .from("email_templates")
         .update({ is_live: false })
         .eq("template_type", "quiz_results");
+      
+      if (quizId) {
+        updateQuery = updateQuery.eq("quiz_id", quizId);
+      } else {
+        updateQuery = updateQuery.is("quiz_id", null);
+      }
+      
+      await updateQuery;
 
       // Set selected as live
       const { error } = await supabase

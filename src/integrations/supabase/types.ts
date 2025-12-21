@@ -135,6 +135,7 @@ export type Database = {
           created_by_email: string | null
           id: string
           is_live: boolean
+          quiz_id: string | null
           sender_email: string
           sender_name: string
           subjects: Json
@@ -147,6 +148,7 @@ export type Database = {
           created_by_email?: string | null
           id?: string
           is_live?: boolean
+          quiz_id?: string | null
           sender_email: string
           sender_name: string
           subjects?: Json
@@ -159,13 +161,22 @@ export type Database = {
           created_by_email?: string | null
           id?: string
           is_live?: boolean
+          quiz_id?: string | null
           sender_email?: string
           sender_name?: string
           subjects?: Json
           template_type?: string
           version_number?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       open_mindedness_result_levels: {
         Row: {
