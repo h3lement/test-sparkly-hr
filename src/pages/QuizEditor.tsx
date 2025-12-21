@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useDirtyTracking, useQuestionsDirtyTracking } from "@/hooks/useDirtyTracking";
-import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle, FileQuestion } from "lucide-react";
 import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
 import { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
 import { RegenerationDialog, type RegenerationType } from "@/components/admin/RegenerationDialog";
@@ -30,6 +30,7 @@ import { QuizStats } from "@/components/admin/QuizStats";
 import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
 import { QuizWebStats } from "@/components/admin/QuizWebStats";
 import { EmailTemplateManager } from "@/components/admin/EmailTemplateManager";
+import { HypothesisQuizEditor } from "@/components/admin/HypothesisQuizEditor";
 import {
   Select,
   SelectContent,
@@ -179,6 +180,7 @@ export default function QuizEditor() {
   const [isActive, setIsActive] = useState(true);
   
   // Quiz behavior settings
+  const [quizType, setQuizType] = useState<"standard" | "hypothesis">("standard");
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
   const [enableScoring, setEnableScoring] = useState(true);
   const [includeOpenMindedness, setIncludeOpenMindedness] = useState(false);
@@ -252,7 +254,7 @@ export default function QuizEditor() {
       title, description, headline, headline_highlight: headlineHighlight,
       badge_text: badgeText, cta_text: ctaText, cta_url: ctaUrl,
       duration_text: durationText, is_active: isActive, primary_language: primaryLanguage,
-      shuffle_questions: shuffleQuestions, enable_scoring: enableScoring,
+      quiz_type: quizType, shuffle_questions: shuffleQuestions, enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness, tone_of_voice: toneOfVoice,
       tone_source: toneSource, use_tone_for_ai: useToneForAi, tone_intensity: toneIntensity,
       icp_description: icpDescription, buying_persona: buyingPersona,
@@ -297,6 +299,7 @@ export default function QuizEditor() {
       duration_text: durationText,
       is_active: isActive,
       primary_language: primaryLanguage,
+      quiz_type: quizType,
       shuffle_questions: shuffleQuestions,
       enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness,
@@ -714,6 +717,7 @@ export default function QuizEditor() {
       setIsActive(quiz.is_active);
       setPrimaryLanguage(quiz.primary_language || "en");
       setTranslationMeta((quiz as any).translation_meta || {});
+      setQuizType((quiz as any).quiz_type || "standard");
       setShuffleQuestions((quiz as any).shuffle_questions || false);
       setEnableScoring((quiz as any).enable_scoring !== false);
       setIncludeOpenMindedness((quiz as any).include_open_mindedness || false);
@@ -903,6 +907,7 @@ export default function QuizEditor() {
         duration_text: durationText,
         is_active: isActive,
         primary_language: primaryLanguage,
+        quiz_type: quizType,
         shuffle_questions: shuffleQuestions,
         enable_scoring: enableScoring,
         include_open_mindedness: includeOpenMindedness,
@@ -1882,6 +1887,12 @@ export default function QuizEditor() {
                 ) : null;
               })()}
             </TabsTrigger>
+            {quizType === "hypothesis" && (
+              <TabsTrigger value="hypothesis" className="admin-tab-trigger gap-1.5">
+                <FileQuestion className="w-4 h-4" />
+                Hypotheses
+              </TabsTrigger>
+            )}
             <TabsTrigger value="mindedness" className="admin-tab-trigger gap-1.5">
               Open-Mind
               <span className={`admin-tab-trigger-badge ${includeOpenMindedness ? 'admin-tab-trigger-badge-success' : 'admin-tab-trigger-badge-muted'}`}>
@@ -1923,7 +1934,7 @@ export default function QuizEditor() {
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="general" />
             )}
             
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-7 gap-3">
               <div>
                 <Label htmlFor="slug" className="text-xs">Slug</Label>
                 <Input
@@ -1933,6 +1944,18 @@ export default function QuizEditor() {
                   placeholder="quiz-url"
                   className="h-8"
                 />
+              </div>
+              <div>
+                <Label className="text-xs">Quiz Type</Label>
+                <Select value={quizType} onValueChange={(v: "standard" | "hypothesis") => setQuizType(v)}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="hypothesis">Hypothesis</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="col-span-3">
                 <Label className="text-xs">Title ({displayLanguage.toUpperCase()})</Label>
@@ -2409,6 +2432,21 @@ export default function QuizEditor() {
               </>
             ) : null}
           </TabsContent>
+
+          {/* Hypothesis Tab - only for hypothesis quizzes */}
+          {quizType === "hypothesis" && (
+            <TabsContent value="hypothesis" className="admin-tab-content space-y-4">
+              {isCreating ? (
+                <div className="text-center py-8 border rounded-lg border-dashed">
+                  <p className="text-sm text-muted-foreground">
+                    Save the quiz first to manage hypothesis pages.
+                  </p>
+                </div>
+              ) : quizId ? (
+                <HypothesisQuizEditor quizId={quizId} language={displayLanguage} />
+              ) : null}
+            </TabsContent>
+          )}
 
           {/* Web Stats Tab */}
           <TabsContent value="web" className="admin-tab-content space-y-4">
