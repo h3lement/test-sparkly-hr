@@ -543,11 +543,11 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
           </p>
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border bg-muted/50">
+                <tr className="border-b border-border bg-muted/40">
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Quiz</th>
@@ -566,7 +566,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   const quizTitle = getQuizTitle(log);
 
                   return (
-                    <tr key={log.id} className="border-b border-border last:border-b-0 hover:bg-muted/30">
+                    <tr key={log.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/20">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <Badge variant="outline" className={`${typeInfo.color} gap-1`}>

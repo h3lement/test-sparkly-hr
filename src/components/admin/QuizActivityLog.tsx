@@ -414,9 +414,9 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
           )}
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
           {/* Table Header */}
-          <div className="grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
+          <div className="grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 bg-muted/40 text-[10px] font-medium text-foreground border-b">
             <span>#</span>
             <span>User</span>
             <span>Quiz</span>
@@ -430,8 +430,8 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
             {logs.map((log, index) => (
               <div
                 key={log.id}
-                className={`grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
-                  index % 2 === 0 ? "bg-background" : "bg-muted/20"
+                className={`grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
+                  index % 2 === 0 ? "bg-card" : "bg-muted/15"
                 }`}
               >
                 {/* Row Number */}
