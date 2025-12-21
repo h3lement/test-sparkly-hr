@@ -14,6 +14,8 @@ export interface HypothesisQuestion {
   page_id: string;
   question_order: number;
   hypothesis_text: Record<string, string>;
+  hypothesis_text_woman: Record<string, string>;
+  hypothesis_text_man: Record<string, string>;
   interview_question: Record<string, string>;
   interview_question_woman: Record<string, string>;
   interview_question_man: Record<string, string>;
@@ -113,6 +115,8 @@ export function useHypothesisQuizPublic(slug: string) {
         page_id: q.page_id,
         question_order: q.question_order,
         hypothesis_text: q.hypothesis_text as Record<string, string>,
+        hypothesis_text_woman: q.hypothesis_text_woman as Record<string, string>,
+        hypothesis_text_man: q.hypothesis_text_man as Record<string, string>,
         interview_question: q.interview_question as Record<string, string>,
         interview_question_woman: q.interview_question_woman as Record<string, string>,
         interview_question_man: q.interview_question_man as Record<string, string>,

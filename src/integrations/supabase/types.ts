@@ -275,6 +275,8 @@ export type Database = {
           correct_answer_woman: boolean
           created_at: string
           hypothesis_text: Json
+          hypothesis_text_man: Json
+          hypothesis_text_woman: Json
           id: string
           interview_question: Json
           interview_question_man: Json
@@ -288,6 +290,8 @@ export type Database = {
           correct_answer_woman?: boolean
           created_at?: string
           hypothesis_text?: Json
+          hypothesis_text_man?: Json
+          hypothesis_text_woman?: Json
           id?: string
           interview_question?: Json
           interview_question_man?: Json
@@ -301,6 +305,8 @@ export type Database = {
           correct_answer_woman?: boolean
           created_at?: string
           hypothesis_text?: Json
+          hypothesis_text_man?: Json
+          hypothesis_text_woman?: Json
           id?: string
           interview_question?: Json
           interview_question_man?: Json
