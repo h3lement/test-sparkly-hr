@@ -56,22 +56,22 @@ export default function AllQuizzes() {
       case "hypothesis":
         return {
           label: "Hypothesis",
-          badge: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-          card: "hover:border-purple-500/50 hover:shadow-purple-500/10",
-          accent: "group-hover:text-purple-600",
+          badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
+          card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
+          accent: "group-hover:text-purple-700 dark:group-hover:text-purple-400",
         };
       case "emotional":
         return {
           label: "Emotional",
-          badge: "bg-teal-500/10 text-teal-600 border-teal-500/20",
-          card: "hover:border-teal-500/50 hover:shadow-teal-500/10",
-          accent: "group-hover:text-teal-600",
+          badge: "bg-teal-600/20 text-teal-700 dark:text-teal-300 border-teal-600/30 font-medium",
+          card: "hover:border-teal-600/60 hover:shadow-teal-600/15",
+          accent: "group-hover:text-teal-700 dark:group-hover:text-teal-400",
         };
       default:
         return {
           label: "Quiz",
-          badge: "bg-primary/10 text-primary border-primary/20",
-          card: "hover:border-primary/50 hover:shadow-primary/10",
+          badge: "bg-primary/20 text-primary border-primary/30 font-medium",
+          card: "hover:border-primary/60 hover:shadow-primary/15",
           accent: "group-hover:text-primary",
         };
     }
@@ -115,30 +115,30 @@ export default function AllQuizzes() {
                 <Link
                   key={quiz.id}
                   to={`/${quiz.slug}`}
-                  className={`group block p-6 rounded-xl border border-border bg-card transition-all duration-200 shadow-sm hover:shadow-lg ${typeStyle.card}`}
+                  className={`group block p-6 rounded-xl border-2 border-border bg-card transition-all duration-200 shadow-sm hover:shadow-xl ${typeStyle.card}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h2 className={`text-xl font-semibold transition-colors ${typeStyle.accent}`}>
+                        <h2 className={`text-xl font-bold text-foreground transition-colors ${typeStyle.accent}`}>
                           {title}
                         </h2>
                         <Badge variant="outline" className={typeStyle.badge}>
                           {typeStyle.label}
                         </Badge>
                         {badgeText && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs font-medium">
                             {badgeText}
                           </Badge>
                         )}
                       </div>
                       {description && (
-                        <p className="text-muted-foreground line-clamp-2">
+                        <p className="text-foreground/70 line-clamp-2">
                           {description}
                         </p>
                       )}
                     </div>
-                    <div className={`text-muted-foreground transition-colors ${typeStyle.accent}`}>
+                    <div className={`text-foreground/50 transition-colors ${typeStyle.accent}`}>
                       <ChevronRight className="w-6 h-6" />
                     </div>
                   </div>
