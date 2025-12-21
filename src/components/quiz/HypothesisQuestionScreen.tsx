@@ -129,62 +129,9 @@ export function HypothesisQuestionScreen() {
 
   return (
     <main className="animate-fade-in max-w-4xl mx-auto px-4" role="main">
-      {/* Page Progress Indicator & Bulk Actions */}
-      {!isSubmitted && (
-        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-          <div className="grid grid-cols-[1fr_1fr_140px] gap-2 items-center">
-            <div className="col-span-2 flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                This page: {answeredCount} of {pageQuestions.length} answered
-              </span>
-              {allQuestionsAnswered && (
-                <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
-              )}
-            </div>
-            
-            {/* Bulk True/False Buttons - aligned with answer column */}
-            <div className="flex justify-center items-center gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-3 text-sm font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
-                onClick={() => {
-                  const newAnswers: PageAnswers = {};
-                  pageQuestions.forEach(q => { newAnswers[q.id] = true; });
-                  setPageAnswers(newAnswers);
-                }}
-              >
-                All True
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-3 text-sm font-semibold border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
-                onClick={() => {
-                  const newAnswers: PageAnswers = {};
-                  pageQuestions.forEach(q => { newAnswers[q.id] = false; });
-                  setPageAnswers(newAnswers);
-                }}
-              >
-                All False
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Page Header */}
+      {/* Progress bar - at top */}
       <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-xl font-bold text-foreground">{getText(currentPage.title)}</h1>
-          <span className="text-sm text-muted-foreground">
-            Page {currentPageIndex + 1} of {sortedPages.length}
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground">{getText(currentPage.description)}</p>
-        
-        {/* Progress bar */}
-        <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-500"
             style={{ width: `${(progress.current / progress.total) * 100}%` }}
@@ -195,9 +142,20 @@ export function HypothesisQuestionScreen() {
         </p>
       </div>
 
+      {/* Page Header - Title and Description */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-xl font-bold text-foreground">{getText(currentPage.title)}</h1>
+          <span className="text-sm text-muted-foreground">
+            Page {currentPageIndex + 1} of {sortedPages.length}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">{getText(currentPage.description)}</p>
+      </div>
+
       {/* Questions Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
-        {/* Table Header */}
+        {/* Table Header with Status Bar & Bulk Actions */}
         <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 bg-muted/50 border-b border-border text-center">
           <div className="flex items-center justify-center gap-1">
             <span className="text-base">👩</span>
@@ -213,6 +171,48 @@ export function HypothesisQuestionScreen() {
             </span>
           </div>
         </div>
+
+        {/* Status Bar with Bulk Actions - inside table, before questions */}
+        {!isSubmitted && (
+          <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-2 bg-muted/30 border-b border-border items-center">
+            <div className="col-span-2 flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                This page: {answeredCount} of {pageQuestions.length} answered
+              </span>
+              {allQuestionsAnswered && (
+                <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
+              )}
+            </div>
+            
+            {/* Bulk True/False Buttons - aligned with answer column */}
+            <div className="flex justify-center items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = true; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                All True
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs font-semibold border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = false; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                All False
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Question Rows */}
         <div className="divide-y divide-border">
