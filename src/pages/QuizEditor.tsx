@@ -231,9 +231,6 @@ export default function QuizEditor() {
   const [respondentsCount, setRespondentsCount] = useState(0);
   const [activityLogsCount, setActivityLogsCount] = useState(0);
   const [webConversionRate, setWebConversionRate] = useState(0);
-  
-  // Track source quiz for OM cloning (used when creating new quiz)
-  const sourceQuizIdForOMRef = useRef<string | null>(null);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -584,8 +581,8 @@ export default function QuizEditor() {
       if (!isCreating && quizId) {
         await loadQuizData(quizId);
       } else if (isCreating) {
-        // Clone OM from previous active quiz for new quizzes
-        await cloneOMFromPreviousQuiz();
+        // Initialize new quiz with default OM question template
+        initializeNewQuizWithOM();
         setLoading(false);
       } else {
         setLoading(false);
@@ -888,67 +885,26 @@ export default function QuizEditor() {
     return {};
   };
 
-  // Clone Open-Mindedness question and result levels from the most recent active quiz that has OM
-  const cloneOMFromPreviousQuiz = async () => {
-    try {
-      // Find the most recent active quiz with OM enabled
-      const { data: sourceQuiz, error: quizError } = await supabase
-        .from("quizzes")
-        .select("id")
-        .eq("is_active", true)
-        .eq("include_open_mindedness", true)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  // Default Open-Mindedness question template for new quizzes
+  const getDefaultOMQuestion = (): Question => ({
+    id: `new-${Date.now()}`,
+    question_text: {
+      en: "Which of these assessment methods do you believe can provide valuable insights when used together?",
+      et: "Millised hindamismeetodid võivad Teie arvates koos kasutades anda väärtuslikke teadmisi?",
+    },
+    question_order: 1000,
+    question_type: "open_mindedness",
+    answers: [
+      { id: `new-${Date.now()}-1`, answer_text: { en: "Human judgment and intuition", et: "Inimese otsustusvõime ja intuitsioon" }, answer_order: 1, score_value: 1 },
+      { id: `new-${Date.now()}-2`, answer_text: { en: "AI-powered analysis", et: "Tehisintellektil põhinev analüüs" }, answer_order: 2, score_value: 1 },
+      { id: `new-${Date.now()}-3`, answer_text: { en: "Psychological assessments", et: "Psühholoogilised hindamised" }, answer_order: 3, score_value: 1 },
+      { id: `new-${Date.now()}-4`, answer_text: { en: "Human Design methodology", et: "Human Design metoodika" }, answer_order: 4, score_value: 1 },
+    ],
+  });
 
-      if (quizError || !sourceQuiz) {
-        console.log("No source quiz with OM found, using defaults");
-        return;
-      }
-
-      // Store source quiz ID for OM result levels cloning during save
-      sourceQuizIdForOMRef.current = sourceQuiz.id;
-
-      // Clone OM question and answers
-      const { data: omQuestion, error: questionError } = await supabase
-        .from("quiz_questions")
-        .select("*")
-        .eq("quiz_id", sourceQuiz.id)
-        .eq("question_type", "open_mindedness")
-        .maybeSingle();
-
-      if (!questionError && omQuestion) {
-        // Fetch answers for this OM question
-        const { data: omAnswers } = await supabase
-          .from("quiz_answers")
-          .select("*")
-          .eq("question_id", omQuestion.id)
-          .order("answer_order");
-
-        // Create the cloned question with new IDs
-        const clonedQuestion: Question = {
-          id: `new-${Date.now()}`,
-          question_text: omQuestion.question_text,
-          question_order: 1000, // Will be placed at the end
-          question_type: "open_mindedness",
-          answers: (omAnswers || []).map((a, idx) => ({
-            id: `new-${Date.now()}-${idx}`,
-            answer_text: a.answer_text,
-            answer_order: a.answer_order,
-            score_value: a.score_value,
-          })),
-        };
-
-        setQuestions([clonedQuestion]);
-      }
-
-      toast({
-        title: "Template loaded",
-        description: "Open-Mindedness question cloned from previous quiz",
-      });
-    } catch (error) {
-      console.error("Error cloning OM:", error);
-    }
+  // Initialize new quiz with default OM question template
+  const initializeNewQuizWithOM = () => {
+    setQuestions([getDefaultOMQuestion()]);
   };
 
   const handleSave = async () => {
@@ -1096,35 +1052,6 @@ export default function QuizEditor() {
               color_class: level.color_class,
             })
             .eq("id", level.id);
-        }
-      }
-
-      // Clone OM result levels from source quiz when creating new quiz with OM
-      if (isCreating && includeOpenMindedness && sourceQuizIdForOMRef.current && savedQuizId) {
-        const { data: sourceOmLevels, error: omLevelsError } = await supabase
-          .from("open_mindedness_result_levels")
-          .select("*")
-          .eq("quiz_id", sourceQuizIdForOMRef.current)
-          .order("min_score");
-
-        if (!omLevelsError && sourceOmLevels && sourceOmLevels.length > 0) {
-          const { error: insertError } = await supabase
-            .from("open_mindedness_result_levels")
-            .insert(
-              sourceOmLevels.map((l) => ({
-                quiz_id: savedQuizId,
-                min_score: l.min_score,
-                max_score: l.max_score,
-                title: l.title,
-                description: l.description,
-                emoji: l.emoji,
-                color_class: l.color_class,
-              }))
-            );
-
-          if (insertError) {
-            console.error("Error cloning OM result levels:", insertError);
-          }
         }
       }
 
