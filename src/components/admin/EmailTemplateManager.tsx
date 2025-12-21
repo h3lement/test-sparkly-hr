@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send, Eye } from "lucide-react";
+import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send, Eye, FileText, Globe } from "lucide-react";
 
 interface EmailTemplate {
   id: string;
@@ -297,6 +297,26 @@ const emailTranslations: Record<string, {
   },
 };
 
+// Web Result Version interface
+interface WebResultVersion {
+  id: string;
+  quiz_id: string;
+  version_number: number;
+  result_levels: Array<{
+    title: Record<string, string>;
+    description: Record<string, string>;
+    insights: Record<string, string[]>;
+    min_score: number;
+    max_score: number;
+  }>;
+  generation_params: Record<string, unknown>;
+  created_at: string;
+  created_by_email: string | null;
+  estimated_cost_eur: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+}
+
 export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTemplateManagerProps = {}) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -322,6 +342,12 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   const [showPreview, setShowPreview] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
+  // Web result versions state
+  const [webResultVersions, setWebResultVersions] = useState<WebResultVersion[]>([]);
+  const [showWebResultHistory, setShowWebResultHistory] = useState(true);
+  const [webResultsLoading, setWebResultsLoading] = useState(false);
+  const [expandedWebVersion, setExpandedWebVersion] = useState<string | null>(null);
+
   // Fetch quizzes and set default based on most recent activity
   useEffect(() => {
     if (!propQuizId) {
@@ -334,6 +360,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     const quizIdToUse = propQuizId || selectedQuizId;
     if (quizIdToUse) {
       fetchTemplates(quizIdToUse);
+      fetchWebResultVersions(quizIdToUse);
     }
   }, [propQuizId, selectedQuizId]);
 
@@ -443,6 +470,50 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchWebResultVersions = async (quizIdToFetch?: string) => {
+    const quizIdToUse = quizIdToFetch || currentQuizId;
+    if (!quizIdToUse) {
+      return;
+    }
+    setWebResultsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("quiz_result_versions")
+        .select("*")
+        .eq("quiz_id", quizIdToUse)
+        .order("version_number", { ascending: false });
+
+      if (error) throw error;
+
+      const typedData = (data || []).map(item => ({
+        ...item,
+        result_levels: item.result_levels as WebResultVersion['result_levels'],
+        generation_params: item.generation_params as Record<string, unknown>,
+      }));
+
+      setWebResultVersions(typedData);
+    } catch (error: any) {
+      console.error("Error fetching web result versions:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch web result versions",
+        variant: "destructive",
+      });
+    } finally {
+      setWebResultsLoading(false);
+    }
+  };
+
+  // Get languages available in a result version
+  const getVersionLanguages = (version: WebResultVersion): string[] => {
+    const languages = new Set<string>();
+    version.result_levels.forEach(level => {
+      Object.keys(level.title || {}).forEach(lang => languages.add(lang));
+      Object.keys(level.description || {}).forEach(lang => languages.add(lang));
+    });
+    return Array.from(languages).sort();
   };
 
   const saveNewVersion = async () => {
@@ -1088,6 +1159,154 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Web Result Templates Version History */}
+      <Card>
+        <CardHeader 
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setShowWebResultHistory(!showWebResultHistory)}
+        >
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              Web Result Templates
+              <Badge variant="secondary" className="ml-2">
+                {webResultVersions.length} {webResultVersions.length === 1 ? 'version' : 'versions'}
+              </Badge>
+            </CardTitle>
+            {showWebResultHistory ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </CardHeader>
+        {showWebResultHistory && (
+          <CardContent>
+            {webResultsLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-4">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Loading web result versions...
+              </div>
+            ) : webResultVersions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No result versions yet</p>
+                <p className="text-sm mt-1">Generate quiz results to create versions.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {webResultVersions.map((version, index) => {
+                  const languages = getVersionLanguages(version);
+                  const isExpanded = expandedWebVersion === version.id;
+                  
+                  return (
+                    <div 
+                      key={version.id} 
+                      className="rounded-lg border border-border hover:bg-muted/30 transition-colors"
+                    >
+                      <div 
+                        className="flex items-center justify-between p-4 cursor-pointer"
+                        onClick={() => setExpandedWebVersion(isExpanded ? null : version.id)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-semibold">Version {version.version_number}</span>
+                            {index === 0 && (
+                              <Badge variant="outline" className="text-xs">Latest</Badge>
+                            )}
+                            <Badge variant="secondary" className="text-xs">
+                              {version.result_levels.length} result levels
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap mt-2">
+                            {languages.map(lang => (
+                              <Badge 
+                                key={lang} 
+                                variant="outline" 
+                                className="text-xs uppercase font-mono"
+                              >
+                                {lang}
+                              </Badge>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Created {formatDate(version.created_at)} by {version.created_by_email || "Unknown"}
+                            {version.estimated_cost_eur && version.estimated_cost_eur > 0 && (
+                              <span className="ml-2">• Cost: €{version.estimated_cost_eur.toFixed(4)}</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="shrink-0 ml-4">
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </div>
+                      
+                      {/* Expanded content showing result levels */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 border-t pt-4 space-y-4">
+                          {version.result_levels.map((level, levelIndex) => (
+                            <div key={levelIndex} className="bg-muted/50 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-medium text-sm">
+                                  Score Range: {level.min_score} - {level.max_score}
+                                </span>
+                              </div>
+                              <div className="space-y-2">
+                                {languages.map(lang => {
+                                  const title = level.title?.[lang];
+                                  const description = level.description?.[lang];
+                                  const insights = level.insights?.[lang];
+                                  
+                                  if (!title && !description) return null;
+                                  
+                                  return (
+                                    <div key={lang} className="border-l-2 border-primary/30 pl-3">
+                                      <Badge variant="outline" className="text-xs uppercase font-mono mb-1">
+                                        {lang}
+                                      </Badge>
+                                      {title && (
+                                        <p className="font-medium text-sm">{title}</p>
+                                      )}
+                                      {description && (
+                                        <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
+                                      )}
+                                      {insights && insights.length > 0 && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {insights.length} insights
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {/* Generation params if available */}
+                          {version.generation_params && Object.keys(version.generation_params).length > 0 && (
+                            <div className="bg-muted/30 rounded-lg p-3 text-xs">
+                              <p className="font-medium mb-1">Generation Parameters:</p>
+                              <p className="text-muted-foreground font-mono">
+                                {JSON.stringify(version.generation_params, null, 2).slice(0, 200)}
+                                {JSON.stringify(version.generation_params).length > 200 && '...'}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Token usage */}
+                          {(version.input_tokens || version.output_tokens) && (
+                            <div className="flex gap-4 text-xs text-muted-foreground">
+                              {version.input_tokens && <span>Input tokens: {version.input_tokens.toLocaleString()}</span>}
+                              {version.output_tokens && <span>Output tokens: {version.output_tokens.toLocaleString()}</span>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
