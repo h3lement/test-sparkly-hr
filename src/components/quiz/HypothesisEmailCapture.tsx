@@ -133,9 +133,25 @@ export function HypothesisEmailCapture() {
 
       {/* Value Proposition */}
       <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5 mb-6">
-        <p className="text-sm text-foreground/90 leading-relaxed">
-          We would be delighted to share the complete material with you — including verified answers, debunked misconceptions, and carefully crafted interview questions that reveal what truly drives candidates aged 50+. This is why we kindly ask for your email: so you can leave this assessment with something genuinely actionable and valuable, rather than just a score.
-        </p>
+        <p className="text-sm font-medium text-foreground mb-3">Submit your email to receive:</p>
+        <ul className="space-y-2 text-sm text-foreground/90">
+          <li className="flex items-start gap-2">
+            <span className="text-primary mt-0.5">✓</span>
+            <span>Correct answers with detailed explanations for each hypothesis</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-primary mt-0.5">✓</span>
+            <span>Common misconceptions debunked with research-backed insights</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-primary mt-0.5">✓</span>
+            <span>Interview questions designed to reveal what truly drives 50+ candidates</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-primary mt-0.5">✓</span>
+            <span>Practical guidance on navigating generational dynamics with confidence</span>
+          </li>
+        </ul>
       </div>
 
       <h1 id="email-heading" className="font-heading text-2xl md:text-3xl font-bold mb-3 text-center">
