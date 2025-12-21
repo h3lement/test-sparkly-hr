@@ -27,6 +27,14 @@ interface EmailTemplateManagerProps {
   quizTitle?: string;
 }
 
+interface Quiz {
+  id: string;
+  title: Record<string, string>;
+  slug: string;
+  updated_at: string;
+  primary_language: string;
+}
+
 const SUPPORTED_LANGUAGES = [
   { code: "da", name: "Danish" },
   { code: "nl", name: "Dutch" },
@@ -289,13 +297,18 @@ const emailTranslations: Record<string, {
   },
 };
 
-export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManagerProps = {}) {
+export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTemplateManagerProps = {}) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(true); // Show history by default
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const { toast } = useToast();
+
+  // Quiz selection state
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [selectedQuizId, setSelectedQuizId] = useState<string>(propQuizId || "");
+  const [quizzesLoading, setQuizzesLoading] = useState(false);
 
   // Form state for new version
   const [senderName, setSenderName] = useState("");
@@ -308,10 +321,59 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
   const [sendingTest, setSendingTest] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Fetch quizzes and set default based on most recent activity
   useEffect(() => {
-    fetchTemplates();
+    if (!propQuizId) {
+      fetchQuizzes();
+    }
+  }, [propQuizId]);
+
+  // Fetch templates when quiz selection changes
+  useEffect(() => {
+    const quizIdToUse = propQuizId || selectedQuizId;
+    if (quizIdToUse) {
+      fetchTemplates(quizIdToUse);
+    }
+  }, [propQuizId, selectedQuizId]);
+
+  useEffect(() => {
     fetchCurrentUser();
-  }, [quizId]);
+  }, []);
+
+  const fetchQuizzes = async () => {
+    setQuizzesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("quizzes")
+        .select("id, title, slug, updated_at, primary_language")
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+
+      const typedQuizzes = (data || []).map(q => ({
+        ...q,
+        title: q.title as Record<string, string>,
+      }));
+
+      setQuizzes(typedQuizzes);
+
+      // Prefill with most recently updated quiz if no quiz is selected
+      if (!selectedQuizId && typedQuizzes.length > 0) {
+        setSelectedQuizId(typedQuizzes[0].id);
+        // Also set language to the quiz's primary language
+        setTestLanguage(typedQuizzes[0].primary_language || "en");
+      }
+    } catch (error: any) {
+      console.error("Error fetching quizzes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch quizzes",
+        variant: "destructive",
+      });
+    } finally {
+      setQuizzesLoading(false);
+    }
+  };
 
   const fetchCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -321,20 +383,22 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
     }
   };
 
-  const fetchTemplates = async () => {
+  // Computed quiz ID - use prop if provided, otherwise use selected
+  const currentQuizId = propQuizId || selectedQuizId;
+
+  const fetchTemplates = async (quizIdToFetch?: string) => {
+    const quizIdToUse = quizIdToFetch || currentQuizId;
+    if (!quizIdToUse) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      let query = supabase
+      const query = supabase
         .from("email_templates")
         .select("*")
-        .eq("template_type", "quiz_results");
-      
-      // Filter by quiz_id if provided, otherwise get global templates (quiz_id is null)
-      if (quizId) {
-        query = query.eq("quiz_id", quizId);
-      } else {
-        query = query.is("quiz_id", null);
-      }
+        .eq("template_type", "quiz_results")
+        .eq("quiz_id", quizIdToUse);
       
       const { data, error } = await query.order("version_number", { ascending: false });
 
@@ -373,6 +437,15 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
   };
 
   const saveNewVersion = async () => {
+    if (!currentQuizId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a quiz first",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!senderName.trim() || !senderEmail.trim()) {
       toast({
         title: "Validation Error",
@@ -384,24 +457,17 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
 
     setSaving(true);
     try {
-      // Get next version number for this specific quiz (or global)
+      // Get next version number for this specific quiz
       const maxVersion = templates.length > 0 
         ? Math.max(...templates.map(t => t.version_number)) 
         : 0;
 
-      // First, set all existing templates for this quiz/global to not live
-      let updateQuery = supabase
+      // First, set all existing templates for this quiz to not live
+      await supabase
         .from("email_templates")
         .update({ is_live: false })
-        .eq("template_type", "quiz_results");
-      
-      if (quizId) {
-        updateQuery = updateQuery.eq("quiz_id", quizId);
-      } else {
-        updateQuery = updateQuery.is("quiz_id", null);
-      }
-      
-      await updateQuery;
+        .eq("template_type", "quiz_results")
+        .eq("quiz_id", currentQuizId);
 
       // Insert new version as live
       const { data: { user } } = await supabase.auth.getUser();
@@ -417,14 +483,14 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
           is_live: true,
           created_by: user?.id,
           created_by_email: user?.email || currentUserEmail,
-          quiz_id: quizId || null,
+          quiz_id: currentQuizId,
         });
 
       if (error) throw error;
 
       toast({
         title: "Template saved",
-        description: `Version ${maxVersion + 1} is now live${quizId ? ' for this quiz' : ' (global)'}`,
+        description: `Version ${maxVersion + 1} is now live for this quiz`,
       });
 
       fetchTemplates();
@@ -441,20 +507,15 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
   };
 
   const setLiveVersion = async (templateId: string, versionNumber: number) => {
+    if (!currentQuizId) return;
+    
     try {
-      // Set all templates for this quiz/global to not live
-      let updateQuery = supabase
+      // Set all templates for this quiz to not live
+      await supabase
         .from("email_templates")
         .update({ is_live: false })
-        .eq("template_type", "quiz_results");
-      
-      if (quizId) {
-        updateQuery = updateQuery.eq("quiz_id", quizId);
-      } else {
-        updateQuery = updateQuery.is("quiz_id", null);
-      }
-      
-      await updateQuery;
+        .eq("template_type", "quiz_results")
+        .eq("quiz_id", currentQuizId);
 
       // Set selected as live
       const { error } = await supabase
@@ -626,7 +687,20 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
 
   const liveTemplate = templates.find(t => t.is_live);
 
-  if (loading) {
+  // Get the selected quiz for display
+  const selectedQuiz = quizzes.find(q => q.id === currentQuizId);
+  const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
+
+  // Handle quiz selection change
+  const handleQuizChange = (quizId: string) => {
+    setSelectedQuizId(quizId);
+    const quiz = quizzes.find(q => q.id === quizId);
+    if (quiz?.primary_language) {
+      setTestLanguage(quiz.primary_language);
+    }
+  };
+
+  if (loading && !quizzesLoading) {
     return (
       <div className="text-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -637,31 +711,82 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
 
   return (
     <div className="max-w-4xl space-y-8">
-      {/* Current Live Status */}
-      {liveTemplate && (
-        <Card className="border-primary/20 bg-primary/5">
+      {/* Quiz Selection - only show if not passed as prop */}
+      {!propQuizId && (
+        <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Check className="w-5 h-5 text-primary" />
-                Currently Live: Version {liveTemplate.version_number}
-              </CardTitle>
-              <Badge variant="default" className="bg-primary">LIVE</Badge>
-            </div>
+            <CardTitle className="text-lg">Select Quiz</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>Sender: <span className="text-foreground font-medium">{liveTemplate.sender_name} &lt;{liveTemplate.sender_email}&gt;</span></p>
-            <p className="mt-1">Updated: {formatDate(liveTemplate.created_at)} by {liveTemplate.created_by_email || "Unknown"}</p>
+          <CardContent>
+            {quizzesLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Loading quizzes...
+              </div>
+            ) : quizzes.length === 0 ? (
+              <p className="text-muted-foreground">No quizzes found. Create a quiz first.</p>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="quizSelect">Quiz <span className="text-destructive">*</span></Label>
+                <Select value={selectedQuizId} onValueChange={handleQuizChange}>
+                  <SelectTrigger id="quizSelect">
+                    <SelectValue placeholder="Select a quiz..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {quizzes.map((quiz) => (
+                      <SelectItem key={quiz.id} value={quiz.id}>
+                        {getQuizTitle(quiz)} ({quiz.slug})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Email templates are quiz-specific. Most recently edited quiz is pre-selected.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
+
+      {/* Show message if no quiz selected */}
+      {!currentQuizId && !propQuizId && (
+        <Card className="border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="pt-6">
+            <p className="text-amber-700 dark:text-amber-400">
+              Please select a quiz above to manage its email template.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {currentQuizId && (
+        <>
+          {/* Current Live Status */}
+          {liveTemplate && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Check className="w-5 h-5 text-primary" />
+                    Currently Live: Version {liveTemplate.version_number}
+                  </CardTitle>
+                  <Badge variant="default" className="bg-primary">LIVE</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                <p>Sender: <span className="text-foreground font-medium">{liveTemplate.sender_name} &lt;{liveTemplate.sender_email}&gt;</span></p>
+                <p className="mt-1">Updated: {formatDate(liveTemplate.created_at)} by {liveTemplate.created_by_email || "Unknown"}</p>
+              </CardContent>
+            </Card>
+          )}
 
       {/* Editor Section */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Email Template Editor</CardTitle>
-            <Button onClick={fetchTemplates} variant="outline" size="sm">
+            <Button onClick={() => fetchTemplates()} variant="outline" size="sm">
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
@@ -747,8 +872,15 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
                 placeholder="Enter test email address"
               />
             </div>
-            <div className="w-[180px] space-y-2">
-              <Label htmlFor="testLanguage">Language</Label>
+            <div className="w-[200px] space-y-2">
+              <Label htmlFor="testLanguage">
+                Language
+                {selectedQuiz?.primary_language && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (Quiz default: {SUPPORTED_LANGUAGES.find(l => l.code === selectedQuiz.primary_language)?.name || selectedQuiz.primary_language})
+                  </span>
+                )}
+              </Label>
               <Select value={testLanguage} onValueChange={setTestLanguage}>
                 <SelectTrigger id="testLanguage">
                   <SelectValue />
@@ -757,6 +889,7 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <SelectItem key={lang.code} value={lang.code}>
                       {lang.name}
+                      {selectedQuiz?.primary_language === lang.code && " ★"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -881,6 +1014,8 @@ export function EmailTemplateManager({ quizId, quizTitle }: EmailTemplateManager
           </CardContent>
         )}
       </Card>
+      </>
+      )}
     </div>
   );
 }
