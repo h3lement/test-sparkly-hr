@@ -17,6 +17,7 @@ export function DynamicEmailCapture() {
     totalScore, 
     openMindednessScore,
     resultLevels,
+    openMindednessResultLevels,
     quizData
   } = useDynamicQuiz();
   const { language } = useLanguage();
@@ -52,6 +53,15 @@ export function DynamicEmailCapture() {
       ? Math.max(...resultLevels.map(r => r.max_score))
       : 24;
 
+    // Find the matching open-mindedness result level
+    const omResult = openMindednessResultLevels.find(
+      (level) => openMindednessScore >= level.min_score && openMindednessScore <= level.max_score
+    );
+    
+    const omMaxScore = openMindednessResultLevels.length > 0
+      ? Math.max(...openMindednessResultLevels.map(l => l.max_score))
+      : 4;
+
     try {
       const { error } = await supabase.functions.invoke('send-quiz-results', {
         body: {
@@ -63,6 +73,9 @@ export function DynamicEmailCapture() {
           insights: result?.insights?.map(i => getText(i)) || [],
           language,
           opennessScore: openMindednessScore,
+          opennessMaxScore: omMaxScore,
+          opennessTitle: omResult ? getText(omResult.title) : '',
+          opennessDescription: omResult ? getText(omResult.description) : '',
           quizId: quizData?.id,
           quizSlug: quizData?.slug,
         },
