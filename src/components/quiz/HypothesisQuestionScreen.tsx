@@ -118,184 +118,248 @@ export function HypothesisQuestionScreen() {
   const truthExplanation = getText(currentQuestion.truth_explanation);
 
   return (
-    <main className="animate-fade-in max-w-2xl mx-auto" role="main">
+    <main className="animate-fade-in max-w-2xl mx-auto px-4" role="main">
       {/* Progress Bar */}
-      <div className="mb-6">
+      <div className="mb-8">
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>{getText(currentPage.title)}</span>
-          <span>{progress.current} / {progress.total}</span>
+          <span className="font-medium">{getText(currentPage.title)}</span>
+          <span className="tabular-nums">{progress.current} of {progress.total}</span>
         </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div 
-            className="h-full bg-primary transition-all duration-300"
+            className="h-full bg-primary transition-all duration-500 ease-out"
             style={{ width: `${(progress.current / progress.total) * 100}%` }}
           />
         </div>
       </div>
 
-      {/* Category Description */}
-      {currentQuestionIndex === 0 && (
-        <div className="glass rounded-xl p-4 mb-6 text-center">
-          <p className="text-muted-foreground">{getText(currentPage.description)}</p>
-        </div>
-      )}
-
-      {/* Hypothesis Card */}
-      <div className="glass rounded-2xl p-6 md:p-8 mb-6">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <Lightbulb className="w-4 h-4" />
-          <span>Hypothesis #{progress.current}</span>
+      {/* Main Question Card */}
+      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
+        {/* Header */}
+        <div className="bg-muted/30 px-6 py-4 border-b border-border">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Belief #{progress.current}
+          </span>
         </div>
 
-        <h2 className="text-xl md:text-2xl font-medium mb-6 leading-relaxed">
-          "{hypothesisText}"
-        </h2>
+        {/* Hypothesis Statement */}
+        <div className="p-6 md:p-8">
+          <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-foreground mb-6 border-l-4 border-primary pl-4">
+            {hypothesisText}
+          </blockquote>
 
-        {/* Interview Question Hint */}
-        <div className="bg-muted/50 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-2">
-            <Users className="w-4 h-4 text-primary mt-1 shrink-0" />
+          {/* Interview Context */}
+          <div className="flex items-start gap-3 bg-muted/40 rounded-lg p-4 mb-8">
+            <Users className="w-5 h-5 text-primary mt-0.5 shrink-0" />
             <div>
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Interview check:</span>
-              <p className="text-sm mt-1">{interviewQuestion}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
+                What to ask in interviews
+              </p>
+              <p className="text-sm text-foreground/80">{interviewQuestion}</p>
             </div>
           </div>
+
+          {/* Answer Section */}
+          {!showTruth ? (
+            <div className="space-y-8">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-foreground mb-1">
+                  Is this statement true or false?
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Answer for each demographic group
+                </p>
+              </div>
+
+              <div className="grid gap-6">
+                {/* Woman Answer */}
+                <div className="bg-muted/20 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-semibold text-foreground flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center text-lg">👩</span>
+                      Women 50+
+                    </span>
+                    {answerWoman !== null && (
+                      <span className={cn(
+                        "text-sm font-medium px-3 py-1 rounded-full",
+                        answerWoman ? "bg-blue-500/20 text-blue-600" : "bg-orange-500/20 text-orange-600"
+                      )}>
+                        {answerWoman ? 'TRUE' : 'FALSE'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant={answerWoman === true ? "default" : "outline"}
+                      className={cn(
+                        "flex-1 h-12 text-base font-medium transition-all",
+                        answerWoman === true 
+                          ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
+                          : "hover:border-blue-400 hover:text-blue-600"
+                      )}
+                      onClick={() => setAnswerWoman(true)}
+                    >
+                      True
+                    </Button>
+                    <Button
+                      variant={answerWoman === false ? "default" : "outline"}
+                      className={cn(
+                        "flex-1 h-12 text-base font-medium transition-all",
+                        answerWoman === false 
+                          ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600" 
+                          : "hover:border-orange-400 hover:text-orange-600"
+                      )}
+                      onClick={() => setAnswerWoman(false)}
+                    >
+                      False
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Man Answer */}
+                <div className="bg-muted/20 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-semibold text-foreground flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-lg">👨</span>
+                      Men 50+
+                    </span>
+                    {answerMan !== null && (
+                      <span className={cn(
+                        "text-sm font-medium px-3 py-1 rounded-full",
+                        answerMan ? "bg-blue-500/20 text-blue-600" : "bg-orange-500/20 text-orange-600"
+                      )}>
+                        {answerMan ? 'TRUE' : 'FALSE'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant={answerMan === true ? "default" : "outline"}
+                      className={cn(
+                        "flex-1 h-12 text-base font-medium transition-all",
+                        answerMan === true 
+                          ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
+                          : "hover:border-blue-400 hover:text-blue-600"
+                      )}
+                      onClick={() => setAnswerMan(true)}
+                    >
+                      True
+                    </Button>
+                    <Button
+                      variant={answerMan === false ? "default" : "outline"}
+                      className={cn(
+                        "flex-1 h-12 text-base font-medium transition-all",
+                        answerMan === false 
+                          ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600" 
+                          : "hover:border-orange-400 hover:text-orange-600"
+                      )}
+                      onClick={() => setAnswerMan(false)}
+                    >
+                      False
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSubmitAnswer}
+                disabled={answerWoman === null || answerMan === null || isSubmitting}
+                size="lg"
+                className="w-full h-14 text-lg font-semibold"
+              >
+                {isSubmitting ? 'Checking...' : 'Check My Answer'}
+              </Button>
+            </div>
+          ) : (
+            /* Truth Reveal */
+            <div className="space-y-6 animate-fade-in">
+              {/* Result Header */}
+              <div className={cn(
+                "text-center py-4 px-6 rounded-xl",
+                answerWoman === false && answerMan === false
+                  ? "bg-green-500/10 border border-green-500/30"
+                  : "bg-amber-500/10 border border-amber-500/30"
+              )}>
+                <span className="text-2xl mb-2 block">
+                  {answerWoman === false && answerMan === false ? '🎯' : '💡'}
+                </span>
+                <p className="font-semibold text-lg">
+                  {answerWoman === false && answerMan === false 
+                    ? "You got it right!" 
+                    : "This is a common misconception"}
+                </p>
+              </div>
+
+              {/* Your Answers */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className={cn(
+                  "rounded-xl p-4 text-center border",
+                  answerWoman === false 
+                    ? "bg-green-500/10 border-green-500/30" 
+                    : "bg-red-500/10 border-red-500/30"
+                )}>
+                  <span className="text-2xl block mb-2">👩</span>
+                  <p className="text-xs text-muted-foreground mb-1">Women 50+</p>
+                  <p className="font-semibold flex items-center justify-center gap-1">
+                    {answerWoman ? 'True' : 'False'}
+                    {answerWoman === false ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    )}
+                  </p>
+                </div>
+                <div className={cn(
+                  "rounded-xl p-4 text-center border",
+                  answerMan === false 
+                    ? "bg-green-500/10 border-green-500/30" 
+                    : "bg-red-500/10 border-red-500/30"
+                )}>
+                  <span className="text-2xl block mb-2">👨</span>
+                  <p className="text-xs text-muted-foreground mb-1">Men 50+</p>
+                  <p className="font-semibold flex items-center justify-center gap-1">
+                    {answerMan ? 'True' : 'False'}
+                    {answerMan === false ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Correct Answer Callout */}
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
+                <p className="text-sm text-muted-foreground mb-1">Correct answer for both</p>
+                <p className="font-bold text-primary text-lg">FALSE</p>
+              </div>
+
+              {/* Truth Explanation */}
+              <div className="bg-muted/30 rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Lightbulb className="w-5 h-5 text-amber-500" />
+                  <span className="font-semibold">The Truth</span>
+                </div>
+                <p className="text-foreground/90 leading-relaxed">{truthExplanation}</p>
+              </div>
+
+              <Button
+                onClick={handleNext}
+                size="lg"
+                className="w-full h-14 text-lg font-semibold"
+              >
+                {progress.current < progress.total ? (
+                  <>
+                    Next Question
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </>
+                ) : (
+                  'See My Results'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
-
-        {/* Answer Section */}
-        {!showTruth ? (
-          <div className="space-y-6">
-            <p className="text-center text-muted-foreground">
-              Do you believe this is true?
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Woman Answer */}
-              <div className="space-y-3">
-                <label className="text-center block font-medium">For Women 50+</label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={answerWoman === true ? "default" : "outline"}
-                    className={cn(
-                      "flex-1 h-12",
-                      answerWoman === true && "bg-primary"
-                    )}
-                    onClick={() => setAnswerWoman(true)}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    True
-                  </Button>
-                  <Button
-                    variant={answerWoman === false ? "default" : "outline"}
-                    className={cn(
-                      "flex-1 h-12",
-                      answerWoman === false && "bg-primary"
-                    )}
-                    onClick={() => setAnswerWoman(false)}
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    False
-                  </Button>
-                </div>
-              </div>
-
-              {/* Man Answer */}
-              <div className="space-y-3">
-                <label className="text-center block font-medium">For Men 50+</label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={answerMan === true ? "default" : "outline"}
-                    className={cn(
-                      "flex-1 h-12",
-                      answerMan === true && "bg-primary"
-                    )}
-                    onClick={() => setAnswerMan(true)}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    True
-                  </Button>
-                  <Button
-                    variant={answerMan === false ? "default" : "outline"}
-                    className={cn(
-                      "flex-1 h-12",
-                      answerMan === false && "bg-primary"
-                    )}
-                    onClick={() => setAnswerMan(false)}
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    False
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              onClick={handleSubmitAnswer}
-              disabled={answerWoman === null || answerMan === null || isSubmitting}
-              className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground"
-            >
-              {isSubmitting ? 'Saving...' : 'Reveal the Truth'}
-            </Button>
-          </div>
-        ) : (
-          /* Truth Reveal */
-          <div className="space-y-6 animate-fade-in">
-            {/* Answer Summary */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className={cn(
-                "rounded-lg p-4 text-center",
-                answerWoman === false ? "bg-green-500/10 border border-green-500/30" : "bg-destructive/10 border border-destructive/30"
-              )}>
-                <div className="text-sm text-muted-foreground mb-1">Women 50+</div>
-                <div className="font-medium">
-                  You said: {answerWoman ? 'True' : 'False'}
-                  {answerWoman === false ? (
-                    <CheckCircle className="inline w-4 h-4 ml-2 text-green-500" />
-                  ) : (
-                    <XCircle className="inline w-4 h-4 ml-2 text-destructive" />
-                  )}
-                </div>
-              </div>
-              <div className={cn(
-                "rounded-lg p-4 text-center",
-                answerMan === false ? "bg-green-500/10 border border-green-500/30" : "bg-destructive/10 border border-destructive/30"
-              )}>
-                <div className="text-sm text-muted-foreground mb-1">Men 50+</div>
-                <div className="font-medium">
-                  You said: {answerMan ? 'True' : 'False'}
-                  {answerMan === false ? (
-                    <CheckCircle className="inline w-4 h-4 ml-2 text-green-500" />
-                  ) : (
-                    <XCircle className="inline w-4 h-4 ml-2 text-destructive" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Truth Explanation */}
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Lightbulb className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-primary">The Reality</span>
-              </div>
-              <p className="text-foreground leading-relaxed">{truthExplanation}</p>
-            </div>
-
-            <Button
-              onClick={handleNext}
-              className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground"
-            >
-              {progress.current < progress.total ? (
-                <>
-                  Next Hypothesis
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
-              ) : (
-                'Complete & Get Results'
-              )}
-            </Button>
-          </div>
-        )}
       </div>
     </main>
   );
