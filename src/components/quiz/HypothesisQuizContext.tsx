@@ -30,6 +30,19 @@ export interface HypothesisResponse {
   isCorrect: boolean;
 }
 
+export interface OpenMindednessAnswer {
+  id: string;
+  answer_text: Record<string, string>;
+  answer_order: number;
+  score_value: number;
+}
+
+export interface OpenMindednessQuestionData {
+  id: string;
+  question_text: Record<string, string>;
+  answers: OpenMindednessAnswer[];
+}
+
 export interface QuizData {
   id: string;
   slug: string;
@@ -45,6 +58,11 @@ export interface QuizData {
   cta_description: Record<string, string>;
   cta_url: string | null;
   quiz_type: string;
+  include_open_mindedness?: boolean;
+}
+
+export interface OpenMindednessAnswers {
+  [answerId: string]: boolean;
 }
 
 interface HypothesisQuizContextType {
@@ -56,8 +74,16 @@ interface HypothesisQuizContextType {
   setPages: (pages: HypothesisPage[]) => void;
   setQuestions: (questions: HypothesisQuestion[]) => void;
   
+  // Open Mindedness
+  openMindednessQuestion: OpenMindednessQuestionData | null;
+  setOpenMindednessQuestion: (q: OpenMindednessQuestionData | null) => void;
+  openMindednessAnswers: OpenMindednessAnswers;
+  setOpenMindednessAnswers: (answers: OpenMindednessAnswers) => void;
+  hasOpenMindedness: boolean;
+  calculateOpenMindednessScore: () => number;
+  
   // Quiz state
-  currentStep: 'welcome' | 'quiz' | 'email' | 'results';
+  currentStep: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results';
   currentPageIndex: number;
   currentQuestionIndex: number;
   showTruth: boolean;
@@ -68,7 +94,7 @@ interface HypothesisQuizContextType {
   feedbackActionPlan: string;
   
   // Actions
-  setCurrentStep: (step: 'welcome' | 'quiz' | 'email' | 'results') => void;
+  setCurrentStep: (step: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results') => void;
   setCurrentPageIndex: (index: number) => void;
   setCurrentQuestionIndex: (index: number) => void;
   setShowTruth: (show: boolean) => void;
@@ -97,7 +123,11 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
   const [pages, setPages] = useState<HypothesisPage[]>([]);
   const [questions, setQuestions] = useState<HypothesisQuestion[]>([]);
   
-  const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'email' | 'results'>('welcome');
+  // Open Mindedness state
+  const [openMindednessQuestion, setOpenMindednessQuestion] = useState<OpenMindednessQuestionData | null>(null);
+  const [openMindednessAnswers, setOpenMindednessAnswers] = useState<OpenMindednessAnswers>({});
+  
+  const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'mindedness' | 'email' | 'results'>('welcome');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showTruth, setShowTruth] = useState(false);
@@ -106,6 +136,8 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState('');
   const [feedbackNewLearnings, setFeedbackNewLearnings] = useState('');
   const [feedbackActionPlan, setFeedbackActionPlan] = useState('');
+
+  const hasOpenMindedness = !!(quizData?.include_open_mindedness && openMindednessQuestion);
 
   const sortedPages = [...pages].sort((a, b) => a.page_number - b.page_number);
 
@@ -141,6 +173,16 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
     return { correct, total: questions.length };
   };
 
+  const calculateOpenMindednessScore = () => {
+    if (!openMindednessQuestion) return 0;
+    return openMindednessQuestion.answers.reduce((total, answer) => {
+      if (openMindednessAnswers[answer.id]) {
+        return total + (answer.score_value || 1);
+      }
+      return total;
+    }, 0);
+  };
+
   const getProgress = () => {
     let current = 0;
     for (let i = 0; i < currentPageIndex; i++) {
@@ -162,6 +204,7 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
     setEmail('');
     setFeedbackNewLearnings('');
     setFeedbackActionPlan('');
+    setOpenMindednessAnswers({});
   };
 
   return (
@@ -173,6 +216,12 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
         setQuizData,
         setPages,
         setQuestions,
+        openMindednessQuestion,
+        setOpenMindednessQuestion,
+        openMindednessAnswers,
+        setOpenMindednessAnswers,
+        hasOpenMindedness,
+        calculateOpenMindednessScore,
         currentStep,
         currentPageIndex,
         currentQuestionIndex,

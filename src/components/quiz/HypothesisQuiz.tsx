@@ -5,6 +5,7 @@ import { HypothesisWelcomeScreen } from './HypothesisWelcomeScreen';
 import { HypothesisQuestionScreen } from './HypothesisQuestionScreen';
 import { HypothesisEmailCapture } from './HypothesisEmailCapture';
 import { HypothesisResultsScreen } from './HypothesisResultsScreen';
+import { HypothesisOpenMindedness } from './HypothesisOpenMindedness';
 import { useHypothesisQuizPublic } from '@/hooks/useHypothesisQuizPublic';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
 import { Logo } from '@/components/Logo';
@@ -17,12 +18,13 @@ function HypothesisQuizContent() {
   const navigate = useNavigate();
   const slug = quizSlug || '';
   
-  const { quiz, pages, questions, loading, error } = useHypothesisQuizPublic(slug);
+  const { quiz, pages, questions, openMindednessQuestion, loading, error } = useHypothesisQuizPublic(slug);
   const { 
     currentStep, 
     setQuizData, 
     setPages, 
     setQuestions,
+    setOpenMindednessQuestion,
   } = useHypothesisQuiz();
 
   // Load quiz data into context
@@ -30,7 +32,8 @@ function HypothesisQuizContent() {
     if (quiz) setQuizData(quiz);
     if (pages.length) setPages(pages);
     if (questions.length) setQuestions(questions);
-  }, [quiz, pages, questions, setQuizData, setPages, setQuestions]);
+    if (openMindednessQuestion) setOpenMindednessQuestion(openMindednessQuestion);
+  }, [quiz, pages, questions, openMindednessQuestion, setQuizData, setPages, setQuestions, setOpenMindednessQuestion]);
 
   if (loading) {
     return (
@@ -65,6 +68,7 @@ function HypothesisQuizContent() {
         <div className="w-full max-w-3xl">
           {currentStep === 'welcome' && <HypothesisWelcomeScreen />}
           {currentStep === 'quiz' && <HypothesisQuestionScreen />}
+          {currentStep === 'mindedness' && <HypothesisOpenMindedness />}
           {currentStep === 'email' && <HypothesisEmailCapture />}
           {currentStep === 'results' && <HypothesisResultsScreen />}
         </div>
