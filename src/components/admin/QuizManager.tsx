@@ -37,6 +37,7 @@ interface Quiz {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  quiz_type: string;
   questions_count?: number;
   respondents_count?: number;
 }
@@ -66,20 +67,46 @@ export function QuizManager() {
       // Get question and respondent counts for each quiz
       const quizzesWithCounts = await Promise.all(
         (quizzesData || []).map(async (quiz) => {
-          const [questionsRes, respondentsRes] = await Promise.all([
-            supabase
+          const isHypothesis = quiz.quiz_type === "hypothesis";
+          
+          // For hypothesis quizzes, count hypothesis_questions via hypothesis_pages
+          // For standard quizzes, count quiz_questions directly
+          let questionsCount = 0;
+          
+          if (isHypothesis) {
+            // Get hypothesis pages for this quiz, then count questions
+            const { data: pages } = await supabase
+              .from("hypothesis_pages")
+              .select("id")
+              .eq("quiz_id", quiz.id);
+            
+            if (pages && pages.length > 0) {
+              const pageIds = pages.map(p => p.id);
+              const { count } = await supabase
+                .from("hypothesis_questions")
+                .select("*", { count: "exact", head: true })
+                .in("page_id", pageIds);
+              questionsCount = count || 0;
+            }
+          } else {
+            const { count } = await supabase
               .from("quiz_questions")
               .select("*", { count: "exact", head: true })
-              .eq("quiz_id", quiz.id),
-            supabase
-              .from("quiz_leads")
-              .select("*", { count: "exact", head: true })
-              .eq("quiz_id", quiz.id),
-          ]);
+              .eq("quiz_id", quiz.id);
+            questionsCount = count || 0;
+          }
+          
+          // Get respondents - use hypothesis_leads for hypothesis quizzes
+          const respondentsTable = isHypothesis ? "hypothesis_leads" : "quiz_leads";
+          const { count: respondentsCount } = await supabase
+            .from(respondentsTable)
+            .select("*", { count: "exact", head: true })
+            .eq("quiz_id", quiz.id);
+          
           return { 
             ...quiz, 
-            questions_count: questionsRes.count || 0,
-            respondents_count: respondentsRes.count || 0,
+            questions_count: questionsCount,
+            respondents_count: respondentsCount || 0,
           };
         })
       );
@@ -363,14 +390,21 @@ export function QuizManager() {
               {filteredQuizzes.map((quiz) => (
                 <TableRow key={quiz.id} className="hover:bg-secondary/30 group">
                   <TableCell className="font-medium">
-                    <button
-                      type="button"
-                      onClick={() => handleEditQuiz(quiz)}
-                      className="text-left text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
-                      title="Edit quiz"
-                    >
-                      {getLocalizedText(quiz.title) || quiz.slug}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditQuiz(quiz)}
+                        className="text-left text-foreground hover:text-primary hover:underline underline-offset-2 transition-colors"
+                        title="Edit quiz"
+                      >
+                        {getLocalizedText(quiz.title) || quiz.slug}
+                      </button>
+                      {quiz.quiz_type === "hypothesis" && (
+                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                          Hypothesis
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">
                     <a
