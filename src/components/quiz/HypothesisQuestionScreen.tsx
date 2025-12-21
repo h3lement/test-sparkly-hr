@@ -302,19 +302,6 @@ export function HypothesisQuestionScreen() {
                   </div>
                 </div>
 
-                {/* Interview Question - Below the row after submission */}
-                {isSubmitted && interviewQuestion && (
-                  <div className="px-4 pb-3 animate-fade-in">
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
-                      <div className="flex items-start gap-2">
-                        <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                        <p className="text-sm text-foreground/90 italic">
-                          {interviewQuestion}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
