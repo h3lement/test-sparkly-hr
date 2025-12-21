@@ -215,10 +215,10 @@ export function HypothesisResultsScreen() {
       {/* CTA Section */}
       <section className="bg-card border border-border rounded-xl p-6 mb-6 text-center shadow">
         <h2 className="font-heading text-xl font-semibold mb-3">
-          Ready for Precise Employee Assessment?
+          {getText(quizData?.cta_title, 'Ready for Precise Employee Assessment?')}
         </h2>
         <p className="text-muted-foreground text-sm mb-5 max-w-lg mx-auto">
-          This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.
+          {getText(quizData?.cta_description, 'This quiz provides a general overview. For accurate, in-depth analysis of your team\'s performance and actionable improvement strategies, continue with professional testing.')}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

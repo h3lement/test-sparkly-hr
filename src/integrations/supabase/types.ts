@@ -697,7 +697,9 @@ export type Database = {
           buying_persona: string | null
           created_at: string
           created_by: string | null
+          cta_description: Json
           cta_text: Json
+          cta_title: Json
           cta_url: string | null
           description: Json
           discover_items: Json
@@ -726,7 +728,9 @@ export type Database = {
           buying_persona?: string | null
           created_at?: string
           created_by?: string | null
+          cta_description?: Json
           cta_text?: Json
+          cta_title?: Json
           cta_url?: string | null
           description?: Json
           discover_items?: Json
@@ -755,7 +759,9 @@ export type Database = {
           buying_persona?: string | null
           created_at?: string
           created_by?: string | null
+          cta_description?: Json
           cta_text?: Json
+          cta_title?: Json
           cta_url?: string | null
           description?: Json
           discover_items?: Json

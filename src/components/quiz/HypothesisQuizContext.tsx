@@ -41,6 +41,8 @@ export interface QuizData {
   duration_text: Record<string, string>;
   discover_items: Record<string, string>[];
   cta_text: Record<string, string>;
+  cta_title: Record<string, string>;
+  cta_description: Record<string, string>;
   cta_url: string | null;
   quiz_type: string;
 }
