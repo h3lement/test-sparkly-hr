@@ -584,6 +584,82 @@ export default function QuizEditor() {
     checkAdminAndLoad();
   }, [quizId, isCreating, navigate]);
 
+  // Real-time subscription for tab counts
+  useEffect(() => {
+    if (!quizId || quizId === "new" || !slug) return;
+
+    // Subscribe to quiz_leads changes for respondents/stats count
+    const leadsChannel = supabase
+      .channel(`quiz-leads-${quizId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quiz_leads',
+          filter: `quiz_id=eq.${quizId}`
+        },
+        async () => {
+          const { count } = await supabase
+            .from("quiz_leads")
+            .select("*", { count: "exact", head: true })
+            .eq("quiz_id", quizId);
+          setRespondentsCount(count || 0);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to activity_logs changes for log count
+    const logsChannel = supabase
+      .channel(`activity-logs-${quizId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'activity_logs',
+          filter: `record_id=eq.${quizId}`
+        },
+        async () => {
+          const { count } = await supabase
+            .from("activity_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("record_id", quizId);
+          setActivityLogsCount(count || 0);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to page_views changes for web count
+    const viewsChannel = supabase
+      .channel(`page-views-${quizId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'page_views'
+        },
+        async (payload) => {
+          // Only update if the page_slug matches this quiz
+          if (payload.new && (payload.new as { page_slug: string }).page_slug?.startsWith(slug)) {
+            const { count } = await supabase
+              .from("page_views")
+              .select("*", { count: "exact", head: true })
+              .like("page_slug", `${slug}%`);
+            setPageViewsCount(count || 0);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(leadsChannel);
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(viewsChannel);
+    };
+  }, [quizId, slug]);
+
   const loadQuizData = async (id: string) => {
     setLoading(true);
     try {
