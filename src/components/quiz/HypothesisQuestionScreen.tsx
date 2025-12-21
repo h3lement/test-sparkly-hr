@@ -151,15 +151,60 @@ export function HypothesisQuestionScreen() {
         </p>
       </div>
 
-      {/* Page Progress Indicator */}
+      {/* Page Progress Indicator & Bulk Actions */}
       {!isSubmitted && (
-        <div className="mb-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            This page: {answeredCount} of {pageQuestions.length} answered
-          </span>
-          {allQuestionsAnswered && (
-            <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
-          )}
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              This page: {answeredCount} of {pageQuestions.length} answered
+            </span>
+            {allQuestionsAnswered && (
+              <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
+            )}
+          </div>
+          
+          {/* Bulk True/False Buttons */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">Set all to:</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-4 text-sm font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+              onClick={() => {
+                const newAnswers: PageAnswers = {};
+                pageQuestions.forEach(q => { newAnswers[q.id] = true; });
+                setPageAnswers(newAnswers);
+              }}
+            >
+              All True
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-4 text-sm font-semibold border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+              onClick={() => {
+                const newAnswers: PageAnswers = {};
+                pageQuestions.forEach(q => { newAnswers[q.id] = false; });
+                setPageAnswers(newAnswers);
+              }}
+            >
+              All False
+            </Button>
+            {answeredCount > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = null; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
