@@ -270,19 +270,25 @@ export function HypothesisQuizEditor({ quizId, language }: HypothesisQuizEditorP
           <div className="space-y-4">
             {pages
               .sort((a, b) => a.page_number - b.page_number)
-              .map((page, index) => (
-                <HypothesisPageEditor
-                  key={page.id}
-                  page={page}
-                  pageIndex={index}
-                  language={language}
-                  onUpdatePage={(updates) => handleUpdatePage(page.id, updates)}
-                  onDeletePage={() => handleDeletePage(page.id)}
-                  onAddQuestion={() => handleAddQuestion(page.id)}
-                  onUpdateQuestion={(qId, updates) => handleUpdateQuestion(page.id, qId, updates)}
-                  onDeleteQuestion={(qId) => handleDeleteQuestion(page.id, qId)}
-                />
-              ))}
+              .map((page, index, sortedPages) => {
+                const questionsBeforeThisPage = sortedPages
+                  .slice(0, index)
+                  .reduce((sum, p) => sum + p.questions.length, 0);
+                return (
+                  <HypothesisPageEditor
+                    key={page.id}
+                    page={page}
+                    pageIndex={index}
+                    language={language}
+                    questionsBeforeThisPage={questionsBeforeThisPage}
+                    onUpdatePage={(updates) => handleUpdatePage(page.id, updates)}
+                    onDeletePage={() => handleDeletePage(page.id)}
+                    onAddQuestion={() => handleAddQuestion(page.id)}
+                    onUpdateQuestion={(qId, updates) => handleUpdateQuestion(page.id, qId, updates)}
+                    onDeleteQuestion={(qId) => handleDeleteQuestion(page.id, qId)}
+                  />
+                );
+              })}
           </div>
         </ScrollArea>
       )}

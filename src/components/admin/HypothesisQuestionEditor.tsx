@@ -24,6 +24,7 @@ import {
 interface HypothesisQuestionEditorProps {
   question: HypothesisQuestion;
   questionIndex: number;
+  overallNumber: number;
   language: string;
   onUpdate: (updates: Partial<HypothesisQuestion>) => void;
   onDelete: () => void;
@@ -32,6 +33,7 @@ interface HypothesisQuestionEditorProps {
 export function HypothesisQuestionEditor({
   question,
   questionIndex,
+  overallNumber,
   language,
   onUpdate,
   onDelete,
@@ -62,8 +64,8 @@ export function HypothesisQuestionEditor({
       <AccordionTrigger className="px-4 py-3 hover:no-underline">
         <div className="flex items-center gap-3 flex-1 text-left">
           <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-          <span className="font-medium text-sm text-muted-foreground w-6">
-            #{questionIndex + 1}
+          <span className="font-medium text-sm text-muted-foreground w-8">
+            {overallNumber}. Hypothesis
           </span>
           <span className="flex-1 truncate text-foreground">
             {hypothesisPreview || "New hypothesis..."}
