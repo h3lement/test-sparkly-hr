@@ -153,8 +153,11 @@ export function RespondentDetailDialog({
         }
       }
 
-      // Fetch email log for this lead
-      const { data: emailLogs } = await supabase
+      // Fetch email log for this lead - try by quiz_lead_id first, then by email + date
+      let emailLogData = null;
+      
+      // First try to find by quiz_lead_id (newer records)
+      const { data: emailByLeadId } = await supabase
         .from("email_logs")
         .select("*")
         .eq("quiz_lead_id", lead.id)
@@ -163,7 +166,29 @@ export function RespondentDetailDialog({
         .limit(1)
         .maybeSingle();
 
-      setEmailLog(emailLogs);
+      if (emailByLeadId) {
+        emailLogData = emailByLeadId;
+      } else {
+        // Fallback: find by recipient email sent around the same time (within 1 minute)
+        const leadDate = new Date(lead.created_at);
+        const minDate = new Date(leadDate.getTime() - 60000).toISOString(); // 1 min before
+        const maxDate = new Date(leadDate.getTime() + 60000).toISOString(); // 1 min after
+        
+        const { data: emailByMatch } = await supabase
+          .from("email_logs")
+          .select("*")
+          .eq("recipient_email", lead.email)
+          .eq("email_type", "quiz_result_user")
+          .gte("created_at", minDate)
+          .lte("created_at", maxDate)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        emailLogData = emailByMatch;
+      }
+
+      setEmailLog(emailLogData);
     } catch (error) {
       console.error("Error fetching respondent details:", error);
     } finally {
