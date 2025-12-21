@@ -416,12 +416,12 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
       ) : (
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-[32px_70px_1fr_70px_70px_110px] gap-1 px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
+          <div className="grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
             <span>#</span>
             <span>User</span>
+            <span>Quiz</span>
             <span>Description</span>
             <span>Action</span>
-            <span>Table</span>
             <span className="text-right">Timestamp</span>
           </div>
           
@@ -430,7 +430,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
             {logs.map((log, index) => (
               <div
                 key={log.id}
-                className={`grid grid-cols-[32px_70px_1fr_70px_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
+                className={`grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
                   index % 2 === 0 ? "bg-background" : "bg-muted/20"
                 }`}
               >
@@ -449,6 +449,11 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
                   </div>
                   <span className="truncate text-[10px]">{getShortEmail(log.user_email)}</span>
                 </div>
+
+                {/* Quiz Title */}
+                <span className="text-[10px] text-muted-foreground truncate" title={log.table_name}>
+                  {log.table_name.replace("quiz_", "").replace("_", " ")}
+                </span>
 
                 {/* Description */}
                 <div className="min-w-0">
@@ -471,11 +476,6 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
                 >
                   {ACTION_ICONS[log.action_type] || <AlertCircle className="w-2.5 h-2.5" />}
                 </Badge>
-
-                {/* Table */}
-                <span className="text-[9px] text-muted-foreground truncate" title={log.table_name}>
-                  {log.table_name.replace("quiz_", "")}
-                </span>
 
                 {/* Timestamp */}
                 <div className="text-[9px] text-muted-foreground text-right font-mono">
