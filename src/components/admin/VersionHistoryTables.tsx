@@ -139,9 +139,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
     return format(new Date(dateString), "dd MMM yyyy HH:mm");
   };
 
-  const getLanguages = (subjects: Record<string, string>) => {
-    return Object.keys(subjects).filter(key => subjects[key]).sort();
-  };
 
   if (loading && templates.length === 0) {
     return (
@@ -196,22 +193,20 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
         ) : (
           <div className="border rounded-lg overflow-hidden bg-background">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_1fr_160px_140px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+            <div className="grid grid-cols-[70px_1fr_140px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
               <span>Version</span>
               <span>Sender</span>
-              <span>Languages</span>
               <span>Created</span>
               <span className="text-right">Actions</span>
             </div>
 
             {/* Table Rows */}
             <div className="max-h-[300px] overflow-y-auto">
-              {templates.map((template, index) => {
-                const languages = getLanguages(template.subjects);
+              {templates.map((template) => {
                 return (
                   <div
                     key={template.id}
-                    className={`grid grid-cols-[70px_1fr_160px_140px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
+                    className={`grid grid-cols-[70px_1fr_140px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
                       template.is_live ? "bg-primary/5" : "bg-background"
                     }`}
                   >
@@ -228,20 +223,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                     {/* Sender */}
                     <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
                       {template.sender_name} &lt;{template.sender_email}&gt;
-                    </div>
-
-                    {/* Languages */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {languages.slice(0, 4).map(lang => (
-                        <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
-                          {lang}
-                        </Badge>
-                      ))}
-                      {languages.length > 4 && (
-                        <Badge variant="outline" className="text-xs h-5 px-1.5">
-                          +{languages.length - 4}
-                        </Badge>
-                      )}
                     </div>
 
                     {/* Created */}
@@ -330,14 +311,6 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
     return format(new Date(dateString), "dd MMM yyyy HH:mm");
   };
 
-  const getLanguages = (version: WebResultVersion): string[] => {
-    const languages = new Set<string>();
-    version.result_levels.forEach(level => {
-      Object.keys(level.title || {}).forEach(lang => languages.add(lang));
-      Object.keys(level.description || {}).forEach(lang => languages.add(lang));
-    });
-    return Array.from(languages).sort();
-  };
 
   return (
     <Card className="bg-background">
@@ -378,10 +351,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
         ) : (
           <div className="border rounded-lg overflow-hidden bg-background">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_80px_160px_140px_90px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+            <div className="grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
               <span>Version</span>
               <span>Levels</span>
-              <span>Languages</span>
               <span>Created</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Actions</span>
@@ -390,13 +362,12 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
             {/* Table Rows */}
             <div className="max-h-[300px] overflow-y-auto">
               {versions.map((version, index) => {
-                const languages = getLanguages(version);
                 const isExpanded = expandedId === version.id;
                 
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid grid-cols-[70px_80px_160px_140px_90px_100px] gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-background`}
+                      className={`grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-background`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
@@ -414,20 +385,6 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                         <Badge variant="secondary" className="text-xs h-5 px-1.5">
                           {version.result_levels.length} levels
                         </Badge>
-                      </div>
-
-                      {/* Languages */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {languages.slice(0, 4).map(lang => (
-                          <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
-                            {lang}
-                          </Badge>
-                        ))}
-                        {languages.length > 4 && (
-                          <Badge variant="outline" className="text-xs h-5 px-1.5">
-                            +{languages.length - 4}
-                          </Badge>
-                        )}
                       </div>
 
                       {/* Created */}
@@ -471,29 +428,32 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                     {/* Expanded Details */}
                     {isExpanded && (
                       <div className="px-4 py-3 bg-muted/20 border-b space-y-3">
-                        {version.result_levels.map((level, levelIndex) => (
-                          <div key={levelIndex} className="bg-background rounded-lg p-4 text-sm border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-medium">Score: {level.min_score}-{level.max_score}</span>
+                        {version.result_levels.map((level, levelIndex) => {
+                          const levelLanguages = Object.keys(level.title || {});
+                          return (
+                            <div key={levelIndex} className="bg-background rounded-lg p-4 text-sm border">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-medium">Score: {level.min_score}-{level.max_score}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {levelLanguages.map(lang => {
+                                  const title = level.title?.[lang];
+                                  if (!title) return null;
+                                  return (
+                                    <div key={lang} className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
+                                        {lang}
+                                      </Badge>
+                                      <span className="text-muted-foreground truncate max-w-[200px]" title={title}>
+                                        {title}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                              {languages.map(lang => {
-                                const title = level.title?.[lang];
-                                if (!title) return null;
-                                return (
-                                  <div key={lang} className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
-                                      {lang}
-                                    </Badge>
-                                    <span className="text-muted-foreground truncate max-w-[200px]" title={title}>
-                                      {title}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         
                         {/* Token usage */}
                         {(version.input_tokens || version.output_tokens) && (
