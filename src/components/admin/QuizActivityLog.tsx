@@ -24,9 +24,10 @@ import {
   AlertCircle,
   Search,
   X,
-  Filter
+  Filter,
+  Calendar
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay } from "date-fns";
 
 interface ActivityLog {
   id: string;
@@ -46,14 +47,14 @@ interface QuizActivityLogProps {
   quizId: string;
 }
 
-const ITEMS_PER_PAGE = 30;
+const ITEMS_PER_PAGE_OPTIONS = [20, 50, 100];
 
 const ACTION_TYPES = [
   { value: "all", label: "All Actions" },
   { value: "CREATE", label: "Create" },
   { value: "UPDATE", label: "Update" },
   { value: "DELETE", label: "Delete" },
-  { value: "STATUS_CHANGE", label: "Status Change" },
+  { value: "STATUS_CHANGE", label: "Status" },
 ];
 
 const TABLE_TYPES = [
@@ -83,18 +84,21 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [tableFilter, setTableFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-      setCurrentPage(1); // Reset to first page on search
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -102,7 +106,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [actionFilter, tableFilter]);
+  }, [actionFilter, tableFilter, dateFrom, dateTo, itemsPerPage]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -130,11 +134,23 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
         dataQuery = dataQuery.eq("table_name", tableFilter);
       }
 
-      // Apply search filter (search in description, field_name, user_email)
+      // Apply date range filter
+      if (dateFrom) {
+        const fromDate = startOfDay(parseISO(dateFrom)).toISOString();
+        countQuery = countQuery.gte("created_at", fromDate);
+        dataQuery = dataQuery.gte("created_at", fromDate);
+      }
+      if (dateTo) {
+        const toDate = endOfDay(parseISO(dateTo)).toISOString();
+        countQuery = countQuery.lte("created_at", toDate);
+        dataQuery = dataQuery.lte("created_at", toDate);
+      }
+
+      // Apply search filter (search in description, field_name, user_email, old_value, new_value)
       if (debouncedSearch) {
         const searchPattern = `%${debouncedSearch}%`;
-        countQuery = countQuery.or(`description.ilike.${searchPattern},field_name.ilike.${searchPattern},user_email.ilike.${searchPattern}`);
-        dataQuery = dataQuery.or(`description.ilike.${searchPattern},field_name.ilike.${searchPattern},user_email.ilike.${searchPattern}`);
+        countQuery = countQuery.or(`description.ilike.${searchPattern},field_name.ilike.${searchPattern},user_email.ilike.${searchPattern},old_value.ilike.${searchPattern},new_value.ilike.${searchPattern}`);
+        dataQuery = dataQuery.or(`description.ilike.${searchPattern},field_name.ilike.${searchPattern},user_email.ilike.${searchPattern},old_value.ilike.${searchPattern},new_value.ilike.${searchPattern}`);
       }
 
       // Get count
@@ -145,7 +161,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
       // Get paginated logs
       const { data, error } = await dataQuery
         .order("created_at", { ascending: false })
-        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
+        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
 
       if (error) throw error;
       setLogs(data || []);
@@ -154,7 +170,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
     } finally {
       setLoading(false);
     }
-  }, [quizId, currentPage, actionFilter, tableFilter, debouncedSearch]);
+  }, [quizId, currentPage, actionFilter, tableFilter, debouncedSearch, dateFrom, dateTo, itemsPerPage]);
 
   useEffect(() => {
     fetchLogs();
@@ -181,14 +197,24 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
           const matchesSearch = !debouncedSearch || 
             (newLog.description?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
              newLog.field_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-             newLog.user_email?.toLowerCase().includes(debouncedSearch.toLowerCase()));
+             newLog.user_email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+             newLog.old_value?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+             newLog.new_value?.toLowerCase().includes(debouncedSearch.toLowerCase()));
 
-          if (matchesAction && matchesTable && matchesSearch && currentPage === 1) {
-            setLogs(prev => [newLog, ...prev.slice(0, ITEMS_PER_PAGE - 1)]);
+          // Check date range
+          let matchesDate = true;
+          if (dateFrom) {
+            matchesDate = matchesDate && new Date(newLog.created_at) >= startOfDay(parseISO(dateFrom));
+          }
+          if (dateTo) {
+            matchesDate = matchesDate && new Date(newLog.created_at) <= endOfDay(parseISO(dateTo));
+          }
+
+          if (matchesAction && matchesTable && matchesSearch && matchesDate && currentPage === 1) {
+            setLogs(prev => [newLog, ...prev.slice(0, itemsPerPage - 1)]);
           }
           
-          // Always update count if it matches filters
-          if (matchesAction && matchesTable && matchesSearch) {
+          if (matchesAction && matchesTable && matchesSearch && matchesDate) {
             setTotalCount(prev => prev + 1);
           }
         }
@@ -198,26 +224,39 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [quizId, currentPage, actionFilter, tableFilter, debouncedSearch]);
+  }, [quizId, currentPage, actionFilter, tableFilter, debouncedSearch, dateFrom, dateTo, itemsPerPage]);
 
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const getInitial = (email: string | null) => {
     if (!email) return "S";
     return email.charAt(0).toUpperCase();
   };
 
-  const formatTime = (dateStr: string) => {
-    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
+  const formatTimestamp = (dateStr: string) => {
+    return format(new Date(dateStr), "dd MMM yyyy HH:mm");
+  };
+
+  const getShortEmail = (email: string | null) => {
+    if (!email) return "System";
+    const parts = email.split("@");
+    return parts[0];
   };
 
   const clearFilters = () => {
     setSearchQuery("");
     setActionFilter("all");
     setTableFilter("all");
+    setDateFrom("");
+    setDateTo("");
   };
 
-  const hasActiveFilters = searchQuery || actionFilter !== "all" || tableFilter !== "all";
+  const hasActiveFilters = searchQuery || actionFilter !== "all" || tableFilter !== "all" || dateFrom || dateTo;
+
+  // Calculate row number for display
+  const getRowNumber = (index: number) => {
+    return (currentPage - 1) * itemsPerPage + index + 1;
+  };
 
   if (loading && logs.length === 0) {
     return (
@@ -228,7 +267,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
         </div>
         <Skeleton className="h-8 w-full" />
         {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-8" />
+          <Skeleton key={i} className="h-7" />
         ))}
       </div>
     );
@@ -257,12 +296,12 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
         </Button>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search and Filters Row 1 */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[150px]">
+        <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
           <Input
-            placeholder="Search logs..."
+            placeholder="Search description, user, values..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-7 text-xs pl-7 pr-7"
@@ -278,7 +317,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
         </div>
         
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="h-7 text-xs w-[110px]">
+          <SelectTrigger className="h-7 text-xs w-[95px]">
             <SelectValue placeholder="Action" />
           </SelectTrigger>
           <SelectContent>
@@ -291,13 +330,49 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
         </Select>
 
         <Select value={tableFilter} onValueChange={setTableFilter}>
-          <SelectTrigger className="h-7 text-xs w-[100px]">
+          <SelectTrigger className="h-7 text-xs w-[90px]">
             <SelectValue placeholder="Table" />
           </SelectTrigger>
           <SelectContent>
             {TABLE_TYPES.map((type) => (
               <SelectItem key={type.value} value={type.value} className="text-xs">
                 {type.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Date Range Row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3 h-3 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground">From:</span>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="h-7 text-xs w-[120px]"
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">To:</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="h-7 text-xs w-[120px]"
+          />
+        </div>
+
+        <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+          <SelectTrigger className="h-7 text-xs w-[70px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ITEMS_PER_PAGE_OPTIONS.map((num) => (
+              <SelectItem key={num} value={num.toString()} className="text-xs">
+                {num} rows
               </SelectItem>
             ))}
           </SelectContent>
@@ -311,7 +386,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
             className="h-7 text-[10px] gap-1 px-2 text-muted-foreground hover:text-foreground"
           >
             <X className="w-3 h-3" />
-            Clear
+            Clear all
           </Button>
         )}
       </div>
@@ -341,29 +416,38 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
       ) : (
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-[32px_1fr_80px_90px_100px] gap-2 px-2 py-1.5 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
-            <span></span>
+          <div className="grid grid-cols-[32px_70px_1fr_70px_70px_110px] gap-1 px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
+            <span>#</span>
+            <span>User</span>
             <span>Description</span>
             <span>Action</span>
             <span>Table</span>
-            <span className="text-right">Time</span>
+            <span className="text-right">Timestamp</span>
           </div>
           
           {/* Log Rows */}
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[350px] overflow-y-auto">
             {logs.map((log, index) => (
               <div
                 key={log.id}
-                className={`grid grid-cols-[32px_1fr_80px_90px_100px] gap-2 px-2 py-1.5 items-center text-xs border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
+                className={`grid grid-cols-[32px_70px_1fr_70px_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
                   index % 2 === 0 ? "bg-background" : "bg-muted/20"
                 }`}
               >
-                {/* Avatar */}
+                {/* Row Number */}
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {getRowNumber(index)}
+                </span>
+
+                {/* User */}
                 <div 
-                  className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary"
+                  className="flex items-center gap-1 min-w-0"
                   title={log.user_email || "System"}
                 >
-                  {getInitial(log.user_email)}
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-medium text-primary flex-shrink-0">
+                    {getInitial(log.user_email)}
+                  </div>
+                  <span className="truncate text-[10px]">{getShortEmail(log.user_email)}</span>
                 </div>
 
                 {/* Description */}
@@ -372,10 +456,10 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
                     {log.description || "No description"}
                   </div>
                   {log.field_name && (
-                    <div className="truncate text-[10px] text-muted-foreground" title={`${log.old_value} → ${log.new_value}`}>
+                    <div className="truncate text-[9px] text-muted-foreground" title={`${log.old_value} → ${log.new_value}`}>
                       <span className="font-medium">{log.field_name}</span>
-                      {log.old_value && <span className="text-red-500/70"> {log.old_value.substring(0, 20)}{log.old_value.length > 20 ? "…" : ""}</span>}
-                      {log.new_value && <span className="text-green-500/70"> → {log.new_value.substring(0, 20)}{log.new_value.length > 20 ? "…" : ""}</span>}
+                      {log.old_value && <span className="text-red-500/70"> {log.old_value.substring(0, 15)}{log.old_value.length > 15 ? "…" : ""}</span>}
+                      {log.new_value && <span className="text-green-500/70"> → {log.new_value.substring(0, 15)}{log.new_value.length > 15 ? "…" : ""}</span>}
                     </div>
                   )}
                 </div>
@@ -383,21 +467,19 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
                 {/* Action Badge */}
                 <Badge
                   variant="outline"
-                  className={`text-[9px] px-1.5 py-0 h-5 justify-center gap-0.5 ${ACTION_COLORS[log.action_type] || "bg-muted"}`}
+                  className={`text-[8px] px-1 py-0 h-4 justify-center ${ACTION_COLORS[log.action_type] || "bg-muted"}`}
                 >
-                  {ACTION_ICONS[log.action_type] || <AlertCircle className="w-3 h-3" />}
-                  <span className="hidden sm:inline">{log.action_type}</span>
+                  {ACTION_ICONS[log.action_type] || <AlertCircle className="w-2.5 h-2.5" />}
                 </Badge>
 
                 {/* Table */}
-                <span className="text-[10px] text-muted-foreground truncate" title={log.table_name}>
-                  {log.table_name}
+                <span className="text-[9px] text-muted-foreground truncate" title={log.table_name}>
+                  {log.table_name.replace("quiz_", "")}
                 </span>
 
-                {/* Time */}
-                <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
-                  <Clock className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{formatTime(log.created_at)}</span>
+                {/* Timestamp */}
+                <div className="text-[9px] text-muted-foreground text-right font-mono">
+                  {formatTimestamp(log.created_at)}
                 </div>
               </div>
             ))}
@@ -406,12 +488,21 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalPages >= 1 && (
         <div className="flex items-center justify-between text-[10px]">
           <span className="text-muted-foreground">
-            Page {currentPage} of {totalPages} ({totalCount} total)
+            Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}
           </span>
           <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(1)}
+            >
+              First
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -421,14 +512,26 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
             >
               <ChevronLeft className="w-3 h-3" />
             </Button>
+            <span className="px-2 text-muted-foreground">
+              {currentPage} / {totalPages || 1}
+            </span>
             <Button
               variant="outline"
               size="sm"
               className="h-6 px-2"
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => setCurrentPage(currentPage + 1)}
             >
               <ChevronRight className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              disabled={currentPage === totalPages || totalPages === 0}
+              onClick={() => setCurrentPage(totalPages)}
+            >
+              Last
             </Button>
           </div>
         </div>
