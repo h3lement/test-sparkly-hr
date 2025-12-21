@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Trash2,
@@ -23,6 +24,8 @@ import {
   RefreshCw,
   ArrowLeft,
   Brain,
+  Percent,
+  Hash,
 } from "lucide-react";
 import {
   DndContext,
@@ -68,6 +71,8 @@ interface SortableLevelProps {
   isPreviewMode: boolean;
   quizId?: string;
   model?: string;
+  showPercentage: boolean;
+  maxScore: number;
   onUpdate: (index: number, updates: Partial<OpenMindednessResultLevel>) => void;
   onDelete: (index: number) => void;
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
@@ -81,6 +86,8 @@ function SortableLevel({
   isPreviewMode,
   quizId,
   model,
+  showPercentage,
+  maxScore,
   onUpdate,
   onDelete,
   getLocalizedValue,
@@ -146,13 +153,16 @@ function SortableLevel({
     }
   };
 
+  const toPercent = (val: number) => maxScore > 0 ? Math.round((val / maxScore) * 100) : 0;
+  const fromPercent = (pct: number) => maxScore > 0 ? Math.round((pct / 100) * maxScore) : 0;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`px-4 py-3 border-b last:border-b-0 space-y-3 ${index % 2 === 1 ? "bg-muted/40" : ""}`}
+      className={`px-4 py-2.5 border-b last:border-b-0 ${index % 2 === 1 ? "bg-muted/40" : ""}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <div
           {...attributes}
           {...listeners}
@@ -163,7 +173,7 @@ function SortableLevel({
         <Input
           value={level.emoji}
           onChange={(e) => onUpdate(index, { emoji: e.target.value })}
-          className="h-8 w-12 text-center text-base"
+          className="h-7 w-10 text-center text-base px-1"
           title="Emoji"
           disabled={isPreviewMode}
         />
@@ -173,34 +183,52 @@ function SortableLevel({
             const updated = { ...jsonToRecord(level.title), [displayLanguage]: e.target.value };
             onUpdate(index, { title: updated });
           }}
-          placeholder={`Result title (${displayLanguage.toUpperCase()})`}
-          className="h-8 text-sm flex-1"
+          placeholder={`Title (${displayLanguage.toUpperCase()})`}
+          className="h-7 text-sm w-40"
           disabled={isPreviewMode}
         />
-        <div className="flex items-center gap-2 flex-shrink-0 bg-secondary/50 rounded px-2 py-1">
-          <span className="text-xs text-muted-foreground">Score:</span>
+        <div className="flex items-center gap-1.5 flex-shrink-0 bg-secondary/50 rounded px-2 py-0.5">
           <input
             type="number"
-            value={level.min_score}
-            onChange={(e) => onUpdate(index, { min_score: parseInt(e.target.value) || 0 })}
-            className="h-7 w-14 text-sm text-center rounded border border-input bg-background px-2"
+            value={showPercentage ? toPercent(level.min_score) : level.min_score}
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || 0;
+              onUpdate(index, { min_score: showPercentage ? fromPercent(val) : val });
+            }}
+            className="h-6 w-12 text-xs text-center rounded border border-input bg-background px-1"
             disabled={isPreviewMode}
           />
-          <span className="text-sm text-muted-foreground">–</span>
+          <span className="text-xs text-muted-foreground">–</span>
           <input
             type="number"
-            value={level.max_score}
-            onChange={(e) => onUpdate(index, { max_score: parseInt(e.target.value) || 0 })}
-            className="h-7 w-14 text-sm text-center rounded border border-input bg-background px-2"
+            value={showPercentage ? toPercent(level.max_score) : level.max_score}
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || 0;
+              onUpdate(index, { max_score: showPercentage ? fromPercent(val) : val });
+            }}
+            className="h-6 w-12 text-xs text-center rounded border border-input bg-background px-1"
             disabled={isPreviewMode}
           />
+          <span className="text-xs text-muted-foreground">{showPercentage ? "%" : "pts"}</span>
         </div>
+
+        <Textarea
+          value={getLocalizedValue(level.description, displayLanguage)}
+          onChange={(e) => {
+            const updated = { ...jsonToRecord(level.description), [displayLanguage]: e.target.value };
+            onUpdate(index, { description: updated });
+          }}
+          placeholder={`Description (${displayLanguage.toUpperCase()})`}
+          rows={1}
+          className="resize-none text-sm h-7 min-h-7 py-1.5 flex-1 w-[60%]"
+          disabled={isPreviewMode}
+        />
 
         {!isPreviewMode && quizId && (
           <Popover open={showAiPopover} onOpenChange={setShowAiPopover}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary flex-shrink-0">
-                <Sparkles className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-primary flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72" align="end">
@@ -246,25 +274,13 @@ function SortableLevel({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-destructive flex-shrink-0"
+            className="h-7 w-7 text-destructive flex-shrink-0"
             onClick={() => onDelete(index)}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
         )}
       </div>
-
-      <Textarea
-        value={getLocalizedValue(level.description, displayLanguage)}
-        onChange={(e) => {
-          const updated = { ...jsonToRecord(level.description), [displayLanguage]: e.target.value };
-          onUpdate(index, { description: updated });
-        }}
-        placeholder={`Description (${displayLanguage.toUpperCase()})`}
-        rows={2}
-        className="resize-none text-sm"
-        disabled={isPreviewMode}
-      />
     </div>
   );
 }
@@ -302,6 +318,7 @@ export function OpenMindednessResultLevels({
   const [higherScoreMeaning, setHigherScoreMeaning] = useState<"positive" | "negative">("positive");
   const [previewLevels, setPreviewLevels] = useState<OpenMindednessResultLevel[]>([]);
   const [generationCost, setGenerationCost] = useState(0);
+  const [showPercentage, setShowPercentage] = useState(false);
   const { toast } = useToast();
 
   const openMindednessQuestion = questions.find((q) => q.question_type === "open_mindedness");
@@ -479,53 +496,58 @@ export function OpenMindednessResultLevels({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-primary" />
           <Label className="text-sm font-medium">Result Levels</Label>
-          <span className="text-xs text-muted-foreground">
-            (Shown to quiz takers based on their score)
+          <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
+            Max: {maxScore} pts
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+            <Hash className="w-3 h-3" />
+            <span>pts</span>
+            <Switch
+              checked={showPercentage}
+              onCheckedChange={setShowPercentage}
+              className="h-4 w-7 data-[state=checked]:bg-primary"
+            />
+            <Percent className="w-3 h-3" />
+          </div>
           {!isPreviewMode && (
             <>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowGenerateDialog(true)}
-                className="gap-1.5 h-7 text-xs"
+                className="gap-1 h-6 text-xs px-2"
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                Generate with AI
+                <Sparkles className="w-3 h-3" />
+                AI
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={addLevel}
-                className="gap-1.5 h-7 text-xs"
+                className="gap-1 h-6 text-xs px-2"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Add Level
+                <Plus className="w-3 h-3" />
+                Add
               </Button>
               <Button
                 size="sm"
                 onClick={saveLevels}
                 disabled={saving}
-                className="gap-1.5 h-7 text-xs"
+                className="gap-1 h-6 text-xs px-2"
               >
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                 Save
               </Button>
             </>
           )}
         </div>
-      </div>
-
-      {/* Max Score Info */}
-      <div className="text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
-        Max possible score: <span className="font-medium">{maxScore}</span> (based on {maxScore} answer options)
       </div>
 
       {resultLevels.length === 0 ? (
@@ -549,6 +571,8 @@ export function OpenMindednessResultLevels({
                   isPreviewMode={isPreviewMode}
                   quizId={quizId}
                   model={model}
+                  showPercentage={showPercentage}
+                  maxScore={maxScore}
                   onUpdate={updateLevel}
                   onDelete={deleteLevel}
                   getLocalizedValue={getLocalizedValue}
