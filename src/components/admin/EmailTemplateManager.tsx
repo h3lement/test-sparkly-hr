@@ -7,9 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Save, Check, History, ChevronDown, ChevronUp, Send, Eye, FileText, Globe } from "lucide-react";
+import { RefreshCw, Save, Check, Eye } from "lucide-react";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
-
+import { EmailPreviewDialog } from "./EmailPreviewDialog";
 interface EmailTemplate {
   id: string;
   version_number: number;
@@ -317,12 +317,9 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   const [senderEmail, setSenderEmail] = useState("");
   const [subjects, setSubjects] = useState<Record<string, string>>({});
 
-  // Test email state
-  const [testEmail, setTestEmail] = useState("");
-  const [testLanguage, setTestLanguage] = useState("en");
-  const [sendingTest, setSendingTest] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  // Preview dialog state
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
 
 
   // Fetch quizzes and set default based on most recent activity
@@ -364,8 +361,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
       // Prefill with most recently updated quiz if no quiz is selected
       if (!selectedQuizId && typedQuizzes.length > 0) {
         setSelectedQuizId(typedQuizzes[0].id);
-        // Also set language to the quiz's primary language
-        setTestLanguage(typedQuizzes[0].primary_language || "en");
       }
     } catch (error: any) {
       console.error("Error fetching quizzes:", error);
@@ -383,7 +378,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) {
       setCurrentUserEmail(user.email);
-      setTestEmail(user.email);
     }
   };
 
@@ -416,22 +410,14 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
 
       setTemplates(typedData);
 
-      // Load live template into form and set as default for test emails
+      // Load live template into form
       const liveTemplate = typedData.find(t => t.is_live);
       if (liveTemplate) {
         setSenderName(liveTemplate.sender_name);
         setSenderEmail(liveTemplate.sender_email);
         setSubjects(liveTemplate.subjects);
-        setSelectedTemplateId(liveTemplate.id);
-      } else if (typedData.length > 0) {
-        // If no live template, use the most recent one
-        setSelectedTemplateId(typedData[0].id);
-        setSenderName("");
-        setSenderEmail("");
-        setSubjects({});
-      } else {
+      } else if (typedData.length === 0) {
         // Reset form if no templates exist for this quiz
-        setSelectedTemplateId("");
         setSenderName("");
         setSenderEmail("");
         setSubjects({});
@@ -621,153 +607,9 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     }));
   };
 
-  const sendTestEmail = async () => {
-    if (!testEmail.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a test email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedTemplateId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a template version",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Get the selected template
-    const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-    if (!selectedTemplate) {
-      toast({
-        title: "Error",
-        description: "Selected template not found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSendingTest(true);
-    try {
-      // Get translated sample data for the selected language
-      const trans = emailTranslations[testLanguage] || emailTranslations.en;
-      
-      // Use translated sample data that matches the selected language
-      const testData = {
-        email: testEmail.trim(),
-        totalScore: 18,
-        maxScore: 24,
-        resultTitle: trans.sampleResultTitle,
-        resultDescription: trans.sampleResultDescription,
-        insights: [
-          trans.sampleInsight1,
-          trans.sampleInsight2,
-          trans.sampleInsight3,
-        ],
-        language: testLanguage,
-        opennessScore: 3,
-        isTest: true, // Flag to indicate this is a test email
-        // Pass the selected template settings
-        templateOverride: {
-          sender_name: selectedTemplate.sender_name,
-          sender_email: selectedTemplate.sender_email,
-          subject: selectedTemplate.subjects[testLanguage] || selectedTemplate.subjects.en || "Your Quiz Results",
-        },
-      };
-
-      const { error } = await supabase.functions.invoke("send-quiz-results", {
-        body: testData,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Test email sent",
-        description: `Email sent to ${testEmail} using Version ${selectedTemplate.version_number} in ${SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name || testLanguage}`,
-      });
-    } catch (error: any) {
-      console.error("Error sending test email:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send test email",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingTest(false);
-    }
-  };
-
-  // Get the selected template for preview
-  const getSelectedTemplate = () => templates.find(t => t.id === selectedTemplateId);
-
-  const getEmailPreviewHtml = () => {
-    const trans = emailTranslations[testLanguage] || emailTranslations.en;
-    const selectedTemplate = getSelectedTemplate();
-    const previewSenderName = selectedTemplate?.sender_name || senderName || "Sparkly.hr";
-    const previewSenderEmail = selectedTemplate?.sender_email || senderEmail || "support@sparkly.hr";
-    const currentSubject = selectedTemplate?.subjects?.[testLanguage] || subjects[testLanguage] || trans.yourResults;
-    const logoUrl = "/sparkly-logo.png";
-    const sampleScore = 15;
-    const maxScore = 24;
-    
-    return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 20px;">
-        <div style="max-width: 600px; margin: 0 auto;">
-          <div style="background: #f3f4f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-            <p style="margin: 0; font-size: 13px; color: #6b7280;"><strong>From:</strong> ${previewSenderName} &lt;${previewSenderEmail}&gt;</p>
-            <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280;"><strong>Subject:</strong> ${currentSubject}: ${trans.sampleResultTitle}</p>
-          </div>
-          <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="https://sparkly.hr" target="_blank">
-                <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
-              </a>
-              <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">${trans.yourResults}</h1>
-            </div>
-            
-            <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-              <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${sampleScore}</div>
-              <div style="opacity: 0.9;">${trans.outOf} ${maxScore} ${trans.points}</div>
-            </div>
-            
-            <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${trans.sampleResultTitle}</h2>
-            
-            <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${trans.sampleResultDescription}</p>
-            
-            <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-              <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px 0;">${trans.leadershipOpenMindedness}</h3>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 24px; font-weight: bold; color: #6d28d9;">3</span>
-                <span style="color: #6b7280;">${trans.openMindednessOutOf}</span>
-              </div>
-            </div>
-            
-            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${trans.keyInsights}:</h3>
-            <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
-              <li style="margin-bottom: 12px;">1. ${trans.sampleInsight1}</li>
-              <li style="margin-bottom: 12px;">2. ${trans.sampleInsight2}</li>
-              <li style="margin-bottom: 12px;">3. ${trans.sampleInsight3}</li>
-            </ul>
-            
-            <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-              <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">${trans.wantToImprove}</p>
-              <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">${trans.visitSparkly}</a>
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-              <a href="https://sparkly.hr" target="_blank">
-                <img src="${logoUrl}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
-              </a>
-              <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+  const openPreviewDialog = (template: EmailTemplate) => {
+    setPreviewTemplate(template);
+    setPreviewDialogOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -789,10 +631,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   // Handle quiz selection change
   const handleQuizChange = (quizId: string) => {
     setSelectedQuizId(quizId);
-    const quiz = quizzes.find(q => q.id === quizId);
-    if (quiz?.primary_language) {
-      setTestLanguage(quiz.primary_language);
-    }
   };
 
   if (loading && !quizzesLoading) {
@@ -941,126 +779,19 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         </CardContent>
       </Card>
 
-      {/* Send Test Email */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="w-5 h-5" />
-            Send Test Email
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Select a template version and send a test email with sample quiz data.
-          </p>
-          
-          {/* Template Version Selection */}
-          <div className="mb-4 p-4 bg-muted/50 rounded-lg border">
-            <Label htmlFor="templateVersion" className="text-sm font-medium mb-2 block">
-              Template Version
-            </Label>
-            {templates.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No templates available. Create one above first.</p>
-            ) : (
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                <SelectTrigger id="templateVersion" className="bg-background">
-                  <SelectValue placeholder="Select a template version..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      <div className="flex items-center gap-2">
-                        <span>Version {template.version_number}</span>
-                        {template.is_live && (
-                          <Badge variant="default" className="bg-primary text-xs ml-1">LIVE</Badge>
-                        )}
-                        <span className="text-muted-foreground text-xs">
-                          • {formatDate(template.created_at)}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {selectedTemplateId && getSelectedTemplate() && (
-              <div className="mt-2 text-xs text-muted-foreground">
-                <span className="font-medium">Sender:</span> {getSelectedTemplate()?.sender_name} &lt;{getSelectedTemplate()?.sender_email}&gt;
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[200px] space-y-2">
-              <Label htmlFor="testEmail">Recipient Email</Label>
-              <Input
-                id="testEmail"
-                type="email"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="Enter test email address"
-              />
-            </div>
-            <div className="w-[200px] space-y-2">
-              <Label htmlFor="testLanguage">
-                Language
-                {selectedQuiz?.primary_language && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (Quiz default: {SUPPORTED_LANGUAGES.find(l => l.code === selectedQuiz.primary_language)?.name || selectedQuiz.primary_language})
-                  </span>
-                )}
-              </Label>
-              <Select value={testLanguage} onValueChange={setTestLanguage}>
-                <SelectTrigger id="testLanguage">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.name}
-                      {selectedQuiz?.primary_language === lang.code && " ★"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button 
-              onClick={sendTestEmail} 
-              disabled={sendingTest || !selectedTemplateId}
-              className="gap-2"
-            >
-              <Send className="w-4 h-4" />
-              {sendingTest ? "Sending..." : "Send Test"}
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => setShowPreview(!showPreview)}
-              disabled={!selectedTemplateId}
-              className="gap-2"
-            >
-              <Eye className="w-4 h-4" />
-              {showPreview ? "Hide Preview" : "Preview"}
-            </Button>
-          </div>
-          
-          {/* Email Preview */}
-          {showPreview && (
-            <div className="mt-6 border rounded-lg overflow-hidden">
-              <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                <span className="text-sm font-medium">Email Preview (as it will appear)</span>
-                <Badge variant="outline">{SUPPORTED_LANGUAGES.find(l => l.code === testLanguage)?.name}</Badge>
-              </div>
-              <iframe
-                srcDoc={getEmailPreviewHtml()}
-                className="w-full border-0"
-                style={{ height: "600px", backgroundColor: "#faf7f5" }}
-                title="Email Preview"
-                sandbox="allow-same-origin"
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Preview Live Template */}
+      {liveTemplate && (
+        <div className="flex justify-center">
+          <Button 
+            variant="outline"
+            onClick={() => openPreviewDialog(liveTemplate)}
+            className="gap-2"
+          >
+            <Eye className="w-4 h-4" />
+            Preview & Send Test Email
+          </Button>
+        </div>
+      )}
 
       {/* Email Version History - Compact Table */}
       <EmailVersionHistory 
@@ -1075,10 +806,21 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
           });
         }}
         onSetLive={() => fetchTemplates()}
+        onPreview={(template) => openPreviewDialog(template)}
       />
 
       {/* Web Result Version History - Compact Table */}
       <WebVersionHistory quizId={currentQuizId} />
+
+      {/* Email Preview Dialog */}
+      <EmailPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+        template={previewTemplate}
+        quiz={selectedQuiz || null}
+        defaultEmail={currentUserEmail}
+        emailTranslations={emailTranslations}
+      />
       </>
       )}
     </div>
