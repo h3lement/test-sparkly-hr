@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Save, Check, Eye, Globe, Mail, Server, ExternalLink } from "lucide-react";
+import { RefreshCw, Save, Check, Eye, Globe, Mail, Server } from "lucide-react";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
+import { ResendApiKeySettings } from "./ResendApiKeySettings";
 interface EmailTemplate {
   id: string;
   version_number: number;
@@ -845,55 +846,8 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
                   Email delivery is powered by Resend. Configure your API key and domain settings.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-4 bg-muted/50 rounded-lg border">
-                  <h4 className="font-medium mb-2">Current Status</h4>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="default" className="bg-green-600">Connected</Badge>
-                    <span className="text-sm text-muted-foreground">Resend API key is configured</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Domain Configuration</h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Make sure your sending domain is verified in Resend to ensure email deliverability.
-                    </p>
-                    <Button variant="outline" asChild>
-                      <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="gap-2">
-                        <ExternalLink className="w-4 h-4" />
-                        Manage Domains in Resend
-                      </a>
-                    </Button>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">API Keys</h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Manage your Resend API keys. The current key is stored securely as an environment variable.
-                    </p>
-                    <Button variant="outline" asChild>
-                      <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="gap-2">
-                        <ExternalLink className="w-4 h-4" />
-                        Manage API Keys in Resend
-                      </a>
-                    </Button>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">Email Logs & Analytics</h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      View detailed email delivery statistics and logs in the Resend dashboard.
-                    </p>
-                    <Button variant="outline" asChild>
-                      <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer" className="gap-2">
-                        <ExternalLink className="w-4 h-4" />
-                        View Email Logs in Resend
-                      </a>
-                    </Button>
-                  </div>
-                </div>
+              <CardContent>
+                <ResendApiKeySettings />
               </CardContent>
             </Card>
           </TabsContent>
