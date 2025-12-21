@@ -394,6 +394,9 @@ interface QuizResultsRequest {
   language?: string;
   answers?: Array<{ questionId: number; selectedOption: number }>;
   opennessScore?: number;
+  opennessMaxScore?: number;
+  opennessTitle?: string;
+  opennessDescription?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -431,11 +434,26 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, totalScore, maxScore, resultTitle, resultDescription, insights, language = 'en', answers, opennessScore, isTest = false }: QuizResultsRequest & { isTest?: boolean } = await req.json();
+    const { 
+      email, 
+      totalScore, 
+      maxScore, 
+      resultTitle, 
+      resultDescription, 
+      insights, 
+      language = 'en', 
+      answers, 
+      opennessScore, 
+      opennessMaxScore = 4,
+      opennessTitle = '',
+      opennessDescription = '',
+      isTest = false 
+    }: QuizResultsRequest & { isTest?: boolean } = await req.json();
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
-    console.log("Openness Score:", opennessScore);
+    console.log("Openness Score:", opennessScore, "/", opennessMaxScore);
+    console.log("Openness Title:", opennessTitle);
     console.log("Language:", language);
     console.log("Is Test Email:", isTest);
     console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
@@ -500,14 +518,19 @@ const handler = async (req: Request): Promise<Response> => {
     // Sparkly.hr logo URL - hosted on sparkly.hr
     const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
 
-    // Build openness score section if available
+    // Build openness score section if available - now with title and description
+    const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
+    const safeOpennessDescription = opennessDescription ? escapeHtml(opennessDescription) : '';
+    
     const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
-          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px 0;">${escapeHtml(trans.leadershipOpenMindedness)}</h3>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 24px; font-weight: bold; color: #6d28d9;">${opennessScore}</span>
-              <span style="color: #6b7280;">${trans.openMindednessOutOf}</span>
+          <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 12px; padding: 24px; margin-bottom: 24px; color: white;">
+            <h3 style="font-size: 18px; margin: 0 0 12px 0; font-weight: 600;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+              <span style="font-size: 32px; font-weight: bold;">${opennessScore}</span>
+              <span style="opacity: 0.9;">/ ${opennessMaxScore}</span>
             </div>
+            ${safeOpennessTitle ? `<p style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${safeOpennessTitle}</p>` : ''}
+            ${safeOpennessDescription ? `<p style="font-size: 14px; margin: 0; opacity: 0.95; line-height: 1.5;">${safeOpennessDescription}</p>` : ''}
           </div>
     ` : '';
 
@@ -626,7 +649,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
             <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
             <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitle}</p>
-            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / 4` : 'N/A'}</p>
+            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / ${opennessMaxScore}` : 'N/A'}${safeOpennessTitle ? ` - ${safeOpennessTitle}` : ''}</p>
             <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
           </div>
           
