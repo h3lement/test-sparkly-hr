@@ -6,73 +6,87 @@
 
 @layer base {
   :root {
-    --background: 220 20% 96%;
-    --foreground: 220 25% 12%;
+    /* Sparkly brand colors - Soft blush/cream background with deep indigo primary */
+    --background: 20 40% 97%;
+    --foreground: 230 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 12%;
+    --card-foreground: 230 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 12%;
+    --popover-foreground: 230 25% 15%;
 
-    --primary: 235 60% 52%;
+    /* Sparkly Indigo Blue - Primary brand color */
+    --primary: 235 55% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 25% 20%;
+    --secondary: 20 25% 93%;
+    --secondary-foreground: 230 25% 20%;
 
-    --muted: 220 15% 88%;
-    --muted-foreground: 220 15% 40%;
+    --muted: 20 20% 90%;
+    --muted-foreground: 230 15% 45%;
 
-    --accent: 235 50% 58%;
+    --accent: 235 45% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 85%;
-    --input: 220 15% 85%;
-    --ring: 235 60% 52%;
+    --border: 20 15% 88%;
+    --input: 20 15% 88%;
+    --ring: 235 55% 52%;
 
     --radius: 0.75rem;
 
-    /* Custom quiz colors */
-    --quiz-primary: 235 60% 52%;
-    --quiz-primary-light: 235 50% 58%;
-    --quiz-glow: 235 60% 65%;
+    /* Sparkly quiz colors */
+    --quiz-primary: 235 55% 52%;
+    --quiz-primary-light: 235 45% 60%;
+    --quiz-glow: 235 55% 65%;
+    
+    /* Sparkly accent colors */
+    --sparkly-blush: 15 60% 95%;
+    --sparkly-cream: 40 30% 96%;
+    --sparkly-indigo: 235 55% 52%;
+    --sparkly-indigo-light: 235 45% 60%;
 
     --font-heading: 'Playfair Display', serif;
     --font-body: 'DM Sans', sans-serif;
   }
 
   .dark {
-    --background: 230 25% 10%;
-    --foreground: 340 20% 95%;
+    --background: 230 25% 8%;
+    --foreground: 20 20% 95%;
 
-    --card: 230 25% 14%;
-    --card-foreground: 340 20% 95%;
+    --card: 230 25% 12%;
+    --card-foreground: 20 20% 95%;
 
-    --popover: 230 25% 14%;
-    --popover-foreground: 340 20% 95%;
+    --popover: 230 25% 12%;
+    --popover-foreground: 20 20% 95%;
 
-    --primary: 235 60% 60%;
+    --primary: 235 55% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 230 25% 18%;
-    --secondary-foreground: 340 20% 90%;
+    --secondary: 230 25% 16%;
+    --secondary-foreground: 20 20% 90%;
 
-    --muted: 230 25% 20%;
-    --muted-foreground: 340 15% 60%;
+    --muted: 230 25% 18%;
+    --muted-foreground: 20 15% 60%;
 
-    --accent: 235 50% 65%;
+    --accent: 235 45% 65%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 40%;
+    --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 230 25% 22%;
-    --input: 230 25% 22%;
-    --ring: 235 60% 60%;
+    --border: 230 25% 20%;
+    --input: 230 25% 20%;
+    --ring: 235 55% 60%;
+    
+    /* Dark mode Sparkly colors */
+    --sparkly-blush: 15 30% 18%;
+    --sparkly-cream: 40 15% 14%;
+    --sparkly-indigo: 235 55% 60%;
+    --sparkly-indigo-light: 235 45% 70%;
   }
 
   /* UI Density modes */

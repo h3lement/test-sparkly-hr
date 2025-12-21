@@ -121,66 +121,66 @@ export function HypothesisQuestionScreen() {
 
   return (
     <main className="animate-fade-in max-w-4xl mx-auto px-4" role="main">
-      {/* Progress bar - at top */}
-      <div className="mb-6">
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+      {/* Progress bar - Sparkly style with rounded ends */}
+      <div className="mb-8">
+        <div className="h-2 bg-sparkly-cream rounded-full overflow-hidden shadow-inner">
           <div 
-            className="h-full bg-primary transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-sparkly-indigo-light transition-all duration-500 rounded-full"
             style={{ width: `${(progress.current / progress.total) * 100}%` }}
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1 text-right">
+        <p className="text-xs text-muted-foreground mt-2 text-right font-medium">
           {progress.current} of {progress.total} hypotheses completed
         </p>
       </div>
 
-      {/* Page Header - Title and Description */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-xl font-bold text-foreground">{getText(currentPage.title)}</h1>
-          <span className="text-sm text-muted-foreground">
+      {/* Page Header - Sparkly Typography */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="font-heading text-2xl md:text-3xl font-semibold text-foreground">{getText(currentPage.title)}</h1>
+          <span className="text-sm text-muted-foreground bg-sparkly-blush px-3 py-1.5 rounded-full font-medium">
             Page {currentPageIndex + 1} of {sortedPages.length}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">{getText(currentPage.description)}</p>
+        <p className="text-muted-foreground">{getText(currentPage.description)}</p>
       </div>
 
-      {/* Questions Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
+      {/* Questions Table - Sparkly card style */}
+      <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-lg">
         {/* Table Header with Status Bar & Bulk Actions */}
-        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 bg-muted/50 border-b border-border text-center">
-          <div className="flex items-center justify-center gap-1">
-            <span className="text-base">👩</span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Women 50+</span>
+        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-4 bg-sparkly-blush border-b border-border/50 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xl">👩</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Women 50+</span>
           </div>
-          <div className="flex items-center justify-center gap-1">
-            <span className="text-base">👨</span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Men 50+</span>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xl">👨</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Men 50+</span>
           </div>
           <div className="text-center">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
               Answer
             </span>
           </div>
         </div>
 
-        {/* Status Bar with Bulk Actions - inside table, before questions */}
-        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-2 bg-muted/30 border-b border-border items-center">
+        {/* Status Bar with Bulk Actions */}
+        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
           <div className="col-span-2 flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              This page: {answeredCount} of {pageQuestions.length} answered
+              This page: <span className="font-semibold text-foreground">{answeredCount}</span> of {pageQuestions.length} answered
             </span>
             {allQuestionsAnswered && (
-              <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
+              <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ Ready to submit!</span>
             )}
           </div>
           
-          {/* Bulk True/False Buttons - aligned with answer column */}
+          {/* Bulk True/False Buttons */}
           <div className="flex justify-center items-center gap-1">
             <Button
               size="sm"
               variant="outline"
-              className="h-7 px-2 text-xs font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+              className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
               onClick={() => {
                 const newAnswers: PageAnswers = {};
                 pageQuestions.forEach(q => { newAnswers[q.id] = true; });
@@ -192,7 +192,7 @@ export function HypothesisQuestionScreen() {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 px-2 text-xs font-semibold border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+              className="h-7 px-2.5 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
               onClick={() => {
                 const newAnswers: PageAnswers = {};
                 pageQuestions.forEach(q => { newAnswers[q.id] = false; });
@@ -204,8 +204,8 @@ export function HypothesisQuestionScreen() {
           </div>
         </div>
 
-        {/* Question Rows */}
-        <div className="divide-y divide-border">
+        {/* Question Rows - Sparkly styling */}
+        <div className="divide-y divide-border/50">
           {pageQuestions.map((question, idx) => {
             const answer = pageAnswers[question.id];
 
@@ -214,7 +214,6 @@ export function HypothesisQuestionScreen() {
 
             const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
             const manHypothesis = getText(question.hypothesis_text_man) || getText(question.hypothesis_text);
-            const interviewQuestion = getText(question.interview_question);
 
             const previousPagesQuestions = sortedPages
               .slice(0, currentPageIndex)
@@ -222,34 +221,34 @@ export function HypothesisQuestionScreen() {
             const overallNumber = previousPagesQuestions + idx + 1;
 
             return (
-              <div key={question.id} className="relative transition-all">
+              <div key={question.id} className="relative transition-all hover:bg-muted/20">
                 {/* Single Row: Women | Men | Answer */}
-                <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 items-start">
+                <div className="grid grid-cols-[1fr_1fr_140px] gap-3 px-5 py-4 items-start">
                   {/* Women Hypothesis */}
-                  <div className="p-2 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/30 dark:border-pink-800/30">
-                    <p className="text-sm leading-snug font-medium">
-                      <span className="text-muted-foreground mr-1">{overallNumber}.</span>
+                  <div className="p-3 bg-pink-50/80 dark:bg-pink-950/20 rounded-xl border border-pink-200/50 dark:border-pink-800/30">
+                    <p className="text-sm leading-relaxed font-medium text-foreground">
+                      <span className="text-primary font-bold mr-1.5">{overallNumber}.</span>
                       {womanHypothesis}
                     </p>
                   </div>
 
                   {/* Men Hypothesis */}
-                  <div className="p-2 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/30 dark:border-blue-800/30">
-                    <p className="text-sm leading-snug font-medium">
-                      <span className="text-muted-foreground mr-1">{overallNumber}.</span>
+                  <div className="p-3 bg-blue-50/80 dark:bg-blue-950/20 rounded-xl border border-blue-200/50 dark:border-blue-800/30">
+                    <p className="text-sm leading-relaxed font-medium text-foreground">
+                      <span className="text-primary font-bold mr-1.5">{overallNumber}.</span>
                       {manHypothesis}
                     </p>
                   </div>
 
                   {/* Answer Buttons with Feedback */}
                   <div className="flex justify-center items-start pt-2 gap-2">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Button
                         size="sm"
                         variant={answer === true ? "default" : "outline"}
                         className={cn(
-                          "h-9 px-3 text-sm font-semibold",
-                          answer === true && "bg-blue-600 hover:bg-blue-700"
+                          "h-10 px-4 text-sm font-semibold rounded-xl transition-all",
+                          answer === true && "bg-primary hover:bg-primary/90 shadow-md"
                         )}
                         onClick={() => handleAnswer(question.id, true)}
                       >
@@ -259,8 +258,8 @@ export function HypothesisQuestionScreen() {
                         size="sm"
                         variant={answer === false ? "default" : "outline"}
                         className={cn(
-                          "h-9 px-3 text-sm font-semibold",
-                          answer === false && "bg-orange-600 hover:bg-orange-700"
+                          "h-10 px-4 text-sm font-semibold rounded-xl transition-all",
+                          answer === false && "bg-orange-500 hover:bg-orange-600 shadow-md"
                         )}
                         onClick={() => handleAnswer(question.id, false)}
                       >
@@ -268,7 +267,7 @@ export function HypothesisQuestionScreen() {
                       </Button>
                       {answer !== null && (
                         isCorrect ? (
-                          <ThumbsUp className="w-5 h-5 text-green-600 animate-fade-in ml-1" />
+                          <ThumbsUp className="w-5 h-5 text-green-500 animate-fade-in ml-1" />
                         ) : (
                           <ThumbsDown className="w-5 h-5 text-red-500 animate-fade-in ml-1" />
                         )
@@ -283,8 +282,8 @@ export function HypothesisQuestionScreen() {
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-6 flex gap-3">
+      {/* Action Buttons - Sparkly style */}
+      <div className="mt-8 flex gap-4">
         {currentPageIndex > 0 && (
           <Button
             onClick={() => {
@@ -293,7 +292,7 @@ export function HypothesisQuestionScreen() {
             }}
             variant="outline"
             size="lg"
-            className="h-14 px-6 text-lg font-semibold"
+            className="h-14 px-8 text-lg font-semibold rounded-xl border-2"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
             Previous
@@ -303,7 +302,7 @@ export function HypothesisQuestionScreen() {
           onClick={handleSubmitAndContinue}
           disabled={!allQuestionsAnswered || isSubmitting}
           size="lg"
-          className="flex-1 h-14 text-lg font-semibold"
+          className="flex-1 h-14 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
         >
           {isSubmitting ? (
             <>
