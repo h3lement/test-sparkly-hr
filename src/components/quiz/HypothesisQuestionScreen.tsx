@@ -185,10 +185,15 @@ export function HypothesisQuestionScreen() {
       {/* Questions Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/50 border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <div className="col-span-6">Hypothesis</div>
-          <div className="col-span-3 text-center">👩 Women 50+</div>
-          <div className="col-span-3 text-center">👨 Men 50+</div>
+        <div className="grid grid-cols-2 gap-4 px-4 py-3 bg-muted/50 border-b border-border">
+          <div className="text-center">
+            <span className="text-lg">👩</span>
+            <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Women 50+</span>
+          </div>
+          <div className="text-center">
+            <span className="text-lg">👨</span>
+            <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Men 50+</span>
+          </div>
         </div>
 
         {/* Question Rows */}
@@ -203,145 +208,185 @@ export function HypothesisQuestionScreen() {
             const womanCorrect = answer.woman === question.correct_answer_woman;
             const manCorrect = answer.man === question.correct_answer_man;
 
+            // Get gender-specific hypothesis text, fallback to generic
+            const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
+            const manHypothesis = getText(question.hypothesis_text_man) || getText(question.hypothesis_text);
+
+            // Get gender-specific interview questions
+            const womanInterview = getText(question.interview_question_woman) || getText(question.interview_question);
+            const manInterview = getText(question.interview_question_man) || getText(question.interview_question);
+
             return (
               <div key={question.id} className="relative">
-                {/* Main Row */}
+                {/* Question Number */}
+                <div className={cn(
+                  "px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground",
+                  isLocked && "opacity-50"
+                )}>
+                  Hypothesis {idx + 1}
+                </div>
+
+                {/* Main Row - Two Columns */}
                 <div 
                   className={cn(
-                    "grid grid-cols-12 gap-2 px-4 py-4 transition-all",
+                    "grid grid-cols-2 gap-4 px-4 pb-4 transition-all",
                     isActive && "bg-primary/5",
                     isLocked && "opacity-50",
                     isComplete && "bg-green-500/5"
                   )}
                 >
-                  {/* Hypothesis Text */}
-                  <div className="col-span-6 flex items-start gap-2">
-                    <span className="text-xs font-medium text-muted-foreground mt-1 w-5 shrink-0">
-                      {idx + 1}.
-                    </span>
+                  {/* Women Column */}
+                  <div className="space-y-3 p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
+                    {/* Hypothesis Text */}
                     <p className={cn(
-                      "text-sm leading-relaxed",
+                      "text-sm leading-relaxed font-medium",
                       isLocked && "text-muted-foreground"
                     )}>
-                      {getText(question.hypothesis_text)}
+                      {womanHypothesis}
                     </p>
-                  </div>
 
-                  {/* Women Answer */}
-                  <div className="col-span-3 flex flex-col items-center gap-1">
-                    {isLocked ? (
-                      <Lock className="w-4 h-4 text-muted-foreground" />
-                    ) : isComplete ? (
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-sm font-medium px-2 py-1 rounded",
-                          answer.woman === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
-                        )}>
-                          {answer.woman ? "True" : "False"}
-                        </span>
-                        {womanCorrect ? (
-                          <Check className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-500" />
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant={answer.woman === true ? "default" : "outline"}
-                          className={cn(
-                            "h-8 px-2 text-xs",
-                            answer.woman === true && "bg-blue-600 hover:bg-blue-700"
+                    {/* Answer Buttons / Result */}
+                    <div className="flex justify-center">
+                      {isLocked ? (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      ) : isComplete ? (
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-sm font-medium px-3 py-1.5 rounded",
+                            answer.woman === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                          )}>
+                            {answer.woman ? "True" : "False"}
+                          </span>
+                          {womanCorrect ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <X className="w-5 h-5 text-red-500" />
                           )}
-                          onClick={() => handleAnswer(question.id, 'woman', true)}
-                          disabled={isSubmitting}
-                        >
-                          True
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={answer.woman === false ? "default" : "outline"}
-                          className={cn(
-                            "h-8 px-2 text-xs",
-                            answer.woman === false && "bg-orange-600 hover:bg-orange-700"
-                          )}
-                          onClick={() => handleAnswer(question.id, 'woman', false)}
-                          disabled={isSubmitting}
-                        >
-                          False
-                        </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={answer.woman === true ? "default" : "outline"}
+                            className={cn(
+                              "h-9 px-4",
+                              answer.woman === true && "bg-blue-600 hover:bg-blue-700"
+                            )}
+                            onClick={() => handleAnswer(question.id, 'woman', true)}
+                            disabled={isSubmitting}
+                          >
+                            True
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={answer.woman === false ? "default" : "outline"}
+                            className={cn(
+                              "h-9 px-4",
+                              answer.woman === false && "bg-orange-600 hover:bg-orange-700"
+                            )}
+                            onClick={() => handleAnswer(question.id, 'woman', false)}
+                            disabled={isSubmitting}
+                          >
+                            False
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Interview Question for Women */}
+                    {isComplete && womanInterview && (
+                      <div className="bg-pink-100/50 dark:bg-pink-900/20 rounded-lg p-2 animate-fade-in">
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="w-3.5 h-3.5 text-pink-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-semibold text-pink-600 uppercase tracking-wide mb-0.5">
+                              Interview Question
+                            </p>
+                            <p className="text-xs text-foreground/90 italic">
+                              "{womanInterview}"
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Men Answer */}
-                  <div className="col-span-3 flex flex-col items-center gap-1">
-                    {isLocked ? (
-                      <Lock className="w-4 h-4 text-muted-foreground" />
-                    ) : isComplete ? (
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-sm font-medium px-2 py-1 rounded",
-                          answer.man === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
-                        )}>
-                          {answer.man ? "True" : "False"}
-                        </span>
-                        {manCorrect ? (
-                          <Check className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-500" />
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant={answer.man === true ? "default" : "outline"}
-                          className={cn(
-                            "h-8 px-2 text-xs",
-                            answer.man === true && "bg-blue-600 hover:bg-blue-700"
+                  {/* Men Column */}
+                  <div className="space-y-3 p-3 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                    {/* Hypothesis Text */}
+                    <p className={cn(
+                      "text-sm leading-relaxed font-medium",
+                      isLocked && "text-muted-foreground"
+                    )}>
+                      {manHypothesis}
+                    </p>
+
+                    {/* Answer Buttons / Result */}
+                    <div className="flex justify-center">
+                      {isLocked ? (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      ) : isComplete ? (
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-sm font-medium px-3 py-1.5 rounded",
+                            answer.man === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                          )}>
+                            {answer.man ? "True" : "False"}
+                          </span>
+                          {manCorrect ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <X className="w-5 h-5 text-red-500" />
                           )}
-                          onClick={() => handleAnswer(question.id, 'man', true)}
-                          disabled={isSubmitting}
-                        >
-                          True
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={answer.man === false ? "default" : "outline"}
-                          className={cn(
-                            "h-8 px-2 text-xs",
-                            answer.man === false && "bg-orange-600 hover:bg-orange-700"
-                          )}
-                          onClick={() => handleAnswer(question.id, 'man', false)}
-                          disabled={isSubmitting}
-                        >
-                          False
-                        </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={answer.man === true ? "default" : "outline"}
+                            className={cn(
+                              "h-9 px-4",
+                              answer.man === true && "bg-blue-600 hover:bg-blue-700"
+                            )}
+                            onClick={() => handleAnswer(question.id, 'man', true)}
+                            disabled={isSubmitting}
+                          >
+                            True
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={answer.man === false ? "default" : "outline"}
+                            className={cn(
+                              "h-9 px-4",
+                              answer.man === false && "bg-orange-600 hover:bg-orange-700"
+                            )}
+                            onClick={() => handleAnswer(question.id, 'man', false)}
+                            disabled={isSubmitting}
+                          >
+                            False
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Interview Question for Men */}
+                    {isComplete && manInterview && (
+                      <div className="bg-blue-100/50 dark:bg-blue-900/20 rounded-lg p-2 animate-fade-in">
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide mb-0.5">
+                              Interview Question
+                            </p>
+                            <p className="text-xs text-foreground/90 italic">
+                              "{manInterview}"
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
-
-                {/* Interview Question Reward (revealed immediately after both answers) */}
-                {isComplete && (
-                  <div className="px-4 pb-4 animate-fade-in">
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                      <div className="flex items-start gap-2">
-                        <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
-                            Interview Question
-                          </p>
-                          <p className="text-sm text-foreground/90 italic">
-                            "{getText(question.interview_question)}"
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
