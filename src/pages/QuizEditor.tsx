@@ -183,7 +183,7 @@ export default function QuizEditor() {
   const [isActive, setIsActive] = useState(true);
   
   // Quiz behavior settings
-  const [quizType, setQuizType] = useState<"standard" | "hypothesis">("standard");
+  const [quizType, setQuizType] = useState<"standard" | "hypothesis" | "emotional">("standard");
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
   const [enableScoring, setEnableScoring] = useState(true);
   const [includeOpenMindedness, setIncludeOpenMindedness] = useState(true);
@@ -1971,6 +1971,11 @@ export default function QuizEditor() {
                     Standard Quiz
                   </span>
                 )}
+                {!isCreating && quizType === "emotional" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-500/10 text-teal-600 border border-teal-500/20">
+                    🧘 Emotional Quiz
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {/* Auto-save indicator for existing quizzes */}
@@ -2310,13 +2315,14 @@ export default function QuizEditor() {
               </div>
               <div>
                 <Label className="text-xs">Quiz Type</Label>
-                <Select value={quizType} onValueChange={(v: "standard" | "hypothesis") => setQuizType(v)}>
+                <Select value={quizType} onValueChange={(v: "standard" | "hypothesis" | "emotional") => setQuizType(v)}>
                   <SelectTrigger className="h-8">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="standard">Standard</SelectItem>
                     <SelectItem value="hypothesis">Hypothesis</SelectItem>
+                    <SelectItem value="emotional">Emotional</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
