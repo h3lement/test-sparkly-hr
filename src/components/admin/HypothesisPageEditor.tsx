@@ -29,6 +29,7 @@ interface HypothesisPageEditorProps {
   page: HypothesisPage;
   pageIndex: number;
   language: string;
+  questionsBeforeThisPage: number;
   onUpdatePage: (updates: Partial<HypothesisPage>) => void;
   onDeletePage: () => void;
   onAddQuestion: () => void;
@@ -40,6 +41,7 @@ export function HypothesisPageEditor({
   page,
   pageIndex,
   language,
+  questionsBeforeThisPage,
   onUpdatePage,
   onDeletePage,
   onAddQuestion,
@@ -174,6 +176,7 @@ export function HypothesisPageEditor({
                       key={question.id}
                       question={question}
                       questionIndex={qIndex}
+                      overallNumber={questionsBeforeThisPage + qIndex + 1}
                       language={language}
                       onUpdate={(updates) => onUpdateQuestion(question.id, updates)}
                       onDelete={() => onDeleteQuestion(question.id)}
