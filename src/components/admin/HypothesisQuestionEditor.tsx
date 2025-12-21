@@ -88,15 +88,16 @@ export function HypothesisQuestionEditor({
             </p>
           </div>
 
-          {/* Correct Answers */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <Label className="font-medium">Correct Answers</Label>
-            </div>
-            <div className="flex gap-6 p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">👩 Women 50+:</span>
+          {/* Correct Answers - Women Left, Men Right */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Women Column */}
+            <div className="space-y-2 p-4 bg-pink-50 dark:bg-pink-950/20 rounded-lg border border-pink-200 dark:border-pink-800">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">👩</span>
+                <Label className="font-semibold text-pink-700 dark:text-pink-300">Women 50+</Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Correct Answer:</span>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${!question.correct_answer_woman ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
                     False
@@ -110,8 +111,16 @@ export function HypothesisQuestionEditor({
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">👨 Men 50+:</span>
+            </div>
+
+            {/* Men Column */}
+            <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">👨</span>
+                <Label className="font-semibold text-blue-700 dark:text-blue-300">Men 50+</Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Correct Answer:</span>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${!question.correct_answer_man ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
                     False
@@ -126,9 +135,6 @@ export function HypothesisQuestionEditor({
                 </div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Set the correct answer for each gender. Users will see if they got it right after answering.
-            </p>
           </div>
 
           {/* Interview Question */}
