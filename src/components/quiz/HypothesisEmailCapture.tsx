@@ -92,30 +92,36 @@ export function HypothesisEmailCapture() {
   const percentage = Math.round((correct / total) * 100);
 
   return (
-    <main className="animate-fade-in max-w-xl mx-auto" role="main" aria-labelledby="email-heading">
+    <main className="animate-fade-in max-w-xl mx-auto px-4" role="main" aria-labelledby="email-heading">
       
       {/* Score Preview */}
-      <div className="glass rounded-2xl p-6 mb-8 text-center">
-        <div className="text-5xl font-bold gradient-text mb-2">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-center shadow-lg">
+        <div className="text-5xl font-bold text-primary mb-2">
           {correct}/{total}
         </div>
         <p className="text-muted-foreground">
-          You correctly identified {percentage}% of the biases
+          Hypotheses answered
         </p>
       </div>
 
-      <h1 id="email-heading" className="font-heading text-3xl md:text-4xl font-bold mb-4 text-center">
-        Almost Done!{' '}
-        <span className="gradient-text">Reflect & Save</span>
+      {/* Unlock Message */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 text-center">
+        <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+          🔓 Submit your email to unlock the <strong>truth behind each belief</strong> and see how you scored!
+        </p>
+      </div>
+
+      <h1 id="email-heading" className="font-heading text-2xl md:text-3xl font-bold mb-3 text-center">
+        Before we reveal the answers...
       </h1>
       
-      <p className="text-lg text-muted-foreground mb-8 text-center" id="email-description">
-        Take a moment to reflect on what you learned. We'll email you a summary of your insights.
+      <p className="text-muted-foreground mb-6 text-center" id="email-description">
+        Take a moment to reflect on what you've learned so far.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* Reflection Questions */}
-        <div className="glass rounded-2xl p-6 space-y-5">
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4 shadow">
           <div>
             <label htmlFor="new-learnings" className="flex items-center gap-2 text-sm font-medium mb-2">
               <Lightbulb className="w-4 h-4 text-primary" />
@@ -126,30 +132,30 @@ export function HypothesisEmailCapture() {
               placeholder="Share what you learned..."
               value={feedbackNewLearnings}
               onChange={(e) => setFeedbackNewLearnings(e.target.value)}
-              className="min-h-[100px] resize-none"
+              className="min-h-[80px] resize-none"
             />
           </div>
 
           <div>
             <label htmlFor="action-plan" className="flex items-center gap-2 text-sm font-medium mb-2">
               <Target className="w-4 h-4 text-primary" />
-              How will you apply this in your hiring process?
+              How will you apply this in interviews?
             </label>
             <Textarea
               id="action-plan"
               placeholder="Your action plan..."
               value={feedbackActionPlan}
               onChange={(e) => setFeedbackActionPlan(e.target.value)}
-              className="min-h-[100px] resize-none"
+              className="min-h-[80px] resize-none"
             />
           </div>
         </div>
 
         {/* Email Input */}
-        <div className="glass rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-xl p-5 shadow">
           <label htmlFor="email-input" className="flex items-center gap-2 text-sm font-medium mb-3">
             <Mail className="w-4 h-4 text-primary" />
-            Get your personalized report
+            Enter your email to see the results
           </label>
           <Input
             id="email-input"
@@ -157,7 +163,7 @@ export function HypothesisEmailCapture() {
             placeholder="your@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="text-center text-lg h-14 rounded-xl border-2 focus:border-primary"
+            className="text-center text-lg h-12 border-2 focus:border-primary"
             required
             autoComplete="email"
           />
@@ -167,13 +173,13 @@ export function HypothesisEmailCapture() {
           type="submit"
           size="lg"
           disabled={isSubmitting}
-          className="w-full bg-primary text-primary-foreground py-6 text-lg font-semibold rounded-full glow-primary hover:scale-105 transition-transform"
+          className="w-full h-14 text-lg font-semibold"
         >
-          {isSubmitting ? 'Saving...' : 'Get My Results'}
+          {isSubmitting ? 'Saving...' : 'Reveal the Truth'}
         </Button>
       </form>
 
-      <p className="text-sm text-muted-foreground mt-6 text-center">
+      <p className="text-xs text-muted-foreground mt-4 text-center">
         🔒 Your data is secure. We never share your information.
       </p>
     </main>
