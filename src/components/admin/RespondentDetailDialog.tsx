@@ -10,19 +10,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { 
   Mail, 
   FileText, 
   Calendar, 
   User, 
-  Target, 
-  Brain,
   Clock,
   CheckCircle,
   AlertCircle,
-  Sparkles
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -54,6 +54,7 @@ interface OpenMindednessLevel {
   title: Json;
   description: Json;
   emoji: string;
+  color_class: string;
   min_score: number;
   max_score: number;
 }
@@ -67,6 +68,11 @@ interface EmailLog {
   sender_email: string;
   sender_name: string;
   language: string | null;
+}
+
+interface QuizData {
+  cta_text: Json;
+  cta_url: string | null;
 }
 
 interface RespondentDetailDialogProps {
@@ -84,8 +90,11 @@ export function RespondentDetailDialog({
 }: RespondentDetailDialogProps) {
   const [loading, setLoading] = useState(true);
   const [resultLevel, setResultLevel] = useState<ResultLevel | null>(null);
+  const [allResultLevels, setAllResultLevels] = useState<ResultLevel[]>([]);
   const [openMindednessLevel, setOpenMindednessLevel] = useState<OpenMindednessLevel | null>(null);
+  const [allOmLevels, setAllOmLevels] = useState<OpenMindednessLevel[]>([]);
   const [emailLog, setEmailLog] = useState<EmailLog | null>(null);
+  const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [activeTab, setActiveTab] = useState("results");
 
   useEffect(() => {
@@ -99,34 +108,22 @@ export function RespondentDetailDialog({
     setLoading(true);
     
     try {
-      // Fetch result level that matches the score
-      const { data: resultLevels } = await supabase
+      // Fetch all result levels for this quiz
+      const { data: allLevels } = await supabase
         .from("quiz_result_levels")
         .select("*")
         .eq("quiz_id", lead.quiz_id)
-        .lte("min_score", lead.score)
-        .gte("max_score", lead.score)
-        .maybeSingle();
+        .order("min_score");
 
-      // If no exact match, find by range
-      if (!resultLevels) {
-        const { data: allLevels } = await supabase
-          .from("quiz_result_levels")
-          .select("*")
-          .eq("quiz_id", lead.quiz_id)
-          .order("min_score");
-
-        if (allLevels && allLevels.length > 0) {
-          const matchingLevel = allLevels.find(
-            (level) => lead.score >= level.min_score && lead.score <= level.max_score
-          );
-          setResultLevel(matchingLevel || allLevels[0]);
-        }
-      } else {
-        setResultLevel(resultLevels);
+      if (allLevels && allLevels.length > 0) {
+        setAllResultLevels(allLevels);
+        const matchingLevel = allLevels.find(
+          (level) => lead.score >= level.min_score && lead.score <= level.max_score
+        );
+        setResultLevel(matchingLevel || allLevels[0]);
       }
 
-      // Fetch open-mindedness level if applicable
+      // Fetch all open-mindedness levels
       if (lead.openness_score !== null) {
         const { data: omLevels } = await supabase
           .from("open_mindedness_result_levels")
@@ -135,10 +132,24 @@ export function RespondentDetailDialog({
           .order("min_score");
 
         if (omLevels && omLevels.length > 0) {
+          setAllOmLevels(omLevels);
           const matchingLevel = omLevels.find(
             (level) => lead.openness_score! >= level.min_score && lead.openness_score! <= level.max_score
           );
           setOpenMindednessLevel(matchingLevel || null);
+        }
+      }
+
+      // Fetch quiz data for CTA
+      if (lead.quiz_id) {
+        const { data: quiz } = await supabase
+          .from("quizzes")
+          .select("cta_text, cta_url")
+          .eq("id", lead.quiz_id)
+          .single();
+        
+        if (quiz) {
+          setQuizData(quiz);
         }
       }
 
@@ -147,6 +158,7 @@ export function RespondentDetailDialog({
         .from("email_logs")
         .select("*")
         .eq("quiz_lead_id", lead.id)
+        .eq("email_type", "quiz_result_user")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -180,13 +192,21 @@ export function RespondentDetailDialog({
   if (!lead) return null;
 
   const respondentLang = lead.language || displayLanguage || "en";
-  const percentage = lead.total_questions > 0 
-    ? Math.round((lead.score / lead.total_questions) * 100) 
+  const maxScore = allResultLevels.length > 0 
+    ? Math.max(...allResultLevels.map(r => r.max_score))
+    : lead.total_questions;
+  const percentage = maxScore > 0 ? Math.round((lead.score / maxScore) * 100) : 0;
+  
+  const omMaxScore = allOmLevels.length > 0
+    ? Math.max(...allOmLevels.map(l => l.max_score))
+    : 4;
+  const omPercentage = lead.openness_score !== null 
+    ? Math.round((lead.openness_score / omMaxScore) * 100) 
     : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -201,7 +221,7 @@ export function RespondentDetailDialog({
           <TabsList className="grid grid-cols-2 w-full flex-shrink-0">
             <TabsTrigger value="results" className="gap-1">
               <FileText className="w-4 h-4" />
-              Results
+              Results Preview
             </TabsTrigger>
             <TabsTrigger value="email" className="gap-1">
               <Mail className="w-4 h-4" />
@@ -211,7 +231,7 @@ export function RespondentDetailDialog({
 
           <div className="flex-1 overflow-hidden mt-4">
             <TabsContent value="results" className="h-full m-0">
-              <ScrollArea className="h-[calc(85vh-180px)]">
+              <ScrollArea className="h-[calc(90vh-180px)]">
                 {loading ? (
                   <div className="space-y-4 p-4">
                     <Skeleton className="h-20" />
@@ -220,85 +240,122 @@ export function RespondentDetailDialog({
                   </div>
                 ) : (
                   <div className="space-y-4 p-1">
-                    {/* Score Summary */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-muted/50 rounded-lg p-3 text-center">
-                        <Target className="w-5 h-5 mx-auto mb-1 text-primary" />
-                        <p className="text-2xl font-bold">{lead.score}/{lead.total_questions}</p>
-                        <p className="text-xs text-muted-foreground">Score ({percentage}%)</p>
+                    {/* Header - matches public quiz */}
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Results for {lead.email}</p>
+                      {resultLevel && (
+                        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+                          <span>{resultLevel.emoji}</span>
+                          <span>{getLocalizedText(resultLevel.title, respondentLang)}</span>
+                        </h2>
+                      )}
+                    </div>
+
+                    {/* Score visualization - matches public quiz "glass" section */}
+                    <div className="bg-muted/30 rounded-2xl p-6 border">
+                      <div className="text-center mb-4">
+                        <div className="text-5xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                          {lead.score}
+                        </div>
+                        <p className="text-muted-foreground text-sm">out of {maxScore} points</p>
                       </div>
-                      <div className="bg-muted/50 rounded-lg p-3 text-center">
-                        <Brain className="w-5 h-5 mx-auto mb-1 text-purple-500" />
-                        <p className="text-2xl font-bold">
-                          {lead.openness_score !== null ? lead.openness_score : "—"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Open-Mindedness</p>
+                      
+                      <div className="h-3 bg-secondary rounded-full overflow-hidden mb-2">
+                        <div 
+                          className={cn(
+                            "h-full bg-gradient-to-r transition-all duration-500",
+                            resultLevel?.color_class || "from-primary to-purple-600"
+                          )}
+                          style={{ width: `${percentage}%` }}
+                        />
                       </div>
-                      <div className="bg-muted/50 rounded-lg p-3 text-center">
-                        <Calendar className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-sm font-medium">
-                          {format(new Date(lead.created_at), "dd MMM")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(lead.created_at), "HH:mm")}
-                        </p>
+                      
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Best</span>
+                        <span>Needs Work</span>
                       </div>
                     </div>
 
-                    {/* Result Level */}
-                    {resultLevel && (
-                      <div className={`rounded-lg p-4 bg-gradient-to-br ${resultLevel.color_class || "from-primary/20 to-primary/10"}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-2xl">{resultLevel.emoji}</span>
-                          <h3 className="text-lg font-bold">
-                            {getLocalizedText(resultLevel.title, respondentLang)}
-                          </h3>
-                        </div>
-                        <p className="text-sm opacity-90">
-                          {getLocalizedText(resultLevel.description, respondentLang)}
-                        </p>
-                        
-                        {/* Insights */}
-                        {resultLevel.insights && (
-                          <div className="mt-4 space-y-2">
-                            <h4 className="text-sm font-semibold flex items-center gap-1">
-                              <Sparkles className="w-4 h-4" />
-                              Key Insights
-                            </h4>
-                            <ul className="space-y-1">
-                              {getInsights(resultLevel.insights, respondentLang).map((insight, i) => (
-                                <li key={i} className="text-sm flex items-start gap-2">
-                                  <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                  <span>{insight}</span>
-                                </li>
-                              ))}
-                            </ul>
+                    {/* Leadership Open-Mindedness - matches public quiz */}
+                    {lead.openness_score !== null && (
+                      <div className="bg-muted/30 rounded-2xl p-6 border">
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <span>{openMindednessLevel?.emoji || "🧠"}</span>
+                          <span>{openMindednessLevel ? getLocalizedText(openMindednessLevel.title, respondentLang) : "Leadership Open-Mindedness"}</span>
+                        </h3>
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                            {lead.openness_score}/{omMaxScore}
                           </div>
+                          <div className="flex-1">
+                            <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+                              <div 
+                                className={cn(
+                                  "h-full bg-gradient-to-r transition-all duration-500",
+                                  openMindednessLevel?.color_class || "from-blue-500 to-indigo-600"
+                                )}
+                                style={{ width: `${omPercentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        {openMindednessLevel && (
+                          <p className="text-muted-foreground text-sm">
+                            {getLocalizedText(openMindednessLevel.description, respondentLang)}
+                          </p>
                         )}
                       </div>
                     )}
 
-                    {/* Open-Mindedness Result */}
-                    {openMindednessLevel && (
-                      <div className="rounded-lg p-4 bg-purple-500/10 border border-purple-500/20">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-2xl">{openMindednessLevel.emoji}</span>
-                          <h3 className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                            {getLocalizedText(openMindednessLevel.title, respondentLang)}
-                          </h3>
-                        </div>
-                        <p className="text-sm text-purple-900/80 dark:text-purple-100/80">
-                          {getLocalizedText(openMindednessLevel.description, respondentLang)}
+                    {/* Result description - matches public quiz "What This Means" */}
+                    {resultLevel && (
+                      <div className="bg-muted/30 rounded-2xl p-6 border">
+                        <h3 className="text-lg font-semibold mb-3">What This Means</h3>
+                        <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                          {getLocalizedText(resultLevel.description, respondentLang)}
                         </p>
+                        
+                        {resultLevel.insights && (
+                          <>
+                            <h4 className="font-semibold mb-2 text-sm">Key Insights:</h4>
+                            <ol className="space-y-2">
+                              {getInsights(resultLevel.insights, respondentLang).map((insight, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm">
+                                  <span className="bg-gradient-to-r from-primary to-purple-600 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5">
+                                    {i + 1}
+                                  </span>
+                                  <span className="text-muted-foreground">{insight}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </>
+                        )}
                       </div>
                     )}
 
-                    {/* Result Category Badge */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">Result Category:</span>
-                      <Badge variant="secondary">{lead.result_category}</Badge>
+                    {/* CTA section - matches public quiz */}
+                    <div className="bg-muted/30 rounded-2xl p-6 border text-center">
+                      <h3 className="text-lg font-semibold mb-2">Ready for Precise Employee Assessment?</h3>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.
+                      </p>
+                      <a 
+                        href={quizData?.cta_url || "https://sparkly.hr"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium"
+                      >
+                        {quizData?.cta_text ? getLocalizedText(quizData.cta_text, respondentLang) : "Continue to Sparkly.hr"}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-3">
+                      <Calendar className="w-3 h-3" />
+                      <span>Completed: {format(new Date(lead.created_at), "dd MMM yyyy 'at' HH:mm")}</span>
                       {lead.language && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] ml-auto">
                           {lead.language.toUpperCase()}
                         </Badge>
                       )}
@@ -309,7 +366,7 @@ export function RespondentDetailDialog({
             </TabsContent>
 
             <TabsContent value="email" className="h-full m-0">
-              <ScrollArea className="h-[calc(85vh-180px)]">
+              <ScrollArea className="h-[calc(90vh-180px)]">
                 {loading ? (
                   <div className="space-y-4 p-4">
                     <Skeleton className="h-12" />
