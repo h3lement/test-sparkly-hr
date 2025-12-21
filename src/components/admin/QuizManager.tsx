@@ -66,6 +66,7 @@ interface Quiz {
 // Sortable Row Component
 interface SortableQuizRowProps {
   quiz: Quiz;
+  index: number;
   isDragEnabled: boolean;
   compactView: boolean;
   getLocalizedText: (json: Json) => string;
@@ -79,6 +80,7 @@ interface SortableQuizRowProps {
 
 function SortableQuizRow({
   quiz,
+  index,
   isDragEnabled,
   compactView,
   getLocalizedText,
@@ -105,12 +107,13 @@ function SortableQuizRow({
   };
 
   const cellPadding = compactView ? "py-1.5 px-2" : "py-3 px-4";
+  const isEvenRow = index % 2 === 0;
 
   return (
     <TableRow
       ref={setNodeRef}
       style={style}
-      className="hover:bg-secondary/30 group"
+      className={`hover:bg-secondary/50 group ${isEvenRow ? "bg-white dark:bg-card" : "bg-secondary/20"}`}
     >
       {isDragEnabled && (
         <TableCell className={`w-10 ${compactView ? "px-1" : "px-2"}`}>
@@ -803,10 +806,11 @@ export function QuizManager() {
                 strategy={verticalListSortingStrategy}
               >
                 <TableBody>
-                  {sortedAndFilteredQuizzes.map((quiz) => (
+                  {sortedAndFilteredQuizzes.map((quiz, index) => (
                     <SortableQuizRow
                       key={quiz.id}
                       quiz={quiz}
+                      index={index}
                       isDragEnabled={isDragEnabled}
                       compactView={compactView}
                       getLocalizedText={getLocalizedText}
