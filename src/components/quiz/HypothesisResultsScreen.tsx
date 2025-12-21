@@ -5,6 +5,56 @@ import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award, Light
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
+// Translations for the results screen
+const translations = {
+  en: {
+    resultsTitle: 'Assumptions vs Reality - 50+ Employees',
+    biasChampion: 'Bias Champion',
+    biasChampionDesc: 'Excellent awareness! You see through most common biases about 50+ employees.',
+    awareRecruiter: 'Aware Recruiter',
+    awareRecruiterDesc: 'Good progress! You recognize many biases but have room to grow.',
+    learningMindset: 'Learning Mindset',
+    learningMindsetDesc: "You're on your way. This test revealed some blind spots to work on.",
+    freshStart: 'Fresh Start',
+    freshStartDesc: "Great that you took this test! Now you know where to focus your learning.",
+    yourReflections: 'Your Reflections',
+    keyInsight: 'Key Insight',
+    actionPlan: 'Action Plan',
+    truthBehind: 'The Truth Behind Each Belief',
+    correct: 'correct',
+    of: 'of',
+    takeAgain: 'Take Again',
+    columnHypothesis: 'Assumption',
+    columnWoman: 'Woman assumption',
+    columnMan: 'Man assumption',
+    columnReality: 'Reality for 50+',
+    columnInterview: 'Interview Question',
+  },
+  et: {
+    resultsTitle: '50+ töötajatega seotud eeldused vs tegelikkus',
+    biasChampion: 'Eelarvamuste meister',
+    biasChampionDesc: 'Suurepärane teadlikkus! Näed läbi enamiku levinud eelarvamuste 50+ töötajate kohta.',
+    awareRecruiter: 'Teadlik värbaja',
+    awareRecruiterDesc: 'Hea edasiminek! Tunned ära paljud eelarvamused, kuid on veel arenguruumi.',
+    learningMindset: 'Õppiv mõtteviis',
+    learningMindsetDesc: 'Oled teel. See test paljastas mõned pimealad, millega tegeleda.',
+    freshStart: 'Uus algus',
+    freshStartDesc: 'Tore, et testi tegid! Nüüd tead, kuhu oma õppimist suunata.',
+    yourReflections: 'Sinu mõtted',
+    keyInsight: 'Põhiline õppetund',
+    actionPlan: 'Tegevusplaan',
+    truthBehind: 'Tõde iga eelduse taga',
+    correct: 'õiget',
+    of: '/',
+    takeAgain: 'Tee uuesti',
+    columnHypothesis: 'Eeldus',
+    columnWoman: 'Eeldus (naised)',
+    columnMan: 'Eeldus (mehed)',
+    columnReality: 'Kuidas tegelikult on',
+    columnInterview: 'Intervjuuküsimus',
+  },
+};
+
 export function HypothesisResultsScreen() {
   const { 
     calculateScore, 
@@ -19,6 +69,8 @@ export function HypothesisResultsScreen() {
   const { language } = useLanguage();
   const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({});
 
+  const t = translations[language as keyof typeof translations] || translations.en;
+
   const { correct, total } = calculateScore();
   const percentage = Math.round((correct / total) * 100);
 
@@ -29,10 +81,10 @@ export function HypothesisResultsScreen() {
 
   // Get result level based on score
   const getResultLevel = () => {
-    if (percentage >= 80) return { title: 'Bias Champion', emoji: '🏆', color: 'text-green-500', bgColor: 'bg-green-500/10', description: 'Excellent awareness! You see through most common biases about 50+ employees.' };
-    if (percentage >= 60) return { title: 'Aware Recruiter', emoji: '👁️', color: 'text-blue-500', bgColor: 'bg-blue-500/10', description: 'Good progress! You recognize many biases but have room to grow.' };
-    if (percentage >= 40) return { title: 'Learning Mindset', emoji: '📚', color: 'text-amber-500', bgColor: 'bg-amber-500/10', description: 'You\'re on your way. This test revealed some blind spots to work on.' };
-    return { title: 'Fresh Start', emoji: '🌱', color: 'text-orange-500', bgColor: 'bg-orange-500/10', description: 'Great that you took this test! Now you know where to focus your learning.' };
+    if (percentage >= 80) return { title: t.biasChampion, emoji: '🏆', color: 'text-green-500', bgColor: 'bg-green-500/10', description: t.biasChampionDesc };
+    if (percentage >= 60) return { title: t.awareRecruiter, emoji: '👁️', color: 'text-blue-500', bgColor: 'bg-blue-500/10', description: t.awareRecruiterDesc };
+    if (percentage >= 40) return { title: t.learningMindset, emoji: '📚', color: 'text-amber-500', bgColor: 'bg-amber-500/10', description: t.learningMindsetDesc };
+    return { title: t.freshStart, emoji: '🌱', color: 'text-orange-500', bgColor: 'bg-orange-500/10', description: t.freshStartDesc };
   };
 
   const resultLevel = getResultLevel();
@@ -51,7 +103,7 @@ export function HypothesisResultsScreen() {
   };
 
   return (
-    <main className="animate-fade-in max-w-3xl mx-auto px-4" role="main" aria-labelledby="results-heading">
+    <main className="animate-fade-in max-w-4xl mx-auto px-4" role="main" aria-labelledby="results-heading">
       {/* Hero Score Card */}
       <div className={cn("rounded-2xl p-6 mb-6 text-center border", resultLevel.bgColor)}>
         <span className="text-5xl block mb-3">{resultLevel.emoji}</span>
@@ -61,7 +113,7 @@ export function HypothesisResultsScreen() {
         <div className="inline-flex items-center gap-2 bg-background/80 backdrop-blur rounded-full px-4 py-2 mb-3">
           <span className="text-2xl font-bold text-foreground">{percentage}%</span>
           <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground">{correct} of {total} correct</span>
+          <span className="text-muted-foreground">{correct} {t.of} {total} {t.correct}</span>
         </div>
         <p className="text-foreground/80 max-w-md mx-auto text-sm">
           {resultLevel.description}
@@ -73,18 +125,18 @@ export function HypothesisResultsScreen() {
         <div className="bg-card border border-border rounded-xl p-5 mb-6 shadow">
           <h2 className="font-semibold text-foreground flex items-center gap-2 mb-3">
             <Award className="w-5 h-5 text-primary" />
-            Your Reflections
+            {t.yourReflections}
           </h2>
           <div className="space-y-3 text-sm">
             {feedbackNewLearnings && (
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Key Insight</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t.keyInsight}</p>
                 <p className="text-foreground italic">"{feedbackNewLearnings}"</p>
               </div>
             )}
             {feedbackActionPlan && (
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Action Plan</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{t.actionPlan}</p>
                 <p className="text-foreground italic">"{feedbackActionPlan}"</p>
               </div>
             )}
@@ -96,7 +148,7 @@ export function HypothesisResultsScreen() {
       <div className="space-y-4 mb-6">
         <h2 className="font-semibold text-foreground flex items-center gap-2">
           <Lightbulb className="w-5 h-5 text-amber-500" />
-          The Truth Behind Each Belief
+          {t.truthBehind}
         </h2>
 
         {sortedPages.map((page) => {
@@ -136,11 +188,10 @@ export function HypothesisResultsScreen() {
               {isExpanded && (
                 <div className="divide-y divide-border">
                   {/* Table Header */}
-                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <div>Hypothesis</div>
-                    <div>The Actual Fear</div>
-                    <div>Reality for 50+</div>
-                    <div>Interview Question</div>
+                  <div className="grid grid-cols-[1fr_1fr_1fr] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <div>{t.columnHypothesis}</div>
+                    <div>{t.columnReality}</div>
+                    <div>{t.columnInterview}</div>
                   </div>
 
                   {pageQuestions.map((question, idx) => {
@@ -153,7 +204,7 @@ export function HypothesisResultsScreen() {
 
                     return (
                       <div key={question.id} className={cn(
-                        "grid grid-cols-[1fr_1fr_1fr_1fr] gap-2 px-3 py-3 items-start",
+                        "grid grid-cols-[1fr_1fr_1fr] gap-2 px-3 py-3 items-start",
                         isCorrect ? "bg-green-500/5" : "bg-red-500/5"
                       )}>
                         {/* Hypothesis */}
@@ -167,38 +218,33 @@ export function HypothesisResultsScreen() {
                             <span className="text-xs text-muted-foreground font-medium">#{idx + 1}</span>
                           </div>
                           <div className="text-xs space-y-1">
-                            <p className="text-pink-700 dark:text-pink-400">
-                              <span className="font-medium">👩</span> {womanHypothesis}
-                            </p>
-                            <p className="text-blue-700 dark:text-blue-400">
-                              <span className="font-medium">👨</span> {manHypothesis}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* The Actual Fear */}
-                        <div className="text-xs text-foreground/80 leading-relaxed">
-                          <div className="p-2 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                            <p className="text-orange-700 dark:text-orange-400">
-                              Younger generations often fear that 50+ employees may be resistant to change, less adaptable, or harder to manage.
-                            </p>
+                            <div className="p-1.5 bg-pink-500/10 border border-pink-500/20 rounded">
+                              <p className="text-pink-700 dark:text-pink-400">
+                                <span className="font-medium">👩</span> {womanHypothesis}
+                              </p>
+                            </div>
+                            <div className="p-1.5 bg-blue-500/10 border border-blue-500/20 rounded">
+                              <p className="text-blue-700 dark:text-blue-400">
+                                <span className="font-medium">👨</span> {manHypothesis}
+                              </p>
+                            </div>
                           </div>
                         </div>
 
                         {/* Reality for 50+ */}
                         <div className="text-xs leading-relaxed">
-                          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg h-full">
                             <p className="text-emerald-700 dark:text-emerald-400">
-                              {truthExplanation || "50+ professionals bring stability, mentorship, and proven problem-solving skills developed over decades."}
+                              {truthExplanation}
                             </p>
                           </div>
                         </div>
 
                         {/* Interview Question */}
                         <div className="text-xs leading-relaxed">
-                          <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <p className="text-blue-700 dark:text-blue-400 italic">
-                              {interviewQuestion || "What recent change in your field excited you most, and how did you adapt to it?"}
+                          <div className="p-2 bg-violet-500/10 border border-violet-500/20 rounded-lg h-full">
+                            <p className="text-violet-700 dark:text-violet-400 italic">
+                              {interviewQuestion}
                             </p>
                           </div>
                         </div>
@@ -243,7 +289,7 @@ export function HypothesisResultsScreen() {
             className="h-12"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
-            Take Again
+            {t.takeAgain}
           </Button>
         </div>
       </section>
