@@ -224,6 +224,10 @@ export default function QuizEditor() {
   const [errorCheckResult, setErrorCheckResult] = useState<CheckErrorsResult | null>(null);
   const [isCheckingErrors, setIsCheckingErrors] = useState(false);
 
+  // Tab counts for Respondents and Log
+  const [respondentsCount, setRespondentsCount] = useState(0);
+  const [activityLogsCount, setActivityLogsCount] = useState(0);
+
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
@@ -678,6 +682,20 @@ export default function QuizEditor() {
 
       const totalCost = (versionsData || []).reduce((sum, v) => sum + (v.estimated_cost_eur || 0), 0);
       setTotalAiCost(totalCost);
+
+      // Load respondents count
+      const { count: leadsCount } = await supabase
+        .from("quiz_leads")
+        .select("*", { count: "exact", head: true })
+        .eq("quiz_id", id);
+      setRespondentsCount(leadsCount || 0);
+
+      // Load activity logs count
+      const { count: logsCount } = await supabase
+        .from("activity_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("record_id", id);
+      setActivityLogsCount(logsCount || 0);
 
       // Mark loaded data as clean for dirty tracking
       questionsDirtyTracking.markClean(questionsWithAnswers);
@@ -1738,7 +1756,7 @@ export default function QuizEditor() {
               </span>
             </TabsTrigger>
             <TabsTrigger value="respondents" className="text-xs flex-1">
-              Respondents
+              Respondents ({respondentsCount})
             </TabsTrigger>
             <TabsTrigger value="stats" className="text-xs flex-1">
               Stats
@@ -1747,7 +1765,7 @@ export default function QuizEditor() {
               Web
             </TabsTrigger>
             <TabsTrigger value="log" className="text-xs flex-1">
-              Log
+              Log ({activityLogsCount})
             </TabsTrigger>
           </TabsList>
 
