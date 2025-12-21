@@ -454,6 +454,44 @@ export function RespondentDetailDialog({
                       </div>
                     </div>
 
+                    {/* Open-Mindedness Summary (if applicable) */}
+                    {lead.openness_score !== null && openMindednessLevel && (
+                      <div className="glass rounded-lg p-4">
+                        <h4 className="font-heading text-sm font-semibold mb-2 flex items-center gap-2">
+                          <span>{openMindednessLevel.emoji || "🧠"}</span>
+                          Leadership Open-Mindedness
+                        </h4>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="text-2xl font-bold gradient-text">
+                            {lead.openness_score}/{omMaxScore}
+                          </div>
+                          <div className="flex-1">
+                            <div 
+                              className="h-2 bg-secondary rounded-full overflow-hidden"
+                              role="progressbar"
+                              aria-valuenow={omPercentage}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
+                              <div 
+                                className={cn(
+                                  "h-full bg-gradient-to-r transition-all duration-500",
+                                  openMindednessLevel.color_class || "from-blue-500 to-indigo-600"
+                                )}
+                                style={{ width: `${omPercentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs font-medium text-foreground mb-1">
+                          {getLocalizedText(openMindednessLevel.title, respondentLang)}
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {getLocalizedText(openMindednessLevel.description, respondentLang)}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Email Content Preview - Exact HTML as sent */}
                     <div className="border rounded-lg overflow-hidden">
                       <div className="bg-muted/50 px-3 py-2 border-b flex items-center justify-between">
