@@ -180,6 +180,34 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness }: QuizWe
     fetchStats();
   }, [dateRange, quizSlug]);
 
+  // Real-time subscription for page views
+  useEffect(() => {
+    const channel = supabase
+      .channel(`quiz-web-stats-${quizSlug}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'page_views'
+        },
+        (payload) => {
+          // Check if this page view is for our quiz
+          const newPageSlug = (payload.new as { page_slug: string }).page_slug;
+          if (newPageSlug?.startsWith(`${quizSlug}/`) || 
+              (quizSlug === 'team-performance' && !newPageSlug?.includes('/'))) {
+            // Refetch stats on new page view
+            fetchStats();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [quizSlug]);
+
   const maxFunnelCount = Math.max(...funnelData.map((f) => f.count), 1);
 
   // Get badge color based on percentage
@@ -250,9 +278,10 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness }: QuizWe
           valueColor="text-red-600"
         />
         <StatCard
-          label="Completion"
+          label="Conversion"
           value={`${stats.completionRate.toFixed(0)}%`}
-          icon={<BarChart3 className="w-4 h-4 text-primary" />}
+          icon={<TrendingDown className="w-4 h-4 text-primary" />}
+          valueColor={stats.completionRate >= 50 ? "text-green-600" : stats.completionRate >= 25 ? "text-amber-600" : "text-red-600"}
         />
       </div>
 

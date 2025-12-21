@@ -227,7 +227,7 @@ export default function QuizEditor() {
   // Tab counts for Respondents, Log, and Web
   const [respondentsCount, setRespondentsCount] = useState(0);
   const [activityLogsCount, setActivityLogsCount] = useState(0);
-  const [pageViewsCount, setPageViewsCount] = useState(0);
+  const [webConversionRate, setWebConversionRate] = useState(0);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -643,11 +643,32 @@ export default function QuizEditor() {
         async (payload) => {
           // Only update if the page_slug matches this quiz
           if (payload.new && (payload.new as { page_slug: string }).page_slug?.startsWith(slug)) {
-            const { count } = await supabase
+            // Recalculate conversion rate
+            const { data: pageViewsData } = await supabase
               .from("page_views")
-              .select("*", { count: "exact", head: true })
-              .like("page_slug", `${slug}%`);
-            setPageViewsCount(count || 0);
+              .select("session_id, page_slug")
+              .or(`page_slug.like.${slug}/%,page_slug.eq.welcome,page_slug.eq.results`);
+            
+            const sessionPages = new Map<string, Set<string>>();
+            (pageViewsData || []).forEach(view => {
+              const stepSlug = view.page_slug.includes('/') 
+                ? view.page_slug.split('/').pop()! 
+                : view.page_slug;
+              if (!sessionPages.has(view.session_id)) {
+                sessionPages.set(view.session_id, new Set());
+              }
+              sessionPages.get(view.session_id)!.add(stepSlug);
+            });
+            
+            let welcomeCount = 0;
+            let resultsCount = 0;
+            sessionPages.forEach(pages => {
+              if (pages.has('welcome')) welcomeCount++;
+              if (pages.has('results')) resultsCount++;
+            });
+            
+            const convRate = welcomeCount > 0 ? Math.round((resultsCount / welcomeCount) * 100) : 0;
+            setWebConversionRate(convRate);
           }
         }
       )
@@ -774,12 +795,33 @@ export default function QuizEditor() {
         .eq("record_id", id);
       setActivityLogsCount(logsCount || 0);
 
-      // Load page views count for Web tab
-      const { count: viewsCount } = await supabase
+      // Load web conversion rate (results/welcome)
+      const { data: pageViewsData } = await supabase
         .from("page_views")
-        .select("*", { count: "exact", head: true })
-        .like("page_slug", `${quiz.slug}%`);
-      setPageViewsCount(viewsCount || 0);
+        .select("session_id, page_slug")
+        .or(`page_slug.like.${quiz.slug}/%,page_slug.eq.welcome,page_slug.eq.results`);
+      
+      // Calculate conversion rate
+      const sessionPages = new Map<string, Set<string>>();
+      (pageViewsData || []).forEach(view => {
+        const stepSlug = view.page_slug.includes('/') 
+          ? view.page_slug.split('/').pop()! 
+          : view.page_slug;
+        if (!sessionPages.has(view.session_id)) {
+          sessionPages.set(view.session_id, new Set());
+        }
+        sessionPages.get(view.session_id)!.add(stepSlug);
+      });
+      
+      let welcomeCount = 0;
+      let resultsCount = 0;
+      sessionPages.forEach(pages => {
+        if (pages.has('welcome')) welcomeCount++;
+        if (pages.has('results')) resultsCount++;
+      });
+      
+      const convRate = welcomeCount > 0 ? Math.round((resultsCount / welcomeCount) * 100) : 0;
+      setWebConversionRate(convRate);
 
       // Mark loaded data as clean for dirty tracking
       questionsDirtyTracking.markClean(questionsWithAnswers);
@@ -1846,7 +1888,7 @@ export default function QuizEditor() {
               Stats ({respondentsCount})
             </TabsTrigger>
             <TabsTrigger value="web" className="text-xs flex-1">
-              Web ({pageViewsCount})
+              Web ({webConversionRate}%)
             </TabsTrigger>
             <TabsTrigger value="log" className="text-xs flex-1">
               Log ({activityLogsCount})
