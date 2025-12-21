@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Save, Check, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RefreshCw, Save, Check, Eye, Globe, Mail, Server, ExternalLink } from "lucide-react";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
 interface EmailTemplate {
@@ -643,7 +644,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   }
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-4xl space-y-6">
       {/* Quiz Selection - only show if not passed as prop */}
       {!propQuizId && (
         <Card>
@@ -674,7 +675,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Email templates are quiz-specific. Most recently edited quiz is pre-selected.
+                  Templates are quiz-specific. Most recently edited quiz is pre-selected.
                 </p>
               </div>
             )}
@@ -687,130 +688,217 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         <Card className="border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="pt-6">
             <p className="text-amber-700 dark:text-amber-400">
-              Please select a quiz above to manage its email template.
+              Please select a quiz above to manage its templates.
             </p>
           </CardContent>
         </Card>
       )}
 
       {currentQuizId && (
-        <>
-          {/* Current Live Status */}
-          {liveTemplate && (
-            <Card className="border-primary/20 bg-primary/5">
-              <CardHeader className="pb-3">
+        <Tabs defaultValue="web" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="web" className="gap-2">
+              <Globe className="w-4 h-4" />
+              Web Templates
+            </TabsTrigger>
+            <TabsTrigger value="email" className="gap-2">
+              <Mail className="w-4 h-4" />
+              Email Templates
+            </TabsTrigger>
+            <TabsTrigger value="server" className="gap-2">
+              <Server className="w-4 h-4" />
+              Email Server
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Web Templates Tab */}
+          <TabsContent value="web" className="space-y-6">
+            <WebVersionHistory quizId={currentQuizId} />
+          </TabsContent>
+
+          {/* Email Templates Tab */}
+          <TabsContent value="email" className="space-y-6">
+            {/* Current Live Status */}
+            {liveTemplate && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Check className="w-5 h-5 text-primary" />
+                      Currently Live: Version {liveTemplate.version_number}
+                    </CardTitle>
+                    <Badge variant="default" className="bg-primary">LIVE</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  <p>Sender: <span className="text-foreground font-medium">{liveTemplate.sender_name} &lt;{liveTemplate.sender_email}&gt;</span></p>
+                  <p className="mt-1">Updated: {formatDate(liveTemplate.created_at)} by {liveTemplate.created_by_email || "Unknown"}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Editor Section */}
+            <Card>
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Check className="w-5 h-5 text-primary" />
-                    Currently Live: Version {liveTemplate.version_number}
-                  </CardTitle>
-                  <Badge variant="default" className="bg-primary">LIVE</Badge>
+                  <CardTitle>Email Template Editor</CardTitle>
+                  <Button onClick={() => fetchTemplates()} variant="outline" size="sm">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                <p>Sender: <span className="text-foreground font-medium">{liveTemplate.sender_name} &lt;{liveTemplate.sender_email}&gt;</span></p>
-                <p className="mt-1">Updated: {formatDate(liveTemplate.created_at)} by {liveTemplate.created_by_email || "Unknown"}</p>
+              <CardContent className="space-y-6">
+                {/* Sender Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="senderName">Sender Name</Label>
+                    <Input
+                      id="senderName"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                      placeholder="Sparkly.hr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="senderEmail">Sender Email</Label>
+                    <Input
+                      id="senderEmail"
+                      type="email"
+                      value={senderEmail}
+                      onChange={(e) => setSenderEmail(e.target.value)}
+                      placeholder="support@sparkly.hr"
+                    />
+                  </div>
+                </div>
+
+                {/* Subject Line - Primary Language Only */}
+                <div className="space-y-2">
+                  <Label htmlFor="subjectLine" className="text-base font-semibold">
+                    Email Subject 
+                    <span className="text-muted-foreground font-normal ml-2">
+                      ({selectedQuiz?.primary_language === 'et' ? 'Estonian' : 'English'} - will be auto-translated)
+                    </span>
+                  </Label>
+                  <Input
+                    id="subjectLine"
+                    value={subjects[selectedQuiz?.primary_language || 'en'] || ''}
+                    onChange={(e) => updateSubject(selectedQuiz?.primary_language || 'en', e.target.value)}
+                    placeholder={`Enter subject in ${selectedQuiz?.primary_language === 'et' ? 'Estonian' : 'English'}...`}
+                    className="text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Other language subjects will be automatically translated from this primary language subject when sending emails.
+                  </p>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button onClick={saveNewVersion} disabled={saving} className="gap-2">
+                    <Save className="w-4 h-4" />
+                    {saving ? "Saving..." : "Save as New Version & Set Live"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-      {/* Editor Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Email Template Editor</CardTitle>
-            <Button onClick={() => fetchTemplates()} variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Sender Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="senderName">Sender Name</Label>
-              <Input
-                id="senderName"
-                value={senderName}
-                onChange={(e) => setSenderName(e.target.value)}
-                placeholder="Sparkly.hr"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="senderEmail">Sender Email</Label>
-              <Input
-                id="senderEmail"
-                type="email"
-                value={senderEmail}
-                onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="support@sparkly.hr"
-              />
-            </div>
-          </div>
+            {/* Preview Live Template */}
+            {liveTemplate && (
+              <div className="flex justify-center">
+                <Button 
+                  variant="outline"
+                  onClick={() => openPreviewDialog(liveTemplate)}
+                  className="gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview & Send Test Email
+                </Button>
+              </div>
+            )}
 
-          {/* Subject Line - Primary Language Only */}
-          <div className="space-y-2">
-            <Label htmlFor="subjectLine" className="text-base font-semibold">
-              Email Subject 
-              <span className="text-muted-foreground font-normal ml-2">
-                ({selectedQuiz?.primary_language === 'et' ? 'Estonian' : 'English'} - will be auto-translated)
-              </span>
-            </Label>
-            <Input
-              id="subjectLine"
-              value={subjects[selectedQuiz?.primary_language || 'en'] || ''}
-              onChange={(e) => updateSubject(selectedQuiz?.primary_language || 'en', e.target.value)}
-              placeholder={`Enter subject in ${selectedQuiz?.primary_language === 'et' ? 'Estonian' : 'English'}...`}
-              className="text-base"
+            {/* Email Version History */}
+            <EmailVersionHistory 
+              quizId={currentQuizId} 
+              onLoadTemplate={(template) => {
+                setSenderName(template.sender_name);
+                setSenderEmail(template.sender_email);
+                setSubjects(template.subjects);
+                toast({
+                  title: "Version loaded",
+                  description: `Version ${template.version_number} loaded into editor`,
+                });
+              }}
+              onSetLive={() => fetchTemplates()}
+              onPreview={(template) => openPreviewDialog(template)}
             />
-            <p className="text-xs text-muted-foreground">
-              Other language subjects will be automatically translated from this primary language subject when sending emails.
-            </p>
-          </div>
+          </TabsContent>
 
-          {/* Save Button */}
-          <div className="flex justify-end pt-4 border-t">
-            <Button onClick={saveNewVersion} disabled={saving} className="gap-2">
-              <Save className="w-4 h-4" />
-              {saving ? "Saving..." : "Save as New Version & Set Live"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Email Server Tab */}
+          <TabsContent value="server" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Server className="w-5 h-5" />
+                  Resend Configuration
+                </CardTitle>
+                <CardDescription>
+                  Email delivery is powered by Resend. Configure your API key and domain settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-muted/50 rounded-lg border">
+                  <h4 className="font-medium mb-2">Current Status</h4>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-green-600">Connected</Badge>
+                    <span className="text-sm text-muted-foreground">Resend API key is configured</span>
+                  </div>
+                </div>
 
-      {/* Preview Live Template */}
-      {liveTemplate && (
-        <div className="flex justify-center">
-          <Button 
-            variant="outline"
-            onClick={() => openPreviewDialog(liveTemplate)}
-            className="gap-2"
-          >
-            <Eye className="w-4 h-4" />
-            Preview & Send Test Email
-          </Button>
-        </div>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Domain Configuration</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Make sure your sending domain is verified in Resend to ensure email deliverability.
+                    </p>
+                    <Button variant="outline" asChild>
+                      <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        Manage Domains in Resend
+                      </a>
+                    </Button>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2">API Keys</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Manage your Resend API keys. The current key is stored securely as an environment variable.
+                    </p>
+                    <Button variant="outline" asChild>
+                      <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        Manage API Keys in Resend
+                      </a>
+                    </Button>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2">Email Logs & Analytics</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      View detailed email delivery statistics and logs in the Resend dashboard.
+                    </p>
+                    <Button variant="outline" asChild>
+                      <a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer" className="gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        View Email Logs in Resend
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       )}
-
-      {/* Email Version History - Compact Table */}
-      <EmailVersionHistory 
-        quizId={currentQuizId} 
-        onLoadTemplate={(template) => {
-          setSenderName(template.sender_name);
-          setSenderEmail(template.sender_email);
-          setSubjects(template.subjects);
-          toast({
-            title: "Version loaded",
-            description: `Version ${template.version_number} loaded into editor`,
-          });
-        }}
-        onSetLive={() => fetchTemplates()}
-        onPreview={(template) => openPreviewDialog(template)}
-      />
-
-      {/* Web Result Version History - Compact Table */}
-      <WebVersionHistory quizId={currentQuizId} />
 
       {/* Email Preview Dialog */}
       <EmailPreviewDialog
@@ -821,8 +909,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         defaultEmail={currentUserEmail}
         emailTranslations={emailTranslations}
       />
-      </>
-      )}
     </div>
   );
 }
