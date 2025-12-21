@@ -140,6 +140,9 @@ export function HypothesisQuestionScreen() {
   };
 
   const handleNextPage = () => {
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     if (currentPageIndex < sortedPages.length - 1) {
       setCurrentPageIndex(currentPageIndex + 1);
       setActiveRowIndex(0);
