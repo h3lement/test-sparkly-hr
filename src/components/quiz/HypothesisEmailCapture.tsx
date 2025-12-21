@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { Mail, Lightbulb, Target } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255);
 
@@ -91,6 +92,23 @@ export function HypothesisEmailCapture() {
   const { correct, total } = calculateScore();
   const percentage = Math.round((correct / total) * 100);
 
+  // Get assessment category based on percentage
+  const getAssessment = () => {
+    if (percentage >= 90) {
+      return { label: "Expert", emoji: "🏆", color: "text-emerald-600 dark:text-emerald-400", description: "Outstanding knowledge of 50+ workforce dynamics" };
+    } else if (percentage >= 70) {
+      return { label: "Advanced", emoji: "⭐", color: "text-blue-600 dark:text-blue-400", description: "Strong understanding with room for refinement" };
+    } else if (percentage >= 50) {
+      return { label: "Intermediate", emoji: "📚", color: "text-amber-600 dark:text-amber-400", description: "Solid foundation — the full material will deepen your insights" };
+    } else if (percentage >= 30) {
+      return { label: "Developing", emoji: "🌱", color: "text-orange-600 dark:text-orange-400", description: "Common misconceptions detected — valuable learning ahead" };
+    } else {
+      return { label: "Beginner", emoji: "🔍", color: "text-red-600 dark:text-red-400", description: "Many beliefs to reconsider — this material will be eye-opening" };
+    }
+  };
+
+  const assessment = getAssessment();
+
   return (
     <main className="animate-fade-in max-w-xl mx-auto px-4" role="main" aria-labelledby="email-heading">
       
@@ -99,8 +117,17 @@ export function HypothesisEmailCapture() {
         <div className="text-5xl font-bold text-primary mb-2">
           {correct}/{total}
         </div>
-        <p className="text-muted-foreground">
-          Hypotheses answered
+        <p className="text-muted-foreground mb-4">
+          Hypotheses answered correctly
+        </p>
+        
+        {/* Assessment Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full mb-2">
+          <span className="text-xl">{assessment.emoji}</span>
+          <span className={cn("font-semibold", assessment.color)}>{assessment.label}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {assessment.description}
         </p>
       </div>
 
