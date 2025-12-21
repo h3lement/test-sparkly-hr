@@ -187,6 +187,171 @@ export type Database = {
           },
         ]
       }
+      hypothesis_leads: {
+        Row: {
+          created_at: string
+          email: string
+          feedback_action_plan: string | null
+          feedback_new_learnings: string | null
+          id: string
+          language: string | null
+          quiz_id: string
+          score: number
+          session_id: string
+          total_questions: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          feedback_action_plan?: string | null
+          feedback_new_learnings?: string | null
+          id?: string
+          language?: string | null
+          quiz_id: string
+          score: number
+          session_id: string
+          total_questions: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          feedback_action_plan?: string | null
+          feedback_new_learnings?: string | null
+          id?: string
+          language?: string | null
+          quiz_id?: string
+          score?: number
+          session_id?: string
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_leads_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hypothesis_pages: {
+        Row: {
+          created_at: string
+          description: Json
+          id: string
+          page_number: number
+          quiz_id: string
+          title: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: Json
+          id?: string
+          page_number: number
+          quiz_id: string
+          title?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: Json
+          id?: string
+          page_number?: number
+          quiz_id?: string
+          title?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_pages_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hypothesis_questions: {
+        Row: {
+          created_at: string
+          hypothesis_text: Json
+          id: string
+          interview_question: Json
+          page_id: string
+          question_order: number
+          truth_explanation: Json
+        }
+        Insert: {
+          created_at?: string
+          hypothesis_text?: Json
+          id?: string
+          interview_question?: Json
+          page_id: string
+          question_order: number
+          truth_explanation?: Json
+        }
+        Update: {
+          created_at?: string
+          hypothesis_text?: Json
+          id?: string
+          interview_question?: Json
+          page_id?: string
+          question_order?: number
+          truth_explanation?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_questions_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "hypothesis_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hypothesis_responses: {
+        Row: {
+          answer_man: boolean | null
+          answer_woman: boolean | null
+          created_at: string
+          id: string
+          question_id: string
+          quiz_id: string
+          session_id: string
+        }
+        Insert: {
+          answer_man?: boolean | null
+          answer_woman?: boolean | null
+          created_at?: string
+          id?: string
+          question_id: string
+          quiz_id: string
+          session_id: string
+        }
+        Update: {
+          answer_man?: boolean | null
+          answer_woman?: boolean | null
+          created_at?: string
+          id?: string
+          question_id?: string
+          quiz_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "hypothesis_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hypothesis_responses_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       open_mindedness_result_levels: {
         Row: {
           color_class: string | null
@@ -527,6 +692,7 @@ export type Database = {
           include_open_mindedness: boolean
           is_active: boolean
           primary_language: string
+          quiz_type: string
           shuffle_questions: boolean
           slug: string
           title: Json
@@ -555,6 +721,7 @@ export type Database = {
           include_open_mindedness?: boolean
           is_active?: boolean
           primary_language?: string
+          quiz_type?: string
           shuffle_questions?: boolean
           slug: string
           title?: Json
@@ -583,6 +750,7 @@ export type Database = {
           include_open_mindedness?: boolean
           is_active?: boolean
           primary_language?: string
+          quiz_type?: string
           shuffle_questions?: boolean
           slug?: string
           title?: Json
@@ -594,6 +762,44 @@ export type Database = {
           use_tone_for_ai?: boolean | null
         }
         Relationships: []
+      }
+      scheduled_emails: {
+        Row: {
+          created_at: string
+          email_type: string
+          id: string
+          lead_id: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          id?: string
+          lead_id: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          id?: string
+          lead_id?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "hypothesis_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_preferences: {
         Row: {
