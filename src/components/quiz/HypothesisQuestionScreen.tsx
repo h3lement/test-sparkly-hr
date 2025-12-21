@@ -231,7 +231,11 @@ export function HypothesisQuestionScreen() {
             const overallNumber = previousPagesQuestions + idx + 1;
 
             return (
-              <div key={question.id} className="relative transition-all hover:bg-muted/20">
+              <div 
+                key={question.id} 
+                className="relative transition-all hover:bg-muted/20 animate-slide-up"
+                style={{ animationDelay: `${idx * 0.05}s` }}
+              >
                 {/* Desktop Layout: 3-column grid */}
                 <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-3 px-5 py-4 items-start">
                   {/* Women Hypothesis */}
