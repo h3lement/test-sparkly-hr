@@ -563,6 +563,92 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
     ` : '';
 
+    // Leadership Assessment Module - How answers are scored
+    const assessmentModuleTranslations: Record<string, {
+      howWeAssess: string;
+      scoringExplained: string;
+      delegationTitle: string;
+      delegationDesc: string;
+      deadlinesTitle: string;
+      deadlinesDesc: string;
+      communicationTitle: string;
+      communicationDesc: string;
+      scoreRange: string;
+      highScore: string;
+      lowScore: string;
+    }> = {
+      en: {
+        howWeAssess: 'How We Assess Leadership Performance',
+        scoringExplained: 'Your score reflects real operational patterns that impact business growth',
+        delegationTitle: 'Delegation Effectiveness',
+        delegationDesc: 'Leaders who rarely redo delegated work have built trust and clear expectations with their teams.',
+        deadlinesTitle: 'Deadline Management',
+        deadlinesDesc: 'Consistent deadline adherence signals strong team accountability and realistic planning.',
+        communicationTitle: 'Communication Clarity',
+        communicationDesc: 'Clear communication reduces rework, misunderstandings, and operational friction.',
+        scoreRange: 'Score Range',
+        highScore: 'High performers (4 pts): Demonstrate autonomy, accountability, and proactive ownership.',
+        lowScore: 'Growth areas (1-2 pts): Indicate opportunities for improved delegation, clarity, or team development.',
+      },
+      et: {
+        howWeAssess: 'Kuidas me hindame juhtimise tulemuslikkust',
+        scoringExplained: 'Sinu tulemus peegeldab tegelikke operatiivseid mustreid, mis mõjutavad äri kasvu',
+        delegationTitle: 'Delegeerimise efektiivsus',
+        delegationDesc: 'Juhid, kes harva teevad delegeeritud tööd ümber, on loonud usalduse ja selged ootused oma meeskondadega.',
+        deadlinesTitle: 'Tähtaegade haldamine',
+        deadlinesDesc: 'Järjepidev tähtaegadest kinnipidamine näitab tugevat meeskonna vastutust ja realistlikku planeerimist.',
+        communicationTitle: 'Suhtluse selgus',
+        communicationDesc: 'Selge suhtlus vähendab ümbertöötlemist, arusaamatusi ja operatiivset hõõrdumist.',
+        scoreRange: 'Punktide vahemik',
+        highScore: 'Kõrge tulemuslikkus (4 p): Demonstreerivad autonoomiat, vastutust ja proaktiivset omanikutunnet.',
+        lowScore: 'Kasvualad (1-2 p): Näitavad võimalusi paremaks delegeerimiseks, selguseks või meeskonna arendamiseks.',
+      },
+      de: {
+        howWeAssess: 'Wie wir Führungsleistung bewerten',
+        scoringExplained: 'Ihr Ergebnis spiegelt reale operative Muster wider, die das Geschäftswachstum beeinflussen',
+        delegationTitle: 'Delegationseffektivität',
+        delegationDesc: 'Führungskräfte, die delegierte Arbeit selten wiederholen, haben Vertrauen und klare Erwartungen mit ihren Teams aufgebaut.',
+        deadlinesTitle: 'Fristmanagement',
+        deadlinesDesc: 'Konstante Fristeneinhaltung signalisiert starke Teamverantwortung und realistische Planung.',
+        communicationTitle: 'Kommunikationsklarheit',
+        communicationDesc: 'Klare Kommunikation reduziert Nacharbeit, Missverständnisse und operativen Reibungsverlust.',
+        scoreRange: 'Punktebereich',
+        highScore: 'Hochleister (4 Pkt): Demonstrieren Autonomie, Verantwortung und proaktive Eigenverantwortung.',
+        lowScore: 'Wachstumsbereiche (1-2 Pkt): Zeigen Möglichkeiten für verbesserte Delegation, Klarheit oder Teamentwicklung.',
+      },
+    };
+
+    const assessTrans = assessmentModuleTranslations[language] || assessmentModuleTranslations.en;
+
+    // Build assessment module section
+    const assessmentModule = `
+          <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+            <h3 style="color: #1e293b; font-size: 16px; margin: 0 0 8px 0; font-weight: 600;">📊 ${escapeHtml(assessTrans.howWeAssess)}</h3>
+            <p style="color: #64748b; font-size: 13px; margin: 0 0 16px 0; line-height: 1.5;">${escapeHtml(assessTrans.scoringExplained)}</p>
+            
+            <div style="display: grid; gap: 12px;">
+              <div style="background: white; border-radius: 8px; padding: 12px; border-left: 3px solid #6d28d9;">
+                <p style="color: #1e293b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">🎯 ${escapeHtml(assessTrans.delegationTitle)}</p>
+                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.4;">${escapeHtml(assessTrans.delegationDesc)}</p>
+              </div>
+              <div style="background: white; border-radius: 8px; padding: 12px; border-left: 3px solid #7c3aed;">
+                <p style="color: #1e293b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">⏰ ${escapeHtml(assessTrans.deadlinesTitle)}</p>
+                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.4;">${escapeHtml(assessTrans.deadlinesDesc)}</p>
+              </div>
+              <div style="background: white; border-radius: 8px; padding: 12px; border-left: 3px solid #8b5cf6;">
+                <p style="color: #1e293b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">💬 ${escapeHtml(assessTrans.communicationTitle)}</p>
+                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.4;">${escapeHtml(assessTrans.communicationDesc)}</p>
+              </div>
+            </div>
+            
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+              <p style="color: #1e293b; font-size: 12px; font-weight: 600; margin: 0 0 6px 0;">${escapeHtml(assessTrans.scoreRange)}:</p>
+              <p style="color: #22c55e; font-size: 11px; margin: 0 0 4px 0;">✓ ${escapeHtml(assessTrans.highScore)}</p>
+              <p style="color: #f59e0b; font-size: 11px; margin: 0;">→ ${escapeHtml(assessTrans.lowScore)}</p>
+            </div>
+          </div>
+    `;
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -594,6 +680,8 @@ const handler = async (req: Request): Promise<Response> => {
           <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
             ${insightsList}
           </ul>
+          
+          ${assessmentModule}
           
           <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
             <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">${escapeHtml(trans.wantToImprove)}</p>
