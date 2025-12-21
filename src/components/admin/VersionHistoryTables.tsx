@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -157,123 +158,130 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
   }
 
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Mail className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">Email Templates</span>
-          <Badge variant="secondary" className="text-xs">
-            {templates.length}
-          </Badge>
+    <Card className="bg-background">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="w-4 h-4 text-primary" />
+            Email Template Versions
+            <Badge variant="secondary" className="text-xs ml-2">
+              {templates.length}
+            </Badge>
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchTemplates}
+            disabled={loading}
+            className="h-8 gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchTemplates}
-          disabled={loading}
-          className="h-7 text-xs gap-1"
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Table */}
-      {templates.length === 0 ? (
-        <div className="text-center py-6 border rounded-lg border-dashed">
-          <Mail className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No email templates yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Save a template to get started</p>
-        </div>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-[60px_1fr_140px_120px_100px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b">
-            <span>Ver</span>
-            <span>Sender</span>
-            <span>Languages</span>
-            <span>Created</span>
-            <span className="text-right">Actions</span>
+      </CardHeader>
+      <CardContent>
+        {loading && templates.length === 0 ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
           </div>
-
-          {/* Table Rows */}
-          <div className="max-h-[250px] overflow-y-auto">
-            {templates.map((template, index) => {
-              const languages = getLanguages(template.subjects);
-              return (
-                <div
-                  key={template.id}
-                  className={`grid grid-cols-[60px_1fr_140px_120px_100px] gap-2 px-3 py-2 items-center text-sm border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
-                    template.is_live ? "bg-primary/5" : index % 2 === 0 ? "bg-background" : "bg-muted/20"
-                  }`}
-                >
-                  {/* Version */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium">v{template.version_number}</span>
-                    {template.is_live && (
-                      <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
-                        LIVE
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Sender */}
-                  <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
-                    {template.sender_name} &lt;{template.sender_email}&gt;
-                  </div>
-
-                  {/* Languages */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {languages.slice(0, 4).map(lang => (
-                      <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
-                        {lang}
-                      </Badge>
-                    ))}
-                    {languages.length > 4 && (
-                      <Badge variant="outline" className="text-xs h-5 px-1.5">
-                        +{languages.length - 4}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Created */}
-                  <div className="text-sm text-muted-foreground truncate" title={template.created_by_email || "Unknown"}>
-                    {formatDate(template.created_at)}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-1.5">
-                    {onLoadTemplate && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onLoadTemplate(template)}
-                        className="h-7 w-7 p-0"
-                        title="Load to editor"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    )}
-                    {!template.is_live && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSetLive(template.id, template.version_number)}
-                        className="h-7 w-7 p-0 text-primary"
-                        title="Set as live"
-                      >
-                        <Check className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        ) : templates.length === 0 ? (
+          <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
+            <Mail className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-base text-muted-foreground">No email templates yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Save a template to get started</p>
           </div>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden bg-background">
+            {/* Table Header */}
+            <div className="grid grid-cols-[70px_1fr_160px_140px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+              <span>Version</span>
+              <span>Sender</span>
+              <span>Languages</span>
+              <span>Created</span>
+              <span className="text-right">Actions</span>
+            </div>
+
+            {/* Table Rows */}
+            <div className="max-h-[300px] overflow-y-auto">
+              {templates.map((template, index) => {
+                const languages = getLanguages(template.subjects);
+                return (
+                  <div
+                    key={template.id}
+                    className={`grid grid-cols-[70px_1fr_160px_140px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
+                      template.is_live ? "bg-primary/5" : "bg-background"
+                    }`}
+                  >
+                    {/* Version */}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">v{template.version_number}</span>
+                      {template.is_live && (
+                        <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
+                          LIVE
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Sender */}
+                    <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
+                      {template.sender_name} &lt;{template.sender_email}&gt;
+                    </div>
+
+                    {/* Languages */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {languages.slice(0, 4).map(lang => (
+                        <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
+                          {lang}
+                        </Badge>
+                      ))}
+                      {languages.length > 4 && (
+                        <Badge variant="outline" className="text-xs h-5 px-1.5">
+                          +{languages.length - 4}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Created */}
+                    <div className="text-sm text-muted-foreground truncate" title={template.created_by_email || "Unknown"}>
+                      {formatDate(template.created_at)}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-2">
+                      {onLoadTemplate && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onLoadTemplate(template)}
+                          className="h-8 w-8 p-0"
+                          title="Load to editor"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {!template.is_live && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSetLive(template.id, template.version_number)}
+                          className="h-8 w-8 p-0 text-primary"
+                          title="Set as live"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -331,187 +339,178 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
     return Array.from(languages).sort();
   };
 
-  if (loading && versions.length === 0) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-6 w-16" />
-        </div>
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">Web Result Templates</span>
-          <Badge variant="secondary" className="text-xs">
-            {versions.length}
-          </Badge>
+    <Card className="bg-background">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Globe className="w-4 h-4 text-primary" />
+            Web Result Versions
+            <Badge variant="secondary" className="text-xs ml-2">
+              {versions.length}
+            </Badge>
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchVersions}
+            disabled={loading}
+            className="h-8 gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchVersions}
-          disabled={loading}
-          className="h-7 text-xs gap-1"
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Table */}
-      {versions.length === 0 ? (
-        <div className="text-center py-6 border rounded-lg border-dashed">
-          <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No result versions yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Generate results to create versions</p>
-        </div>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-[60px_70px_140px_120px_80px_80px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b">
-            <span>Ver</span>
-            <span>Levels</span>
-            <span>Languages</span>
-            <span>Created</span>
-            <span className="text-right">Cost</span>
-            <span className="text-right">Actions</span>
+      </CardHeader>
+      <CardContent>
+        {loading && versions.length === 0 ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
           </div>
+        ) : versions.length === 0 ? (
+          <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
+            <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-base text-muted-foreground">No result versions yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Generate results to create versions</p>
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden bg-background">
+            {/* Table Header */}
+            <div className="grid grid-cols-[70px_80px_160px_140px_90px_100px] gap-3 px-4 py-3 bg-muted/50 text-sm font-medium text-muted-foreground border-b">
+              <span>Version</span>
+              <span>Levels</span>
+              <span>Languages</span>
+              <span>Created</span>
+              <span className="text-right">Cost</span>
+              <span className="text-right">Actions</span>
+            </div>
 
-          {/* Table Rows */}
-          <div className="max-h-[250px] overflow-y-auto">
-            {versions.map((version, index) => {
-              const languages = getLanguages(version);
-              const isExpanded = expandedId === version.id;
-              
-              return (
-                <div key={version.id}>
-                  <div
-                    className={`grid grid-cols-[60px_70px_140px_120px_80px_80px] gap-2 px-3 py-2 items-center text-sm border-b hover:bg-muted/30 transition-colors cursor-pointer ${
-                      index % 2 === 0 ? "bg-background" : "bg-muted/20"
-                    }`}
-                    onClick={() => setExpandedId(isExpanded ? null : version.id)}
-                  >
-                    {/* Version */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium">v{version.version_number}</span>
-                      {index === 0 && (
-                        <Badge variant="outline" className="text-xs h-5 px-1.5">
-                          Latest
+            {/* Table Rows */}
+            <div className="max-h-[300px] overflow-y-auto">
+              {versions.map((version, index) => {
+                const languages = getLanguages(version);
+                const isExpanded = expandedId === version.id;
+                
+                return (
+                  <div key={version.id}>
+                    <div
+                      className={`grid grid-cols-[70px_80px_160px_140px_90px_100px] gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-background`}
+                      onClick={() => setExpandedId(isExpanded ? null : version.id)}
+                    >
+                      {/* Version */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">v{version.version_number}</span>
+                        {index === 0 && (
+                          <Badge variant="outline" className="text-xs h-5 px-1.5">
+                            Latest
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Levels */}
+                      <div>
+                        <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                          {version.result_levels.length} levels
                         </Badge>
-                      )}
+                      </div>
+
+                      {/* Languages */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {languages.slice(0, 4).map(lang => (
+                          <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
+                            {lang}
+                          </Badge>
+                        ))}
+                        {languages.length > 4 && (
+                          <Badge variant="outline" className="text-xs h-5 px-1.5">
+                            +{languages.length - 4}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Created */}
+                      <div className="text-sm text-muted-foreground truncate" title={version.created_by_email || "Unknown"}>
+                        {formatDate(version.created_at)}
+                      </div>
+
+                      {/* Cost */}
+                      <div className="text-sm text-muted-foreground text-right">
+                        {version.estimated_cost_eur ? `€${version.estimated_cost_eur.toFixed(4)}` : "-"}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-2">
+                        {onRestoreVersion && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRestoreVersion(version.result_levels);
+                              toast({
+                                title: "Version restored",
+                                description: `Applied version ${version.version_number} result levels`,
+                              });
+                            }}
+                            className="h-8 px-2 text-xs"
+                            title="Restore this version"
+                          >
+                            Restore
+                          </Button>
+                        )}
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
 
-                    {/* Levels */}
-                    <div>
-                      <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                        {version.result_levels.length} levels
-                      </Badge>
-                    </div>
-
-                    {/* Languages */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {languages.slice(0, 4).map(lang => (
-                        <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
-                          {lang}
-                        </Badge>
-                      ))}
-                      {languages.length > 4 && (
-                        <Badge variant="outline" className="text-xs h-5 px-1.5">
-                          +{languages.length - 4}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Created */}
-                    <div className="text-sm text-muted-foreground truncate" title={version.created_by_email || "Unknown"}>
-                      {formatDate(version.created_at)}
-                    </div>
-
-                    {/* Cost */}
-                    <div className="text-sm text-muted-foreground text-right">
-                      {version.estimated_cost_eur ? `€${version.estimated_cost_eur.toFixed(4)}` : "-"}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-1.5">
-                      {onRestoreVersion && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRestoreVersion(version.result_levels);
-                            toast({
-                              title: "Version restored",
-                              description: `Applied version ${version.version_number} result levels`,
-                            });
-                          }}
-                          className="h-7 px-2 text-xs"
-                          title="Restore this version"
-                        >
-                          Restore
-                        </Button>
-                      )}
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </div>
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <div className="px-4 py-3 bg-muted/20 border-b space-y-3">
+                        {version.result_levels.map((level, levelIndex) => (
+                          <div key={levelIndex} className="bg-background rounded-lg p-4 text-sm border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium">Score: {level.min_score}-{level.max_score}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {languages.map(lang => {
+                                const title = level.title?.[lang];
+                                if (!title) return null;
+                                return (
+                                  <div key={lang} className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
+                                      {lang}
+                                    </Badge>
+                                    <span className="text-muted-foreground truncate max-w-[200px]" title={title}>
+                                      {title}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Token usage */}
+                        {(version.input_tokens || version.output_tokens) && (
+                          <div className="flex gap-4 text-sm text-muted-foreground pt-2">
+                            {version.input_tokens && <span>Input: {version.input_tokens.toLocaleString()} tokens</span>}
+                            {version.output_tokens && <span>Output: {version.output_tokens.toLocaleString()} tokens</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {/* Expanded Details */}
-                  {isExpanded && (
-                    <div className="px-4 py-3 bg-muted/30 border-b space-y-3">
-                      {version.result_levels.map((level, levelIndex) => (
-                        <div key={levelIndex} className="bg-background rounded p-3 text-sm">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-medium">Score: {level.min_score}-{level.max_score}</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {languages.map(lang => {
-                              const title = level.title?.[lang];
-                              if (!title) return null;
-                              return (
-                                <div key={lang} className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
-                                    {lang}
-                                  </Badge>
-                                  <span className="text-muted-foreground truncate max-w-[150px]" title={title}>
-                                    {title}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Token usage */}
-                      {(version.input_tokens || version.output_tokens) && (
-                        <div className="flex gap-4 text-sm text-muted-foreground pt-2">
-                          {version.input_tokens && <span>Input: {version.input_tokens.toLocaleString()} tokens</span>}
-                          {version.output_tokens && <span>Output: {version.output_tokens.toLocaleString()} tokens</span>}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
