@@ -271,6 +271,8 @@ export type Database = {
       }
       hypothesis_questions: {
         Row: {
+          correct_answer_man: boolean
+          correct_answer_woman: boolean
           created_at: string
           hypothesis_text: Json
           id: string
@@ -280,6 +282,8 @@ export type Database = {
           truth_explanation: Json
         }
         Insert: {
+          correct_answer_man?: boolean
+          correct_answer_woman?: boolean
           created_at?: string
           hypothesis_text?: Json
           id?: string
@@ -289,6 +293,8 @@ export type Database = {
           truth_explanation?: Json
         }
         Update: {
+          correct_answer_man?: boolean
+          correct_answer_woman?: boolean
           created_at?: string
           hypothesis_text?: Json
           id?: string

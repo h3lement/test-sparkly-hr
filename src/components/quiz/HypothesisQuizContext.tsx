@@ -15,6 +15,8 @@ export interface HypothesisQuestion {
   hypothesis_text: Record<string, string>;
   interview_question: Record<string, string>;
   truth_explanation: Record<string, string>;
+  correct_answer_woman: boolean;
+  correct_answer_man: boolean;
 }
 
 export interface HypothesisResponse {

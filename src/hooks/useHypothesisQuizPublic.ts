@@ -16,6 +16,8 @@ export interface HypothesisQuestion {
   hypothesis_text: Record<string, string>;
   interview_question: Record<string, string>;
   truth_explanation: Record<string, string>;
+  correct_answer_woman: boolean;
+  correct_answer_man: boolean;
 }
 
 export interface QuizData {
@@ -111,6 +113,8 @@ export function useHypothesisQuizPublic(slug: string) {
         hypothesis_text: q.hypothesis_text as Record<string, string>,
         interview_question: q.interview_question as Record<string, string>,
         truth_explanation: q.truth_explanation as Record<string, string>,
+        correct_answer_woman: q.correct_answer_woman ?? false,
+        correct_answer_man: q.correct_answer_man ?? false,
       })) as HypothesisQuestion[];
     },
     enabled: !!pagesQuery.data?.length,

@@ -109,8 +109,11 @@ export function HypothesisQuestionScreen() {
         answer_man: manAnswer,
       });
 
-      // The correct answer is always FALSE for both
-      const isCorrect = womanAnswer === false && manAnswer === false;
+      // Check correctness against the question's defined correct answers
+      const question = pageQuestions.find(q => q.id === questionId);
+      const womanIsCorrect = womanAnswer === (question?.correct_answer_woman ?? false);
+      const manIsCorrect = manAnswer === (question?.correct_answer_man ?? false);
+      const isCorrect = womanIsCorrect && manIsCorrect;
 
       addResponse({
         questionId,
@@ -196,9 +199,9 @@ export function HypothesisQuestionScreen() {
             const isLocked = idx > activeRowIndex && !answer.revealed;
             const isComplete = answer.revealed;
 
-            // Correct answer is always FALSE
-            const womanCorrect = answer.woman === false;
-            const manCorrect = answer.man === false;
+            // Check correctness against the question's defined correct answers
+            const womanCorrect = answer.woman === question.correct_answer_woman;
+            const manCorrect = answer.man === question.correct_answer_man;
 
             return (
               <div key={question.id} className="relative">

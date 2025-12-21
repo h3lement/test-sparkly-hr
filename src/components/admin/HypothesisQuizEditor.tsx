@@ -84,6 +84,8 @@ export function HypothesisQuizEditor({ quizId, language }: HypothesisQuizEditorP
       hypothesis_text: {},
       interview_question: {},
       truth_explanation: {},
+      correct_answer_woman: false,
+      correct_answer_man: false,
     };
 
     setPages(pages.map(p =>
