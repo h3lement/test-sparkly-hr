@@ -83,6 +83,8 @@ export function HypothesisQuizEditor({ quizId, language }: HypothesisQuizEditorP
       question_order: page.questions.length + 1,
       hypothesis_text: {},
       interview_question: {},
+      interview_question_woman: {},
+      interview_question_man: {},
       truth_explanation: {},
       correct_answer_woman: false,
       correct_answer_man: false,

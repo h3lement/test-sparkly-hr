@@ -17,6 +17,8 @@ export interface HypothesisQuestion {
   question_order: number;
   hypothesis_text: Record<string, string>;
   interview_question: Record<string, string>;
+  interview_question_woman: Record<string, string>;
+  interview_question_man: Record<string, string>;
   truth_explanation: Record<string, string>;
   correct_answer_woman: boolean;
   correct_answer_man: boolean;
@@ -98,6 +100,8 @@ export function useHypothesisQuizData(quizId: string | undefined): UseHypothesis
             question_order: q.question_order,
             hypothesis_text: jsonToRecord(q.hypothesis_text),
             interview_question: jsonToRecord(q.interview_question),
+            interview_question_woman: jsonToRecord(q.interview_question_woman),
+            interview_question_man: jsonToRecord(q.interview_question_man),
             truth_explanation: jsonToRecord(q.truth_explanation),
             correct_answer_woman: q.correct_answer_woman ?? false,
             correct_answer_man: q.correct_answer_man ?? false,
@@ -157,6 +161,8 @@ export function useHypothesisQuizData(quizId: string | undefined): UseHypothesis
       question_order: question.question_order || 1,
       hypothesis_text: question.hypothesis_text || {},
       interview_question: question.interview_question || {},
+      interview_question_woman: question.interview_question_woman || {},
+      interview_question_man: question.interview_question_man || {},
       truth_explanation: question.truth_explanation || {},
       correct_answer_woman: question.correct_answer_woman ?? false,
       correct_answer_man: question.correct_answer_man ?? false,

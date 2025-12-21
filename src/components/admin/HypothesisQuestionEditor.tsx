@@ -43,7 +43,7 @@ export function HypothesisQuestionEditor({
   };
 
   const setLocalizedValue = (
-    field: "hypothesis_text" | "interview_question" | "truth_explanation",
+    field: "hypothesis_text" | "interview_question" | "interview_question_woman" | "interview_question_man" | "truth_explanation",
     lang: string,
     value: string
   ) => {
@@ -88,14 +88,16 @@ export function HypothesisQuestionEditor({
             </p>
           </div>
 
-          {/* Correct Answers - Women Left, Men Right */}
+          {/* Women and Men Columns - Side by Side */}
           <div className="grid grid-cols-2 gap-4">
             {/* Women Column */}
-            <div className="space-y-2 p-4 bg-pink-50 dark:bg-pink-950/20 rounded-lg border border-pink-200 dark:border-pink-800">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="space-y-4 p-4 bg-pink-50 dark:bg-pink-950/20 rounded-lg border border-pink-200 dark:border-pink-800">
+              <div className="flex items-center gap-2">
                 <span className="text-lg">👩</span>
                 <Label className="font-semibold text-pink-700 dark:text-pink-300">Women 50+</Label>
               </div>
+              
+              {/* Correct Answer */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Correct Answer:</span>
                 <div className="flex items-center gap-2">
@@ -111,14 +113,31 @@ export function HypothesisQuestionEditor({
                   </span>
                 </div>
               </div>
+
+              {/* Interview Question for Women */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-pink-500" />
+                  <Label className="text-sm font-medium">Interview Question ({language.toUpperCase()})</Label>
+                </div>
+                <Textarea
+                  value={getLocalizedValue(question.interview_question_woman, language)}
+                  onChange={(e) => setLocalizedValue("interview_question_woman", language, e.target.value)}
+                  placeholder="Interview question for women 50+..."
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
             </div>
 
             {/* Men Column */}
-            <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2">
                 <span className="text-lg">👨</span>
                 <Label className="font-semibold text-blue-700 dark:text-blue-300">Men 50+</Label>
               </div>
+              
+              {/* Correct Answer */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Correct Answer:</span>
                 <div className="flex items-center gap-2">
@@ -134,25 +153,22 @@ export function HypothesisQuestionEditor({
                   </span>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Interview Question */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-blue-500" />
-              <Label className="font-medium">Interview Question ({language.toUpperCase()})</Label>
+              {/* Interview Question for Men */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-blue-500" />
+                  <Label className="text-sm font-medium">Interview Question ({language.toUpperCase()})</Label>
+                </div>
+                <Textarea
+                  value={getLocalizedValue(question.interview_question_man, language)}
+                  onChange={(e) => setLocalizedValue("interview_question_man", language, e.target.value)}
+                  placeholder="Interview question for men 50+..."
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
             </div>
-            <Textarea
-              value={getLocalizedValue(question.interview_question, language)}
-              onChange={(e) => setLocalizedValue("interview_question", language, e.target.value)}
-              placeholder="The actual interview question recruiters should ask..."
-              rows={2}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              This is shown after the user answers, as the recommended interview question.
-            </p>
           </div>
 
           {/* Truth Explanation */}
