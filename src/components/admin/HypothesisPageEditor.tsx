@@ -168,7 +168,7 @@ export function HypothesisPageEditor({
                 No hypotheses yet. Add your first hypothesis to this page.
               </div>
             ) : (
-              <Accordion type="multiple" className="space-y-2">
+            <Accordion type="multiple" className="space-y-2">
                 {page.questions
                   .sort((a, b) => a.question_order - b.question_order)
                   .map((question, qIndex) => (
@@ -176,7 +176,7 @@ export function HypothesisPageEditor({
                       key={question.id}
                       question={question}
                       questionIndex={qIndex}
-                      overallNumber={questionsBeforeThisPage + qIndex + 1}
+                      overallNumber={question.question_order}
                       language={language}
                       onUpdate={(updates) => onUpdateQuestion(question.id, updates)}
                       onDelete={() => onDeleteQuestion(question.id)}
