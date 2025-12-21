@@ -218,6 +218,12 @@ export function HypothesisQuestionScreen() {
             // Get shared interview question
             const interviewQuestion = getText(question.interview_question);
 
+            // Calculate overall question number
+            const previousPagesQuestions = sortedPages
+              .slice(0, currentPageIndex)
+              .reduce((sum, page) => sum + getQuestionsForPage(page.id).length, 0);
+            const overallNumber = previousPagesQuestions + idx + 1;
+
             return (
               <div key={question.id} className="relative">
                 {/* Question Number */}
@@ -225,11 +231,11 @@ export function HypothesisQuestionScreen() {
                   "px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground",
                   isLocked && "opacity-50"
                 )}>
-                  Hypothesis {idx + 1}
+                  {overallNumber}. Hypothesis
                 </div>
 
                 {/* Main Row - Two Columns */}
-                <div 
+                <div
                   className={cn(
                     "grid grid-cols-2 gap-4 px-4 transition-all",
                     isActive && "bg-primary/5",
