@@ -1,10 +1,26 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useDynamicQuiz } from './DynamicQuizContext';
 import { useLanguage } from './LanguageContext';
 import { cn } from '@/lib/utils';
 
-const ANSWER_KEYS = ['1', '2', '3', '4'];
+// Fisher-Yates shuffle with seed for consistent shuffling per question
+function shuffleArray<T>(array: T[], seed: number): T[] {
+  const shuffled = [...array];
+  let currentIndex = shuffled.length;
+  let seededRandom = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+
+  while (currentIndex !== 0) {
+    const randomIndex = Math.floor(seededRandom() * currentIndex);
+    currentIndex--;
+    [shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]];
+  }
+
+  return shuffled;
+}
 
 export function DynamicQuizQuestion() {
   const { 
@@ -22,6 +38,17 @@ export function DynamicQuizQuestion() {
   const regularQuestions = getRegularQuestions();
   const hasOpenMindedness = !!getOpenMindednessQuestion();
   const currentQuestionData = regularQuestions[currentQuestion];
+  
+  // Generate a unique seed per question for shuffling (changes each render to truly randomize)
+  const shuffleSeed = useMemo(() => {
+    return Date.now() + (currentQuestionData?.id?.charCodeAt(0) || 0);
+  }, [currentQuestionData?.id, currentQuestion]);
+  
+  // Shuffle answers for display
+  const shuffledAnswers = useMemo(() => {
+    if (!currentQuestionData?.answers) return [];
+    return shuffleArray(currentQuestionData.answers, shuffleSeed);
+  }, [currentQuestionData?.answers, shuffleSeed]);
   
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(
     answers.find((a) => a.questionId === currentQuestionData?.id)?.answerId ?? null
@@ -110,25 +137,19 @@ export function DynamicQuizQuestion() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!currentQuestionData) return;
       
-      if (ANSWER_KEYS.includes(e.key)) {
-        e.preventDefault();
-        const answerIndex = parseInt(e.key) - 1;
-        if (answerIndex < currentQuestionData.answers.length) {
-          handleAnswerSelect(currentQuestionData.answers[answerIndex].id);
-        }
-      }
+      // Arrow key navigation using shuffled answers
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         const currentIndex = selectedAnswer 
-          ? currentQuestionData.answers.findIndex(a => a.id === selectedAnswer)
+          ? shuffledAnswers.findIndex(a => a.id === selectedAnswer)
           : -1;
         let newIndex;
         if (e.key === 'ArrowDown') {
-          newIndex = currentIndex < currentQuestionData.answers.length - 1 ? currentIndex + 1 : 0;
+          newIndex = currentIndex < shuffledAnswers.length - 1 ? currentIndex + 1 : 0;
         } else {
-          newIndex = currentIndex > 0 ? currentIndex - 1 : currentQuestionData.answers.length - 1;
+          newIndex = currentIndex > 0 ? currentIndex - 1 : shuffledAnswers.length - 1;
         }
-        setSelectedAnswer(currentQuestionData.answers[newIndex].id);
+        setSelectedAnswer(shuffledAnswers[newIndex].id);
       }
       if (e.key === 'Enter' && selectedAnswer !== null) {
         e.preventDefault();
@@ -138,7 +159,7 @@ export function DynamicQuizQuestion() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleAnswerSelect, selectedAnswer, currentQuestionData]);
+  }, [handleAnswerSelect, selectedAnswer, currentQuestionData, shuffledAnswers]);
 
   if (!currentQuestionData) {
     return <div className="text-center py-8">Loading question...</div>;
@@ -175,12 +196,12 @@ export function DynamicQuizQuestion() {
         </h1>
 
         <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
-          Press 1-4 to select, ↑↓ to navigate, Enter to confirm
+          Use ↑↓ to navigate, Enter to confirm
         </p>
 
         <fieldset className="space-y-3 mb-8" role="radiogroup" aria-labelledby="question-heading">
           <legend className="sr-only">{getText(currentQuestionData.question_text)}</legend>
-          {currentQuestionData.answers.map((answer, index) => {
+          {shuffledAnswers.map((answer) => {
             const isSelected = selectedAnswer === answer.id;
             return (
               <button
@@ -196,23 +217,12 @@ export function DynamicQuizQuestion() {
                 )}
               >
                 <div className="flex items-center gap-4">
-                  <kbd 
-                    className={cn(
-                      'hidden sm:flex w-6 h-6 rounded border text-xs font-mono items-center justify-center shrink-0 transition-all',
-                      isSelected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-muted-foreground/50 bg-muted/50 text-muted-foreground'
-                    )}
-                    aria-hidden="true"
-                  >
-                    {index + 1}
-                  </kbd>
                   <div 
                     className={cn(
-                      'sm:hidden w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                      'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
                       isSelected
                         ? 'border-primary bg-primary'
-                        : 'border-muted-foreground'
+                        : 'border-muted-foreground/50'
                     )}
                     aria-hidden="true"
                   >
