@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   RefreshCw, 
   Mail, 
@@ -52,33 +53,60 @@ interface WebResultVersion {
   output_tokens: number | null;
 }
 
+interface Quiz {
+  id: string;
+  title: Record<string, string>;
+  slug: string;
+}
+
 interface EmailVersionHistoryProps {
-  quizId: string;
+  quizId?: string;
   onLoadTemplate?: (template: EmailTemplate) => void;
   onSetLive?: (templateId: string, versionNumber: number) => void;
   onPreview?: (template: EmailTemplate) => void;
 }
 
 interface WebVersionHistoryProps {
-  quizId: string;
+  quizId?: string;
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
 }
 
 export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPreview }: EmailVersionHistoryProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const { toast } = useToast();
 
-  const fetchTemplates = useCallback(async () => {
-    if (!quizId) return;
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch quizzes first
+      const { data: quizzesData, error: quizzesError } = await supabase
+        .from("quizzes")
+        .select("id, title, slug")
+        .order("created_at", { ascending: false });
+
+      if (quizzesError) throw quizzesError;
+
+      const typedQuizzes = (quizzesData || []).map(q => ({
+        ...q,
+        title: q.title as Record<string, string>,
+      }));
+      setQuizzes(typedQuizzes);
+
+      // Fetch templates - all or filtered
+      let query = supabase
         .from("email_templates")
         .select("*")
         .eq("template_type", "quiz_results")
-        .eq("quiz_id", quizId)
-        .order("version_number", { ascending: false });
+        .order("created_at", { ascending: false });
+
+      if (quizId) {
+        query = query.eq("quiz_id", quizId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -102,17 +130,19 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   }, [quizId, toast]);
 
   useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
+    fetchData();
+  }, [fetchData]);
 
-  const handleSetLive = async (templateId: string, versionNumber: number) => {
+  const handleSetLive = async (templateId: string, versionNumber: number, templateQuizId: string | null) => {
+    if (!templateQuizId) return;
+    
     try {
       // Set all templates for this quiz to not live
       await supabase
         .from("email_templates")
         .update({ is_live: false })
         .eq("template_type", "quiz_results")
-        .eq("quiz_id", quizId);
+        .eq("quiz_id", templateQuizId);
 
       // Set selected as live
       const { error } = await supabase
@@ -127,7 +157,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         description: `Version ${versionNumber} is now live`,
       });
 
-      fetchTemplates();
+      fetchData();
       onSetLive?.(templateId, versionNumber);
     } catch (error: any) {
       console.error("Error setting live version:", error);
@@ -143,6 +173,17 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     return format(new Date(dateString), "dd MMM yyyy HH:mm");
   };
 
+  const getQuizTitle = (templateQuizId: string | null): string => {
+    if (!templateQuizId) return "—";
+    const quiz = quizzes.find(q => q.id === templateQuizId);
+    if (!quiz) return "Unknown";
+    return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
+  };
+
+  const filteredTemplates = templates.filter(t => {
+    if (filterQuiz === "all") return true;
+    return t.quiz_id === filterQuiz;
+  });
 
   if (loading && templates.length === 0) {
     return (
@@ -166,19 +207,36 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
             <Mail className="w-4 h-4 text-primary" />
             Email Template Versions
             <Badge variant="secondary" className="text-xs ml-2">
-              {templates.length}
+              {filteredTemplates.length}
             </Badge>
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchTemplates}
-            disabled={loading}
-            className="h-8 gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {!quizId && quizzes.length > 0 && (
+              <Select value={filterQuiz} onValueChange={setFilterQuiz}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="All Quizzes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Quizzes</SelectItem>
+                  {quizzes.map((q) => (
+                    <SelectItem key={q.id} value={q.id}>
+                      {q.title?.en || q.title?.et || q.slug}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              disabled={loading}
+              className="h-8 gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -188,7 +246,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : templates.length === 0 ? (
+        ) : filteredTemplates.length === 0 ? (
           <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
             <Mail className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-base text-muted-foreground">No email templates yet</p>
@@ -197,8 +255,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b">
+            <div className={`grid ${quizId ? 'grid-cols-[70px_1fr_140px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_140px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
+              {!quizId && <span>Quiz</span>}
               <span>Sender</span>
               <span>Created</span>
               <span className="text-right">Cost</span>
@@ -207,11 +266,11 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 
             {/* Table Rows */}
             <div className="max-h-[300px] overflow-y-auto">
-              {templates.map((template) => {
+              {filteredTemplates.map((template) => {
                 return (
                   <div
                     key={template.id}
-                    className={`grid grid-cols-[70px_1fr_140px_80px_100px] gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
+                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_140px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_140px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
                       template.is_live ? "bg-primary/5" : "bg-card"
                     }`}
                   >
@@ -224,6 +283,13 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         </Badge>
                       )}
                     </div>
+
+                    {/* Quiz (only when showing all) */}
+                    {!quizId && (
+                      <div className="truncate text-foreground font-medium" title={getQuizTitle(template.quiz_id)}>
+                        {getQuizTitle(template.quiz_id)}
+                      </div>
+                    )}
 
                     {/* Sender */}
                     <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
@@ -268,7 +334,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSetLive(template.id, template.version_number)}
+                          onClick={() => handleSetLive(template.id, template.version_number, template.quiz_id)}
                           className="h-8 w-8 p-0 text-primary"
                           title="Set as live"
                         >
@@ -289,19 +355,40 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 
 export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistoryProps) {
   const [versions, setVersions] = useState<WebResultVersion[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const { toast } = useToast();
 
-  const fetchVersions = useCallback(async () => {
-    if (!quizId) return;
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch quizzes first
+      const { data: quizzesData, error: quizzesError } = await supabase
+        .from("quizzes")
+        .select("id, title, slug")
+        .order("created_at", { ascending: false });
+
+      if (quizzesError) throw quizzesError;
+
+      const typedQuizzes = (quizzesData || []).map(q => ({
+        ...q,
+        title: q.title as Record<string, string>,
+      }));
+      setQuizzes(typedQuizzes);
+
+      // Fetch versions - all or filtered
+      let query = supabase
         .from("quiz_result_versions")
         .select("*")
-        .eq("quiz_id", quizId)
-        .order("version_number", { ascending: false });
+        .order("created_at", { ascending: false });
+
+      if (quizId) {
+        query = query.eq("quiz_id", quizId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -325,13 +412,23 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
   }, [quizId, toast]);
 
   useEffect(() => {
-    fetchVersions();
-  }, [fetchVersions]);
+    fetchData();
+  }, [fetchData]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd MMM yyyy HH:mm");
   };
 
+  const getQuizTitle = (versionQuizId: string): string => {
+    const quiz = quizzes.find(q => q.id === versionQuizId);
+    if (!quiz) return "Unknown";
+    return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
+  };
+
+  const filteredVersions = versions.filter(v => {
+    if (filterQuiz === "all") return true;
+    return v.quiz_id === filterQuiz;
+  });
 
   return (
     <Card className="bg-card shadow-sm">
@@ -341,19 +438,36 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
             <Globe className="w-4 h-4 text-primary" />
             Web Result Versions
             <Badge variant="secondary" className="text-xs ml-2">
-              {versions.length}
+              {filteredVersions.length}
             </Badge>
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchVersions}
-            disabled={loading}
-            className="h-8 gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {!quizId && quizzes.length > 0 && (
+              <Select value={filterQuiz} onValueChange={setFilterQuiz}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="All Quizzes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Quizzes</SelectItem>
+                  {quizzes.map((q) => (
+                    <SelectItem key={q.id} value={q.id}>
+                      {q.title?.en || q.title?.et || q.slug}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              disabled={loading}
+              className="h-8 gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -363,7 +477,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : versions.length === 0 ? (
+        ) : filteredVersions.length === 0 ? (
           <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
             <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-base text-muted-foreground">No result versions yet</p>
@@ -372,8 +486,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b">
+            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_140px_90px_100px]' : 'grid-cols-[70px_1fr_80px_140px_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
+              {!quizId && <span>Quiz</span>}
               <span>Levels</span>
               <span>Created</span>
               <span className="text-right">Cost</span>
@@ -382,24 +497,31 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
 
             {/* Table Rows */}
             <div className="max-h-[300px] overflow-y-auto">
-              {versions.map((version, index) => {
+              {filteredVersions.map((version, index) => {
                 const isExpanded = expandedId === version.id;
                 
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid grid-cols-[70px_80px_140px_90px_100px] gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-card`}
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_140px_90px_100px]' : 'grid-cols-[70px_1fr_80px_140px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-card`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
                       <div className="flex items-center gap-2">
                         <span className="font-medium">v{version.version_number}</span>
-                        {index === 0 && (
+                        {index === 0 && filterQuiz !== "all" && (
                           <Badge variant="outline" className="text-xs h-5 px-1.5">
                             Latest
                           </Badge>
                         )}
                       </div>
+
+                      {/* Quiz (only when showing all) */}
+                      {!quizId && (
+                        <div className="truncate text-foreground font-medium" title={getQuizTitle(version.quiz_id)}>
+                          {getQuizTitle(version.quiz_id)}
+                        </div>
+                      )}
 
                       {/* Levels */}
                       <div>
