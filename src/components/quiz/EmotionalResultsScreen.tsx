@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useDynamicQuiz } from './DynamicQuizContext';
 import { useLanguage } from './LanguageContext';
 import { cn } from '@/lib/utils';
+import confetti from 'canvas-confetti';
 
 export function EmotionalResultsScreen() {
   const { 
@@ -51,6 +53,37 @@ export function EmotionalResultsScreen() {
   };
 
   const currentLevel = emotionalLevelNames[emotionalLevel] || emotionalLevelNames[5];
+
+  // Trigger confetti on mount
+  useEffect(() => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+    
+    const colors = ['#a855f7', '#ec4899', '#8b5cf6', '#f472b6'];
+    
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors
+      });
+      
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+    
+    frame();
+  }, []);
 
   return (
     <main className="animate-fade-in max-w-2xl mx-auto" role="main" aria-labelledby="results-heading">
