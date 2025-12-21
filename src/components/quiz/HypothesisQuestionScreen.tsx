@@ -3,14 +3,13 @@ import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, Lock, MessageSquare, Check, X } from 'lucide-react';
+import { ArrowRight, MessageSquare, Check, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type AnswerValue = boolean | null;
 
-interface RowAnswer {
-  answer: AnswerValue;
-  revealed: boolean;
+interface PageAnswers {
+  [questionId: string]: AnswerValue;
 }
 
 export function HypothesisQuestionScreen() {
@@ -29,8 +28,8 @@ export function HypothesisQuestionScreen() {
   } = useHypothesisQuiz();
   const { language } = useLanguage();
 
-  const [rowAnswers, setRowAnswers] = useState<Record<string, RowAnswer>>({});
-  const [activeRowIndex, setActiveRowIndex] = useState(0);
+  const [pageAnswers, setPageAnswers] = useState<PageAnswers>({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentPage = getCurrentPage();
@@ -44,106 +43,89 @@ export function HypothesisQuestionScreen() {
 
   const pageQuestions = currentPage ? getQuestionsForPage(currentPage.id) : [];
 
-  // Initialize row answers when page changes
+  // Initialize or reset answers when page changes
   useEffect(() => {
     if (!currentPage) return;
     
-    const initialAnswers: Record<string, RowAnswer> = {};
-    let firstUnanswered = 0;
+    const initialAnswers: PageAnswers = {};
+    let hasExistingResponses = false;
     
-    pageQuestions.forEach((q, idx) => {
+    pageQuestions.forEach((q) => {
       const existingResponse = responses.find(r => r.questionId === q.id);
       if (existingResponse) {
-        // Use the woman answer as the single answer (they should be the same)
-        initialAnswers[q.id] = {
-          answer: existingResponse.answerWoman,
-          revealed: true,
-        };
-        firstUnanswered = idx + 1;
+        initialAnswers[q.id] = existingResponse.answerWoman;
+        hasExistingResponses = true;
       } else {
-        initialAnswers[q.id] = { answer: null, revealed: false };
+        initialAnswers[q.id] = null;
       }
     });
     
-    setRowAnswers(initialAnswers);
-    setActiveRowIndex(Math.min(firstUnanswered, pageQuestions.length - 1));
+    setPageAnswers(initialAnswers);
+    // If all questions on this page have responses, consider it submitted
+    setIsSubmitted(hasExistingResponses && pageQuestions.every(q => responses.some(r => r.questionId === q.id)));
   }, [currentPage?.id, pageQuestions.length]);
 
-  // Handle single answer selection
-  const handleAnswer = async (questionId: string, value: boolean) => {
-    const currentAnswer = rowAnswers[questionId] || { answer: null, revealed: false };
+  const handleAnswer = (questionId: string, value: boolean) => {
+    if (isSubmitted) return;
     
-    if (currentAnswer.revealed) return; // Already answered
-
-    setRowAnswers(prev => ({
+    setPageAnswers(prev => ({
       ...prev,
-      [questionId]: { answer: value, revealed: false },
+      [questionId]: value,
     }));
-
-    // Immediately reveal after selecting an answer
-    await revealInterview(questionId, value);
   };
 
-  const revealInterview = async (questionId: string, answer: boolean) => {
-    const questionIndex = pageQuestions.findIndex(q => q.id === questionId);
-    if (questionIndex === -1) return;
+  const allQuestionsAnswered = pageQuestions.every(q => pageAnswers[q.id] !== null && pageAnswers[q.id] !== undefined);
+
+  const handleSubmitPage = async () => {
+    if (!allQuestionsAnswered || isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
-      // Save response to database - same answer for both woman and man
-      await supabase.from('hypothesis_responses').insert({
+      // Save all responses to database
+      const inserts = pageQuestions.map(q => ({
         quiz_id: quizData?.id,
         session_id: sessionId,
-        question_id: questionId,
-        answer_woman: answer,
-        answer_man: answer,
-      });
-
-      // Check correctness - answer is correct if it matches BOTH correct answers
-      const question = pageQuestions.find(q => q.id === questionId);
-      const womanIsCorrect = answer === (question?.correct_answer_woman ?? false);
-      const manIsCorrect = answer === (question?.correct_answer_man ?? false);
-      const isCorrect = womanIsCorrect && manIsCorrect;
-
-      addResponse({
-        questionId,
-        answerWoman: answer,
-        answerMan: answer,
-        isCorrect,
-      });
-
-      // Reveal interview question and move to next row
-      setRowAnswers(prev => ({
-        ...prev,
-        [questionId]: { answer, revealed: true },
+        question_id: q.id,
+        answer_woman: pageAnswers[q.id],
+        answer_man: pageAnswers[q.id],
       }));
 
-      // Move to next row
-      if (questionIndex < pageQuestions.length - 1) {
-        setActiveRowIndex(questionIndex + 1);
-      }
+      await supabase.from('hypothesis_responses').insert(inserts);
+
+      // Add to context responses
+      pageQuestions.forEach(q => {
+        const answer = pageAnswers[q.id]!;
+        const isCorrect = answer === q.correct_answer_woman && answer === q.correct_answer_man;
+        
+        addResponse({
+          questionId: q.id,
+          answerWoman: answer,
+          answerMan: answer,
+          isCorrect,
+        });
+      });
+
+      setIsSubmitted(true);
     } catch (error) {
-      console.error('Error saving response:', error);
+      console.error('Error saving responses:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleNextPage = () => {
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     if (currentPageIndex < sortedPages.length - 1) {
       setCurrentPageIndex(currentPageIndex + 1);
-      setActiveRowIndex(0);
     } else {
-      // All pages complete, go to email capture
       setCurrentStep('email');
     }
   };
 
-  const allRowsAnswered = pageQuestions.every(q => rowAnswers[q.id]?.revealed);
+  // Count answered questions for progress display
+  const answeredCount = Object.values(pageAnswers).filter(v => v !== null).length;
 
   if (!currentPage) {
     return <div className="text-center p-8">Loading...</div>;
@@ -169,36 +151,44 @@ export function HypothesisQuestionScreen() {
           />
         </div>
         <p className="text-xs text-muted-foreground mt-1 text-right">
-          {progress.current} of {progress.total} hypotheses answered
+          {progress.current} of {progress.total} hypotheses completed
         </p>
       </div>
+
+      {/* Page Progress Indicator */}
+      {!isSubmitted && (
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            This page: {answeredCount} of {pageQuestions.length} answered
+          </span>
+          {allQuestionsAnswered && (
+            <span className="text-sm text-green-600 font-medium">Ready to submit!</span>
+          )}
+        </div>
+      )}
 
       {/* Questions List */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
         {/* Header */}
         <div className="px-4 py-3 bg-muted/50 border-b border-border">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">
-            Rate each hypothesis: Is it True or False?
+            {isSubmitted ? 'Results' : 'Rate each hypothesis: True or False?'}
           </p>
         </div>
 
         {/* Question Rows */}
         <div className="divide-y divide-border">
           {pageQuestions.map((question, idx) => {
-            const rowAnswer = rowAnswers[question.id] || { answer: null, revealed: false };
-            const isActive = idx === activeRowIndex;
-            const isLocked = idx > activeRowIndex && !rowAnswer.revealed;
-            const isComplete = rowAnswer.revealed;
+            const answer = pageAnswers[question.id];
+            const hasAnswer = answer !== null && answer !== undefined;
 
-            // Check correctness - correct if answer matches both
-            const isCorrect = rowAnswer.answer === question.correct_answer_woman && 
-                             rowAnswer.answer === question.correct_answer_man;
+            // Check correctness
+            const isCorrect = answer === question.correct_answer_woman && 
+                             answer === question.correct_answer_man;
 
-            // Get gender-specific hypothesis text, fallback to generic
+            // Get gender-specific hypothesis text
             const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
             const manHypothesis = getText(question.hypothesis_text_man) || getText(question.hypothesis_text);
-
-            // Get shared interview question
             const interviewQuestion = getText(question.interview_question);
 
             // Calculate overall question number
@@ -210,23 +200,17 @@ export function HypothesisQuestionScreen() {
             return (
               <div key={question.id} className="relative">
                 {/* Question Number */}
-                <div className={cn(
-                  "px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground",
-                  isLocked && "opacity-50"
-                )}>
+                <div className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
                   {overallNumber}. Hypothesis
                 </div>
 
                 {/* Main Row */}
-                <div
-                  className={cn(
-                    "px-4 pb-4 transition-all",
-                    isActive && "bg-primary/5",
-                    isLocked && "opacity-50",
-                    isComplete && "bg-green-500/5"
-                  )}
-                >
-                  {/* Hypotheses Display - Both in same box */}
+                <div className={cn(
+                  "px-4 pb-4 transition-all",
+                  isSubmitted && isCorrect && "bg-green-500/5",
+                  isSubmitted && !isCorrect && "bg-red-500/5"
+                )}>
+                  {/* Hypotheses Display */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {/* Women Hypothesis */}
                     <div className="p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
@@ -234,10 +218,7 @@ export function HypothesisQuestionScreen() {
                         <span className="text-lg">👩</span>
                         <span className="text-xs font-semibold uppercase tracking-wide text-pink-600 dark:text-pink-400">Women 50+</span>
                       </div>
-                      <p className={cn(
-                        "text-sm leading-relaxed font-medium",
-                        isLocked && "text-muted-foreground"
-                      )}>
+                      <p className="text-sm leading-relaxed font-medium">
                         {womanHypothesis}
                       </p>
                     </div>
@@ -248,28 +229,23 @@ export function HypothesisQuestionScreen() {
                         <span className="text-lg">👨</span>
                         <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Men 50+</span>
                       </div>
-                      <p className={cn(
-                        "text-sm leading-relaxed font-medium",
-                        isLocked && "text-muted-foreground"
-                      )}>
+                      <p className="text-sm leading-relaxed font-medium">
                         {manHypothesis}
                       </p>
                     </div>
                   </div>
 
-                  {/* Single Answer Buttons - Centered */}
+                  {/* Answer Buttons / Results */}
                   <div className="flex justify-center">
-                    {isLocked ? (
-                      <Lock className="w-5 h-5 text-muted-foreground" />
-                    ) : isComplete ? (
+                    {isSubmitted ? (
                       <div className="flex items-center gap-3">
                         <span className={cn(
                           "text-sm font-semibold px-4 py-2 rounded-lg",
-                          rowAnswer.answer === true 
+                          answer === true 
                             ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
                             : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
                         )}>
-                          Your answer: {rowAnswer.answer ? "True" : "False"}
+                          Your answer: {answer ? "True" : "False"}
                         </span>
                         {isCorrect ? (
                           <div className="flex items-center gap-1 text-green-600">
@@ -287,25 +263,23 @@ export function HypothesisQuestionScreen() {
                       <div className="flex gap-3">
                         <Button
                           size="lg"
-                          variant={rowAnswer.answer === true ? "default" : "outline"}
+                          variant={answer === true ? "default" : "outline"}
                           className={cn(
-                            "h-12 px-8 text-base font-semibold",
-                            rowAnswer.answer === true && "bg-blue-600 hover:bg-blue-700"
+                            "h-12 px-8 text-base font-semibold transition-all",
+                            answer === true && "bg-blue-600 hover:bg-blue-700 ring-2 ring-blue-600 ring-offset-2"
                           )}
                           onClick={() => handleAnswer(question.id, true)}
-                          disabled={isSubmitting}
                         >
                           True
                         </Button>
                         <Button
                           size="lg"
-                          variant={rowAnswer.answer === false ? "default" : "outline"}
+                          variant={answer === false ? "default" : "outline"}
                           className={cn(
-                            "h-12 px-8 text-base font-semibold",
-                            rowAnswer.answer === false && "bg-orange-600 hover:bg-orange-700"
+                            "h-12 px-8 text-base font-semibold transition-all",
+                            answer === false && "bg-orange-600 hover:bg-orange-700 ring-2 ring-orange-600 ring-offset-2"
                           )}
                           onClick={() => handleAnswer(question.id, false)}
-                          disabled={isSubmitting}
                         >
                           False
                         </Button>
@@ -314,8 +288,8 @@ export function HypothesisQuestionScreen() {
                   </div>
                 </div>
 
-                {/* Shared Interview Question - Full Width Below */}
-                {isComplete && interviewQuestion && (
+                {/* Interview Question - Only shown after submission */}
+                {isSubmitted && interviewQuestion && (
                   <div className="px-4 pb-4 animate-fade-in">
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                       <div className="flex items-start gap-2">
@@ -338,13 +312,32 @@ export function HypothesisQuestionScreen() {
         </div>
       </div>
 
-      {/* Next Page Button */}
-      {allRowsAnswered && (
-        <div className="mt-6 animate-fade-in">
+      {/* Action Buttons */}
+      <div className="mt-6">
+        {!isSubmitted ? (
+          <Button
+            onClick={handleSubmitPage}
+            disabled={!allQuestionsAnswered || isSubmitting}
+            size="lg"
+            className="w-full h-14 text-lg font-semibold"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                Submit Answers ({answeredCount}/{pageQuestions.length})
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </>
+            )}
+          </Button>
+        ) : (
           <Button
             onClick={handleNextPage}
             size="lg"
-            className="w-full h-14 text-lg font-semibold"
+            className="w-full h-14 text-lg font-semibold animate-fade-in"
           >
             {currentPageIndex < sortedPages.length - 1 ? (
               <>
@@ -358,8 +351,8 @@ export function HypothesisQuestionScreen() {
               </>
             )}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </main>
   );
 }
