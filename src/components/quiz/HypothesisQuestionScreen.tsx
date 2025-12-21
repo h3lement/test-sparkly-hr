@@ -61,7 +61,6 @@ export function HypothesisQuestionScreen() {
     });
     
     setPageAnswers(initialAnswers);
-    // If all questions on this page have responses, consider it submitted
     setIsSubmitted(hasExistingResponses && pageQuestions.every(q => responses.some(r => r.questionId === q.id)));
   }, [currentPage?.id, pageQuestions.length]);
 
@@ -82,7 +81,6 @@ export function HypothesisQuestionScreen() {
     setIsSubmitting(true);
 
     try {
-      // Save all responses to database
       const inserts = pageQuestions.map(q => ({
         quiz_id: quizData?.id,
         session_id: sessionId,
@@ -93,7 +91,6 @@ export function HypothesisQuestionScreen() {
 
       await supabase.from('hypothesis_responses').insert(inserts);
 
-      // Add to context responses
       pageQuestions.forEach(q => {
         const answer = pageAnswers[q.id]!;
         const isCorrect = answer === q.correct_answer_woman && answer === q.correct_answer_man;
@@ -124,7 +121,6 @@ export function HypothesisQuestionScreen() {
     }
   };
 
-  // Count answered questions for progress display
   const answeredCount = Object.values(pageAnswers).filter(v => v !== null).length;
 
   if (!currentPage) {
@@ -132,7 +128,7 @@ export function HypothesisQuestionScreen() {
   }
 
   return (
-    <main className="animate-fade-in max-w-3xl mx-auto px-4" role="main">
+    <main className="animate-fade-in max-w-4xl mx-auto px-4" role="main">
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
@@ -167,150 +163,122 @@ export function HypothesisQuestionScreen() {
         </div>
       )}
 
-      {/* Questions List */}
+      {/* Questions Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
-        {/* Header */}
-        <div className="px-4 py-3 bg-muted/50 border-b border-border">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">
-            {isSubmitted ? 'Results' : 'Rate each hypothesis: True or False?'}
-          </p>
+        {/* Table Header */}
+        <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 bg-muted/50 border-b border-border text-center">
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-base">👩</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Women 50+</span>
+          </div>
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-base">👨</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Men 50+</span>
+          </div>
+          <div className="text-center">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {isSubmitted ? 'Result' : 'Answer'}
+            </span>
+          </div>
         </div>
 
         {/* Question Rows */}
         <div className="divide-y divide-border">
           {pageQuestions.map((question, idx) => {
             const answer = pageAnswers[question.id];
-            const hasAnswer = answer !== null && answer !== undefined;
 
-            // Check correctness
             const isCorrect = answer === question.correct_answer_woman && 
                              answer === question.correct_answer_man;
 
-            // Get gender-specific hypothesis text
             const womanHypothesis = getText(question.hypothesis_text_woman) || getText(question.hypothesis_text);
             const manHypothesis = getText(question.hypothesis_text_man) || getText(question.hypothesis_text);
             const interviewQuestion = getText(question.interview_question);
 
-            // Calculate overall question number
             const previousPagesQuestions = sortedPages
               .slice(0, currentPageIndex)
               .reduce((sum, page) => sum + getQuestionsForPage(page.id).length, 0);
             const overallNumber = previousPagesQuestions + idx + 1;
 
             return (
-              <div key={question.id} className="relative">
-                {/* Question Number */}
-                <div className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
-                  {overallNumber}. Hypothesis
-                </div>
+              <div key={question.id} className={cn(
+                "relative transition-all",
+                isSubmitted && isCorrect && "bg-green-500/5",
+                isSubmitted && !isCorrect && "bg-red-500/5"
+              )}>
+                {/* Single Row: Women | Men | Answer */}
+                <div className="grid grid-cols-[1fr_1fr_140px] gap-2 px-4 py-3 items-start">
+                  {/* Women Hypothesis */}
+                  <div className="p-2 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/30 dark:border-pink-800/30">
+                    <p className="text-xs text-muted-foreground mb-1">{overallNumber}.</p>
+                    <p className="text-sm leading-snug font-medium">
+                      {womanHypothesis}
+                    </p>
+                  </div>
 
-                {/* Main Row */}
-                <div className={cn(
-                  "px-4 pb-4 transition-all",
-                  isSubmitted && isCorrect && "bg-green-500/5",
-                  isSubmitted && !isCorrect && "bg-red-500/5"
-                )}>
-                  {/* Hypotheses with inline answers */}
-                  <div className="space-y-3">
-                    {/* Women Hypothesis Row */}
-                    <div className="flex items-center gap-3 p-3 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg border border-pink-200/50 dark:border-pink-800/50">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-lg">👩</span>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-pink-600 dark:text-pink-400 hidden sm:inline">Women 50+</span>
-                      </div>
-                      <p className="flex-1 text-sm leading-relaxed font-medium">
-                        {womanHypothesis}
-                      </p>
-                      {!isSubmitted && (
-                        <div className="flex gap-2 shrink-0">
-                          <Button
-                            size="sm"
-                            variant={answer === true ? "default" : "outline"}
-                            className={cn(
-                              "h-9 px-4 text-sm font-semibold transition-all",
-                              answer === true && "bg-blue-600 hover:bg-blue-700"
-                            )}
-                            onClick={() => handleAnswer(question.id, true)}
-                          >
-                            True
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={answer === false ? "default" : "outline"}
-                            className={cn(
-                              "h-9 px-4 text-sm font-semibold transition-all",
-                              answer === false && "bg-orange-600 hover:bg-orange-700"
-                            )}
-                            onClick={() => handleAnswer(question.id, false)}
-                          >
-                            False
-                          </Button>
-                        </div>
-                      )}
-                      {isSubmitted && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className={cn(
-                            "text-xs font-semibold px-3 py-1.5 rounded",
-                            answer === true 
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
-                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
-                          )}>
-                            {answer ? "True" : "False"}
-                          </span>
-                          {isCorrect ? (
-                            <Check className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <X className="w-5 h-5 text-red-500" />
-                          )}
-                        </div>
-                      )}
-                    </div>
+                  {/* Men Hypothesis */}
+                  <div className="p-2 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/30 dark:border-blue-800/30">
+                    <p className="text-xs text-muted-foreground mb-1">{overallNumber}.</p>
+                    <p className="text-sm leading-snug font-medium">
+                      {manHypothesis}
+                    </p>
+                  </div>
 
-                    {/* Men Hypothesis Row */}
-                    <div className="flex items-center gap-3 p-3 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-lg">👨</span>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 hidden sm:inline">Men 50+</span>
-                      </div>
-                      <p className="flex-1 text-sm leading-relaxed font-medium">
-                        {manHypothesis}
-                      </p>
-                      {/* No buttons for men row - same answer applies */}
-                      {isSubmitted && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className={cn(
-                            "text-xs font-semibold px-3 py-1.5 rounded",
-                            answer === true 
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
-                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
-                          )}>
-                            {answer ? "True" : "False"}
-                          </span>
-                          {isCorrect ? (
-                            <Check className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <X className="w-5 h-5 text-red-500" />
+                  {/* Answer Buttons / Result */}
+                  <div className="flex justify-center items-start pt-2">
+                    {!isSubmitted ? (
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant={answer === true ? "default" : "outline"}
+                          className={cn(
+                            "h-9 px-3 text-sm font-semibold",
+                            answer === true && "bg-blue-600 hover:bg-blue-700"
                           )}
-                        </div>
-                      )}
-                    </div>
+                          onClick={() => handleAnswer(question.id, true)}
+                        >
+                          True
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={answer === false ? "default" : "outline"}
+                          className={cn(
+                            "h-9 px-3 text-sm font-semibold",
+                            answer === false && "bg-orange-600 hover:bg-orange-700"
+                          )}
+                          onClick={() => handleAnswer(question.id, false)}
+                        >
+                          False
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-xs font-semibold px-2 py-1 rounded",
+                          answer === true 
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" 
+                            : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+                        )}>
+                          {answer ? "True" : "False"}
+                        </span>
+                        {isCorrect ? (
+                          <Check className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Interview Question - Only shown after submission */}
+                {/* Interview Question - Below the row after submission */}
                 {isSubmitted && interviewQuestion && (
-                  <div className="px-4 pb-4 animate-fade-in">
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                  <div className="px-4 pb-3 animate-fade-in">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
                       <div className="flex items-start gap-2">
                         <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
-                            Interview Question
-                          </p>
-                          <p className="text-sm text-foreground/90 italic">
-                            "{interviewQuestion}"
-                          </p>
-                        </div>
+                        <p className="text-sm text-foreground/90 italic">
+                          {interviewQuestion}
+                        </p>
                       </div>
                     </div>
                   </div>
