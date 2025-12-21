@@ -104,10 +104,10 @@ export function HypothesisEmailCapture() {
         </p>
       </div>
 
-      {/* Unlock Message */}
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 text-center">
-        <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
-          🔓 You may find it valuable to receive the complete material — including the correct answers, common misconceptions, and suggested interview questions designed to uncover what truly matters. Discover why professionals aged 50+ are often perceived as challenging by younger generations, and how to navigate these dynamics with confidence.
+      {/* Value Proposition */}
+      <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5 mb-6">
+        <p className="text-sm text-foreground/90 leading-relaxed">
+          We would be delighted to share the complete material with you — including verified answers, debunked misconceptions, and carefully crafted interview questions that reveal what truly drives candidates aged 50+. This is why we kindly ask for your email: so you can leave this assessment with something genuinely actionable and valuable, rather than just a score.
         </p>
       </div>
 
