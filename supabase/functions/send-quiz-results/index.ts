@@ -149,6 +149,7 @@ const emailTranslations: Record<string, {
   points: string;
   keyInsights: string;
   wantToImprove: string;
+  ctaDescription: string;
   visitSparkly: string;
   newQuizSubmission: string;
   userEmail: string;
@@ -164,6 +165,7 @@ const emailTranslations: Record<string, {
     points: 'points',
     keyInsights: 'Key Insights',
     wantToImprove: 'Ready for Precise Employee Assessment?',
+    ctaDescription: 'This quiz provides a general overview. For accurate, in-depth analysis of your team\'s performance and actionable improvement strategies, continue with professional testing.',
     visitSparkly: 'Continue to Sparkly.hr',
     newQuizSubmission: 'New Quiz Submission',
     userEmail: 'User Email',
@@ -179,6 +181,7 @@ const emailTranslations: Record<string, {
     points: 'punktist',
     keyInsights: 'Peamised tähelepanekud',
     wantToImprove: 'Valmis täpseks töötajate hindamiseks?',
+    ctaDescription: 'See küsimustik annab üldise ülevaate. Täpse ja põhjaliku analüüsi ning praktiliste parendusstrateegiate saamiseks jätka professionaalse testimisega.',
     visitSparkly: 'Jätka Sparkly.hr lehele',
     newQuizSubmission: 'Uus küsitluse vastus',
     userEmail: 'Kasutaja e-post',
@@ -194,6 +197,7 @@ const emailTranslations: Record<string, {
     points: 'Punkten',
     keyInsights: 'Wichtige Erkenntnisse',
     wantToImprove: 'Bereit für eine präzise Mitarbeiterbewertung?',
+    ctaDescription: 'Dieses Quiz bietet einen allgemeinen Überblick. Für eine genaue, tiefgehende Analyse der Leistung Ihres Teams und umsetzbare Verbesserungsstrategien, fahren Sie mit professionellen Tests fort.',
     visitSparkly: 'Weiter zu Sparkly.hr',
     newQuizSubmission: 'Neue Quiz-Einreichung',
     userEmail: 'Benutzer-E-Mail',
@@ -209,6 +213,7 @@ const emailTranslations: Record<string, {
     points: 'points',
     keyInsights: 'Points clés',
     wantToImprove: 'Prêt pour une évaluation précise des employés?',
+    ctaDescription: 'Ce quiz fournit un aperçu général. Pour une analyse précise et approfondie des performances de votre équipe et des stratégies d\'amélioration concrètes, continuez avec des tests professionnels.',
     visitSparkly: 'Continuer vers Sparkly.hr',
     newQuizSubmission: 'Nouvelle soumission de quiz',
     userEmail: 'E-mail utilisateur',
@@ -224,6 +229,7 @@ const emailTranslations: Record<string, {
     points: 'puntos',
     keyInsights: 'Puntos clave',
     wantToImprove: '¿Listo para una evaluación precisa de empleados?',
+    ctaDescription: 'Este cuestionario proporciona una visión general. Para un análisis preciso y profundo del rendimiento de tu equipo y estrategias de mejora accionables, continúa con pruebas profesionales.',
     visitSparkly: 'Continuar a Sparkly.hr',
     newQuizSubmission: 'Nueva presentación de quiz',
     userEmail: 'Email del usuario',
@@ -239,6 +245,7 @@ const emailTranslations: Record<string, {
     points: 'punti',
     keyInsights: 'Punti chiave',
     wantToImprove: 'Pronto per una valutazione precisa dei dipendenti?',
+    ctaDescription: 'Questo quiz fornisce una panoramica generale. Per un\'analisi accurata e approfondita delle prestazioni del tuo team e strategie di miglioramento attuabili, continua con test professionali.',
     visitSparkly: 'Continua su Sparkly.hr',
     newQuizSubmission: 'Nuova sottomissione quiz',
     userEmail: 'Email utente',
@@ -254,6 +261,7 @@ const emailTranslations: Record<string, {
     points: 'pontos',
     keyInsights: 'Pontos-chave',
     wantToImprove: 'Pronto para uma avaliação precisa de funcionários?',
+    ctaDescription: 'Este questionário fornece uma visão geral. Para uma análise precisa e aprofundada do desempenho da sua equipa e estratégias de melhoria acionáveis, continue com testes profissionais.',
     visitSparkly: 'Continuar para Sparkly.hr',
     newQuizSubmission: 'Nova submissão de quiz',
     userEmail: 'Email do utilizador',
@@ -269,6 +277,7 @@ const emailTranslations: Record<string, {
     points: 'punten',
     keyInsights: 'Belangrijke inzichten',
     wantToImprove: 'Klaar voor nauwkeurige werknemersbeoordeling?',
+    ctaDescription: 'Deze quiz geeft een algemeen overzicht. Voor nauwkeurige, diepgaande analyse van de prestaties van uw team en uitvoerbare verbeterstrategieën, ga verder met professionele testen.',
     visitSparkly: 'Doorgaan naar Sparkly.hr',
     newQuizSubmission: 'Nieuwe quiz inzending',
     userEmail: 'Gebruiker email',
@@ -284,6 +293,7 @@ const emailTranslations: Record<string, {
     points: 'punktów',
     keyInsights: 'Kluczowe spostrzeżenia',
     wantToImprove: 'Gotowy na precyzyjną ocenę pracowników?',
+    ctaDescription: 'Ten quiz daje ogólny przegląd. Aby uzyskać dokładną, dogłębną analizę wydajności zespołu i wykonalne strategie poprawy, kontynuuj z profesjonalnymi testami.',
     visitSparkly: 'Przejdź do Sparkly.hr',
     newQuizSubmission: 'Nowe zgłoszenie quizu',
     userEmail: 'Email użytkownika',
@@ -299,6 +309,7 @@ const emailTranslations: Record<string, {
     points: 'баллов',
     keyInsights: 'Ключевые выводы',
     wantToImprove: 'Готовы к точной оценке сотрудников?',
+    ctaDescription: 'Этот тест дает общий обзор. Для точного, глубокого анализа производительности вашей команды и практических стратегий улучшения продолжите с профессиональным тестированием.',
     visitSparkly: 'Перейти на Sparkly.hr',
     newQuizSubmission: 'Новая отправка теста',
     userEmail: 'Email пользователя',
@@ -314,6 +325,7 @@ const emailTranslations: Record<string, {
     points: 'poäng',
     keyInsights: 'Viktiga insikter',
     wantToImprove: 'Redo för en exakt medarbetarbedömning?',
+    ctaDescription: 'Denna quiz ger en allmän översikt. För noggrann, djupgående analys av ditt teams prestationer och genomförbara förbättringsstrategier, fortsätt med professionella tester.',
     visitSparkly: 'Fortsätt till Sparkly.hr',
     newQuizSubmission: 'Ny quiz-inlämning',
     userEmail: 'Användaremail',
@@ -329,6 +341,7 @@ const emailTranslations: Record<string, {
     points: 'poeng',
     keyInsights: 'Viktige innsikter',
     wantToImprove: 'Klar for nøyaktig medarbeidervurdering?',
+    ctaDescription: 'Denne quizen gir en generell oversikt. For nøyaktig, dyptgående analyse av teamets ytelse og handlingsrettede forbedringsstrategier, fortsett med profesjonell testing.',
     visitSparkly: 'Fortsett til Sparkly.hr',
     newQuizSubmission: 'Ny quiz-innsending',
     userEmail: 'Bruker-e-post',
@@ -344,6 +357,7 @@ const emailTranslations: Record<string, {
     points: 'point',
     keyInsights: 'Vigtige indsigter',
     wantToImprove: 'Klar til præcis medarbejdervurdering?',
+    ctaDescription: 'Denne quiz giver et generelt overblik. For præcis, dybdegående analyse af dit teams præstationer og handlingsorienterede forbedringsstrategier, fortsæt med professionel test.',
     visitSparkly: 'Fortsæt til Sparkly.hr',
     newQuizSubmission: 'Ny quiz-indsendelse',
     userEmail: 'Bruger-email',
@@ -359,6 +373,7 @@ const emailTranslations: Record<string, {
     points: 'pistettä',
     keyInsights: 'Keskeiset oivallukset',
     wantToImprove: 'Valmis tarkkaan työntekijäarviointiin?',
+    ctaDescription: 'Tämä kysely antaa yleiskuvan. Tarkkaan, syvälliseen analyysiin tiimisi suorituskyvystä ja toteutettaviin parannusstrategioihin, jatka ammattimaisella testauksella.',
     visitSparkly: 'Jatka Sparkly.hr-sivustolle',
     newQuizSubmission: 'Uusi tietovisavastaus',
     userEmail: 'Käyttäjän sähköposti',
@@ -374,6 +389,7 @@ const emailTranslations: Record<string, {
     points: 'балів',
     keyInsights: 'Ключові висновки',
     wantToImprove: 'Готові до точної оцінки співробітників?',
+    ctaDescription: 'Цей тест дає загальний огляд. Для точного, глибокого аналізу продуктивності вашої команди та практичних стратегій покращення продовжуйте з професійним тестуванням.',
     visitSparkly: 'Перейти до Sparkly.hr',
     newQuizSubmission: 'Нове подання тесту',
     userEmail: 'Email користувача',
@@ -683,9 +699,10 @@ const handler = async (req: Request): Promise<Response> => {
           
           ${assessmentModule}
           
-          <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 14px; margin-bottom: 12px;">${escapeHtml(trans.wantToImprove)}</p>
-            <a href="https://sparkly.hr" style="display: inline-block; background: #6d28d9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">${escapeHtml(trans.visitSparkly)}</a>
+          <div style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border-radius: 16px; padding: 32px; margin-top: 30px; text-align: center;">
+            <h3 style="color: white; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(trans.wantToImprove)}</h3>
+            <p style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(trans.ctaDescription)}</p>
+            <a href="https://sparkly.hr" style="display: inline-block; background: white; color: #6d28d9; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(trans.visitSparkly)}</a>
           </div>
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
