@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, ClipboardList, PieChart, Activity, Pencil, GripVertical, Check, X, Palette } from "lucide-react";
+import { Users, Shield, PanelLeftClose, PanelLeft, LogOut, Mail, History, ClipboardList, Activity, Pencil, GripVertical, Check, X, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,7 +50,6 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "activity", label: "Activity", icon: Activity, count: null },
   { id: "leads", label: "Respondents", icon: Users, count: null },
   { id: "quizzes", label: "Quizzes", icon: ClipboardList, count: null },
-  { id: "analytics", label: "Quiz Analytics", icon: PieChart, count: null },
   { id: "admins", label: "Admin Users", icon: Shield, count: null },
   { id: "email", label: "Email Settings", icon: Mail, count: null },
   { id: "email-logs", label: "Email History", icon: History, count: null },
