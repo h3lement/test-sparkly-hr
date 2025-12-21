@@ -12,6 +12,25 @@ import { useQuizData } from '@/hooks/useQuizData';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
 
+// Force light mode for public quiz pages
+function useForceLightMode() {
+  useEffect(() => {
+    const root = document.documentElement;
+    // Store original class state
+    const wasDark = root.classList.contains('dark');
+    
+    // Force light mode
+    root.classList.remove('dark');
+    
+    // Cleanup: restore dark mode if it was enabled when navigating away
+    return () => {
+      if (wasDark) {
+        root.classList.add('dark');
+      }
+    };
+  }, []);
+}
+
 function StandardQuizContent({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const { quiz, questions, resultLevels, openMindednessResultLevels, loading, error } = useQuizData(slug);
@@ -80,6 +99,9 @@ function QuizTypeRouter() {
   const { quizSlug } = useParams<{ quizSlug: string }>();
   const navigate = useNavigate();
   const slug = quizSlug || 'team-performance';
+  
+  // Force light mode for public quiz pages
+  useForceLightMode();
   
   const [quizType, setQuizType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
