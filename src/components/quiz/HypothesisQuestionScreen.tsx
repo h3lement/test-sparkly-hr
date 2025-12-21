@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, Lock, Unlock, MessageSquare } from 'lucide-react';
+import { ArrowRight, Lock, MessageSquare, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type AnswerValue = boolean | null;
@@ -70,19 +70,32 @@ export function HypothesisQuestionScreen() {
     setActiveRowIndex(Math.min(firstUnanswered, pageQuestions.length - 1));
   }, [currentPage?.id, pageQuestions.length]);
 
-  const handleAnswer = (questionId: string, type: 'woman' | 'man', value: boolean) => {
+  // Auto-reveal when both answers are given
+  const handleAnswer = async (questionId: string, type: 'woman' | 'man', value: boolean) => {
+    const currentAnswer = rowAnswers[questionId] || { woman: null, man: null, revealed: false };
+    const newAnswer = {
+      ...currentAnswer,
+      [type]: value,
+    };
+
     setRowAnswers(prev => ({
       ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [type]: value,
-      },
+      [questionId]: newAnswer,
     }));
+
+    // Check if both answers are now given
+    const otherType = type === 'woman' ? 'man' : 'woman';
+    const otherValue = currentAnswer[otherType];
+    
+    if (otherValue !== null && !currentAnswer.revealed) {
+      // Both answers given, auto-reveal
+      await revealInterview(questionId, newAnswer.woman!, newAnswer.man!);
+    }
   };
 
-  const handleRevealInterview = async (questionId: string, questionIndex: number) => {
-    const answer = rowAnswers[questionId];
-    if (answer.woman === null || answer.man === null) return;
+  const revealInterview = async (questionId: string, womanAnswer: boolean, manAnswer: boolean) => {
+    const questionIndex = pageQuestions.findIndex(q => q.id === questionId);
+    if (questionIndex === -1) return;
 
     setIsSubmitting(true);
 
@@ -92,17 +105,17 @@ export function HypothesisQuestionScreen() {
         quiz_id: quizData?.id,
         session_id: sessionId,
         question_id: questionId,
-        answer_woman: answer.woman,
-        answer_man: answer.man,
+        answer_woman: womanAnswer,
+        answer_man: manAnswer,
       });
 
       // The correct answer is always FALSE for both
-      const isCorrect = answer.woman === false && answer.man === false;
+      const isCorrect = womanAnswer === false && manAnswer === false;
 
       addResponse({
         questionId,
-        answerWoman: answer.woman,
-        answerMan: answer.man,
+        answerWoman: womanAnswer,
+        answerMan: manAnswer,
         isCorrect,
       });
 
@@ -134,6 +147,9 @@ export function HypothesisQuestionScreen() {
   };
 
   const allRowsAnswered = pageQuestions.every(q => rowAnswers[q.id]?.revealed);
+
+  // Check if answer is correct (correct answer is always FALSE)
+  const isAnswerCorrect = (answer: AnswerValue) => answer === false;
 
   if (!currentPage) {
     return <div className="text-center p-8">Loading...</div>;
@@ -179,7 +195,10 @@ export function HypothesisQuestionScreen() {
             const isActive = idx === activeRowIndex;
             const isLocked = idx > activeRowIndex && !answer.revealed;
             const isComplete = answer.revealed;
-            const canReveal = answer.woman !== null && answer.man !== null && !answer.revealed;
+
+            // Correct answer is always FALSE
+            const womanCorrect = answer.woman === false;
+            const manCorrect = answer.man === false;
 
             return (
               <div key={question.id} className="relative">
@@ -206,98 +225,103 @@ export function HypothesisQuestionScreen() {
                   </div>
 
                   {/* Women Answer */}
-                  <div className="col-span-3 flex justify-center gap-1">
+                  <div className="col-span-3 flex flex-col items-center gap-1">
                     {isLocked ? (
                       <Lock className="w-4 h-4 text-muted-foreground" />
+                    ) : isComplete ? (
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-sm font-medium px-2 py-1 rounded",
+                          answer.woman === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                        )}>
+                          {answer.woman ? "True" : "False"}
+                        </span>
+                        {womanCorrect ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <X className="w-4 h-4 text-red-500" />
+                        )}
+                      </div>
                     ) : (
-                      <>
+                      <div className="flex gap-1">
                         <Button
                           size="sm"
                           variant={answer.woman === true ? "default" : "outline"}
                           className={cn(
-                            "h-8 px-3 text-xs",
-                            answer.woman === true && "bg-blue-600 hover:bg-blue-700",
-                            isComplete && "pointer-events-none"
+                            "h-8 px-2 text-xs",
+                            answer.woman === true && "bg-blue-600 hover:bg-blue-700"
                           )}
-                          onClick={() => !isComplete && handleAnswer(question.id, 'woman', true)}
-                          disabled={isComplete}
+                          onClick={() => handleAnswer(question.id, 'woman', true)}
+                          disabled={isSubmitting}
                         >
-                          T
+                          True
                         </Button>
                         <Button
                           size="sm"
                           variant={answer.woman === false ? "default" : "outline"}
                           className={cn(
-                            "h-8 px-3 text-xs",
-                            answer.woman === false && "bg-orange-600 hover:bg-orange-700",
-                            isComplete && "pointer-events-none"
+                            "h-8 px-2 text-xs",
+                            answer.woman === false && "bg-orange-600 hover:bg-orange-700"
                           )}
-                          onClick={() => !isComplete && handleAnswer(question.id, 'woman', false)}
-                          disabled={isComplete}
+                          onClick={() => handleAnswer(question.id, 'woman', false)}
+                          disabled={isSubmitting}
                         >
-                          F
+                          False
                         </Button>
-                      </>
+                      </div>
                     )}
                   </div>
 
                   {/* Men Answer */}
-                  <div className="col-span-3 flex justify-center gap-1">
+                  <div className="col-span-3 flex flex-col items-center gap-1">
                     {isLocked ? (
                       <Lock className="w-4 h-4 text-muted-foreground" />
+                    ) : isComplete ? (
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-sm font-medium px-2 py-1 rounded",
+                          answer.man === true ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                        )}>
+                          {answer.man ? "True" : "False"}
+                        </span>
+                        {manCorrect ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <X className="w-4 h-4 text-red-500" />
+                        )}
+                      </div>
                     ) : (
-                      <>
+                      <div className="flex gap-1">
                         <Button
                           size="sm"
                           variant={answer.man === true ? "default" : "outline"}
                           className={cn(
-                            "h-8 px-3 text-xs",
-                            answer.man === true && "bg-blue-600 hover:bg-blue-700",
-                            isComplete && "pointer-events-none"
+                            "h-8 px-2 text-xs",
+                            answer.man === true && "bg-blue-600 hover:bg-blue-700"
                           )}
-                          onClick={() => !isComplete && handleAnswer(question.id, 'man', true)}
-                          disabled={isComplete}
+                          onClick={() => handleAnswer(question.id, 'man', true)}
+                          disabled={isSubmitting}
                         >
-                          T
+                          True
                         </Button>
                         <Button
                           size="sm"
                           variant={answer.man === false ? "default" : "outline"}
                           className={cn(
-                            "h-8 px-3 text-xs",
-                            answer.man === false && "bg-orange-600 hover:bg-orange-700",
-                            isComplete && "pointer-events-none"
+                            "h-8 px-2 text-xs",
+                            answer.man === false && "bg-orange-600 hover:bg-orange-700"
                           )}
-                          onClick={() => !isComplete && handleAnswer(question.id, 'man', false)}
-                          disabled={isComplete}
+                          onClick={() => handleAnswer(question.id, 'man', false)}
+                          disabled={isSubmitting}
                         >
-                          F
+                          False
                         </Button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Reveal Button (when both answered but not yet revealed) */}
-                {canReveal && (
-                  <div className="px-4 pb-4">
-                    <Button
-                      onClick={() => handleRevealInterview(question.id, idx)}
-                      disabled={isSubmitting}
-                      size="sm"
-                      className="w-full"
-                    >
-                      {isSubmitting ? 'Saving...' : (
-                        <>
-                          <Unlock className="w-4 h-4 mr-2" />
-                          Reveal Interview Question
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Interview Question Reward (revealed after answering) */}
+                {/* Interview Question Reward (revealed immediately after both answers) */}
                 {isComplete && (
                   <div className="px-4 pb-4 animate-fade-in">
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
