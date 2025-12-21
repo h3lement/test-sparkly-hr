@@ -24,6 +24,19 @@ export interface HypothesisQuestion {
   correct_answer_man: boolean;
 }
 
+export interface OpenMindednessAnswer {
+  id: string;
+  answer_text: Record<string, string>;
+  answer_order: number;
+  score_value: number;
+}
+
+export interface OpenMindednessQuestionData {
+  id: string;
+  question_text: Record<string, string>;
+  answers: OpenMindednessAnswer[];
+}
+
 export interface QuizData {
   id: string;
   slug: string;
@@ -39,6 +52,7 @@ export interface QuizData {
   cta_description: Record<string, string>;
   cta_url: string | null;
   quiz_type: string;
+  include_open_mindedness: boolean;
 }
 
 export function useHypothesisQuizPublic(slug: string) {
@@ -71,6 +85,7 @@ export function useHypothesisQuizPublic(slug: string) {
         cta_description: ((data as any).cta_description || {}) as Record<string, string>,
         cta_url: data.cta_url,
         quiz_type: data.quiz_type,
+        include_open_mindedness: data.include_open_mindedness ?? false,
       } as QuizData;
     },
     enabled: !!slug,
@@ -132,11 +147,52 @@ export function useHypothesisQuizPublic(slug: string) {
     enabled: !!pagesQuery.data?.length,
   });
 
+  // Fetch open mindedness question if enabled
+  const openMindednessQuery = useQuery({
+    queryKey: ['hypothesis-open-mindedness', quizQuery.data?.id],
+    queryFn: async () => {
+      if (!quizQuery.data?.id || !quizQuery.data.include_open_mindedness) return null;
+
+      // Fetch the open_mindedness question
+      const { data: questionData, error: questionError } = await supabase
+        .from('quiz_questions')
+        .select('id, question_text')
+        .eq('quiz_id', quizQuery.data.id)
+        .eq('question_type', 'open_mindedness')
+        .maybeSingle();
+
+      if (questionError) throw questionError;
+      if (!questionData) return null;
+
+      // Fetch answers for this question
+      const { data: answersData, error: answersError } = await supabase
+        .from('quiz_answers')
+        .select('id, answer_text, answer_order, score_value')
+        .eq('question_id', questionData.id)
+        .order('answer_order');
+
+      if (answersError) throw answersError;
+
+      return {
+        id: questionData.id,
+        question_text: questionData.question_text as Record<string, string>,
+        answers: (answersData || []).map(a => ({
+          id: a.id,
+          answer_text: a.answer_text as Record<string, string>,
+          answer_order: a.answer_order,
+          score_value: a.score_value,
+        })),
+      } as OpenMindednessQuestionData;
+    },
+    enabled: !!quizQuery.data?.id && quizQuery.data.include_open_mindedness,
+  });
+
   return {
     quiz: quizQuery.data,
     pages: pagesQuery.data || [],
     questions: questionsQuery.data || [],
-    loading: quizQuery.isLoading || pagesQuery.isLoading || questionsQuery.isLoading,
-    error: quizQuery.error || pagesQuery.error || questionsQuery.error,
+    openMindednessQuestion: openMindednessQuery.data || null,
+    loading: quizQuery.isLoading || pagesQuery.isLoading || questionsQuery.isLoading || openMindednessQuery.isLoading,
+    error: quizQuery.error || pagesQuery.error || questionsQuery.error || openMindednessQuery.error,
   };
 }
