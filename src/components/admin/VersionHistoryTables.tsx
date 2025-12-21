@@ -189,7 +189,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
       ) : (
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-[50px_1fr_120px_100px_80px] gap-1 px-2 py-1.5 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
+          <div className="grid grid-cols-[60px_1fr_140px_120px_100px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b">
             <span>Ver</span>
             <span>Sender</span>
             <span>Languages</span>
@@ -204,15 +204,15 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
               return (
                 <div
                   key={template.id}
-                  className={`grid grid-cols-[50px_1fr_120px_100px_80px] gap-1 px-2 py-1.5 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
+                  className={`grid grid-cols-[60px_1fr_140px_120px_100px] gap-2 px-3 py-2 items-center text-sm border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
                     template.is_live ? "bg-primary/5" : index % 2 === 0 ? "bg-background" : "bg-muted/20"
                   }`}
                 >
                   {/* Version */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="font-medium">v{template.version_number}</span>
                     {template.is_live && (
-                      <Badge variant="default" className="text-[8px] h-4 px-1 bg-primary">
+                      <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
                         LIVE
                       </Badge>
                     )}
@@ -224,35 +224,35 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                   </div>
 
                   {/* Languages */}
-                  <div className="flex items-center gap-0.5 flex-wrap">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {languages.slice(0, 4).map(lang => (
-                      <Badge key={lang} variant="outline" className="text-[8px] h-4 px-1 uppercase font-mono">
+                      <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
                         {lang}
                       </Badge>
                     ))}
                     {languages.length > 4 && (
-                      <Badge variant="outline" className="text-[8px] h-4 px-1">
+                      <Badge variant="outline" className="text-xs h-5 px-1.5">
                         +{languages.length - 4}
                       </Badge>
                     )}
                   </div>
 
                   {/* Created */}
-                  <div className="text-[10px] text-muted-foreground truncate" title={template.created_by_email || "Unknown"}>
+                  <div className="text-sm text-muted-foreground truncate" title={template.created_by_email || "Unknown"}>
                     {formatDate(template.created_at)}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     {onLoadTemplate && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onLoadTemplate(template)}
-                        className="h-5 w-5 p-0"
+                        className="h-7 w-7 p-0"
                         title="Load to editor"
                       >
-                        <Eye className="w-3 h-3" />
+                        <Eye className="w-4 h-4" />
                       </Button>
                     )}
                     {!template.is_live && (
@@ -260,10 +260,10 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive }: Email
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSetLive(template.id, template.version_number)}
-                        className="h-5 w-5 p-0 text-primary"
+                        className="h-7 w-7 p-0 text-primary"
                         title="Set as live"
                       >
-                        <Check className="w-3 h-3" />
+                        <Check className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
@@ -378,7 +378,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
       ) : (
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-[50px_60px_120px_100px_70px_60px] gap-1 px-2 py-1.5 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
+          <div className="grid grid-cols-[60px_70px_140px_120px_80px_80px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b">
             <span>Ver</span>
             <span>Levels</span>
             <span>Languages</span>
@@ -396,16 +396,16 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
               return (
                 <div key={version.id}>
                   <div
-                    className={`grid grid-cols-[50px_60px_120px_100px_70px_60px] gap-1 px-2 py-1.5 items-center text-[11px] border-b hover:bg-muted/30 transition-colors cursor-pointer ${
+                    className={`grid grid-cols-[60px_70px_140px_120px_80px_80px] gap-2 px-3 py-2 items-center text-sm border-b hover:bg-muted/30 transition-colors cursor-pointer ${
                       index % 2 === 0 ? "bg-background" : "bg-muted/20"
                     }`}
                     onClick={() => setExpandedId(isExpanded ? null : version.id)}
                   >
                     {/* Version */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <span className="font-medium">v{version.version_number}</span>
                       {index === 0 && (
-                        <Badge variant="outline" className="text-[8px] h-4 px-1">
+                        <Badge variant="outline" className="text-xs h-5 px-1.5">
                           Latest
                         </Badge>
                       )}
@@ -413,37 +413,37 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
 
                     {/* Levels */}
                     <div>
-                      <Badge variant="secondary" className="text-[9px] h-4 px-1">
+                      <Badge variant="secondary" className="text-xs h-5 px-1.5">
                         {version.result_levels.length} levels
                       </Badge>
                     </div>
 
                     {/* Languages */}
-                    <div className="flex items-center gap-0.5 flex-wrap">
+                    <div className="flex items-center gap-1 flex-wrap">
                       {languages.slice(0, 4).map(lang => (
-                        <Badge key={lang} variant="outline" className="text-[8px] h-4 px-1 uppercase font-mono">
+                        <Badge key={lang} variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
                           {lang}
                         </Badge>
                       ))}
                       {languages.length > 4 && (
-                        <Badge variant="outline" className="text-[8px] h-4 px-1">
+                        <Badge variant="outline" className="text-xs h-5 px-1.5">
                           +{languages.length - 4}
                         </Badge>
                       )}
                     </div>
 
                     {/* Created */}
-                    <div className="text-[10px] text-muted-foreground truncate" title={version.created_by_email || "Unknown"}>
+                    <div className="text-sm text-muted-foreground truncate" title={version.created_by_email || "Unknown"}>
                       {formatDate(version.created_at)}
                     </div>
 
                     {/* Cost */}
-                    <div className="text-[10px] text-muted-foreground text-right">
+                    <div className="text-sm text-muted-foreground text-right">
                       {version.estimated_cost_eur ? `€${version.estimated_cost_eur.toFixed(4)}` : "-"}
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1.5">
                       {onRestoreVersion && (
                         <Button
                           variant="ghost"
@@ -456,38 +456,38 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                               description: `Applied version ${version.version_number} result levels`,
                             });
                           }}
-                          className="h-5 px-1 text-[9px]"
+                          className="h-7 px-2 text-xs"
                           title="Restore this version"
                         >
                           Restore
                         </Button>
                       )}
                       {isExpanded ? (
-                        <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
                       ) : (
-                        <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
                       )}
                     </div>
                   </div>
 
                   {/* Expanded Details */}
                   {isExpanded && (
-                    <div className="px-3 py-2 bg-muted/30 border-b space-y-2">
+                    <div className="px-4 py-3 bg-muted/30 border-b space-y-3">
                       {version.result_levels.map((level, levelIndex) => (
-                        <div key={levelIndex} className="bg-background rounded p-2 text-[10px]">
-                          <div className="flex items-center gap-2 mb-1">
+                        <div key={levelIndex} className="bg-background rounded p-3 text-sm">
+                          <div className="flex items-center gap-2 mb-2">
                             <span className="font-medium">Score: {level.min_score}-{level.max_score}</span>
                           </div>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {languages.map(lang => {
                               const title = level.title?.[lang];
                               if (!title) return null;
                               return (
-                                <div key={lang} className="flex items-center gap-1">
-                                  <Badge variant="outline" className="text-[8px] h-3 px-0.5 uppercase font-mono">
+                                <div key={lang} className="flex items-center gap-1.5">
+                                  <Badge variant="outline" className="text-xs h-5 px-1.5 uppercase font-mono">
                                     {lang}
                                   </Badge>
-                                  <span className="text-muted-foreground truncate max-w-[120px]" title={title}>
+                                  <span className="text-muted-foreground truncate max-w-[150px]" title={title}>
                                     {title}
                                   </span>
                                 </div>
@@ -499,7 +499,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                       
                       {/* Token usage */}
                       {(version.input_tokens || version.output_tokens) && (
-                        <div className="flex gap-3 text-[9px] text-muted-foreground pt-1">
+                        <div className="flex gap-4 text-sm text-muted-foreground pt-2">
                           {version.input_tokens && <span>Input: {version.input_tokens.toLocaleString()} tokens</span>}
                           {version.output_tokens && <span>Output: {version.output_tokens.toLocaleString()} tokens</span>}
                         </div>
