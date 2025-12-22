@@ -68,6 +68,7 @@ interface EmailTemplate {
   created_by_email: string | null;
   quiz_id: string | null;
   cta_template_id: string | null;
+  web_result_version_id: string | null;
   estimated_cost_eur: number | null;
   input_tokens: number | null;
   output_tokens: number | null;
@@ -134,6 +135,7 @@ const EMAIL_DEFAULT_WIDTHS = {
   type: 80,
   quiz: 150,
   cta: 180,
+  webResults: 140,
   created: 130,
   lang: 70,
   sent: 70,
@@ -145,6 +147,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [ctaTemplates, setCtaTemplates] = useState<CTATemplate[]>([]);
+  const [webResultVersions, setWebResultVersions] = useState<WebResultVersion[]>([]);
   const [emailStats, setEmailStats] = useState<Record<string, { sent: number; failed: number }>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
@@ -273,6 +276,24 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
           cta_description: cta.cta_description as Record<string, string>,
         })));
       }
+
+      // Fetch Web Result Versions for linking
+      const { data: webVersionsData, error: webVersionsError } = await supabase
+        .from("quiz_result_versions")
+        .select("id, quiz_id, version_number, is_live, result_levels, created_at")
+        .order("created_at", { ascending: false });
+
+      if (!webVersionsError && webVersionsData) {
+        setWebResultVersions(webVersionsData.map(v => ({
+          ...v,
+          result_levels: (v.result_levels || []) as WebResultVersion['result_levels'],
+          generation_params: {},
+          created_by_email: null,
+          estimated_cost_eur: null,
+          input_tokens: null,
+          output_tokens: null,
+        })));
+      }
     } catch (error: any) {
       console.error("Error fetching email templates:", error);
       toast({
@@ -390,6 +411,39 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         variant: "destructive",
       });
     }
+  };
+
+  const handleWebResultVersionChange = async (templateId: string, webResultVersionId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from("email_templates")
+        .update({ web_result_version_id: webResultVersionId })
+        .eq("id", templateId);
+
+      if (error) throw error;
+
+      setTemplates(prev => prev.map(t => 
+        t.id === templateId ? { ...t, web_result_version_id: webResultVersionId } : t
+      ));
+
+      toast({
+        title: "Web Results updated",
+        description: "Email template Web Results version has been updated successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error updating Web Results version:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update Web Results version.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Get web result versions for a specific quiz
+  const getWebResultVersionsForQuiz = (templateQuizId: string | null) => {
+    if (!templateQuizId) return webResultVersions;
+    return webResultVersions.filter(v => v.quiz_id === templateQuizId);
   };
 
   // Filter templates by quiz, type, and live status
@@ -601,6 +655,16 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                 </div>
                 <div 
                   className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.webResults }}
+                >
+                  <span>Web Results</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("webResults", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
                   style={{ width: columnWidths.created }}
                 >
                   <span>Created</span>
@@ -733,6 +797,38 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                                 </SelectItem>
                               );
                             })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Web Results Version Dropdown */}
+                      <div 
+                        className="px-3 py-2 shrink-0"
+                        style={{ width: columnWidths.webResults }}
+                      >
+                        <Select
+                          value={template.web_result_version_id || "none"}
+                          onValueChange={(value) => handleWebResultVersionChange(template.id, value === "none" ? null : value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-full bg-background">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50 min-w-[200px] max-h-[400px]">
+                            <SelectItem value="none" className="text-xs">
+                              <span className="text-muted-foreground">None</span>
+                            </SelectItem>
+                            {getWebResultVersionsForQuiz(template.quiz_id).map((version) => (
+                              <SelectItem key={version.id} value={version.id} className="text-xs">
+                                <span className="flex items-center gap-1">
+                                  v{version.version_number}
+                                  {version.is_live && (
+                                    <Badge variant="default" className="text-[10px] h-4 px-1 bg-green-600">
+                                      Live
+                                    </Badge>
+                                  )}
+                                </span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
