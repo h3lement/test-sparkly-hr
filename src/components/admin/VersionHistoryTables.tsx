@@ -88,6 +88,7 @@ interface WebResultVersion {
   estimated_cost_eur: number | null;
   input_tokens: number | null;
   output_tokens: number | null;
+  is_live: boolean;
 }
 
 interface Quiz {
@@ -854,18 +855,46 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
     return languages.size;
   };
 
-  // Sort by created_at descending (newest first)
+  // Sort: live first, then by created_at descending (newest first)
   const filteredVersions = useMemo(() => {
     const filtered = versions.filter(v => {
       if (filterQuiz === "all") return true;
       return v.quiz_id === filterQuiz;
     });
 
-    // Sort by created_at descending
+    // Sort: live templates first, then by created_at descending
     return filtered.sort((a, b) => {
+      if (a.is_live && !b.is_live) return -1;
+      if (!a.is_live && b.is_live) return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [versions, filterQuiz]);
+
+  const handleSetLive = async (versionId: string, versionNumber: number, versionQuizId: string) => {
+    try {
+      // The trigger will automatically set other versions to not live
+      const { error } = await supabase
+        .from("quiz_result_versions")
+        .update({ is_live: true })
+        .eq("id", versionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Live version updated",
+        description: `Version ${versionNumber} is now live`,
+      });
+
+      fetchData();
+    } catch (error: any) {
+      console.error("Error setting live version:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update live version",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card className="bg-card shadow-sm">
@@ -1030,9 +1059,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                         style={{ width: columnWidths.version }}
                       >
                         <span className="font-medium">v{version.version_number}</span>
-                        {index === 0 && filterQuiz !== "all" && (
-                          <Badge variant="outline" className="text-xs h-5 px-1.5">
-                            Latest
+                        {version.is_live && (
+                          <Badge className="text-xs h-5 px-1.5 bg-green-500/20 text-green-600 border-green-500/30">
+                            Live
                           </Badge>
                         )}
                       </div>
@@ -1133,6 +1162,20 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                         >
                           <Languages className="w-4 h-4" />
                         </Button>
+                        {!version.is_live && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSetLive(version.id, version.version_number, version.quiz_id);
+                            }}
+                            className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                            title="Set as live"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        )}
                         {onRestoreVersion && (
                           <Button
                             variant="ghost"
@@ -1148,7 +1191,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                             className="h-8 w-8 p-0 text-primary"
                             title="Restore this version"
                           >
-                            <Check className="w-4 h-4" />
+                            <Sparkles className="w-4 h-4" />
                           </Button>
                         )}
                         {isExpanded ? (

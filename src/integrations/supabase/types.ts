@@ -738,6 +738,7 @@ export type Database = {
           generation_params: Json
           id: string
           input_tokens: number | null
+          is_live: boolean
           output_tokens: number | null
           quiz_id: string
           result_levels: Json
@@ -751,6 +752,7 @@ export type Database = {
           generation_params?: Json
           id?: string
           input_tokens?: number | null
+          is_live?: boolean
           output_tokens?: number | null
           quiz_id: string
           result_levels?: Json
@@ -764,6 +766,7 @@ export type Database = {
           generation_params?: Json
           id?: string
           input_tokens?: number | null
+          is_live?: boolean
           output_tokens?: number | null
           quiz_id?: string
           result_levels?: Json
