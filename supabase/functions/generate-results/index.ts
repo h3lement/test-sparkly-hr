@@ -52,11 +52,32 @@ serve(async (req) => {
     // Fetch quiz with questions and answers, including tone settings and AI context
     const { data: quiz, error: quizError } = await supabaseClient
       .from('quizzes')
-      .select('title, description, tone_of_voice, use_tone_for_ai, tone_intensity, icp_description, buying_persona')
+      .select('title, description, tone_of_voice, use_tone_for_ai, tone_intensity, icp_description, buying_persona, quiz_type')
       .eq('id', quizId)
       .single();
 
     if (quizError) throw quizError;
+
+    const isHypothesisQuiz = quiz.quiz_type === 'hypothesis';
+    
+    // For hypothesis quizzes, get question count from hypothesis_questions
+    let hypothesisQuestionCount = 0;
+    if (isHypothesisQuiz) {
+      const { data: pagesData } = await supabaseClient
+        .from('hypothesis_pages')
+        .select('id')
+        .eq('quiz_id', quizId);
+      
+      if (pagesData && pagesData.length > 0) {
+        const pageIds = pagesData.map(p => p.id);
+        const { count } = await supabaseClient
+          .from('hypothesis_questions')
+          .select('*', { count: 'exact', head: true })
+          .in('page_id', pageIds);
+        hypothesisQuestionCount = count || 0;
+      }
+      console.log('Hypothesis quiz detected, question count:', hypothesisQuestionCount);
+    }
 
     const { data: questions, error: questionsError } = await supabaseClient
       .from('quiz_questions')
@@ -72,21 +93,30 @@ serve(async (req) => {
     const { data: answers, error: answersError } = await supabaseClient
       .from('quiz_answers')
       .select('answer_text, score_value, question_id')
-      .in('question_id', questionIds);
+      .in('question_id', questionIds.length > 0 ? questionIds : ['00000000-0000-0000-0000-000000000000']);
 
     // Build context from quiz data
     const quizTitle = (quiz.title as Record<string, string>)?.[language] || (quiz.title as Record<string, string>)?.en || '';
     const quizDescription = (quiz.description as Record<string, string>)?.[language] || (quiz.description as Record<string, string>)?.en || '';
     
-    // Calculate max possible score
+    // Calculate min/max possible score based on quiz type
     let maxPossibleScore = 0;
     let minPossibleScore = 0;
-    for (const q of questions) {
-      const qAnswers = (answers || []).filter(a => a.question_id === (q as any).id);
-      if (qAnswers.length > 0) {
-        const scores = qAnswers.map(a => a.score_value);
-        maxPossibleScore += Math.max(...scores);
-        minPossibleScore += Math.min(...scores);
+    
+    if (isHypothesisQuiz) {
+      // For hypothesis quizzes: score range is 0 to total questions
+      minPossibleScore = 0;
+      maxPossibleScore = hypothesisQuestionCount;
+      console.log('Hypothesis quiz score range:', minPossibleScore, '-', maxPossibleScore);
+    } else {
+      // For standard quizzes: calculate from question answers
+      for (const q of questions || []) {
+        const qAnswers = (answers || []).filter(a => a.question_id === (q as any).id);
+        if (qAnswers.length > 0) {
+          const scores = qAnswers.map(a => a.score_value);
+          maxPossibleScore += Math.max(...scores);
+          minPossibleScore += Math.min(...scores);
+        }
       }
     }
 
