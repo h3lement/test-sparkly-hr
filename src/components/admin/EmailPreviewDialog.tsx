@@ -11,7 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Globe, Maximize2, Minimize2, Languages, Loader2, Sparkles } from "lucide-react";
+import { Send, Globe, Maximize2, Minimize2, Loader2, Sparkles } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
   TooltipContent,
@@ -111,6 +112,15 @@ export function EmailPreviewDialog({
   const [testLanguage, setTestLanguage] = useState(initialLanguage || "en");
   const [sendingTest, setSendingTest] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState<{
+    stage: string;
+    message: string;
+    inputTokens: number;
+    outputTokens: number;
+    cost: number;
+    translatedCount?: number;
+    totalLanguages?: number;
+  } | null>(null);
   const [dialogSize, setDialogSize] = useState(getSavedDialogSize);
   const [isMaximized, setIsMaximized] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -120,6 +130,7 @@ export function EmailPreviewDialog({
   useEffect(() => {
     if (open) {
       setTestLanguage(initialLanguage || "en");
+      setTranslationProgress(null);
     }
   }, [open, initialLanguage]);
 
@@ -182,24 +193,81 @@ export function EmailPreviewDialog({
     }
 
     setTranslating(true);
+    setTranslationProgress({
+      stage: "starting",
+      message: "Initializing translation...",
+      inputTokens: 0,
+      outputTokens: 0,
+      cost: 0,
+    });
+
     try {
-      const { data, error } = await supabase.functions.invoke("translate-email-template", {
-        body: {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/translate-email-template`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
           templateId: template.id,
           sourceLanguage,
           sourceSubject,
-        },
+          stream: true,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
 
-      toast({
-        title: "Translation complete",
-        description: `Translated to ${data.translatedLanguages?.length || 0} languages (€${data.cost?.toFixed(4) || "0.0000"})`,
-      });
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
 
-      // Close and reopen to refresh
-      onOpenChange(false);
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          
+          const eventMatch = line.match(/^event: (\w+)/);
+          const dataMatch = line.match(/data: (.+)/);
+          
+          if (eventMatch && dataMatch) {
+            const eventType = eventMatch[1];
+            try {
+              const data = JSON.parse(dataMatch[1]);
+              
+              if (eventType === "progress") {
+                setTranslationProgress(data);
+              } else if (eventType === "complete") {
+                toast({
+                  title: "Translation complete",
+                  description: `Translated to ${data.translatedLanguages?.length || 0} languages (€${data.cost?.toFixed(4) || "0.0000"})`,
+                });
+                // Close and reopen to refresh
+                onOpenChange(false);
+              } else if (eventType === "error") {
+                throw new Error(data.message);
+              }
+            } catch (parseError) {
+              console.error("Failed to parse SSE data:", parseError);
+            }
+          }
+        }
+      }
     } catch (error: any) {
       console.error("Translation error:", error);
       toast({
@@ -209,6 +277,7 @@ export function EmailPreviewDialog({
       });
     } finally {
       setTranslating(false);
+      setTranslationProgress(null);
     }
   };
 
@@ -479,6 +548,36 @@ export function EmailPreviewDialog({
               </TooltipProvider>
             )}
           </div>
+
+          {/* Translation Progress Indicator */}
+          {translating && translationProgress && (
+            <div className="flex-shrink-0 p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium">{translationProgress.message}</span>
+                </div>
+                <Badge variant="outline" className="font-mono text-xs">
+                  €{translationProgress.cost.toFixed(4)}
+                </Badge>
+              </div>
+              
+              {translationProgress.totalLanguages && (
+                <Progress 
+                  value={(translationProgress.translatedCount || 0) / translationProgress.totalLanguages * 100} 
+                  className="h-2"
+                />
+              )}
+              
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>Input: <strong className="text-foreground">{translationProgress.inputTokens}</strong> tokens</span>
+                <span>Output: <strong className="text-foreground">{translationProgress.outputTokens}</strong> tokens</span>
+                {translationProgress.translatedCount !== undefined && (
+                  <span>Languages: <strong className="text-foreground">{translationProgress.translatedCount}/{translationProgress.totalLanguages}</strong></span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Controls Bar */}
           <div className="flex flex-wrap items-end gap-3 p-4 bg-muted/50 rounded-lg border flex-shrink-0">
