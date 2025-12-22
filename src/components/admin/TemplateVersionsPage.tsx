@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles } from "lucide-react";
+import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 interface EmailTemplate {
   id: string;
@@ -27,12 +29,22 @@ interface Quiz {
   title: Record<string, string>;
   slug: string;
   primary_language: string;
+  tone_of_voice?: string;
 }
 
 interface QuizLiveStatus {
   quiz: Quiz;
   hasLiveEmail: boolean;
   hasLiveWeb: boolean;
+}
+
+interface BulkGenerationProgress {
+  isGenerating: boolean;
+  current: number;
+  total: number;
+  currentQuizName: string;
+  completed: string[];
+  failed: { quizId: string; name: string; error: string }[];
 }
 
 // Email translations for preview - includes sample result data
@@ -94,16 +106,26 @@ export function TemplateVersionsPage() {
   const [liveStatus, setLiveStatus] = useState<QuizLiveStatus[]>([]);
   const [showMissingDetails, setShowMissingDetails] = useState(false);
 
+  const [bulkProgress, setBulkProgress] = useState<BulkGenerationProgress>({
+    isGenerating: false,
+    current: 0,
+    total: 0,
+    currentQuizName: "",
+    completed: [],
+    failed: [],
+  });
+
   const fetchQuizzes = useCallback(async () => {
     const { data, error } = await supabase
       .from("quizzes")
-      .select("id, title, slug, primary_language")
+      .select("id, title, slug, primary_language, tone_of_voice")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
       const typedQuizzes = data.map(q => ({
         ...q,
         title: q.title as Record<string, string>,
+        tone_of_voice: q.tone_of_voice || "",
       }));
       setQuizzes(typedQuizzes);
       return typedQuizzes;
@@ -192,7 +214,97 @@ export function TemplateVersionsPage() {
 
   // Compute missing live templates
   const missingLiveTemplates = liveStatus.filter(s => !s.hasLiveEmail || !s.hasLiveWeb);
+  const missingWebTemplates = liveStatus.filter(s => !s.hasLiveWeb);
   const allComplete = missingLiveTemplates.length === 0 && liveStatus.length > 0;
+
+  const handleBulkGenerateWeb = async () => {
+    if (missingWebTemplates.length === 0) {
+      toast.info("All quizzes already have live web templates");
+      return;
+    }
+
+    const quizzesToGenerate = missingWebTemplates.map(s => s.quiz);
+    
+    setBulkProgress({
+      isGenerating: true,
+      current: 0,
+      total: quizzesToGenerate.length,
+      currentQuizName: "",
+      completed: [],
+      failed: [],
+    });
+
+    const completed: string[] = [];
+    const failed: { quizId: string; name: string; error: string }[] = [];
+
+    for (let i = 0; i < quizzesToGenerate.length; i++) {
+      const quiz = quizzesToGenerate[i];
+      const quizName = getQuizTitle(quiz);
+
+      setBulkProgress(prev => ({
+        ...prev,
+        current: i + 1,
+        currentQuizName: quizName,
+      }));
+
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-results", {
+          body: {
+            quizId: quiz.id,
+            numberOfLevels: 4,
+            toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
+            higherScoreMeaning: "positive" as const,
+            language: quiz.primary_language || "en",
+            model: "google/gemini-2.5-flash",
+          },
+        });
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        // Set the newly generated version as live
+        if (data?.version?.id) {
+          const { error: updateError } = await supabase
+            .from("quiz_result_versions")
+            .update({ is_live: true })
+            .eq("id", data.version.id);
+
+          if (updateError) {
+            console.error("Failed to set version live:", updateError);
+          }
+        }
+
+        completed.push(quizName);
+        setBulkProgress(prev => ({
+          ...prev,
+          completed: [...prev.completed, quizName],
+        }));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        failed.push({ quizId: quiz.id, name: quizName, error: errorMessage });
+        setBulkProgress(prev => ({
+          ...prev,
+          failed: [...prev.failed, { quizId: quiz.id, name: quizName, error: errorMessage }],
+        }));
+      }
+    }
+
+    setBulkProgress(prev => ({
+      ...prev,
+      isGenerating: false,
+    }));
+
+    // Refresh live status
+    await fetchLiveStatus(quizzes);
+
+    if (failed.length === 0) {
+      toast.success(`Successfully generated ${completed.length} web templates`);
+    } else if (completed.length > 0) {
+      toast.warning(`Generated ${completed.length} templates, ${failed.length} failed`);
+    } else {
+      toast.error(`All ${failed.length} generations failed`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -247,6 +359,54 @@ export function TemplateVersionsPage() {
               </Button>
             )}
           </div>
+
+          {/* Bulk Generation Progress */}
+          {bulkProgress.isGenerating && (
+            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating: {bulkProgress.currentQuizName}
+                  </span>
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {bulkProgress.current} / {bulkProgress.total}
+                  </span>
+                </div>
+                <Progress 
+                  value={(bulkProgress.current / bulkProgress.total) * 100} 
+                  className="h-2"
+                />
+                {bulkProgress.completed.length > 0 && (
+                  <div className="text-xs text-green-600 dark:text-green-400">
+                    ✓ Completed: {bulkProgress.completed.join(", ")}
+                  </div>
+                )}
+                {bulkProgress.failed.length > 0 && (
+                  <div className="text-xs text-red-600 dark:text-red-400">
+                    ✗ Failed: {bulkProgress.failed.map(f => f.name).join(", ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Generate Button */}
+          {!bulkProgress.isGenerating && missingWebTemplates.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 flex items-center justify-between">
+              <div className="text-sm text-amber-700 dark:text-amber-300">
+                {missingWebTemplates.length} {missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates
+              </div>
+              <Button
+                onClick={handleBulkGenerateWeb}
+                size="sm"
+                className="gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate All Missing ({missingWebTemplates.length})
+              </Button>
+            </div>
+          )}
 
           {/* Expanded details */}
           {showMissingDetails && !allComplete && (
