@@ -215,6 +215,7 @@ export type Database = {
       }
       email_templates: {
         Row: {
+          body_content: Json
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -231,6 +232,7 @@ export type Database = {
           version_number: number
         }
         Insert: {
+          body_content?: Json
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -247,6 +249,7 @@ export type Database = {
           version_number?: number
         }
         Update: {
+          body_content?: Json
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
