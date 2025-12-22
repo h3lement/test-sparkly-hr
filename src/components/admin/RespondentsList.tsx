@@ -221,7 +221,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .order("created_at", { ascending: false }),
         supabase
           .from("quizzes")
-          .select("*"),
+          .select("*")
+          .eq("is_active", true),
         supabase
           .from("quiz_questions")
           .select("*")
@@ -252,10 +253,13 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         answers: null,
       }));
 
-      // Merge and sort by created_at
-      const allLeads = [...(leadsRes.data || []), ...hypothesisLeadsConverted].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      // Get active quiz IDs
+      const activeQuizIds = new Set((quizzesRes.data || []).map(q => q.id));
+
+      // Merge and sort by created_at, filtering to only active quizzes
+      const allLeads = [...(leadsRes.data || []), ...hypothesisLeadsConverted]
+        .filter(lead => lead.quiz_id && activeQuizIds.has(lead.quiz_id))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setLeads(allLeads);
       setQuizzes(quizzesRes.data || []);
