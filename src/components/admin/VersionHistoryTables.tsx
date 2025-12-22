@@ -105,74 +105,6 @@ interface WebVersionHistoryProps {
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
 }
 
-// Language selection dialog for preview with horizontal language selector
-function LanguageSelectDialog({
-  open,
-  onOpenChange,
-  template,
-  onSelectLanguage,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  template: EmailTemplate | null;
-  onSelectLanguage: (template: EmailTemplate, language: string) => void;
-}) {
-  if (!template) return null;
-
-  const availableLanguages = ALL_LANGUAGE_CODES.filter(
-    lang => template.subjects?.[lang.code]?.trim() || template.body_content?.[lang.code]?.trim()
-  );
-
-  // Auto-select EN on open if available
-  const handleSelectLanguage = (langCode: string) => {
-    onSelectLanguage(template, langCode);
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            Select Preview Language
-          </DialogTitle>
-        </DialogHeader>
-        <div className="py-4">
-          <p className="text-sm text-muted-foreground mb-4">
-            Choose a language to preview the email template (v{template.version_number})
-          </p>
-          
-          {/* Horizontal language code selector */}
-          <div className="flex flex-wrap gap-1.5">
-            {ALL_LANGUAGE_CODES.map((lang) => {
-              const isAvailable = availableLanguages.some(l => l.code === lang.code);
-              return (
-                <Button
-                  key={lang.code}
-                  variant={lang.code === "en" && isAvailable ? "default" : isAvailable ? "outline" : "ghost"}
-                  size="sm"
-                  onClick={() => isAvailable && handleSelectLanguage(lang.code)}
-                  disabled={!isAvailable}
-                  className={`h-8 px-3 font-mono uppercase text-xs ${!isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
-                  title={`${lang.name}${!isAvailable ? ' (not available)' : ''}`}
-                >
-                  {lang.code}
-                </Button>
-              );
-            })}
-          </div>
-          
-          {availableLanguages.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4 mt-4">
-              No translations available for this template
-            </p>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // Default column widths for email templates table
 const EMAIL_DEFAULT_WIDTHS = {
@@ -194,8 +126,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const [filterType, setFilterType] = useState<string>("quiz_results"); // Default to Quiz Taker
-  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
-  const [selectedTemplateForPreview, setSelectedTemplateForPreview] = useState<EmailTemplate | null>(null);
   const { toast } = useToast();
 
   // Resizable columns with localStorage persistence
@@ -402,12 +332,8 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   };
 
   const handlePreviewClick = (template: EmailTemplate) => {
-    setSelectedTemplateForPreview(template);
-    setLanguageDialogOpen(true);
-  };
-
-  const handleLanguageSelect = (template: EmailTemplate, language: string) => {
-    onPreview?.(template, language);
+    // Open preview directly with EN as default language
+    onPreview?.(template, "en");
   };
 
   if (loading && templates.length === 0) {
@@ -769,17 +695,21 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
           )}
         </CardContent>
       </Card>
-
-      {/* Language Selection Dialog */}
-      <LanguageSelectDialog
-        open={languageDialogOpen}
-        onOpenChange={setLanguageDialogOpen}
-        template={selectedTemplateForPreview}
-        onSelectLanguage={handleLanguageSelect}
-      />
     </>
   );
 }
+
+// Default column widths for web versions table
+const WEB_DEFAULT_WIDTHS = {
+  version: 80,
+  quiz: 150,
+  levels: 80,
+  created: 130,
+  lang: 70,
+  leads: 70,
+  cost: 90,
+  actions: 100,
+};
 
 export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistoryProps) {
   const [versions, setVersions] = useState<WebResultVersion[]>([]);
@@ -789,6 +719,13 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const { toast } = useToast();
+
+  // Resizable columns with localStorage persistence
+  const { columnWidths, handleMouseDown } = useResizableColumns({
+    defaultWidths: WEB_DEFAULT_WIDTHS,
+    storageKey: "web-versions-column-widths",
+    minWidth: 50,
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -977,17 +914,90 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
             <p className="text-sm text-muted-foreground mt-1">Generate results to create versions</p>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
-            {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_70px_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
-              <span>Version</span>
-              {!quizId && <span>Quiz</span>}
-              <span>Levels</span>
-              <span>Created</span>
-              <span className="text-center" title="Languages translated">Lang</span>
-              <span className="text-center">Leads</span>
-              <span className="text-right">Cost</span>
-              <span className="text-right">Actions</span>
+          <div className="border rounded-lg overflow-hidden bg-card shadow-sm overflow-x-auto">
+            {/* Table Header with resizable columns */}
+            <div 
+              className="flex bg-muted/40 text-sm font-medium text-foreground border-b min-w-max"
+            >
+              <div 
+                className="flex items-center px-3 py-3 relative group"
+                style={{ width: columnWidths.version }}
+              >
+                <span>Version</span>
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                  onMouseDown={(e) => handleMouseDown("version", e)}
+                />
+              </div>
+              {!quizId && (
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.quiz }}
+                >
+                  <span>Quiz</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("quiz", e)}
+                  />
+                </div>
+              )}
+              <div 
+                className="flex items-center px-3 py-3 relative group"
+                style={{ width: columnWidths.levels }}
+              >
+                <span>Levels</span>
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                  onMouseDown={(e) => handleMouseDown("levels", e)}
+                />
+              </div>
+              <div 
+                className="flex items-center px-3 py-3 relative group"
+                style={{ width: columnWidths.created }}
+              >
+                <span>Created</span>
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                  onMouseDown={(e) => handleMouseDown("created", e)}
+                />
+              </div>
+              <div 
+                className="flex items-center justify-center px-3 py-3 relative group"
+                style={{ width: columnWidths.lang }}
+                title="Languages translated"
+              >
+                <span>Lang</span>
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                  onMouseDown={(e) => handleMouseDown("lang", e)}
+                />
+              </div>
+              <div 
+                className="flex items-center justify-center px-3 py-3 relative group"
+                style={{ width: columnWidths.leads }}
+              >
+                <span>Leads</span>
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                  onMouseDown={(e) => handleMouseDown("leads", e)}
+                />
+              </div>
+              <div 
+                className="flex items-center justify-end px-3 py-3 relative group"
+                style={{ width: columnWidths.cost }}
+              >
+                <span>Cost</span>
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                  onMouseDown={(e) => handleMouseDown("cost", e)}
+                />
+              </div>
+              <div 
+                className="flex items-center justify-end px-3 py-3"
+                style={{ width: columnWidths.actions }}
+              >
+                <span>Actions</span>
+              </div>
             </div>
 
             {/* Table Rows */}
@@ -1004,11 +1014,14 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_70px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
+                      className={`flex items-center text-sm border-b list-row-interactive cursor-pointer min-w-max ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
-                      <div className="flex items-center gap-2">
+                      <div 
+                        className="flex items-center gap-2 px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.version }}
+                      >
                         <span className="font-medium">v{version.version_number}</span>
                         {index === 0 && filterQuiz !== "all" && (
                           <Badge variant="outline" className="text-xs h-5 px-1.5">
@@ -1019,20 +1032,31 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
 
                       {/* Quiz (only when showing all) */}
                       {!quizId && (
-                        <div className="truncate text-foreground font-medium" title={getQuizTitle(version.quiz_id)}>
+                        <div 
+                          className="truncate text-foreground font-medium px-3 py-3 shrink-0"
+                          style={{ width: columnWidths.quiz }}
+                          title={getQuizTitle(version.quiz_id)}
+                        >
                           {getQuizTitle(version.quiz_id)}
                         </div>
                       )}
 
                       {/* Levels */}
-                      <div>
+                      <div 
+                        className="px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.levels }}
+                      >
                         <Badge variant="secondary" className="text-xs h-5 px-1.5">
                           {version.result_levels.length} levels
                         </Badge>
                       </div>
 
                       {/* Created - with user name */}
-                      <div className="text-sm text-muted-foreground" title={version.created_by_email || "Unknown"}>
+                      <div 
+                        className="text-sm text-muted-foreground px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.created }}
+                        title={version.created_by_email || "Unknown"}
+                      >
                         <div className="truncate">{formatDate(version.created_at)}</div>
                         {creatorName && (
                           <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
@@ -1040,7 +1064,11 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                       </div>
 
                       {/* Translation Count */}
-                      <div className="flex items-center justify-center" title={`${translationCount}/${TOTAL_LANGUAGES} languages translated`}>
+                      <div 
+                        className="flex items-center justify-center px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.lang }}
+                        title={`${translationCount}/${TOTAL_LANGUAGES} languages translated`}
+                      >
                         <div className="flex items-center gap-1">
                           <Languages className="w-3.5 h-3.5 text-muted-foreground" />
                           <span className={`text-xs ${translationCount >= TOTAL_LANGUAGES ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
@@ -1050,7 +1078,11 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                       </div>
 
                       {/* Lead Count */}
-                      <div className="flex items-center justify-center gap-1" title={`${leadCount} leads used this version`}>
+                      <div 
+                        className="flex items-center justify-center gap-1 px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.leads }}
+                        title={`${leadCount} leads used this version`}
+                      >
                         <Users className="w-3.5 h-3.5 text-muted-foreground" />
                         <span className={leadCount > 0 ? "text-blue-600 font-medium" : "text-muted-foreground"}>
                           {leadCount}
@@ -1058,12 +1090,18 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                       </div>
 
                       {/* Cost */}
-                      <div className="text-sm text-muted-foreground text-right">
+                      <div 
+                        className="text-sm text-muted-foreground text-right px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.cost }}
+                      >
                         {version.estimated_cost_eur ? `€${version.estimated_cost_eur.toFixed(4)}` : "-"}
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center justify-end gap-2">
+                      <div 
+                        className="flex items-center justify-end gap-2 px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.actions }}
+                      >
                         {onRestoreVersion && (
                           <Button
                             variant="ghost"
