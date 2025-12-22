@@ -42,6 +42,7 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7');
   const [pageViews, setPageViews] = useState<PageViewData[]>([]);
+  const [hypothesisPageCount, setHypothesisPageCount] = useState(0);
   const [stats, setStats] = useState({
     totalPageViews: 0,
     totalSessions: 0,
@@ -55,17 +56,17 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
   const isHypothesis = quizType === "hypothesis";
 
   // Build funnel steps based on quiz type and configuration
-  const getFunnelSteps = () => {
+  const getFunnelSteps = (pageCount: number) => {
     if (isHypothesis) {
       // Hypothesis quiz has a different flow: welcome -> pages (p1, p2, etc.) -> email -> results
       const steps = [
         { slug: 'welcome', label: 'Welcome' },
-        { slug: 'p1', label: 'Page 1' },
-        { slug: 'p2', label: 'Page 2' },
-        { slug: 'p3', label: 'Page 3' },
-        { slug: 'p4', label: 'Page 4' },
-        { slug: 'p5', label: 'Page 5' },
       ];
+      
+      // Add dynamic page steps based on actual page count
+      for (let i = 1; i <= pageCount; i++) {
+        steps.push({ slug: `p${i}`, label: `Page ${i}` });
+      }
       
       if (includeOpenMindedness) {
         steps.push({ slug: 'mindedness', label: 'Open-Mind' });
@@ -101,6 +102,20 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
   const fetchStats = async () => {
     setLoading(true);
     try {
+      // For hypothesis quizzes, fetch actual page count
+      let pageCount = 0;
+      if (isHypothesis) {
+        const { count, error: countError } = await supabase
+          .from('hypothesis_pages')
+          .select('*', { count: 'exact', head: true })
+          .eq('quiz_id', quizId);
+        
+        if (!countError) {
+          pageCount = count || 0;
+          setHypothesisPageCount(pageCount);
+        }
+      }
+
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(dateRange));
 
@@ -127,7 +142,7 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
       });
       
       setPageViews(filteredData);
-      calculateStats(filteredData);
+      calculateStats(filteredData, pageCount);
     } catch (error: any) {
       console.error('Error fetching stats:', error);
       toast({
@@ -140,8 +155,8 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
     }
   };
 
-  const calculateStats = (views: PageViewData[]) => {
-    const FUNNEL_STEPS = getFunnelSteps();
+  const calculateStats = (views: PageViewData[], pageCount: number) => {
+    const FUNNEL_STEPS = getFunnelSteps(pageCount);
     
     // Get unique sessions and their visited pages
     const sessionProgress = new Map<string, Set<string>>();
