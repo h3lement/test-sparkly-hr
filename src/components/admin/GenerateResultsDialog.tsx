@@ -137,7 +137,9 @@ export function GenerateResultsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={step === "preview" ? "sm:max-w-2xl" : "sm:max-w-md"}>
+      <DialogContent
+        className={`${step === "preview" ? "sm:max-w-2xl" : "sm:max-w-md"} max-h-[85vh] overflow-hidden flex flex-col`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -245,7 +247,7 @@ export function GenerateResultsDialog({
         ) : (
           <>
             {/* Preview Step */}
-            <div className="py-2">
+            <div className="flex-1 min-h-0 py-2 flex flex-col">
               {/* Cost badge */}
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex items-center gap-1 px-2 py-1 rounded bg-muted text-xs">
@@ -258,7 +260,7 @@ export function GenerateResultsDialog({
               </div>
 
               {/* Results Preview */}
-              <ScrollArea className="max-h-[60vh] pr-3">
+              <ScrollArea className="flex-1 min-h-0 pr-3">
                 <div className="space-y-3">
                   {generatedLevels.map((level, index) => (
                     <div
