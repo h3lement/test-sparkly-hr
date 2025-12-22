@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.translate-email-template]
 verify_jwt = true
+
+[functions.check-domain-reputation]
+verify_jwt = true
