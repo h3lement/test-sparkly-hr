@@ -1005,7 +1005,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                 className="flex items-center px-3 py-3 relative group"
                 style={{ width: columnWidths.levels }}
               >
-                <span>Levels</span>
+                <span>Results</span>
                 <div
                   className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
                   onMouseDown={(e) => handleMouseDown("levels", e)}
@@ -1101,13 +1101,13 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                         </div>
                       )}
 
-                      {/* Levels */}
+                      {/* Results */}
                       <div 
                         className="px-3 py-3 shrink-0"
                         style={{ width: columnWidths.levels }}
                       >
                         <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                          {version.result_levels.length} levels
+                          {version.result_levels.length} results
                         </Badge>
                       </div>
 
@@ -1209,7 +1209,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                               onRestoreVersion(version.result_levels);
                               toast({
                                 title: "Version restored",
-                                description: `Applied version ${version.version_number} result levels`,
+                                description: `Applied version ${version.version_number} results`,
                               });
                             }}
                             className="h-8 w-8 p-0 text-primary"
