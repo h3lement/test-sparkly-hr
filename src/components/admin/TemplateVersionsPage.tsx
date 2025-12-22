@@ -9,6 +9,7 @@ import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,6 +118,8 @@ export function TemplateVersionsPage() {
   const [showMissingDetails, setShowMissingDetails] = useState(false);
   const [webRefreshKey, setWebRefreshKey] = useState(0);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [selectedQuizIds, setSelectedQuizIds] = useState<Set<string>>(new Set());
+  const [showQuizSelection, setShowQuizSelection] = useState(false);
 
   const [bulkProgress, setBulkProgress] = useState<BulkGenerationProgress>({
     isGenerating: false,
@@ -357,16 +360,20 @@ export function TemplateVersionsPage() {
     }
   };
 
-  const handleRegenerateAllWeb = async () => {
-    if (quizzes.length === 0) {
-      toast.info("No quizzes found");
+  const handleRegenerateSelectedWeb = async () => {
+    const quizzesToRegenerate = selectedQuizIds.size > 0 
+      ? quizzes.filter(q => selectedQuizIds.has(q.id))
+      : quizzes;
+
+    if (quizzesToRegenerate.length === 0) {
+      toast.info("No quizzes selected");
       return;
     }
 
     setBulkProgress({
       isGenerating: true,
       current: 0,
-      total: quizzes.length,
+      total: quizzesToRegenerate.length,
       currentQuizName: "",
       completed: [],
       failed: [],
@@ -434,8 +441,8 @@ export function TemplateVersionsPage() {
       return false;
     };
 
-    for (let i = 0; i < quizzes.length; i++) {
-      const quiz = quizzes[i];
+    for (let i = 0; i < quizzesToRegenerate.length; i++) {
+      const quiz = quizzesToRegenerate[i];
       const quizName = getQuizTitle(quiz);
 
       setBulkProgress(prev => ({
@@ -454,7 +461,7 @@ export function TemplateVersionsPage() {
         }));
       }
 
-      if (i < quizzes.length - 1) {
+      if (i < quizzesToRegenerate.length - 1) {
         await sleep(500);
       }
     }
@@ -463,6 +470,10 @@ export function TemplateVersionsPage() {
       ...prev,
       isGenerating: false,
     }));
+
+    // Reset selection
+    setSelectedQuizIds(new Set());
+    setShowQuizSelection(false);
 
     await fetchLiveStatus(quizzes);
     setWebRefreshKey(prev => prev + 1);
@@ -473,6 +484,26 @@ export function TemplateVersionsPage() {
       toast.warning(`Regenerated ${completed.length} templates, ${failed.length} failed`);
     } else {
       toast.error(`All ${failed.length} regenerations failed`);
+    }
+  };
+
+  const toggleQuizSelection = (quizId: string) => {
+    setSelectedQuizIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(quizId)) {
+        newSet.delete(quizId);
+      } else {
+        newSet.add(quizId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedQuizIds.size === quizzes.length) {
+      setSelectedQuizIds(new Set());
+    } else {
+      setSelectedQuizIds(new Set(quizzes.map(q => q.id)));
     }
   };
 
@@ -563,34 +594,92 @@ export function TemplateVersionsPage() {
 
           {/* Bulk Generate Buttons */}
           {!bulkProgress.isGenerating && (
-            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 flex items-center justify-between flex-wrap gap-3">
-              <div className="text-sm text-amber-700 dark:text-amber-300">
-                {missingWebTemplates.length > 0 
-                  ? `${missingWebTemplates.length} ${missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates`
-                  : `${quizzes.length} quizzes configured`
-                }
-              </div>
-              <div className="flex items-center gap-2">
-                {missingWebTemplates.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="text-sm text-amber-700 dark:text-amber-300">
+                  {missingWebTemplates.length > 0 
+                    ? `${missingWebTemplates.length} ${missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates`
+                    : `${quizzes.length} quizzes configured`
+                  }
+                </div>
+                <div className="flex items-center gap-2">
+                  {missingWebTemplates.length > 0 && (
+                    <Button
+                      onClick={handleBulkGenerateWeb}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Generate Missing ({missingWebTemplates.length})
+                    </Button>
+                  )}
                   <Button
-                    onClick={handleBulkGenerateWeb}
+                    onClick={() => setShowQuizSelection(!showQuizSelection)}
                     size="sm"
+                    variant="outline"
                     className="gap-2"
                   >
-                    <Sparkles className="w-4 h-4" />
-                    Generate Missing ({missingWebTemplates.length})
+                    <RefreshCw className="w-4 h-4" />
+                    Regenerate ({selectedQuizIds.size > 0 ? selectedQuizIds.size : quizzes.length})
                   </Button>
-                )}
-                <Button
-                  onClick={() => setShowRegenerateConfirm(true)}
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Regenerate All ({quizzes.length})
-                </Button>
+                </div>
               </div>
+
+              {/* Quiz Selection Panel */}
+              {showQuizSelection && (
+                <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                      Select quizzes to regenerate:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={toggleSelectAll}
+                        className="h-7 text-xs"
+                      >
+                        {selectedQuizIds.size === quizzes.length ? "Deselect All" : "Select All"}
+                      </Button>
+                      <Button
+                        onClick={() => setShowRegenerateConfirm(true)}
+                        size="sm"
+                        className="h-7 gap-1"
+                        disabled={selectedQuizIds.size === 0 && quizzes.length === 0}
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Regenerate {selectedQuizIds.size > 0 ? `(${selectedQuizIds.size})` : `All (${quizzes.length})`}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-1 max-h-48 overflow-y-auto">
+                    {quizzes.map(quiz => {
+                      const status = liveStatus.find(s => s.quiz.id === quiz.id);
+                      return (
+                        <div 
+                          key={quiz.id}
+                          className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-amber-100/50 dark:hover:bg-amber-900/30 cursor-pointer"
+                          onClick={() => toggleQuizSelection(quiz.id)}
+                        >
+                          <Checkbox 
+                            checked={selectedQuizIds.has(quiz.id)}
+                            onCheckedChange={() => toggleQuizSelection(quiz.id)}
+                            className="pointer-events-none"
+                          />
+                          <span className="text-sm text-amber-900 dark:text-amber-100 flex-1">
+                            {getQuizTitle(quiz)}
+                          </span>
+                          {status?.hasLiveWeb && (
+                            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300">
+                              Has live
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -598,9 +687,11 @@ export function TemplateVersionsPage() {
           <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Regenerate All Templates?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Regenerate {selectedQuizIds.size > 0 ? `${selectedQuizIds.size} Selected` : "All"} Templates?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will generate new web result templates for all {quizzes.length} quizzes and set them as live. 
+                  This will generate new web result templates for {selectedQuizIds.size > 0 ? `${selectedQuizIds.size} selected` : `all ${quizzes.length}`} quizzes and set them as live. 
                   Existing live templates will be replaced with the newly generated versions.
                   <br /><br />
                   <strong>This action cannot be undone.</strong> Previous versions will still be available in the version history.
@@ -611,12 +702,12 @@ export function TemplateVersionsPage() {
                 <AlertDialogAction 
                   onClick={() => {
                     setShowRegenerateConfirm(false);
-                    handleRegenerateAllWeb();
+                    handleRegenerateSelectedWeb();
                   }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Regenerate All
+                  Regenerate {selectedQuizIds.size > 0 ? `(${selectedQuizIds.size})` : "All"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
