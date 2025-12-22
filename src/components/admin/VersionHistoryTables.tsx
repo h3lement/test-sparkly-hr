@@ -80,6 +80,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const [emailStats, setEmailStats] = useState<Record<string, { sent: number; failed: number }>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
+  const [filterType, setFilterType] = useState<string>("all");
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -99,11 +100,10 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       }));
       setQuizzes(typedQuizzes);
 
-      // Fetch templates - all or filtered
+      // Fetch templates - all or filtered (include both quiz_results and admin_notification)
       let query = supabase
         .from("email_templates")
         .select("*")
-        .eq("template_type", "quiz_results")
         .order("created_at", { ascending: false });
 
       if (quizId) {
@@ -241,8 +241,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   // Sort: live templates first (grouped by quiz), then by created_at descending
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
-      if (filterQuiz === "all") return true;
-      return t.quiz_id === filterQuiz;
+      const quizMatch = filterQuiz === "all" || t.quiz_id === filterQuiz;
+      const typeMatch = filterType === "all" || t.template_type === filterType;
+      return quizMatch && typeMatch;
     });
 
     // Sort: live first, then by created_at descending
@@ -253,7 +254,23 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       // Then by created_at descending (newest first)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [templates, filterQuiz]);
+  }, [templates, filterQuiz, filterType]);
+
+  const getTemplateTypeLabel = (type: string) => {
+    switch (type) {
+      case 'quiz_results': return 'Quiz Taker';
+      case 'admin_notification': return 'Admin';
+      default: return type;
+    }
+  };
+
+  const getTemplateTypeBadgeVariant = (type: string) => {
+    switch (type) {
+      case 'quiz_results': return 'secondary';
+      case 'admin_notification': return 'outline';
+      default: return 'secondary';
+    }
+  };
 
   if (loading && templates.length === 0) {
     return (
@@ -281,6 +298,16 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
             </Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="quiz_results">Quiz Taker</SelectItem>
+                <SelectItem value="admin_notification">Admin</SelectItem>
+              </SelectContent>
+            </Select>
             {!quizId && quizzes.length > 0 && (
               <Select value={filterQuiz} onValueChange={setFilterQuiz}>
                 <SelectTrigger className="w-[180px] h-8 text-xs">
@@ -325,8 +352,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
+              <span>Type</span>
               {!quizId && <span>Quiz</span>}
               <span>Sender</span>
               <span>Created</span>
@@ -347,7 +375,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                 return (
                   <div
                     key={template.id}
-                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                    className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
                       template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                     }`}
                   >
@@ -359,6 +387,16 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                           LIVE
                         </Badge>
                       )}
+                    </div>
+
+                    {/* Template Type */}
+                    <div>
+                      <Badge 
+                        variant={getTemplateTypeBadgeVariant(template.template_type) as "secondary" | "outline"} 
+                        className="text-xs"
+                      >
+                        {getTemplateTypeLabel(template.template_type)}
+                      </Badge>
                     </div>
 
                     {/* Quiz (only when showing all) */}
