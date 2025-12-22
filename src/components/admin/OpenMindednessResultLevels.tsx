@@ -160,7 +160,7 @@ function SortableLevel({
     <div
       ref={setNodeRef}
       style={style}
-      className={`px-4 py-2.5 border-b last:border-b-0 ${index % 2 === 1 ? "bg-muted/40" : ""}`}
+      className={`px-4 py-2.5 border-b last:border-b-0 list-row-interactive ${index % 2 === 1 ? "list-row-odd" : "list-row-even"}`}
     >
       <div className="flex items-center gap-2">
         <div

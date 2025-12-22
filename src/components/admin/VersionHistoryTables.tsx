@@ -266,12 +266,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 
             {/* Table Rows */}
             <div className="max-h-[300px] overflow-y-auto">
-              {filteredTemplates.map((template) => {
+              {filteredTemplates.map((template, index) => {
                 return (
                   <div
                     key={template.id}
-                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_140px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_140px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
-                      template.is_live ? "bg-primary/5" : "bg-card"
+                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_140px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_140px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                      template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                     }`}
                   >
                     {/* Version */}
@@ -503,7 +503,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_140px_90px_100px]' : 'grid-cols-[70px_1fr_80px_140px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b hover:bg-muted/20 transition-colors cursor-pointer bg-card`}
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_140px_90px_100px]' : 'grid-cols-[70px_1fr_80px_140px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
