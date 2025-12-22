@@ -49,8 +49,8 @@ export function AdminTableRow({ children, inactive, onClick, className, id, inde
     <tr
       id={id}
       className={cn(
-        "transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.1)]",
-        isEvenRow ? "bg-card" : "bg-secondary/20",
+        "list-row-interactive",
+        isEvenRow ? "list-row-even" : "list-row-odd",
         inactive && "opacity-60",
         onClick && "cursor-pointer",
         className
