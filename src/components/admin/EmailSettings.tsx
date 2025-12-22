@@ -1217,14 +1217,19 @@ export function EmailSettings() {
 
       {/* Main Content: Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Left: Your Configuration */}
+        {/* Left: SMTP Configuration */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Your Configuration</h3>
+            <h3 className="text-sm font-semibold text-foreground">SMTP Configuration</h3>
             {!isEditingConfig ? (
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setIsEditingConfig(true)}>
-                <Pencil className="h-3 w-3 mr-1" />
-                Edit
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setIsEditingConfig(true)}
+              >
+                <Settings className="h-3.5 w-3.5 mr-1.5" />
+                Configure
               </Button>
             ) : (
               <div className="flex gap-1">
@@ -1971,7 +1976,26 @@ export function EmailSettings() {
 
         {/* Right: Connection Details */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Connection Status</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">Connection Status</h3>
+            <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <Settings className="h-3.5 w-3.5 mr-1.5" />
+                  Recheck Settings
+                  {showRecheckSettings ? (
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          </div>
           
           <div className={`p-4 rounded-lg border ${
             connectionStatus.status === "connected" 
@@ -2147,22 +2171,9 @@ export function EmailSettings() {
             </div>
           </div>
 
-          {/* Connection Recheck Settings */}
+          {/* Connection Recheck Settings - Content only (trigger is in header) */}
           <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-between h-8 text-xs text-muted-foreground hover:text-foreground">
-                <div className="flex items-center gap-2">
-                  <Settings className="h-3 w-3" />
-                  <span>Recheck Settings</span>
-                </div>
-                {showRecheckSettings ? (
-                  <ChevronDown className="h-3 w-3" />
-                ) : (
-                  <ChevronRight className="h-3 w-3" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-3 rounded-lg border bg-muted/30 space-y-3 mt-2">
+            <CollapsibleContent className="p-3 rounded-lg border bg-muted/30 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-xs font-medium">Auto Reconnect</Label>
