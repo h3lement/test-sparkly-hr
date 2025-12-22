@@ -1976,7 +1976,7 @@ export function EmailSettings() {
 
         {/* Right: Connection Details */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between relative">
+          <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Connection Status</h3>
             <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
               <CollapsibleTrigger asChild>
@@ -1994,7 +1994,12 @@ export function EmailSettings() {
                   )}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="p-3 rounded-lg border bg-muted/30 space-y-3 mt-2 absolute right-0 top-full z-50 w-80 bg-background shadow-lg">
+            </Collapsible>
+          </div>
+
+          {/* Recheck Settings Panel - pushes content down when open */}
+          <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
+            <CollapsibleContent className="p-3 rounded-lg border border-border bg-card space-y-3 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-xs font-medium">Auto Reconnect</Label>
@@ -2185,8 +2190,7 @@ export function EmailSettings() {
                   Test Connection Now
                 </Button>
               </CollapsibleContent>
-            </Collapsible>
-          </div>
+          </Collapsible>
           
           <div className={`p-4 rounded-lg border ${
             connectionStatus.status === "connected" 
