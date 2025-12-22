@@ -189,6 +189,8 @@ export function EmailSettings() {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [configDraft, setConfigDraft] = useState<EmailConfig>(emailConfig);
   const [isGeneratingDkim, setIsGeneratingDkim] = useState(false);
+  const [dkimPublicKey, setDkimPublicKey] = useState<string>("");
+  const [dkimDnsRecord, setDkimDnsRecord] = useState<string>("");
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [rateLimitInfo, setRateLimitInfo] = useState<{ lastSentAt: Date | null; emailsPerMinute: number }>({
     lastSentAt: null,
@@ -417,9 +419,12 @@ export function EmailSettings() {
           dkimSelector: data.selector,
           dkimPrivateKey: data.privateKey,
         }));
+        // Store public key and DNS record for display
+        setDkimPublicKey(data.publicKey || "");
+        setDkimDnsRecord(data.dnsRecord || "");
         toast({
           title: "DKIM keys generated",
-          description: "Private key and selector have been generated. Don't forget to add the DNS record.",
+          description: "Both private and public keys generated. Copy the DNS record below to your domain.",
         });
       } else {
         throw new Error(data?.error || "Failed to generate DKIM keys");
@@ -1201,14 +1206,39 @@ export function EmailSettings() {
                   </div>
                   
                   {configDraft.dkimSelector && configDraft.dkimDomain && (
-                    <div className="p-2 bg-muted rounded space-y-1">
-                      <p className="text-xs text-muted-foreground">Add this TXT record to your DNS:</p>
-                      <p className="text-xs font-mono">
-                        Host: <span className="font-semibold">{configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground italic">
-                        Value: The public key (generated from the private key above)
-                      </p>
+                    <div className="p-3 bg-muted rounded-lg space-y-2 border">
+                      <p className="text-xs font-medium text-foreground">DNS Record to Add:</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Host (Name):</p>
+                        <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                          {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Type: <span className="font-medium text-foreground">TXT</span></p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
+                        {dkimDnsRecord ? (
+                          <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
+                            {dkimDnsRecord}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-amber-600 italic">
+                            Click "Generate" to create keys and get the DNS record value.
+                          </p>
+                        )}
+                      </div>
+                      {dkimPublicKey && (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                            View raw public key
+                          </summary>
+                          <div className="mt-2 p-2 bg-background rounded font-mono break-all border max-h-20 overflow-y-auto">
+                            {dkimPublicKey}
+                          </div>
+                        </details>
+                      )}
                     </div>
                   )}
                 </div>
