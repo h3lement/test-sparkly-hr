@@ -42,7 +42,7 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7');
   const [pageViews, setPageViews] = useState<PageViewData[]>([]);
-  const [hypothesisPageCount, setHypothesisPageCount] = useState(0);
+  const [dynamicStepCount, setDynamicStepCount] = useState(0);
   const [stats, setStats] = useState({
     totalPageViews: 0,
     totalSessions: 0,
@@ -81,13 +81,12 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
     // Standard quiz flow
     const steps = [
       { slug: 'welcome', label: 'Welcome' },
-      { slug: 'q1', label: 'Q1' },
-      { slug: 'q2', label: 'Q2' },
-      { slug: 'q3', label: 'Q3' },
-      { slug: 'q4', label: 'Q4' },
-      { slug: 'q5', label: 'Q5' },
-      { slug: 'q6', label: 'Q6' },
     ];
+    
+    // Add dynamic question steps based on actual question count
+    for (let i = 1; i <= pageCount; i++) {
+      steps.push({ slug: `q${i}`, label: `Q${i}` });
+    }
     
     if (includeOpenMindedness) {
       steps.push({ slug: 'mindedness', label: 'Open-Mind' });
@@ -102,19 +101,30 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
   const fetchStats = async () => {
     setLoading(true);
     try {
-      // For hypothesis quizzes, fetch actual page count
-      let pageCount = 0;
+      // Fetch actual step count based on quiz type
+      let stepCount = 0;
       if (isHypothesis) {
+        // For hypothesis quizzes, fetch actual page count
         const { count, error: countError } = await supabase
           .from('hypothesis_pages')
           .select('*', { count: 'exact', head: true })
           .eq('quiz_id', quizId);
         
         if (!countError) {
-          pageCount = count || 0;
-          setHypothesisPageCount(pageCount);
+          stepCount = count || 0;
+        }
+      } else {
+        // For standard quizzes, fetch actual question count
+        const { count, error: countError } = await supabase
+          .from('quiz_questions')
+          .select('*', { count: 'exact', head: true })
+          .eq('quiz_id', quizId);
+        
+        if (!countError) {
+          stepCount = count || 0;
         }
       }
+      setDynamicStepCount(stepCount);
 
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(dateRange));
@@ -142,7 +152,7 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType
       });
       
       setPageViews(filteredData);
-      calculateStats(filteredData, pageCount);
+      calculateStats(filteredData, stepCount);
     } catch (error: any) {
       console.error('Error fetching stats:', error);
       toast({
