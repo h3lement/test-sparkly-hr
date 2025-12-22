@@ -16,9 +16,13 @@ import {
   ChevronUp,
   FileText,
   Send,
-  Users
+  Users,
+  Languages
 } from "lucide-react";
 import { format } from "date-fns";
+
+// Total number of supported languages in the system (from translate-quiz edge function)
+const TOTAL_LANGUAGES = 24;
 
 interface EmailTemplate {
   id: string;
@@ -272,6 +276,13 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     }
   };
 
+  // Count translated languages for email template
+  const getEmailTranslationCount = (template: EmailTemplate): { subjects: number; body: number } => {
+    const subjectLangs = Object.keys(template.subjects || {}).filter(k => template.subjects[k]?.trim());
+    const bodyLangs = Object.keys(template.body_content || {}).filter(k => template.body_content[k]?.trim());
+    return { subjects: subjectLangs.length, body: bodyLangs.length };
+  };
+
   if (loading && templates.length === 0) {
     return (
       <div className="space-y-2">
@@ -352,12 +363,13 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
               <span>Type</span>
               {!quizId && <span>Quiz</span>}
               <span>Sender</span>
               <span>Created</span>
+              <span className="text-center" title="Languages translated">Lang</span>
               <span className="text-center">Sent</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Actions</span>
@@ -371,11 +383,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                   ? template.created_by_email.split('@')[0]
                   : null;
                 const stats = emailStats[template.id] || { sent: 0, failed: 0 };
+                const translationCount = getEmailTranslationCount(template);
 
                 return (
                   <div
                     key={template.id}
-                    className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                    className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
                       template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                     }`}
                   >
@@ -419,7 +432,16 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       )}
                     </div>
 
-                    {/* Email Stats */}
+                    {/* Translation Count */}
+                    <div className="flex items-center justify-center" title={`Subjects: ${translationCount.subjects}/${TOTAL_LANGUAGES}, Body: ${translationCount.body}/${TOTAL_LANGUAGES}`}>
+                      <div className="flex items-center gap-1">
+                        <Languages className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className={`text-xs ${Math.max(translationCount.subjects, translationCount.body) >= TOTAL_LANGUAGES ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+                          {Math.max(translationCount.subjects, translationCount.body)}/{TOTAL_LANGUAGES}
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-center gap-1" title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}>
                       <Send className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className={stats.sent > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
@@ -599,6 +621,18 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
   };
 
+  // Count translated languages for web result version
+  const getWebTranslationCount = (version: WebResultVersion): number => {
+    if (!version.result_levels || version.result_levels.length === 0) return 0;
+    // Get unique languages from the first level's title (all levels should have same languages)
+    const firstLevel = version.result_levels[0];
+    const languages = new Set<string>();
+    Object.keys(firstLevel.title || {}).forEach(lang => {
+      if (firstLevel.title[lang]?.trim()) languages.add(lang);
+    });
+    return languages.size;
+  };
+
   // Sort by created_at descending (newest first)
   const filteredVersions = useMemo(() => {
     const filtered = versions.filter(v => {
@@ -668,11 +702,12 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_70px_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
               {!quizId && <span>Quiz</span>}
               <span>Levels</span>
               <span>Created</span>
+              <span className="text-center" title="Languages translated">Lang</span>
               <span className="text-center">Leads</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Actions</span>
@@ -687,11 +722,12 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                   ? version.created_by_email.split('@')[0]
                   : null;
                 const leadCount = leadStats[version.id] || 0;
+                const translationCount = getWebTranslationCount(version);
                 
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_70px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
@@ -724,6 +760,16 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                         {creatorName && (
                           <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
                         )}
+                      </div>
+
+                      {/* Translation Count */}
+                      <div className="flex items-center justify-center" title={`${translationCount}/${TOTAL_LANGUAGES} languages translated`}>
+                        <div className="flex items-center gap-1">
+                          <Languages className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className={`text-xs ${translationCount >= TOTAL_LANGUAGES ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+                            {translationCount}/{TOTAL_LANGUAGES}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Lead Count */}
