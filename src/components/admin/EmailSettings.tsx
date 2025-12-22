@@ -7,14 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
-  CheckCircle2,
-  XCircle,
   RefreshCw,
   Send,
   Wifi,
   WifiOff,
   AlertTriangle,
-  Settings,
   Mail,
   Loader2,
   ExternalLink,
@@ -195,20 +192,6 @@ export function EmailSettings() {
     }
     checkConnection();
   };
-
-  const getStatusIcon = () => {
-    switch (connectionStatus.status) {
-      case "connected":
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case "checking":
-        return <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />;
-      case "error":
-        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-      case "disconnected":
-        return <XCircle className="h-5 w-5 text-red-500" />;
-    }
-  };
-
   const getStatusBadge = () => {
     switch (connectionStatus.status) {
       case "connected":
@@ -243,158 +226,85 @@ export function EmailSettings() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Connection Status Card */}
+    <div className="space-y-4">
+      {/* Test Email Section - Compact inline */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Settings className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Resend Connection</CardTitle>
-                <CardDescription>Email service connection status</CardDescription>
-              </div>
-            </div>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-base">Send Test Email</CardTitle>
             {getStatusBadge()}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-            {getStatusIcon()}
-            <div className="flex-1">
-              <p className="font-medium text-sm">{connectionStatus.message}</p>
-              {connectionStatus.lastChecked && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Last checked: {connectionStatus.lastChecked.toLocaleTimeString()}
-                </p>
+        <CardContent className="pt-0">
+          <div className="flex gap-2">
+            <Input
+              type="email"
+              placeholder="Enter email address..."
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="flex-1 h-9"
+              disabled={connectionStatus.status !== "connected"}
+            />
+            <Button
+              size="sm"
+              onClick={sendTestEmail}
+              disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim()}
+            >
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
               )}
-            </div>
+            </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleManualReconnect}
               disabled={isChecking}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? "animate-spin" : ""}`} />
-              Refresh
+              <RefreshCw className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} />
             </Button>
           </div>
-
-          {connectionStatus.status === "connected" && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-                <p className="text-xs text-muted-foreground mb-1">API Status</p>
-                <p className="font-medium text-green-600">Active</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <p className="text-xs text-muted-foreground mb-1">Provider</p>
-                <p className="font-medium">Resend</p>
-              </div>
-            </div>
-          )}
-
-          {connectionStatus.status !== "connected" && connectionStatus.apiKeyConfigured === false && (
-            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 space-y-2">
-              <p className="text-sm text-amber-700">
-                The <code className="bg-amber-500/10 px-1 py-0.5 rounded text-xs">RESEND_API_KEY</code> secret may not be configured or is invalid. 
-                Please ensure it's properly set in your secrets configuration.
-              </p>
-              <div className="flex gap-2">
-                <a
-                  href="https://resend.com/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Create Resend API Key
-                </a>
-                <span className="text-muted-foreground">•</span>
-                <a
-                  href="https://resend.com/domains"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Verify Domain
-                </a>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Test Email Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Mail className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Send Test Email</CardTitle>
-              <CardDescription>Verify your email configuration by sending a test</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="test-email">Recipient Email</Label>
-            <div className="flex gap-2">
-              <Input
-                id="test-email"
-                type="email"
-                placeholder="Enter email address..."
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                className="flex-1"
-                disabled={connectionStatus.status !== "connected"}
-              />
-              <Button
-                onClick={sendTestEmail}
-                disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim()}
-              >
-                {isSending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Send Test
-              </Button>
-            </div>
-          </div>
-
           {connectionStatus.status !== "connected" && (
-            <p className="text-sm text-muted-foreground">
-              Connect to Resend first to send test emails.
+            <p className="text-xs text-muted-foreground mt-2">
+              {connectionStatus.message}
             </p>
           )}
         </CardContent>
       </Card>
 
+      {/* Connection Status - Compact */}
+      {connectionStatus.status !== "connected" && connectionStatus.apiKeyConfigured === false && (
+        <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+          <p className="text-sm text-amber-700 mb-2">
+            API key not configured or invalid.
+          </p>
+          <div className="flex gap-3 text-xs">
+            <a
+              href="https://resend.com/api-keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Create API Key
+            </a>
+            <a
+              href="https://resend.com/domains"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Verify Domain
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* API Key Management Card */}
       <ApiKeyManagementCard onApiKeyUpdated={() => checkConnection()} />
-
-      {/* Info Card */}
-      <Card className="bg-muted/30">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-              <AlertTriangle className="h-4 w-4 text-primary" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Automatic Reconnection</p>
-              <p className="text-sm text-muted-foreground">
-                If the connection drops, the system will automatically attempt to reconnect up to {MAX_RECONNECT_ATTEMPTS} times 
-                with increasing delays. You can also manually refresh the connection at any time.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
