@@ -37,7 +37,6 @@ import {
   Lock,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { ApiKeyManagementCard } from "./ApiKeyManagementCard";
 
 interface DomainInfo {
   name: string;
@@ -101,7 +100,7 @@ export function EmailSettings() {
   const [lastSuccess, setLastSuccess] = useState<EmailSuccess | null>(null);
   const [emailConfig, setEmailConfig] = useState<EmailConfig>({
     senderName: "Sparkly",
-    senderEmail: "onboarding@resend.dev",
+    senderEmail: "noreply@sparkly.hr",
     replyToEmail: "",
     smtpHost: "",
     smtpPort: "587",
@@ -637,10 +636,10 @@ export function EmailSettings() {
                   <div className="space-y-3 pt-2 border-t">
                     <div className="flex items-center gap-2">
                       <Server className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SMTP Configuration (Optional)</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SMTP Configuration</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Leave empty to use Resend API. Fill in to use custom SMTP server.
+                      Configure your SMTP server for sending emails.
                     </p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
@@ -809,7 +808,7 @@ export function EmailSettings() {
                           </div>
                         </>
                       ) : (
-                        <p className="text-muted-foreground py-1">Using Resend API (no custom SMTP)</p>
+                        <p className="text-muted-foreground py-1">Not configured</p>
                       )}
                     </div>
                   </div>
@@ -956,37 +955,14 @@ export function EmailSettings() {
         </CardContent>
       </Card>
 
-      {/* Connection Status - Compact */}
-      {connectionStatus.status !== "connected" && connectionStatus.apiKeyConfigured === false && (
+      {/* SMTP Configuration Warning */}
+      {connectionStatus.status !== "connected" && !emailConfig.smtpHost && (
         <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
           <p className="text-sm text-amber-700 mb-2">
-            API key not configured or invalid.
+            SMTP not configured. Please set your SMTP host, username, and password in the configuration above.
           </p>
-          <div className="flex gap-3 text-xs">
-            <a
-              href="https://resend.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Create API Key
-            </a>
-            <a
-              href="https://resend.com/domains"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Verify Domain
-            </a>
-          </div>
         </div>
       )}
-
-      {/* API Key Management Card */}
-      <ApiKeyManagementCard onApiKeyUpdated={() => checkConnection()} />
     </div>
   );
 }

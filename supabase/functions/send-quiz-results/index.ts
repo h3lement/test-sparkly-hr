@@ -354,32 +354,52 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
       
+      // Test SMTP connectivity using TCP connect
       try {
-        const client = await createSmtpClient(emailConfig);
-        if (client) {
-          await client.close();
-          console.log("SMTP connection successful");
-          return new Response(
-            JSON.stringify({ 
-              connected: true, 
-              provider: "SMTP",
-              config: {
-                host: emailConfig.smtpHost,
-                port: emailConfig.smtpPort,
-                tls: emailConfig.smtpTls,
-                senderEmail: emailConfig.senderEmail,
-                senderName: emailConfig.senderName,
-              },
-              domains: [{
-                name: emailConfig.senderEmail.split('@')[1] || 'unknown',
-                status: 'configured',
-                region: 'smtp'
-              }]
-            }),
-            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
+        const port = parseInt(emailConfig.smtpPort, 10) || 587;
+        console.log(`Testing TCP connection to ${emailConfig.smtpHost}:${port}...`);
+        
+        const conn = await Deno.connect({
+          hostname: emailConfig.smtpHost,
+          port: port,
+        });
+        
+        // Read initial SMTP greeting (220 response)
+        const buffer = new Uint8Array(512);
+        const bytesRead = await conn.read(buffer);
+        conn.close();
+        
+        if (bytesRead && bytesRead > 0) {
+          const response = new TextDecoder().decode(buffer.subarray(0, bytesRead));
+          console.log("SMTP greeting received:", response.substring(0, 100));
+          
+          if (response.startsWith("220")) {
+            console.log("SMTP connection successful");
+            return new Response(
+              JSON.stringify({ 
+                connected: true, 
+                provider: "SMTP",
+                config: {
+                  host: emailConfig.smtpHost,
+                  port: emailConfig.smtpPort,
+                  tls: emailConfig.smtpTls,
+                  senderEmail: emailConfig.senderEmail,
+                  senderName: emailConfig.senderName,
+                },
+                domains: [{
+                  name: emailConfig.senderEmail.split('@')[1] || 'unknown',
+                  status: 'configured',
+                  region: 'smtp'
+                }]
+              }),
+              { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+            );
+          } else {
+            throw new Error(`Unexpected SMTP response: ${response.substring(0, 50)}`);
+          }
+        } else {
+          throw new Error("No response from SMTP server");
         }
-        throw new Error("Failed to create SMTP client");
       } catch (connError: any) {
         console.error("SMTP connection check failed:", connError);
         return new Response(
