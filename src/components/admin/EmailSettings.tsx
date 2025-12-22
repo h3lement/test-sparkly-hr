@@ -17,6 +17,7 @@ import {
   Settings,
   Mail,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 
 interface ConnectionStatus {
@@ -294,11 +295,32 @@ export function EmailSettings() {
           )}
 
           {connectionStatus.status !== "connected" && connectionStatus.apiKeyConfigured === false && (
-            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 space-y-2">
               <p className="text-sm text-amber-700">
                 The <code className="bg-amber-500/10 px-1 py-0.5 rounded text-xs">RESEND_API_KEY</code> secret may not be configured or is invalid. 
                 Please ensure it's properly set in your secrets configuration.
               </p>
+              <div className="flex gap-2">
+                <a
+                  href="https://resend.com/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Create Resend API Key
+                </a>
+                <span className="text-muted-foreground">•</span>
+                <a
+                  href="https://resend.com/domains"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Verify Domain
+                </a>
+              </div>
             </div>
           )}
         </CardContent>
