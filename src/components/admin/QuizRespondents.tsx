@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -24,7 +23,6 @@ import {
   Users,
   Mail,
   Brain,
-  ExternalLink,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -42,6 +40,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  AdminTable,
+  AdminTableHeader,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+} from "@/components/admin";
 import { RespondentDetailDialog } from "./RespondentDetailDialog";
 import { logActivity } from "@/hooks/useActivityLog";
 import { format, parseISO, startOfDay, endOfDay } from "date-fns";
@@ -470,117 +475,113 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-[32px_1fr_80px_50px_120px_100px_32px] gap-1 px-2 py-1.5 bg-muted/50 text-[10px] font-medium text-muted-foreground border-b">
-            <span>#</span>
-            <span 
-              className="cursor-pointer hover:text-foreground flex items-center gap-1"
-              onClick={() => handleSort("email")}
-            >
-              Email <SortIcon field="email" />
-            </span>
-            <span 
-              className="text-center cursor-pointer hover:text-foreground flex items-center justify-center gap-1"
-              onClick={() => handleSort("score")}
-            >
-              Score <SortIcon field="score" />
-            </span>
-            <span className="text-center flex items-center justify-center gap-0.5">
-              <Brain className="w-3 h-3" /> OM
-            </span>
-            <span>Result</span>
-            <span 
-              className="text-right cursor-pointer hover:text-foreground flex items-center justify-end gap-1"
-              onClick={() => handleSort("created_at")}
-            >
-              Date <SortIcon field="created_at" />
-            </span>
-            <span></span>
-          </div>
-
-          {/* Table Rows */}
-          <div className="max-h-[400px] overflow-y-auto">
-            {leads.map((lead, index) => {
-              const percentage = lead.total_questions > 0 
-                ? Math.round((lead.score / lead.total_questions) * 100) 
-                : 0;
-              return (
-                <div
-                  key={lead.id}
-                  className={`grid grid-cols-[32px_1fr_80px_50px_120px_100px_32px] gap-1 px-2 py-1.5 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/30 transition-colors ${
-                    index % 2 === 0 ? "bg-background" : "bg-muted/20"
-                  }`}
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableCell header className="w-10">#</AdminTableCell>
+              <AdminTableCell header>
+                <button 
+                  className="flex items-center gap-1 cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort("email")}
                 >
-                  {/* Row Number */}
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {getRowNumber(index)}
-                  </span>
-
-                  {/* Email with Avatar */}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Avatar className="w-5 h-5 flex-shrink-0">
-                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
-                        {lead.email.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <button
-                      onClick={() => handleEmailClick(lead)}
-                      className="truncate text-primary hover:underline cursor-pointer flex items-center gap-1 min-w-0"
-                      title={lead.email}
-                    >
-                      <span className="truncate">{lead.email}</span>
-                      <ExternalLink className="w-3 h-3 opacity-50 flex-shrink-0" />
-                    </button>
-                    {lead.language && (
-                      <Badge variant="outline" className="text-[9px] h-4 px-1 flex-shrink-0">
-                        {lead.language.toUpperCase()}
+                  Email <SortIcon field="email" />
+                </button>
+              </AdminTableCell>
+              <AdminTableCell header className="w-24">
+                <button 
+                  className="flex items-center gap-1 cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort("score")}
+                >
+                  Score <SortIcon field="score" />
+                </button>
+              </AdminTableCell>
+              <AdminTableCell header className="w-16">
+                <span className="flex items-center gap-1">
+                  <Brain className="w-3.5 h-3.5" /> OM
+                </span>
+              </AdminTableCell>
+              <AdminTableCell header>Result</AdminTableCell>
+              <AdminTableCell header align="right" className="w-28">
+                <button 
+                  className="flex items-center justify-end gap-1 cursor-pointer hover:text-foreground ml-auto"
+                  onClick={() => handleSort("created_at")}
+                >
+                  Date <SortIcon field="created_at" />
+                </button>
+              </AdminTableCell>
+              <AdminTableCell header className="w-10">&nbsp;</AdminTableCell>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {leads.map((lead, index) => {
+                return (
+                  <AdminTableRow key={lead.id} index={index}>
+                    <AdminTableCell>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {getRowNumber(index)}
+                      </span>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-8 w-8 flex-shrink-0 bg-secondary">
+                          <AvatarFallback className="text-xs bg-secondary text-foreground">
+                            {lead.email.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <button
+                            onClick={() => handleEmailClick(lead)}
+                            className="text-sm text-foreground hover:text-primary hover:underline transition-colors truncate"
+                            title={lead.email}
+                          >
+                            {lead.email}
+                          </button>
+                          {lead.language && (
+                            <Badge variant="secondary" className="uppercase text-xs flex-shrink-0">
+                              {lead.language}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <span className="text-sm text-foreground">{lead.score}/{lead.total_questions}</span>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      {lead.openness_score !== null ? (
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                          {lead.openness_score}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                        {lead.result_category}
                       </Badge>
-                    )}
-                  </div>
-
-                  {/* Score */}
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="font-medium text-[10px]">{lead.score}/{lead.total_questions}</span>
-                    <Progress value={percentage} className="w-8 h-1" />
-                  </div>
-
-                  {/* Openness Score */}
-                  <div className="text-center">
-                    {lead.openness_score !== null ? (
-                      <Badge variant="secondary" className="text-[9px] h-4 px-1">
-                        {lead.openness_score}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-[10px]">—</span>
-                    )}
-                  </div>
-
-                  {/* Result Category */}
-                  <Badge variant="outline" className="text-[9px] truncate justify-start" title={lead.result_category}>
-                    {lead.result_category}
-                  </Badge>
-
-                  {/* Date */}
-                  <div className="text-right text-[10px] text-muted-foreground font-mono">
-                    {format(new Date(lead.created_at), "dd MMM HH:mm")}
-                  </div>
-
-                  {/* Actions */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      setSelectedLead(lead);
-                      setDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+                    </AdminTableCell>
+                    <AdminTableCell align="right">
+                      <span className="text-sm text-muted-foreground">
+                        {format(new Date(lead.created_at), "dd MMM HH:mm")}
+                      </span>
+                    </AdminTableCell>
+                    <AdminTableCell align="right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setSelectedLead(lead);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AdminTableCell>
+                  </AdminTableRow>
+                );
+              })}
+            </AdminTableBody>
+          </AdminTable>
         </div>
       )}
 
