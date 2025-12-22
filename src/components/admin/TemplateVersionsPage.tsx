@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2 } from "lucide-react";
+import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
@@ -346,6 +346,125 @@ export function TemplateVersionsPage() {
     }
   };
 
+  const handleRegenerateAllWeb = async () => {
+    if (quizzes.length === 0) {
+      toast.info("No quizzes found");
+      return;
+    }
+
+    setBulkProgress({
+      isGenerating: true,
+      current: 0,
+      total: quizzes.length,
+      currentQuizName: "",
+      completed: [],
+      failed: [],
+    });
+
+    const completed: string[] = [];
+    const failed: { quizId: string; name: string; error: string }[] = [];
+
+    const MAX_RETRIES = 3;
+    const INITIAL_DELAY_MS = 1000;
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const generateWithRetry = async (quiz: Quiz, quizName: string): Promise<boolean> => {
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-results", {
+            body: {
+              quizId: quiz.id,
+              numberOfLevels: 5,
+              toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
+              higherScoreMeaning: "positive" as const,
+              language: quiz.primary_language || "en",
+              model: "google/gemini-2.5-flash",
+            },
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          // Set the newly generated version as live
+          if (data?.version?.id) {
+            const { error: updateError } = await supabase
+              .from("quiz_result_versions")
+              .update({ is_live: true })
+              .eq("id", data.version.id);
+
+            if (updateError) {
+              console.error("Failed to set version live:", updateError);
+            }
+          }
+
+          return true;
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "Unknown error";
+          console.error(`Attempt ${attempt}/${MAX_RETRIES} failed for ${quizName}:`, errorMessage);
+
+          if (attempt < MAX_RETRIES) {
+            const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+            setBulkProgress(prev => ({
+              ...prev,
+              currentQuizName: `${quizName} (retry ${attempt}/${MAX_RETRIES - 1})`,
+            }));
+            await sleep(delayMs);
+          } else {
+            failed.push({ quizId: quiz.id, name: quizName, error: errorMessage });
+            setBulkProgress(prev => ({
+              ...prev,
+              failed: [...prev.failed, { quizId: quiz.id, name: quizName, error: errorMessage }],
+            }));
+            return false;
+          }
+        }
+      }
+      return false;
+    };
+
+    for (let i = 0; i < quizzes.length; i++) {
+      const quiz = quizzes[i];
+      const quizName = getQuizTitle(quiz);
+
+      setBulkProgress(prev => ({
+        ...prev,
+        current: i + 1,
+        currentQuizName: quizName,
+      }));
+
+      const success = await generateWithRetry(quiz, quizName);
+      
+      if (success) {
+        completed.push(quizName);
+        setBulkProgress(prev => ({
+          ...prev,
+          completed: [...prev.completed, quizName],
+        }));
+      }
+
+      if (i < quizzes.length - 1) {
+        await sleep(500);
+      }
+    }
+
+    setBulkProgress(prev => ({
+      ...prev,
+      isGenerating: false,
+    }));
+
+    await fetchLiveStatus(quizzes);
+    setWebRefreshKey(prev => prev + 1);
+
+    if (failed.length === 0) {
+      toast.success(`Successfully regenerated ${completed.length} web templates`);
+    } else if (completed.length > 0) {
+      toast.warning(`Regenerated ${completed.length} templates, ${failed.length} failed`);
+    } else {
+      toast.error(`All ${failed.length} regenerations failed`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -431,20 +550,36 @@ export function TemplateVersionsPage() {
             </div>
           )}
 
-          {/* Bulk Generate Button */}
-          {!bulkProgress.isGenerating && missingWebTemplates.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 flex items-center justify-between">
+          {/* Bulk Generate Buttons */}
+          {!bulkProgress.isGenerating && (
+            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 flex items-center justify-between flex-wrap gap-3">
               <div className="text-sm text-amber-700 dark:text-amber-300">
-                {missingWebTemplates.length} {missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates
+                {missingWebTemplates.length > 0 
+                  ? `${missingWebTemplates.length} ${missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates`
+                  : `${quizzes.length} quizzes configured`
+                }
               </div>
-              <Button
-                onClick={handleBulkGenerateWeb}
-                size="sm"
-                className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                Generate All Missing ({missingWebTemplates.length})
-              </Button>
+              <div className="flex items-center gap-2">
+                {missingWebTemplates.length > 0 && (
+                  <Button
+                    onClick={handleBulkGenerateWeb}
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Generate Missing ({missingWebTemplates.length})
+                  </Button>
+                )}
+                <Button
+                  onClick={handleRegenerateAllWeb}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Regenerate All ({quizzes.length})
+                </Button>
+              </div>
             </div>
           )}
 
