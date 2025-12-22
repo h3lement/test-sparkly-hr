@@ -607,6 +607,181 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Handle DNS-only validation (without SMTP connection check)
+    if (body.action === "check_dns") {
+      console.log("Checking DNS records only...");
+      
+      const senderDomain = emailConfig.senderEmail.split('@')[1] || '';
+      
+      // Same DNS validation structure as check_connection
+      interface SpfValidation {
+        valid: boolean;
+        record: string | null;
+        allRecords: string[];
+        inUse: boolean;
+        analysis: {
+          hasValidSyntax: boolean;
+          includes: string[];
+          policy: string | null;
+          isStrict: boolean;
+        } | null;
+      }
+      
+      interface DkimValidation {
+        valid: boolean;
+        configured: boolean;
+        inUse: boolean;
+        selector: string | null;
+        record: string | null;
+        allRecords: string[];
+        analysis: {
+          hasValidSyntax: boolean;
+          keyType: string | null;
+          hasPublicKey: boolean;
+        } | null;
+      }
+      
+      interface DmarcValidation {
+        valid: boolean;
+        record: string | null;
+        allRecords: string[];
+        inUse: boolean;
+        analysis: {
+          hasValidSyntax: boolean;
+          policy: string | null;
+          subdomainPolicy: string | null;
+          reportEmail: string | null;
+          percentage: number | null;
+          isStrict: boolean;
+        } | null;
+      }
+      
+      interface DnsValidation {
+        spf: SpfValidation;
+        dkim: DkimValidation;
+        dmarc: DmarcValidation;
+        domain: string;
+        checkedAt: string;
+      }
+      
+      const dnsValidation: DnsValidation = {
+        spf: { valid: false, record: null, allRecords: [], inUse: true, analysis: null },
+        dkim: { 
+          valid: false, 
+          configured: !!emailConfig.dkimPrivateKey,
+          inUse: !!emailConfig.dkimPrivateKey && !!emailConfig.dkimSelector,
+          selector: emailConfig.dkimSelector || null,
+          record: null,
+          allRecords: [],
+          analysis: null
+        },
+        dmarc: { valid: false, record: null, allRecords: [], inUse: true, analysis: null },
+        domain: senderDomain,
+        checkedAt: new Date().toISOString(),
+      };
+      
+      if (senderDomain) {
+        // Check SPF
+        try {
+          console.log(`Checking SPF record for ${senderDomain}...`);
+          const txtRecords = await Deno.resolveDns(senderDomain, "TXT");
+          const allTxtRecords = txtRecords.flat();
+          const spfRecords = allTxtRecords.filter((r: string) => r.startsWith("v=spf1"));
+          dnsValidation.spf.allRecords = spfRecords;
+          
+          if (spfRecords.length > 0) {
+            const spfRecord = spfRecords[0];
+            dnsValidation.spf.record = spfRecord;
+            dnsValidation.spf.valid = true;
+            
+            const includes = spfRecord.match(/include:([^\s]+)/g)?.map((m: string) => m.replace('include:', '')) || [];
+            const policyMatch = spfRecord.match(/([~\-+?])all/);
+            const policy = policyMatch ? policyMatch[0] : null;
+            
+            dnsValidation.spf.analysis = {
+              hasValidSyntax: spfRecord.startsWith("v=spf1"),
+              includes,
+              policy,
+              isStrict: policy === "-all" || policy === "~all",
+            };
+            console.log("SPF record found:", spfRecord);
+          }
+        } catch (e: any) {
+          console.log("SPF lookup failed:", e.message);
+        }
+        
+        // Check DMARC
+        try {
+          console.log(`Checking DMARC record for _dmarc.${senderDomain}...`);
+          const dmarcRecords = await Deno.resolveDns(`_dmarc.${senderDomain}`, "TXT");
+          const allDmarcRecords = dmarcRecords.flat().filter((r: string) => r.startsWith("v=DMARC1"));
+          dnsValidation.dmarc.allRecords = allDmarcRecords;
+          
+          if (allDmarcRecords.length > 0) {
+            const dmarcRecord = allDmarcRecords[0];
+            dnsValidation.dmarc.record = dmarcRecord;
+            dnsValidation.dmarc.valid = true;
+            
+            const policyMatch = dmarcRecord.match(/p=([^;]+)/);
+            const subdomainPolicyMatch = dmarcRecord.match(/sp=([^;]+)/);
+            const ruaMatch = dmarcRecord.match(/rua=mailto:([^;,\s]+)/);
+            const pctMatch = dmarcRecord.match(/pct=(\d+)/);
+            const policy = policyMatch ? policyMatch[1].trim() : null;
+            
+            dnsValidation.dmarc.analysis = {
+              hasValidSyntax: dmarcRecord.startsWith("v=DMARC1"),
+              policy,
+              subdomainPolicy: subdomainPolicyMatch ? subdomainPolicyMatch[1].trim() : null,
+              reportEmail: ruaMatch ? ruaMatch[1] : null,
+              percentage: pctMatch ? parseInt(pctMatch[1], 10) : 100,
+              isStrict: policy === "reject" || policy === "quarantine",
+            };
+            console.log("DMARC record found:", dmarcRecord);
+          }
+        } catch (e: any) {
+          console.log("DMARC lookup failed:", e.message);
+        }
+        
+        // Check DKIM
+        if (emailConfig.dkimSelector && emailConfig.dkimDomain) {
+          try {
+            const dkimHost = `${emailConfig.dkimSelector}._domainkey.${emailConfig.dkimDomain}`;
+            console.log(`Checking DKIM record at ${dkimHost}...`);
+            const dkimRecords = await Deno.resolveDns(dkimHost, "TXT");
+            const allDkimRecords = dkimRecords.flat();
+            const validDkimRecords = allDkimRecords.filter((r: string) => r.includes("v=DKIM1") || r.includes("k=rsa") || r.includes("p="));
+            dnsValidation.dkim.allRecords = validDkimRecords;
+            
+            if (validDkimRecords.length > 0) {
+              const dkimRecord = validDkimRecords[0];
+              dnsValidation.dkim.record = dkimRecord;
+              dnsValidation.dkim.valid = true;
+              
+              const keyTypeMatch = dkimRecord.match(/k=([^;]+)/);
+              const hasPublicKey = dkimRecord.includes("p=") && !dkimRecord.includes("p=;") && !dkimRecord.includes("p= ");
+              
+              dnsValidation.dkim.analysis = {
+                hasValidSyntax: dkimRecord.includes("v=DKIM1") || (dkimRecord.includes("k=") && dkimRecord.includes("p=")),
+                keyType: keyTypeMatch ? keyTypeMatch[1].trim() : "rsa",
+                hasPublicKey,
+              };
+              console.log("DKIM DNS record found");
+            }
+          } catch (e: any) {
+            console.log("DKIM DNS lookup failed:", e.message);
+          }
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          dnsValidation,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Handle DKIM key generation
     if (body.action === "generate_dkim") {
       console.log("Generating DKIM keys...");

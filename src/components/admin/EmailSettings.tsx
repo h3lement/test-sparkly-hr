@@ -252,6 +252,12 @@ export function EmailSettings() {
     emailsPerMinute: 1,
   });
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number>(0);
+  const [isRefreshingDns, setIsRefreshingDns] = useState(false);
+  const [lastDnsCheck, setLastDnsCheck] = useState<Date | null>(null);
+  const [lastConfigUpdate, setLastConfigUpdate] = useState<{ timestamp: Date | null; userEmail: string | null }>({
+    timestamp: null,
+    userEmail: null,
+  });
   
   // Quiz and template selection for test emails
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -374,18 +380,21 @@ export function EmailSettings() {
           "email_sender_name", "email_sender_email", "email_reply_to",
           "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls",
           "dkim_selector", "dkim_private_key", "dkim_domain", "dkim_public_key", "dkim_dns_record",
-          "spf_include_domains", "spf_policy", "dmarc_policy", "dmarc_report_email"
+          "spf_include_domains", "spf_policy", "dmarc_policy", "dmarc_report_email",
+          "email_config_updated_at", "email_config_updated_by"
         ];
         
         const { data, error } = await supabase
           .from("app_settings")
-          .select("setting_key, setting_value")
+          .select("setting_key, setting_value, updated_at")
           .in("setting_key", settingKeys);
 
         if (error) throw error;
 
         if (data && data.length > 0) {
           const config: Partial<EmailConfig> = {};
+          let latestUpdate: { timestamp: Date | null; userEmail: string | null } = { timestamp: null, userEmail: null };
+          
           data.forEach((setting) => {
             switch (setting.setting_key) {
               case "email_sender_name": config.senderName = setting.setting_value; break;
@@ -405,11 +414,18 @@ export function EmailSettings() {
               case "spf_policy": config.spfPolicy = setting.setting_value; break;
               case "dmarc_policy": config.dmarcPolicy = setting.setting_value; break;
               case "dmarc_report_email": config.dmarcReportEmail = setting.setting_value; break;
+              case "email_config_updated_at": 
+                latestUpdate.timestamp = setting.setting_value ? new Date(setting.setting_value) : null; 
+                break;
+              case "email_config_updated_by": 
+                latestUpdate.userEmail = setting.setting_value || null; 
+                break;
             }
           });
           const newConfig = { ...emailConfig, ...config };
           setEmailConfig(newConfig);
           setConfigDraft(newConfig);
+          setLastConfigUpdate(latestUpdate);
         }
       } catch (error) {
         console.error("Failed to load email config:", error);
@@ -421,6 +437,11 @@ export function EmailSettings() {
   const saveEmailConfig = async () => {
     setIsSavingConfig(true);
     try {
+      // Get current user email
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email || 'Unknown';
+      const now = new Date().toISOString();
+      
       const settings = [
         { setting_key: "email_sender_name", setting_value: configDraft.senderName.trim() },
         { setting_key: "email_sender_email", setting_value: configDraft.senderEmail.trim() },
@@ -439,6 +460,8 @@ export function EmailSettings() {
         { setting_key: "spf_policy", setting_value: configDraft.spfPolicy },
         { setting_key: "dmarc_policy", setting_value: configDraft.dmarcPolicy },
         { setting_key: "dmarc_report_email", setting_value: configDraft.dmarcReportEmail.trim() },
+        { setting_key: "email_config_updated_at", setting_value: now },
+        { setting_key: "email_config_updated_by", setting_value: userEmail },
       ];
 
       for (const setting of settings) {
@@ -450,6 +473,7 @@ export function EmailSettings() {
 
       setEmailConfig(configDraft);
       setIsEditingConfig(false);
+      setLastConfigUpdate({ timestamp: new Date(now), userEmail });
       toast({
         title: "Settings saved",
         description: "Email configuration has been updated.",
@@ -463,6 +487,39 @@ export function EmailSettings() {
       });
     } finally {
       setIsSavingConfig(false);
+    }
+  };
+
+  // Refresh DNS records only (without SMTP connection check)
+  const refreshDnsRecords = async () => {
+    setIsRefreshingDns(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-quiz-results", {
+        body: { action: "check_dns" },
+      });
+
+      if (error) throw error;
+
+      if (data?.dnsValidation) {
+        setConnectionStatus((prev) => ({
+          ...prev,
+          dnsValidation: data.dnsValidation,
+        }));
+        setLastDnsCheck(new Date());
+        toast({
+          title: "DNS refreshed",
+          description: "DNS records have been re-validated.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Failed to refresh DNS:", error);
+      toast({
+        title: "DNS refresh failed",
+        description: error.message || "Could not refresh DNS records.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshingDns(false);
     }
   };
 
@@ -1196,10 +1253,38 @@ export function EmailSettings() {
 
               {/* DNS Records Section */}
               <div className="space-y-4 pt-3 border-t">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DNS Records</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DNS Records</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={refreshDnsRecords}
+                    disabled={isRefreshingDns}
+                  >
+                    {isRefreshingDns ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                    )}
+                    Refresh DNS
+                  </Button>
                 </div>
+                
+                {/* DNS Check Status & Propagation Info */}
+                {lastDnsCheck && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Last checked: {lastDnsCheck.toLocaleTimeString()}</span>
+                    {(!connectionStatus.dnsValidation?.spf.valid || 
+                      !connectionStatus.dnsValidation?.dmarc.valid || 
+                      (connectionStatus.dnsValidation?.dkim.configured && !connectionStatus.dnsValidation?.dkim.valid)) && (
+                      <span className="text-amber-600">• DNS changes can take up to 48-72 hours to propagate</span>
+                    )}
+                  </div>
+                )}
 
                 {/* SPF Record */}
                 <div className={`p-3 rounded-lg border space-y-3 ${connectionStatus.dnsValidation?.spf.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
@@ -1624,6 +1709,14 @@ export function EmailSettings() {
                     <span className="text-xs text-green-700">All DNS records are properly configured!</span>
                   </div>
                 )}
+                
+                {/* Last Update Info (Edit Mode) */}
+                {lastConfigUpdate.timestamp && (
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    Last updated: {lastConfigUpdate.timestamp.toLocaleString()}
+                    {lastConfigUpdate.userEmail && <span> by {lastConfigUpdate.userEmail}</span>}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -1681,6 +1774,14 @@ export function EmailSettings() {
                   <p className="text-xs text-muted-foreground italic">Not configured</p>
                 )}
               </div>
+              
+              {/* Last Update Info */}
+              {lastConfigUpdate.timestamp && (
+                <div className="text-xs text-muted-foreground pt-2">
+                  Last updated: {lastConfigUpdate.timestamp.toLocaleString()}
+                  {lastConfigUpdate.userEmail && <span> by {lastConfigUpdate.userEmail}</span>}
+                </div>
+              )}
             </div>
           )}
         </div>
