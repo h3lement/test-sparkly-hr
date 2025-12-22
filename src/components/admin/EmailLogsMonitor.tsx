@@ -516,7 +516,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   const isEvenRow = index % 2 === 0;
 
                   return (
-                    <tr key={log.id} className={`border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors ${isEvenRow ? "bg-card" : "bg-secondary/20"}`}>
+                    <tr key={log.id} className={`border-b border-border last:border-b-0 transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.1)] ${isEvenRow ? "bg-card" : "bg-secondary/20"}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <Badge variant="outline" className={`${typeInfo.color} gap-1`}>

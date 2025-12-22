@@ -484,7 +484,7 @@ const Admin = () => {
                           return (
                           <tr 
                             key={admin.id} 
-                            className={`hover:bg-secondary/50 transition-colors ${isEvenRow ? "bg-card" : "bg-secondary/20"} ${!admin.is_active ? 'opacity-60' : ''}`}
+                            className={`transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.1)] ${isEvenRow ? "bg-card" : "bg-secondary/20"} ${!admin.is_active ? 'opacity-60' : ''}`}
                           >
                             <td className="density-px density-py">
                               <div 
@@ -570,7 +570,7 @@ const Admin = () => {
                           {pendingAdmins.map((pending, index) => {
                             const isEvenRow = index % 2 === 0;
                             return (
-                            <tr key={pending.id} className={`hover:bg-secondary/50 transition-colors ${isEvenRow ? "bg-card" : "bg-secondary/20"}`}>
+                            <tr key={pending.id} className={`transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.1)] ${isEvenRow ? "bg-card" : "bg-secondary/20"}`}>
                               <td className="density-px density-py">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9 bg-secondary">
