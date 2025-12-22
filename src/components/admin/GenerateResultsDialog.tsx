@@ -263,7 +263,7 @@ export function GenerateResultsDialog({
                   {generatedLevels.map((level, index) => (
                     <div
                       key={level.id}
-                      className={`border rounded-lg p-3 ${index % 2 === 0 ? "bg-muted/30" : ""}`}
+                      className={`border rounded-lg p-3 list-row-interactive ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
                     >
                       <div className="flex items-start gap-3">
                         <span className="text-2xl">{level.emoji}</span>
