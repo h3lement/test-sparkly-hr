@@ -686,11 +686,11 @@ export function ActivityDashboard() {
             </div>
           ) : (
             <>
-              <div className="space-y-3">
-                {paginatedActivities.map((activity) => (
+              <div className="divide-y divide-border">
+                {paginatedActivities.map((activity, index) => (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-4 p-4 bg-secondary/30 rounded-lg border border-border"
+                    className={`flex items-start gap-4 p-4 ${index % 2 === 0 ? 'bg-card' : 'bg-secondary/20'}`}
                   >
                     {activity.user_email ? (
                       <Avatar className="h-9 w-9 bg-secondary shrink-0">
