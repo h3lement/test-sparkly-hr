@@ -285,45 +285,45 @@
 
   /* Zebra-striped list rows - high contrast for visibility */
   .list-row:nth-child(even) {
-    @apply bg-background;
+    @apply bg-muted/50;
   }
 
   .list-row:nth-child(odd) {
-    @apply bg-muted/40;
+    @apply bg-card;
   }
 
   /* Manual alternate row classes (for index-based zebra striping) */
   .list-row-even {
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--card));
   }
 
   .list-row-odd {
-    background-color: hsl(var(--muted) / 0.4);
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   /* List row hover effect - primary tint with inset border */
   .list-row-hover {
-    @apply transition-all duration-150 ease-out text-sm font-medium text-foreground;
+    @apply transition-all duration-200 ease-out text-sm font-medium;
   }
 
   .list-row-hover:hover {
-    background-color: hsl(var(--primary) / 0.1) !important;
-    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.2);
+    background-color: hsl(var(--primary) / 0.08) !important;
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.15);
   }
 
   /* Combined zebra + hover utility classes - matches sidebar menu font */
   .list-row-interactive {
-    @apply transition-all duration-150 ease-out text-sm font-medium text-foreground;
+    @apply transition-all duration-200 ease-out text-sm font-medium;
   }
 
   .list-row-interactive:hover {
-    background-color: hsl(var(--primary) / 0.1) !important;
-    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.2);
+    background-color: hsl(var(--primary) / 0.08) !important;
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.15);
   }
 
   /* Manual alternate row class (for non-sequential lists) - legacy */
   .list-row-alt {
-    @apply bg-muted/40;
+    @apply bg-muted/50;
   }
 
   .admin-card-content {
