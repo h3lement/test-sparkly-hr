@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
 import { 
   Dialog,
@@ -105,6 +106,9 @@ interface CTATemplate {
   version_number: number;
   is_live: boolean;
   cta_title: Record<string, string>;
+  cta_text: Record<string, string>;
+  cta_description: Record<string, string>;
+  cta_url: string | null;
 }
 
 interface EmailVersionHistoryProps {
@@ -257,13 +261,15 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       // Fetch CTA templates to show linked CTAs
       const { data: ctaData, error: ctaError } = await supabase
         .from("cta_templates")
-        .select("id, quiz_id, version_number, is_live, cta_title")
+        .select("id, quiz_id, version_number, is_live, cta_title, cta_text, cta_description, cta_url")
         .order("version_number", { ascending: false });
 
       if (!ctaError && ctaData) {
         setCtaTemplates(ctaData.map(cta => ({
           ...cta,
           cta_title: cta.cta_title as Record<string, string>,
+          cta_text: cta.cta_text as Record<string, string>,
+          cta_description: cta.cta_description as Record<string, string>,
         })));
       }
     } catch (error: any) {
@@ -682,8 +688,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         </div>
                       )}
 
-                      {/* CTA */}
-                      {/* CTA Dropdown */}
+                      {/* CTA Dropdown with Hover Preview */}
                       <div 
                         className="px-3 py-2 shrink-0"
                         style={{ width: columnWidths.cta }}
@@ -695,23 +700,71 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                           <SelectTrigger className="h-7 text-xs w-full bg-background">
                             <SelectValue placeholder="Select CTA" />
                           </SelectTrigger>
-                          <SelectContent className="bg-popover z-50">
+                          <SelectContent className="bg-popover z-50 min-w-[280px]">
                             <SelectItem value="none" className="text-xs">
                               <span className="text-muted-foreground">No CTA</span>
                             </SelectItem>
                             {getCtasForQuiz(template.quiz_id).map((cta) => {
                               const title = cta.cta_title?.en || cta.cta_title?.et || '';
+                              const description = cta.cta_description?.en || cta.cta_description?.et || '';
+                              const buttonText = cta.cta_text?.en || cta.cta_text?.et || '';
                               return (
-                                <SelectItem key={cta.id} value={cta.id} className="text-xs">
-                                  <div className="flex items-center gap-1.5">
-                                    {cta.is_live && (
-                                      <Badge variant="default" className="text-[10px] h-3.5 px-1 bg-green-600">
-                                        LIVE
-                                      </Badge>
-                                    )}
-                                    <span>v{cta.version_number}{title ? ` - ${title.substring(0, 18)}${title.length > 18 ? '...' : ''}` : ''}</span>
-                                  </div>
-                                </SelectItem>
+                                <HoverCard key={cta.id} openDelay={200} closeDelay={100}>
+                                  <HoverCardTrigger asChild>
+                                    <SelectItem value={cta.id} className="text-xs cursor-pointer">
+                                      <div className="flex items-center gap-1.5">
+                                        {cta.is_live && (
+                                          <Badge variant="default" className="text-[10px] h-3.5 px-1 bg-green-600">
+                                            LIVE
+                                          </Badge>
+                                        )}
+                                        <span>v{cta.version_number}{title ? ` - ${title.substring(0, 18)}${title.length > 18 ? '...' : ''}` : ''}</span>
+                                      </div>
+                                    </SelectItem>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent 
+                                    side="right" 
+                                    align="start" 
+                                    className="w-72 bg-popover border shadow-lg z-[100]"
+                                  >
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium text-muted-foreground">CTA v{cta.version_number}</span>
+                                        {cta.is_live && (
+                                          <Badge variant="default" className="text-[10px] h-4 px-1.5 bg-green-600">
+                                            LIVE
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {title && (
+                                        <div>
+                                          <p className="text-xs text-muted-foreground mb-0.5">Title</p>
+                                          <p className="text-sm font-medium">{title}</p>
+                                        </div>
+                                      )}
+                                      {description && (
+                                        <div>
+                                          <p className="text-xs text-muted-foreground mb-0.5">Description</p>
+                                          <p className="text-xs text-foreground/80 line-clamp-3">{description}</p>
+                                        </div>
+                                      )}
+                                      {buttonText && (
+                                        <div>
+                                          <p className="text-xs text-muted-foreground mb-0.5">Button</p>
+                                          <span className="inline-block px-2 py-1 text-xs bg-primary text-primary-foreground rounded">
+                                            {buttonText}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {cta.cta_url && (
+                                        <div>
+                                          <p className="text-xs text-muted-foreground mb-0.5">URL</p>
+                                          <p className="text-xs text-blue-500 truncate">{cta.cta_url}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </HoverCardContent>
+                                </HoverCard>
                               );
                             })}
                           </SelectContent>
