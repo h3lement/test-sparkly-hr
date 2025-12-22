@@ -59,6 +59,7 @@ interface Quiz {
   questions_count?: number;
   pages_count?: number;
   respondents_count?: number;
+  unique_respondents_count?: number;
   updated_by_email?: string;
   display_order?: number;
   ai_cost_eur?: number;
@@ -185,7 +186,7 @@ function SortableQuizRow({
       </TableCell>
       <TableCell className={`text-center ${cellPadding}`}>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-          {quiz.respondents_count}
+          {quiz.unique_respondents_count}/{quiz.respondents_count}
         </Badge>
       </TableCell>
       <TableCell className={`text-center ${cellPadding}`}>
@@ -345,10 +346,20 @@ export function QuizManager() {
           
           // Get respondents - use hypothesis_leads for hypothesis quizzes
           const respondentsTable = isHypothesis ? "hypothesis_leads" : "quiz_leads";
-          const { count: respondentsCount } = await supabase
-            .from(respondentsTable)
-            .select("*", { count: "exact", head: true })
-            .eq("quiz_id", quiz.id);
+          const [{ count: respondentsCount }, { data: respondentsData }] = await Promise.all([
+            supabase
+              .from(respondentsTable)
+              .select("*", { count: "exact", head: true })
+              .eq("quiz_id", quiz.id),
+            supabase
+              .from(respondentsTable)
+              .select("email")
+              .eq("quiz_id", quiz.id),
+          ]);
+          
+          // Count unique emails
+          const uniqueEmails = new Set(respondentsData?.map(r => r.email.toLowerCase()) || []);
+          const uniqueRespondentsCount = uniqueEmails.size;
           
           // Get last editor from activity logs
           const { data: lastActivity } = await supabase
@@ -386,6 +397,7 @@ export function QuizManager() {
             questions_count: questionsCount,
             pages_count: pagesCount,
             respondents_count: respondentsCount || 0,
+            unique_respondents_count: uniqueRespondentsCount,
             updated_by_email: lastActivity?.[0]?.user_email || null,
             ai_cost_eur: totalAiCost,
           };
