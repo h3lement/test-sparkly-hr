@@ -47,6 +47,7 @@ interface TranslateRequest {
   templateId: string;
   sourceLanguage: string;
   sourceSubject: string;
+  stream?: boolean;
 }
 
 serve(async (req) => {
@@ -64,8 +65,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { templateId, sourceLanguage, sourceSubject }: TranslateRequest = await req.json();
-    console.log(`Starting translation for email template ${templateId} from ${sourceLanguage}`);
+    const { templateId, sourceLanguage, sourceSubject, stream = false }: TranslateRequest = await req.json();
+    console.log(`Starting translation for email template ${templateId} from ${sourceLanguage}, stream: ${stream}`);
 
     if (!sourceSubject?.trim()) {
       return new Response(JSON.stringify({ 
@@ -99,6 +100,194 @@ Return only valid JSON without any markdown formatting.`;
 
     console.log(`Translating subject to ${targetLanguages.length} languages...`);
 
+    // If streaming is requested, use SSE
+    if (stream) {
+      const encoder = new TextEncoder();
+      
+      const readable = new ReadableStream({
+        async start(controller) {
+          const sendEvent = (event: string, data: any) => {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          };
+
+          try {
+            // Send initial progress
+            sendEvent("progress", { 
+              stage: "starting", 
+              message: "Starting translation...",
+              inputTokens: inputTokenEstimate,
+              outputTokens: 0,
+              cost: 0,
+              languages: targetLanguages.length
+            });
+
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
+                  { role: "user", content: prompt }
+                ],
+                stream: true,
+              }),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Translation API error:", errorText);
+              sendEvent("error", { message: `Translation API error: ${response.status}` });
+              controller.close();
+              return;
+            }
+
+            sendEvent("progress", { 
+              stage: "translating", 
+              message: "AI is translating...",
+              inputTokens: inputTokenEstimate,
+              outputTokens: 0,
+              cost: (inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) * 0.92,
+              languages: targetLanguages.length
+            });
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+              sendEvent("error", { message: "No response body" });
+              controller.close();
+              return;
+            }
+
+            const decoder = new TextDecoder();
+            let fullContent = "";
+            let outputTokens = 0;
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const jsonStr = line.slice(6).trim();
+                  if (jsonStr === '[DONE]') continue;
+                  
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const content = parsed.choices?.[0]?.delta?.content;
+                    if (content) {
+                      fullContent += content;
+                      outputTokens = Math.ceil(fullContent.length / 4);
+                      
+                      const currentCost = ((inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) + 
+                                          (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS)) * 0.92;
+                      
+                      // Count how many translations we might have
+                      const matches = fullContent.match(/"[a-z]{2}":/g);
+                      const translatedCount = matches ? matches.length : 0;
+                      
+                      sendEvent("progress", {
+                        stage: "translating",
+                        message: `Translating... (${translatedCount}/${targetLanguages.length} languages)`,
+                        inputTokens: inputTokenEstimate,
+                        outputTokens,
+                        cost: currentCost,
+                        translatedCount,
+                        totalLanguages: targetLanguages.length
+                      });
+                    }
+                  } catch {
+                    // Skip invalid JSON
+                  }
+                }
+              }
+            }
+
+            // Parse final content
+            let content = fullContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+            let translations: Record<string, string> = {};
+            
+            try {
+              translations = JSON.parse(content);
+              console.log(`Got ${Object.keys(translations).length} translations`);
+            } catch (parseError) {
+              console.error("Failed to parse translations:", parseError);
+              sendEvent("error", { message: "Failed to parse AI response" });
+              controller.close();
+              return;
+            }
+
+            // Add source language subject
+            translations[sourceLanguage] = sourceSubject;
+
+            // Calculate final cost
+            const finalCost = ((inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) + 
+                              (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS)) * 0.92;
+
+            sendEvent("progress", {
+              stage: "saving",
+              message: "Saving translations...",
+              inputTokens: inputTokenEstimate,
+              outputTokens,
+              cost: finalCost,
+              translatedCount: Object.keys(translations).length - 1,
+              totalLanguages: targetLanguages.length
+            });
+
+            // Update the template with translations and cost
+            const { error: updateError } = await supabase
+              .from("email_templates")
+              .update({
+                subjects: translations,
+                input_tokens: inputTokenEstimate,
+                output_tokens: outputTokens,
+                estimated_cost_eur: finalCost,
+              })
+              .eq("id", templateId);
+
+            if (updateError) {
+              console.error("Error updating template:", updateError);
+              sendEvent("error", { message: "Failed to update template with translations" });
+              controller.close();
+              return;
+            }
+
+            console.log("Email template translation complete!");
+
+            sendEvent("complete", {
+              success: true,
+              translatedLanguages: Object.keys(translations),
+              subjects: translations,
+              inputTokens: inputTokenEstimate,
+              outputTokens,
+              cost: finalCost
+            });
+
+            controller.close();
+          } catch (error) {
+            console.error("Streaming error:", error);
+            sendEvent("error", { message: error instanceof Error ? error.message : "Unknown error" });
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(readable, {
+        headers: { 
+          ...corsHeaders, 
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive"
+        },
+      });
+    }
+
+    // Non-streaming path (original behavior)
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
