@@ -58,7 +58,7 @@ export function SortableAnswer({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-1.5 p-1.5 border-b last:border-b-0 list-row-interactive ${isEven ? 'list-row-odd' : 'list-row-even'}`}
+      className={`flex items-center gap-2 p-2 border-b last:border-b-0 list-row-interactive ${isEven ? 'list-row-odd' : 'list-row-even'}`}
     >
       <div
         {...attributes}
