@@ -35,6 +35,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 
 interface Quiz {
@@ -116,6 +126,7 @@ export function CTATemplateManager() {
   const [translating, setTranslating] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [loadingFromQuiz, setLoadingFromQuiz] = useState(false);
+  const [showLoadFromQuizDialog, setShowLoadFromQuizDialog] = useState(false);
 
   const { toast } = useToast();
 
@@ -684,7 +695,7 @@ export function CTATemplateManager() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={loadFromQuiz}
+                onClick={() => setShowLoadFromQuizDialog(true)}
                 disabled={loadingFromQuiz}
                 className="gap-2"
               >
@@ -878,6 +889,27 @@ export function CTATemplateManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Load from Quiz Confirmation Dialog */}
+      <AlertDialog open={showLoadFromQuizDialog} onOpenChange={setShowLoadFromQuizDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Load CTA from Quiz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace your current editor content with the original CTA data from the quiz. Any unsaved changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowLoadFromQuizDialog(false);
+              loadFromQuiz();
+            }}>
+              Load from Quiz
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
