@@ -48,6 +48,7 @@ interface TranslateRequest {
   sourceLanguage: string;
   sourceSubject: string;
   stream?: boolean;
+  forceRetranslate?: boolean; // If true, regenerate all translations
 }
 
 serve(async (req) => {
@@ -65,8 +66,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { templateId, sourceLanguage, sourceSubject, stream = false }: TranslateRequest = await req.json();
-    console.log(`Starting translation for email template ${templateId} from ${sourceLanguage}, stream: ${stream}`);
+    const { templateId, sourceLanguage, sourceSubject, stream = false, forceRetranslate = false }: TranslateRequest = await req.json();
+    console.log(`Starting translation for email template ${templateId} from ${sourceLanguage}, stream: ${stream}, forceRetranslate: ${forceRetranslate}`);
 
     if (!sourceSubject?.trim()) {
       return new Response(JSON.stringify({ 

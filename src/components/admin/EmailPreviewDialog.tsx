@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Globe, Maximize2, Minimize2, Loader2, Sparkles, X } from "lucide-react";
+import { Send, Globe, Maximize2, Minimize2, Loader2, Sparkles, X, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -70,19 +70,28 @@ interface EmailPreviewDialogProps {
 const ALL_LANGUAGES = [
   { code: "en", name: "English" },
   { code: "et", name: "Estonian" },
-  { code: "da", name: "Danish" },
-  { code: "nl", name: "Dutch" },
-  { code: "fi", name: "Finnish" },
-  { code: "fr", name: "French" },
   { code: "de", name: "German" },
+  { code: "fr", name: "French" },
   { code: "it", name: "Italian" },
-  { code: "no", name: "Norwegian" },
-  { code: "pl", name: "Polish" },
-  { code: "pt", name: "Portuguese" },
-  { code: "ru", name: "Russian" },
   { code: "es", name: "Spanish" },
+  { code: "pl", name: "Polish" },
+  { code: "ro", name: "Romanian" },
+  { code: "nl", name: "Dutch" },
+  { code: "el", name: "Greek" },
+  { code: "pt", name: "Portuguese" },
+  { code: "cs", name: "Czech" },
+  { code: "hu", name: "Hungarian" },
   { code: "sv", name: "Swedish" },
-  { code: "uk", name: "Ukrainian" },
+  { code: "bg", name: "Bulgarian" },
+  { code: "da", name: "Danish" },
+  { code: "fi", name: "Finnish" },
+  { code: "sk", name: "Slovak" },
+  { code: "hr", name: "Croatian" },
+  { code: "lt", name: "Lithuanian" },
+  { code: "sl", name: "Slovenian" },
+  { code: "lv", name: "Latvian" },
+  { code: "ga", name: "Irish" },
+  { code: "mt", name: "Maltese" },
 ];
 
 // Get saved dialog size from localStorage
@@ -176,9 +185,27 @@ export function EmailPreviewDialog({
     return costUsd * 0.92; // Convert to EUR
   };
 
-  const translationCostEur = estimateTranslationCost();
+  // Estimate re-translation cost for ALL languages
+  const estimateRetranslationCost = () => {
+    const targetCount = ALL_LANGUAGES.length - 1; // Exclude source language
+    const subjectLength = template?.subjects?.[quiz?.primary_language || "en"]?.length || AVG_CHARS_PER_SUBJECT;
+    const promptBase = 400;
+    const languageList = targetCount * 20;
+    const inputChars = promptBase + languageList + subjectLength;
+    const outputChars = targetCount * (subjectLength + 10);
+    
+    const inputTokens = Math.ceil(inputChars / 4);
+    const outputTokens = Math.ceil(outputChars / 4);
+    
+    const costUsd = (inputTokens / 1000 * COST_PER_1K_INPUT_TOKENS) + 
+                    (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS);
+    return costUsd * 0.92;
+  };
 
-  const handleTranslate = async () => {
+  const translationCostEur = estimateTranslationCost();
+  const retranslationCostEur = estimateRetranslationCost();
+
+  const handleTranslate = async (forceRetranslate = false) => {
     if (!template || !quiz) return;
     
     const sourceLanguage = quiz.primary_language || "en";
@@ -196,7 +223,7 @@ export function EmailPreviewDialog({
     setTranslating(true);
     setTranslationProgress({
       stage: "starting",
-      message: "Initializing translation...",
+      message: forceRetranslate ? "Re-generating all translations..." : "Initializing translation...",
       inputTokens: 0,
       outputTokens: 0,
       cost: 0,
@@ -220,6 +247,7 @@ export function EmailPreviewDialog({
           sourceLanguage,
           sourceSubject,
           stream: true,
+          forceRetranslate,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -538,7 +566,7 @@ export function EmailPreviewDialog({
               })}
             </div>
             
-            {/* AI Translate Button */}
+            {/* AI Translate Button - for missing languages */}
             {missingLanguages.length > 0 && (
               <TooltipProvider>
                 <Tooltip>
@@ -546,7 +574,7 @@ export function EmailPreviewDialog({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleTranslate}
+                      onClick={() => handleTranslate(false)}
                       disabled={translating || !template}
                       className="gap-1.5 h-7 text-xs"
                     >
@@ -563,6 +591,36 @@ export function EmailPreviewDialog({
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Translate to {missingLanguages.length} missing languages</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {/* Re-generate Button - regenerate all translations */}
+            {availableLanguages.length > 1 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTranslate(true)}
+                      disabled={translating || !template}
+                      className="gap-1.5 h-7 text-xs"
+                    >
+                      {translating ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      )}
+                      Re-generate
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-mono">
+                        ~€{retranslationCostEur.toFixed(4)}
+                      </Badge>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Re-generate all {ALL_LANGUAGES.length - 1} translations</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
