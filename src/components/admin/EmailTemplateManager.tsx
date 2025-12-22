@@ -31,6 +31,7 @@ interface CTATemplate {
   quiz_id: string | null;
   version_number: number;
   is_live: boolean;
+  name: string | null;
   cta_title: Record<string, string>;
   cta_text: Record<string, string>;
   created_at: string;
@@ -407,10 +408,9 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     try {
       const { data, error } = await supabase
         .from("cta_templates")
-        .select("id, quiz_id, version_number, is_live, cta_title, cta_text, created_at")
+        .select("id, quiz_id, version_number, is_live, name, cta_title, cta_text, created_at")
         .or(`quiz_id.eq.${quizIdToUse},quiz_id.is.null`)
-        .order("is_live", { ascending: false })
-        .order("version_number", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -805,13 +805,10 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
                     <SelectContent className="bg-background">
                       <SelectItem value="">No CTA Template</SelectItem>
                       {ctaTemplates.map((cta) => {
-                        const quizMatch = quizzes.find(q => q.id === cta.quiz_id);
-                        const ctaTitle = cta.cta_title?.en || cta.cta_title?.et || 'Untitled';
-                        const quizName = quizMatch?.title?.en || quizMatch?.slug || 'Unknown';
+                        const ctaName = cta.name || cta.cta_title?.en || cta.cta_title?.et || 'Untitled CTA';
                         return (
                           <SelectItem key={cta.id} value={cta.id}>
-                            {cta.is_live && <Badge variant="default" className="mr-2 bg-green-600 text-xs">LIVE</Badge>}
-                            v{cta.version_number} - {ctaTitle.substring(0, 30)}{ctaTitle.length > 30 ? '...' : ''} ({quizName})
+                            {ctaName}
                           </SelectItem>
                         );
                       })}
