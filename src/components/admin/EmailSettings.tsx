@@ -1102,47 +1102,126 @@ export function EmailSettings() {
                 </div>
               </div>
 
-              {/* DKIM Settings */}
-              <div className="space-y-3 pt-3 border-t">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Key className="h-3.5 w-3.5 text-muted-foreground" />
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DKIM (Optional)</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={generateDkimKeys} disabled={isGeneratingDkim}>
-                    {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
-                    Generate
-                  </Button>
+              {/* DNS Records Section */}
+              <div className="space-y-4 pt-3 border-t">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DNS Records</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+
+                {/* SPF Record */}
+                {connectionStatus.dnsValidation && !connectionStatus.dnsValidation.spf.valid && (
+                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                        <span className="text-xs font-medium text-amber-700">SPF Record Missing</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain. Add this TXT record to your DNS:
+                    </p>
+                    <div className="p-2 bg-muted rounded text-xs font-mono break-all">
+                      v=spf1 include:_spf.{configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'} ~all
+                    </div>
+                    <p className="text-xs text-muted-foreground italic">
+                      Host: @ (or your domain) • Type: TXT
+                    </p>
+                  </div>
+                )}
+
+                {/* DMARC Record */}
+                {connectionStatus.dnsValidation && !connectionStatus.dnsValidation.dmarc.valid && (
+                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                        <span className="text-xs font-medium text-amber-700">DMARC Record Missing</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      DMARC (Domain-based Message Authentication) protects against email spoofing. Add this TXT record:
+                    </p>
+                    <div className="p-2 bg-muted rounded text-xs font-mono break-all">
+                      v=DMARC1; p=quarantine; rua=mailto:dmarc@{configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}
+                    </div>
+                    <p className="text-xs text-muted-foreground italic">
+                      Host: _dmarc • Type: TXT
+                    </p>
+                  </div>
+                )}
+
+                {/* DKIM Settings */}
+                <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DKIM (Optional)</p>
+                    </div>
+                    {(!connectionStatus.dnsValidation?.dkim.valid || !configDraft.dkimPrivateKey) && (
+                      <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={generateDkimKeys} disabled={isGeneratingDkim}>
+                        {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
+                        Generate
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    DKIM (DomainKeys Identified Mail) adds a digital signature to emails, proving they haven't been altered. Click "Generate" to create keys, then add the public key to your DNS.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Domain</Label>
+                      <Input
+                        value={configDraft.dkimDomain}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimDomain: e.target.value }))}
+                        placeholder="example.com"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Selector</Label>
+                      <Input
+                        value={configDraft.dkimSelector}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimSelector: e.target.value }))}
+                        placeholder="mail"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Domain</Label>
-                    <Input
-                      value={configDraft.dkimDomain}
-                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimDomain: e.target.value }))}
-                      placeholder="example.com"
-                      className="h-8 text-sm"
+                    <Label className="text-xs">Private Key</Label>
+                    <textarea
+                      value={configDraft.dkimPrivateKey}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
+                      placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                      className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Selector</Label>
-                    <Input
-                      value={configDraft.dkimSelector}
-                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimSelector: e.target.value }))}
-                      placeholder="mail"
-                      className="h-8 text-sm"
-                    />
+                  
+                  {configDraft.dkimSelector && configDraft.dkimDomain && (
+                    <div className="p-2 bg-muted rounded space-y-1">
+                      <p className="text-xs text-muted-foreground">Add this TXT record to your DNS:</p>
+                      <p className="text-xs font-mono">
+                        Host: <span className="font-semibold">{configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground italic">
+                        Value: The public key (generated from the private key above)
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* All Valid Message */}
+                {connectionStatus.dnsValidation?.spf.valid && 
+                 connectionStatus.dnsValidation?.dmarc.valid && 
+                 (connectionStatus.dnsValidation?.dkim.valid || !configDraft.dkimPrivateKey) && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/5 border border-green-500/20">
+                    <ShieldCheck className="h-4 w-4 text-green-600" />
+                    <span className="text-xs text-green-700">All DNS records are properly configured!</span>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Private Key</Label>
-                  <textarea
-                    value={configDraft.dkimPrivateKey}
-                    onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
-                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                    className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
-                  />
-                </div>
+                )}
               </div>
             </div>
           ) : (
