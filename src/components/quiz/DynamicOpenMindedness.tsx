@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDynamicQuiz } from './DynamicQuizContext';
 import { useLanguage } from './LanguageContext';
+import { useUiTranslations } from '@/hooks/useUiTranslations';
 import { cn } from '@/lib/utils';
 
 export function DynamicOpenMindedness() {
@@ -12,9 +13,11 @@ export function DynamicOpenMindedness() {
     setCurrentQuestion,
     getOpenMindednessQuestion,
     getRegularQuestions,
-    getTotalQuestionCount
+    getTotalQuestionCount,
+    quizData
   } = useDynamicQuiz();
   const { language } = useLanguage();
+  const { getTranslation } = useUiTranslations({ quizId: quizData?.id, language });
 
   const openMindednessQuestion = getOpenMindednessQuestion();
   const regularQuestions = getRegularQuestions();
@@ -53,8 +56,8 @@ export function DynamicOpenMindedness() {
       {/* Progress bar */}
       <div className="mb-8" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>Question {currentQuestionNumber} of {totalQuestions}</span>
-          <span>{Math.round(progress)}% complete</span>
+          <span>{getTranslation('questionOf', `Question ${currentQuestionNumber} of ${totalQuestions}`).replace('{current}', String(currentQuestionNumber)).replace('{total}', String(totalQuestions))}</span>
+          <span>{getTranslation('complete', `${Math.round(progress)}% complete`).replace('{percent}', String(Math.round(progress)))}</span>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div 
@@ -65,7 +68,7 @@ export function DynamicOpenMindedness() {
       </div>
 
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        Question {currentQuestionNumber} of {totalQuestions}, final question
+        {getTranslation('finalQuestion', `Question ${currentQuestionNumber} of ${totalQuestions}, final question`).replace('{current}', String(currentQuestionNumber)).replace('{total}', String(totalQuestions))}
       </div>
 
       <h1 id="mindedness-heading" className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
@@ -73,7 +76,7 @@ export function DynamicOpenMindedness() {
       </h1>
 
       <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
-        Use Tab to navigate, Space to toggle
+        {getTranslation('keyboardHintCheckbox', 'Use Tab to navigate, Space to toggle')}
       </p>
 
       <fieldset className="space-y-3 mb-8">
@@ -108,7 +111,7 @@ export function DynamicOpenMindedness() {
       </fieldset>
 
       <p className="text-sm text-muted-foreground mb-6 text-center">
-        Select all methods you are open to exploring.
+        {getTranslation('selectAllMethods', 'Select all methods you are open to exploring.')}
       </p>
 
       <nav className="flex justify-between gap-4" aria-label="Quiz navigation">
@@ -117,13 +120,13 @@ export function DynamicOpenMindedness() {
           onClick={handlePrevious}
           className="px-6"
         >
-          Back
+          {getTranslation('back', 'Back')}
         </Button>
         <Button
           onClick={handleNext}
           className="gradient-primary text-primary-foreground px-8 hover:scale-105 transition-transform"
         >
-          Next
+          {getTranslation('next', 'Next')}
         </Button>
       </nav>
     </main>
