@@ -176,20 +176,23 @@ export function AdminSidebar({
 
   async function fetchCounts() {
     try {
-      const [leadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes] = await Promise.all([
         supabase.from("quiz_leads").select("email"),
+        supabase.from("hypothesis_leads").select("email"),
         supabase.from("quizzes").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
         supabase.from("activity_logs").select("*", { count: "exact", head: true }),
       ]);
 
-      // Calculate unique emails from leads
-      const emails = leadsRes.data || [];
-      const uniqueEmails = new Set(emails.map(l => l.email.toLowerCase())).size;
+      // Combine emails from both tables and calculate unique
+      const quizEmails = leadsRes.data || [];
+      const hypothesisEmails = hypothesisLeadsRes.data || [];
+      const allEmails = [...quizEmails, ...hypothesisEmails];
+      const uniqueEmails = new Set(allEmails.map(l => l.email.toLowerCase())).size;
 
       setCounts({
-        leads: emails.length,
+        leads: allEmails.length,
         uniqueEmails,
         quizzes: quizzesRes.count || 0,
         admins: adminsRes.count || 0,
@@ -208,6 +211,11 @@ export function AdminSidebar({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "quiz_leads" },
+        () => fetchCounts()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "hypothesis_leads" },
         () => fetchCounts()
       )
       .on(
