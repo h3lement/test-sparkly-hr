@@ -19,6 +19,7 @@ export interface QuizData {
   shuffle_answers: boolean;
   enable_scoring: boolean;
   include_open_mindedness: boolean;
+  show_confetti: boolean;
 }
 
 export interface QuestionData {
@@ -118,6 +119,7 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           shuffle_answers: (quizData as any).shuffle_answers ?? false,
           enable_scoring: quizData.enable_scoring ?? true,
           include_open_mindedness: quizData.include_open_mindedness ?? false,
+          show_confetti: (quizData as any).show_confetti ?? true,
         });
 
         // Fetch questions with answers

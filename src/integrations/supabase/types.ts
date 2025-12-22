@@ -805,6 +805,7 @@ export type Database = {
           is_active: boolean
           primary_language: string
           quiz_type: string
+          show_confetti: boolean
           shuffle_answers: boolean
           shuffle_questions: boolean
           slug: string
@@ -838,6 +839,7 @@ export type Database = {
           is_active?: boolean
           primary_language?: string
           quiz_type?: string
+          show_confetti?: boolean
           shuffle_answers?: boolean
           shuffle_questions?: boolean
           slug: string
@@ -871,6 +873,7 @@ export type Database = {
           is_active?: boolean
           primary_language?: string
           quiz_type?: string
+          show_confetti?: boolean
           shuffle_answers?: boolean
           shuffle_questions?: boolean
           slug?: string
