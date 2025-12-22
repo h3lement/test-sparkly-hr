@@ -304,22 +304,23 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return pages;
   };
 
-  // Stats
+  // Stats (reflect current filters/search so counts match the table)
   const stats = useMemo(() => {
+    const base = filteredLogs;
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     return {
-      total: logs.length,
-      sent: logs.filter((l) => l.status === "sent").length,
-      failed: logs.filter((l) => l.status === "failed").length,
-      todaySent: logs.filter((l) => l.status === "sent" && new Date(l.created_at) >= today).length,
+      total: base.length,
+      sent: base.filter((l) => l.status === "sent").length,
+      failed: base.filter((l) => l.status === "failed").length,
+      todaySent: base.filter((l) => l.status === "sent" && new Date(l.created_at) >= today).length,
       // Count quiz_result_user AND legacy quiz_results type
-      quizUsers: logs.filter((l) => l.email_type === "quiz_result_user" || l.email_type === "quiz_results").length,
-      adminNotifs: logs.filter((l) => l.email_type === "quiz_result_admin").length,
-      testEmails: logs.filter((l) => l.email_type === "test").length,
+      quizUsers: base.filter((l) => l.email_type === "quiz_result_user" || l.email_type === "quiz_results").length,
+      adminNotifs: base.filter((l) => l.email_type === "quiz_result_admin").length,
+      testEmails: base.filter((l) => l.email_type === "test").length,
     };
-  }, [logs]);
+  }, [filteredLogs]);
 
   return (
     <div className="w-full space-y-6">
