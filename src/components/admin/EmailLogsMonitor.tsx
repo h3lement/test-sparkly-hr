@@ -314,8 +314,10 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       sent: logs.filter((l) => l.status === "sent").length,
       failed: logs.filter((l) => l.status === "failed").length,
       todaySent: logs.filter((l) => l.status === "sent" && new Date(l.created_at) >= today).length,
-      quizUsers: logs.filter((l) => l.email_type === "quiz_result_user").length,
+      // Count quiz_result_user AND legacy quiz_results type
+      quizUsers: logs.filter((l) => l.email_type === "quiz_result_user" || l.email_type === "quiz_results").length,
       adminNotifs: logs.filter((l) => l.email_type === "quiz_result_admin").length,
+      testEmails: logs.filter((l) => l.email_type === "test").length,
     };
   }, [logs]);
 
@@ -442,6 +444,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
             <SelectItem value="test">Tests</SelectItem>
             <SelectItem value="quiz_result_user">Quiz Takers</SelectItem>
             <SelectItem value="quiz_result_admin">Admin Notifs</SelectItem>
+            <SelectItem value="quiz_results">Quiz Results (Legacy)</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
