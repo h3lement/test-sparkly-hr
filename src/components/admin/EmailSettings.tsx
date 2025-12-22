@@ -43,6 +43,7 @@ import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { logActivity } from "@/hooks/useActivityLog";
+import { DomainReputationMonitor } from "./DomainReputationMonitor";
 
 import { Json } from "@/integrations/supabase/types";
 
@@ -2439,6 +2440,13 @@ export function EmailSettings() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Domain Reputation Monitor */}
+          {emailConfig.senderEmail && (
+            <DomainReputationMonitor 
+              domain={emailConfig.senderEmail.split('@')[1] || ''} 
+            />
           )}
         </div>
       </div>
