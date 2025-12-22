@@ -80,6 +80,57 @@ export type Database = {
         }
         Relationships: []
       }
+      domain_reputation_history: {
+        Row: {
+          checked_at: string
+          created_at: string
+          dnsbl_checked_count: number
+          dnsbl_listed_count: number
+          domain: string
+          full_result: Json | null
+          id: string
+          notification_sent: boolean | null
+          overall_status: string
+          recommendations: Json | null
+          vt_harmless: number | null
+          vt_malicious: number | null
+          vt_reputation: number | null
+          vt_suspicious: number | null
+        }
+        Insert: {
+          checked_at?: string
+          created_at?: string
+          dnsbl_checked_count?: number
+          dnsbl_listed_count?: number
+          domain: string
+          full_result?: Json | null
+          id?: string
+          notification_sent?: boolean | null
+          overall_status: string
+          recommendations?: Json | null
+          vt_harmless?: number | null
+          vt_malicious?: number | null
+          vt_reputation?: number | null
+          vt_suspicious?: number | null
+        }
+        Update: {
+          checked_at?: string
+          created_at?: string
+          dnsbl_checked_count?: number
+          dnsbl_listed_count?: number
+          domain?: string
+          full_result?: Json | null
+          id?: string
+          notification_sent?: boolean | null
+          overall_status?: string
+          recommendations?: Json | null
+          vt_harmless?: number | null
+          vt_malicious?: number | null
+          vt_reputation?: number | null
+          vt_suspicious?: number | null
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           created_at: string

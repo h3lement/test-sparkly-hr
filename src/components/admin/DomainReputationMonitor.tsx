@@ -20,6 +20,8 @@ import {
   ExternalLink,
   Loader2,
   ListChecks,
+  TrendingUp,
+  Bell,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
@@ -34,6 +36,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 interface DNSBLResult {
   name: string;
@@ -66,6 +78,21 @@ interface DomainReputationResult {
   virusTotal: VirusTotalResult | null;
   overallStatus: "clean" | "warning" | "danger" | "error";
   recommendations: string[];
+  notificationSent?: boolean;
+}
+
+interface HistoryRecord {
+  id: string;
+  domain: string;
+  checked_at: string;
+  overall_status: string;
+  dnsbl_listed_count: number;
+  dnsbl_checked_count: number;
+  vt_malicious: number;
+  vt_suspicious: number;
+  vt_harmless: number;
+  vt_reputation: number;
+  notification_sent: boolean;
 }
 
 interface ReputationCheckPrefs {
@@ -88,6 +115,9 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
   const [showDnsblDetails, setShowDnsblDetails] = useState(false);
   const [showVtDetails, setShowVtDetails] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
   const periodicCheckTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
@@ -128,6 +158,28 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
     return parts.length > 0 ? parts.join(' ') : '1d';
   }, [preferences.intervalDays, preferences.intervalHours, preferences.intervalMinutes]);
 
+  // Load history data
+  const loadHistory = useCallback(async () => {
+    if (!domain) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from("domain_reputation_history")
+        .select("*")
+        .eq("domain", domain)
+        .order("checked_at", { ascending: false })
+        .limit(30);
+
+      if (error) throw error;
+      setHistory(data || []);
+    } catch (error) {
+      console.error("Error loading history:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [domain]);
+
   // Check domain reputation
   const checkReputation = useCallback(async (isPeriodicCheck = false, silent = false) => {
     if (!domain) return;
@@ -159,14 +211,20 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
         lastResult: reputationResult,
       });
 
+      // Reload history
+      loadHistory();
+
       if (!silent) {
+        const notifMsg = reputationResult.notificationSent 
+          ? " Notification sent to admins."
+          : "";
         toast({
           title: reputationResult.overallStatus === "clean" 
             ? "Domain Reputation: Clean" 
             : reputationResult.overallStatus === "warning" 
               ? "Domain Reputation: Warning"
               : "Domain Reputation: Issues Detected",
-          description: `Checked ${reputationResult.dnsbl.checkedCount} blacklists, ${reputationResult.dnsbl.listedCount} listings found.`,
+          description: `Checked ${reputationResult.dnsbl.checkedCount} blacklists, ${reputationResult.dnsbl.listedCount} listings found.${notifMsg}`,
           variant: reputationResult.overallStatus === "danger" ? "destructive" : "default",
         });
       }
@@ -197,7 +255,7 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
         description: `${checkType} domain reputation check: ${checkStatus} - took ${checkDuration}ms`,
       });
     }
-  }, [domain, preferences, savePreferences, toast]);
+  }, [domain, preferences, savePreferences, toast, loadHistory]);
 
   // Load cached result on mount
   useEffect(() => {
@@ -205,6 +263,13 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
       setResult(preferences.lastResult);
     }
   }, [prefsLoading, preferences.lastResult]);
+
+  // Load history on mount
+  useEffect(() => {
+    if (domain) {
+      loadHistory();
+    }
+  }, [domain, loadHistory]);
 
   // Check if we need to run an initial check
   useEffect(() => {
@@ -215,7 +280,6 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
     const now = Date.now();
 
     if (!lastCheck || (now - lastCheck.getTime()) > intervalMs) {
-      // Time to run a check
       console.log("Running initial reputation check - interval exceeded or no previous check");
       checkReputation(true, true);
     }
@@ -294,6 +358,17 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
     return nextCheck;
   };
 
+  // Prepare chart data
+  const chartData = [...history].reverse().map((record) => ({
+    date: new Date(record.checked_at).toLocaleDateString(),
+    time: new Date(record.checked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    blacklists: record.dnsbl_listed_count,
+    vtMalicious: record.vt_malicious,
+    vtSuspicious: record.vt_suspicious,
+    vtReputation: record.vt_reputation,
+    status: record.overall_status,
+  }));
+
   return (
     <AdminCard className="mt-6">
       <AdminCardHeader className="flex items-center justify-between">
@@ -303,6 +378,16 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
             <h3 className="admin-card-title flex items-center gap-2">
               Domain Reputation
               {getStatusBadge()}
+              {result?.notificationSent && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Bell className="h-4 w-4 text-yellow-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>Notification sent to admins</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
               <Globe className="h-3 w-3 inline mr-1" />
@@ -411,6 +496,13 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
                   </span>
                 )}
               </div>
+
+              <div className="mt-3 p-2 bg-blue-500/5 rounded border border-blue-500/20">
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <Bell className="h-3 w-3" />
+                  Email notifications are automatically sent to all admins when status changes to warning or danger.
+                </div>
+              </div>
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -426,7 +518,6 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
         {/* Results Summary */}
         {result && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            {/* DNSBL Summary */}
             <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
               <div className="text-xs text-muted-foreground mb-1">Blacklists Checked</div>
               <div className="text-lg font-semibold">
@@ -440,7 +531,6 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
               </div>
             </div>
 
-            {/* VirusTotal Summary */}
             {result.virusTotal && !result.virusTotal.error && (
               <>
                 <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
@@ -458,6 +548,131 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
               </>
             )}
           </div>
+        )}
+
+        {/* Historical Trend Chart */}
+        {history.length > 1 && (
+          <Collapsible open={showHistory} onOpenChange={setShowHistory}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between mb-2">
+                <span className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Reputation Trend ({history.length} checks)
+                </span>
+                {showHistory ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="bg-muted/20 rounded-lg p-4 border border-border/50 mb-4">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 11 }}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11 }}
+                        className="text-muted-foreground"
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (payload && payload[0]) {
+                            return `${label} ${payload[0].payload.time}`;
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="blacklists" 
+                        stroke="#ef4444" 
+                        strokeWidth={2}
+                        name="Blacklists"
+                        dot={{ fill: '#ef4444', r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="vtMalicious" 
+                        stroke="#f97316" 
+                        strokeWidth={2}
+                        name="VT Malicious"
+                        dot={{ fill: '#f97316', r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="vtReputation" 
+                        stroke="#22c55e" 
+                        strokeWidth={2}
+                        name="VT Reputation"
+                        dot={{ fill: '#22c55e', r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* History table */}
+                <div className="mt-4 max-h-48 overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted/50">
+                      <tr className="border-b border-border/50">
+                        <th className="text-left p-2">Date</th>
+                        <th className="text-center p-2">Status</th>
+                        <th className="text-center p-2">Blacklists</th>
+                        <th className="text-center p-2">VT Malicious</th>
+                        <th className="text-center p-2">VT Rep</th>
+                        <th className="text-center p-2">Notified</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.map((record) => (
+                        <tr key={record.id} className="border-b border-border/30">
+                          <td className="p-2 text-muted-foreground">
+                            {new Date(record.checked_at).toLocaleString()}
+                          </td>
+                          <td className="text-center p-2">
+                            <Badge 
+                              variant={record.overall_status === "clean" ? "secondary" : "destructive"}
+                              className={
+                                record.overall_status === "clean" 
+                                  ? "bg-green-500/10 text-green-600" 
+                                  : record.overall_status === "warning"
+                                    ? "bg-yellow-500/10 text-yellow-600"
+                                    : ""
+                              }
+                            >
+                              {record.overall_status}
+                            </Badge>
+                          </td>
+                          <td className={`text-center p-2 ${record.dnsbl_listed_count > 0 ? "text-red-500" : ""}`}>
+                            {record.dnsbl_listed_count}
+                          </td>
+                          <td className={`text-center p-2 ${record.vt_malicious > 0 ? "text-red-500" : ""}`}>
+                            {record.vt_malicious}
+                          </td>
+                          <td className={`text-center p-2 ${record.vt_reputation < 0 ? "text-red-500" : "text-green-500"}`}>
+                            {record.vt_reputation}
+                          </td>
+                          <td className="text-center p-2">
+                            {record.notification_sent && <Bell className="h-3 w-3 text-yellow-500 mx-auto" />}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {/* DNSBL Details */}
