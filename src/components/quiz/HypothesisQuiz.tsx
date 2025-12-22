@@ -8,6 +8,7 @@ import { HypothesisResultsScreen } from './HypothesisResultsScreen';
 import { HypothesisOpenMindedness } from './HypothesisOpenMindedness';
 import { useHypothesisQuizPublic } from '@/hooks/useHypothesisQuizPublic';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
+import { useLanguage } from './LanguageContext';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
 
@@ -26,14 +27,18 @@ function HypothesisQuizContent() {
     setQuestions,
     setOpenMindednessQuestion,
   } = useHypothesisQuiz();
+  const { setQuizId } = useLanguage();
 
-  // Load quiz data into context
+  // Load quiz data into context and set quizId for translations
   useEffect(() => {
-    if (quiz) setQuizData(quiz);
+    if (quiz) {
+      setQuizData(quiz);
+      setQuizId(quiz.id);
+    }
     if (pages.length) setPages(pages);
     if (questions.length) setQuestions(questions);
     if (openMindednessQuestion) setOpenMindednessQuestion(openMindednessQuestion);
-  }, [quiz, pages, questions, openMindednessQuestion, setQuizData, setPages, setQuestions, setOpenMindednessQuestion]);
+  }, [quiz, pages, questions, openMindednessQuestion, setQuizData, setPages, setQuestions, setOpenMindednessQuestion, setQuizId]);
 
   if (loading) {
     return (

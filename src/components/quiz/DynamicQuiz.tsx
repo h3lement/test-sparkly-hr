@@ -11,6 +11,7 @@ import { EmotionalResultsScreen } from './EmotionalResultsScreen';
 import { HypothesisQuiz } from './HypothesisQuiz';
 import { useQuizData } from '@/hooks/useQuizData';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
+import { useLanguage } from './LanguageContext';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
 
@@ -24,14 +25,18 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
     setResultLevels,
     setOpenMindednessResultLevels
   } = useDynamicQuiz();
+  const { setQuizId } = useLanguage();
 
-  // Load quiz data into context
+  // Load quiz data into context and set quizId for translations
   useEffect(() => {
-    if (quiz) setQuizData(quiz);
+    if (quiz) {
+      setQuizData(quiz);
+      setQuizId(quiz.id);
+    }
     if (questions.length) setQuestions(questions);
     if (resultLevels.length) setResultLevels(resultLevels);
     if (openMindednessResultLevels.length) setOpenMindednessResultLevels(openMindednessResultLevels);
-  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels]);
+  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels, setQuizId]);
 
   if (loading) {
     return (
