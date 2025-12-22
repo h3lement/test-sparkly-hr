@@ -99,6 +99,14 @@ interface Quiz {
   primary_language: string;
 }
 
+interface CTATemplate {
+  id: string;
+  quiz_id: string | null;
+  version_number: number;
+  is_live: boolean;
+  cta_title: Record<string, string>;
+}
+
 interface EmailVersionHistoryProps {
   quizId?: string;
   onLoadTemplate?: (template: EmailTemplate) => void;
@@ -120,6 +128,7 @@ const EMAIL_DEFAULT_WIDTHS = {
   version: 70,
   type: 80,
   quiz: 150,
+  cta: 140,
   sender: 180,
   created: 130,
   lang: 70,
@@ -131,6 +140,7 @@ const EMAIL_DEFAULT_WIDTHS = {
 export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPreview }: EmailVersionHistoryProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [ctaTemplates, setCtaTemplates] = useState<CTATemplate[]>([]);
   const [emailStats, setEmailStats] = useState<Record<string, { sent: number; failed: number }>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
@@ -244,6 +254,19 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         
         setEmailStats(statsMap);
       }
+
+      // Fetch CTA templates to show linked CTAs
+      const { data: ctaData, error: ctaError } = await supabase
+        .from("cta_templates")
+        .select("id, quiz_id, version_number, is_live, cta_title")
+        .order("version_number", { ascending: false });
+
+      if (!ctaError && ctaData) {
+        setCtaTemplates(ctaData.map(cta => ({
+          ...cta,
+          cta_title: cta.cta_title as Record<string, string>,
+        })));
+      }
     } catch (error: any) {
       console.error("Error fetching email templates:", error);
       toast({
@@ -305,6 +328,17 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     const quiz = quizzes.find(q => q.id === templateQuizId);
     if (!quiz) return "Unknown";
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
+  };
+
+  const getCtaInfo = (ctaTemplateId: string | null): { label: string; isLive: boolean } | null => {
+    if (!ctaTemplateId) return null;
+    const cta = ctaTemplates.find(c => c.id === ctaTemplateId);
+    if (!cta) return null;
+    const title = cta.cta_title?.en || cta.cta_title?.et || '';
+    return {
+      label: `v${cta.version_number}${title ? ` - ${title.substring(0, 20)}${title.length > 20 ? '...' : ''}` : ''}`,
+      isLive: cta.is_live,
+    };
   };
 
   // Filter templates by quiz, type, and live status
@@ -506,6 +540,16 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                 )}
                 <div 
                   className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.cta }}
+                >
+                  <span>CTA Template</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("cta", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
                   style={{ width: columnWidths.sender }}
                 >
                   <span>Sender</span>
@@ -616,6 +660,31 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                           {getQuizTitle(template.quiz_id)}
                         </div>
                       )}
+
+                      {/* CTA Template */}
+                      <div 
+                        className="px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.cta }}
+                      >
+                        {(() => {
+                          const ctaInfo = getCtaInfo(template.cta_template_id);
+                          if (!ctaInfo) {
+                            return <span className="text-muted-foreground text-xs">—</span>;
+                          }
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              {ctaInfo.isLive && (
+                                <Badge variant="default" className="text-xs h-4 px-1 bg-green-600">
+                                  LIVE
+                                </Badge>
+                              )}
+                              <span className="text-xs truncate" title={ctaInfo.label}>
+                                {ctaInfo.label}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
 
                       {/* Sender */}
                       <div 
