@@ -103,7 +103,7 @@ interface WebVersionHistoryProps {
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
 }
 
-// Language selection dialog for preview
+// Language selection dialog for preview with horizontal language selector
 function LanguageSelectDialog({
   open,
   onOpenChange,
@@ -121,12 +121,15 @@ function LanguageSelectDialog({
     lang => template.subjects?.[lang.code]?.trim() || template.body_content?.[lang.code]?.trim()
   );
 
-  // Include EN as fallback if available
-  const hasEnglish = availableLanguages.some(l => l.code === "en");
+  // Auto-select EN on open if available
+  const handleSelectLanguage = (langCode: string) => {
+    onSelectLanguage(template, langCode);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="w-4 h-4" />
@@ -137,25 +140,29 @@ function LanguageSelectDialog({
           <p className="text-sm text-muted-foreground mb-4">
             Choose a language to preview the email template (v{template.version_number})
           </p>
-          <div className="flex flex-wrap gap-2">
-            {availableLanguages.map((lang) => (
-              <Button
-                key={lang.code}
-                variant={lang.code === "en" ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  onSelectLanguage(template, lang.code);
-                  onOpenChange(false);
-                }}
-                className="min-w-[80px]"
-              >
-                <span className="font-mono text-xs mr-1.5 uppercase">{lang.code}</span>
-                {lang.name}
-              </Button>
-            ))}
+          
+          {/* Horizontal language code selector */}
+          <div className="flex flex-wrap gap-1.5">
+            {ALL_LANGUAGE_CODES.map((lang) => {
+              const isAvailable = availableLanguages.some(l => l.code === lang.code);
+              return (
+                <Button
+                  key={lang.code}
+                  variant={lang.code === "en" && isAvailable ? "default" : isAvailable ? "outline" : "ghost"}
+                  size="sm"
+                  onClick={() => isAvailable && handleSelectLanguage(lang.code)}
+                  disabled={!isAvailable}
+                  className={`h-8 px-3 font-mono uppercase text-xs ${!isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
+                  title={`${lang.name}${!isAvailable ? ' (not available)' : ''}`}
+                >
+                  {lang.code}
+                </Button>
+              );
+            })}
           </div>
+          
           {availableLanguages.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
+            <p className="text-sm text-muted-foreground text-center py-4 mt-4">
               No translations available for this template
             </p>
           )}
@@ -172,7 +179,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const [filterType, setFilterType] = useState<string>("all");
-  const [filterLanguage, setFilterLanguage] = useState<string>("all");
   const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
   const [selectedTemplateForPreview, setSelectedTemplateForPreview] = useState<EmailTemplate | null>(null);
   const { toast } = useToast();
@@ -332,16 +338,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
   };
 
-  // Filter templates that have the selected language (if language filter is active)
+  // Filter templates by quiz and type
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
       const quizMatch = filterQuiz === "all" || t.quiz_id === filterQuiz;
       const typeMatch = filterType === "all" || t.template_type === filterType;
-      // Language filter: check if template has this language in subjects or body
-      const langMatch = filterLanguage === "all" || 
-        (t.subjects?.[filterLanguage]?.trim()) || 
-        (t.body_content?.[filterLanguage]?.trim());
-      return quizMatch && typeMatch && langMatch;
+      return quizMatch && typeMatch;
     });
 
     // Sort: live first, then by created_at descending (newest first)
@@ -352,7 +354,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       // Then by created_at descending (newest first)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [templates, filterQuiz, filterType, filterLanguage]);
+  }, [templates, filterQuiz, filterType]);
 
   const getTemplateTypeLabel = (type: string) => {
     switch (type) {
@@ -375,18 +377,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     const subjectLangs = Object.keys(template.subjects || {}).filter(k => template.subjects[k]?.trim());
     const bodyLangs = Object.keys(template.body_content || {}).filter(k => template.body_content[k]?.trim());
     return { subjects: subjectLangs.length, body: bodyLangs.length };
-  };
-
-  // Get available languages for a template
-  const getTemplateLanguages = (template: EmailTemplate): string[] => {
-    const langs = new Set<string>();
-    Object.keys(template.subjects || {}).forEach(k => {
-      if (template.subjects[k]?.trim()) langs.add(k);
-    });
-    Object.keys(template.body_content || {}).forEach(k => {
-      if (template.body_content[k]?.trim()) langs.add(k);
-    });
-    return Array.from(langs);
   };
 
   const handlePreviewClick = (template: EmailTemplate) => {
@@ -462,31 +452,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
               </Button>
             </div>
           </div>
-
-          {/* Horizontal Language Filter */}
-          <div className="flex items-center gap-1 mt-3 flex-wrap">
-            <span className="text-xs text-muted-foreground mr-2">Filter by language:</span>
-            <Button
-              variant={filterLanguage === "all" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setFilterLanguage("all")}
-              className="h-6 px-2 text-xs"
-            >
-              All
-            </Button>
-            {ALL_LANGUAGE_CODES.map((lang) => (
-              <Button
-                key={lang.code}
-                variant={filterLanguage === lang.code ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setFilterLanguage(lang.code)}
-                className="h-6 px-2 text-xs font-mono uppercase"
-                title={lang.name}
-              >
-                {lang.code}
-              </Button>
-            ))}
-          </div>
         </CardHeader>
         <CardContent>
           {loading && templates.length === 0 ? (
@@ -504,13 +469,13 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
           ) : (
             <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
               {/* Table Header */}
-              <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_100px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_100px_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+              <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
                 <span>Version</span>
                 <span>Type</span>
                 {!quizId && <span>Quiz</span>}
                 <span>Sender</span>
                 <span>Created</span>
-                <span className="text-center" title="Available languages">Languages</span>
+                <span className="text-center" title="Languages translated">Lang</span>
                 <span className="text-center">Sent</span>
                 <span className="text-right">Cost</span>
                 <span className="text-right">Actions</span>
@@ -524,12 +489,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                     ? template.created_by_email.split('@')[0]
                     : null;
                   const stats = emailStats[template.id] || { sent: 0, failed: 0 };
-                  const templateLangs = getTemplateLanguages(template);
+                  const translationCount = getEmailTranslationCount(template);
 
                   return (
                     <div
                       key={template.id}
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_100px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_100px_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
                         template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                       }`}
                     >
@@ -573,19 +538,14 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         )}
                       </div>
 
-                      {/* Language codes - horizontal list */}
-                      <div className="flex items-center justify-center gap-0.5 flex-wrap" title={`Languages: ${templateLangs.join(', ')}`}>
-                        {templateLangs.slice(0, 5).map((lang) => (
-                          <span 
-                            key={lang} 
-                            className="text-[10px] font-mono uppercase bg-muted px-1 rounded text-muted-foreground"
-                          >
-                            {lang}
+                      {/* Translation Count */}
+                      <div className="flex items-center justify-center" title={`Subjects: ${translationCount.subjects}/${TOTAL_LANGUAGES}, Body: ${translationCount.body}/${TOTAL_LANGUAGES}`}>
+                        <div className="flex items-center gap-1">
+                          <Languages className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className={`text-xs ${Math.max(translationCount.subjects, translationCount.body) >= TOTAL_LANGUAGES ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+                            {Math.max(translationCount.subjects, translationCount.body)}/{TOTAL_LANGUAGES}
                           </span>
-                        ))}
-                        {templateLangs.length > 5 && (
-                          <span className="text-[10px] text-muted-foreground">+{templateLangs.length - 5}</span>
-                        )}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-center gap-1" title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}>
