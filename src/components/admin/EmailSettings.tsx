@@ -35,9 +35,13 @@ import {
   Key,
   Server,
   Lock,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 import { Json } from "@/integrations/supabase/types";
 
@@ -267,6 +271,17 @@ export function EmailSettings() {
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  
+  // DNS section collapse preferences
+  interface DnsSectionPrefs {
+    spfExpanded: boolean;
+    dmarcExpanded: boolean;
+    dkimExpanded: boolean;
+  }
+  const { preferences: dnsSectionPrefs, updatePreference: updateDnsPref } = useUserPreferences<DnsSectionPrefs>({
+    key: "email_dns_sections",
+    defaultValue: { spfExpanded: true, dmarcExpanded: true, dkimExpanded: true },
+  });
   
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1287,463 +1302,514 @@ export function EmailSettings() {
                 )}
 
                 {/* SPF Record */}
-                <div className={`p-3 rounded-lg border space-y-3 ${connectionStatus.dnsValidation?.spf.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {connectionStatus.dnsValidation?.spf.valid ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                      )}
-                      <span className={`text-xs font-medium ${connectionStatus.dnsValidation?.spf.valid ? 'text-green-700' : 'text-amber-700'}`}>
-                        SPF Record {connectionStatus.dnsValidation?.spf.valid ? 'Valid' : 'Missing'}
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => {
-                        navigator.clipboard.writeText(getSpfRecord());
-                        toast({ title: "Copied!", description: "SPF record copied to clipboard." });
-                      }}
-                    >
-                      Copy Suggested
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain.
-                  </p>
-                  
-                  {/* Show current DNS record if found */}
-                  {connectionStatus.dnsValidation?.spf.valid && connectionStatus.dnsValidation.spf.record && (
-                    <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 px-2 text-xs text-green-700"
-                          onClick={() => {
-                            navigator.clipboard.writeText(connectionStatus.dnsValidation?.spf.record || '');
-                            toast({ title: "Copied!", description: "Current SPF record copied." });
-                          }}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                      <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                        {connectionStatus.dnsValidation.spf.record}
-                      </div>
-                      {connectionStatus.dnsValidation.spf.analysis && (
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="text-muted-foreground">Policy:</div>
-                          <div className="font-medium">
-                            {connectionStatus.dnsValidation.spf.analysis.policy || 'Not set'}
-                            {connectionStatus.dnsValidation.spf.analysis.isStrict && (
-                              <Badge variant="outline" className="ml-1 text-xs px-1 py-0 bg-green-500/10 text-green-600">Strict</Badge>
-                            )}
-                          </div>
-                          {connectionStatus.dnsValidation.spf.analysis.includes.length > 0 && (
-                            <>
-                              <div className="text-muted-foreground">Includes:</div>
-                              <div className="font-mono text-xs break-all">
-                                {connectionStatus.dnsValidation.spf.analysis.includes.join(', ')}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      {(connectionStatus.dnsValidation.spf.allRecords?.length || 0) > 1 && (
-                        <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
-                          <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
-                          <p className="text-xs text-amber-700">
-                            Warning: {connectionStatus.dnsValidation.spf.allRecords?.length} SPF records found. Only one should exist.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Include Domains (comma-separated)</Label>
-                      <Input
-                        value={configDraft.spfIncludeDomains}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, spfIncludeDomains: e.target.value }))}
-                        placeholder={getDefaultSpfInclude()}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Policy</Label>
-                      <Select
-                        value={configDraft.spfPolicy || "~all"}
-                        onValueChange={(value) => setConfigDraft((prev) => ({ ...prev, spfPolicy: value }))}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="~all">~all (Soft Fail)</SelectItem>
-                          <SelectItem value="-all">-all (Hard Fail)</SelectItem>
-                          <SelectItem value="?all">?all (Neutral)</SelectItem>
-                          <SelectItem value="+all">+all (Pass All)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Suggested Record:</p>
-                    <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                      {getSpfRecord()}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic">
-                    Host: @ (or your domain) • Type: TXT
-                  </p>
-                </div>
-
-                {/* DMARC Record */}
-                <div className={`p-3 rounded-lg border space-y-3 ${connectionStatus.dnsValidation?.dmarc.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {connectionStatus.dnsValidation?.dmarc.valid ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                      )}
-                      <span className={`text-xs font-medium ${connectionStatus.dnsValidation?.dmarc.valid ? 'text-green-700' : 'text-amber-700'}`}>
-                        DMARC Record {connectionStatus.dnsValidation?.dmarc.valid ? 'Valid' : 'Missing'}
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => {
-                        navigator.clipboard.writeText(getDmarcRecord());
-                        toast({ title: "Copied!", description: "DMARC record copied to clipboard." });
-                      }}
-                    >
-                      Copy Suggested
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    DMARC (Domain-based Message Authentication) protects against email spoofing.
-                  </p>
-                  
-                  {/* Show current DNS record if found */}
-                  {connectionStatus.dnsValidation?.dmarc.valid && connectionStatus.dnsValidation.dmarc.record && (
-                    <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 px-2 text-xs text-green-700"
-                          onClick={() => {
-                            navigator.clipboard.writeText(connectionStatus.dnsValidation?.dmarc.record || '');
-                            toast({ title: "Copied!", description: "Current DMARC record copied." });
-                          }}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                      <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                        {connectionStatus.dnsValidation.dmarc.record}
-                      </div>
-                      {connectionStatus.dnsValidation.dmarc.analysis && (
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="text-muted-foreground">Policy:</div>
-                          <div className="font-medium">
-                            {connectionStatus.dnsValidation.dmarc.analysis.policy || 'Not set'}
-                            {connectionStatus.dnsValidation.dmarc.analysis.isStrict && (
-                              <Badge variant="outline" className="ml-1 text-xs px-1 py-0 bg-green-500/10 text-green-600">Strict</Badge>
-                            )}
-                          </div>
-                          {connectionStatus.dnsValidation.dmarc.analysis.subdomainPolicy && (
-                            <>
-                              <div className="text-muted-foreground">Subdomain Policy:</div>
-                              <div className="font-medium">{connectionStatus.dnsValidation.dmarc.analysis.subdomainPolicy}</div>
-                            </>
-                          )}
-                          {connectionStatus.dnsValidation.dmarc.analysis.reportEmail && (
-                            <>
-                              <div className="text-muted-foreground">Reports to:</div>
-                              <div className="font-mono text-xs break-all">{connectionStatus.dnsValidation.dmarc.analysis.reportEmail}</div>
-                            </>
-                          )}
-                          <div className="text-muted-foreground">Percentage:</div>
-                          <div className="font-medium">{connectionStatus.dnsValidation.dmarc.analysis.percentage}%</div>
-                        </div>
-                      )}
-                      {(connectionStatus.dnsValidation.dmarc.allRecords?.length || 0) > 1 && (
-                        <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
-                          <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
-                          <p className="text-xs text-amber-700">
-                            Warning: {connectionStatus.dnsValidation.dmarc.allRecords?.length} DMARC records found. Only one should exist.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Policy</Label>
-                      <Select
-                        value={configDraft.dmarcPolicy || "quarantine"}
-                        onValueChange={(value) => setConfigDraft((prev) => ({ ...prev, dmarcPolicy: value }))}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">none (Monitor Only)</SelectItem>
-                          <SelectItem value="quarantine">quarantine (Mark as Spam)</SelectItem>
-                          <SelectItem value="reject">reject (Block)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Report Email</Label>
-                      <Input
-                        value={configDraft.dmarcReportEmail}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dmarcReportEmail: e.target.value }))}
-                        placeholder={getDefaultDmarcEmail()}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Suggested Record:</p>
-                    <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                      {getDmarcRecord()}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic">
-                    Host: _dmarc • Type: TXT
-                  </p>
-                </div>
-                <div className={`space-y-3 p-3 rounded-lg border ${connectionStatus.dnsValidation?.dkim.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-muted/30'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {connectionStatus.dnsValidation?.dkim.valid ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <Key className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
-                      <p className={`text-xs font-medium uppercase tracking-wide ${connectionStatus.dnsValidation?.dkim.valid ? 'text-green-700' : 'text-muted-foreground'}`}>
-                        DKIM {connectionStatus.dnsValidation?.dkim.valid ? 'Valid' : '(Optional)'}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={generateDkimKeys} disabled={isGeneratingDkim}>
-                      {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
-                      {configDraft.dkimPrivateKey ? 'Regenerate' : 'Generate'}
-                    </Button>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground">
-                    DKIM (DomainKeys Identified Mail) adds a digital signature to emails, proving they haven't been altered. Click "Generate" to create keys, then add the public key to your DNS.
-                  </p>
-
-                  {/* Show current DNS record if found */}
-                  {connectionStatus.dnsValidation?.dkim.valid && connectionStatus.dnsValidation.dkim.record && (
-                    <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 px-2 text-xs text-green-700"
-                          onClick={() => {
-                            navigator.clipboard.writeText(connectionStatus.dnsValidation?.dkim.record || '');
-                            toast({ title: "Copied!", description: "Current DKIM record copied." });
-                          }}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                      <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-20 overflow-y-auto">
-                        {connectionStatus.dnsValidation.dkim.record}
-                      </div>
-                      {connectionStatus.dnsValidation.dkim.analysis && (
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="text-muted-foreground">Key Type:</div>
-                          <div className="font-medium">{connectionStatus.dnsValidation.dkim.analysis.keyType || 'RSA'}</div>
-                          <div className="text-muted-foreground">Public Key:</div>
-                          <div>
-                            {connectionStatus.dnsValidation.dkim.analysis.hasPublicKey ? (
-                              <Badge variant="outline" className="text-xs px-1 py-0 bg-green-500/10 text-green-600">Present</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs px-1 py-0 bg-amber-500/10 text-amber-600">Missing</Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Show warning if DKIM is configured but DNS not found */}
-                  {configDraft.dkimPrivateKey && configDraft.dkimSelector && configDraft.dkimDomain && !connectionStatus.dnsValidation?.dkim.valid && (
-                    <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
-                      <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
-                      <p className="text-xs text-amber-700">
-                        DKIM keys are configured locally but no matching DNS record found at {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}. Add the DNS record below.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Domain</Label>
-                      <Input
-                        value={configDraft.dkimDomain}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimDomain: e.target.value }))}
-                        placeholder="example.com"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Selector</Label>
-                      <Input
-                        value={configDraft.dkimSelector}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimSelector: e.target.value }))}
-                        placeholder="mail"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">Private Key (stored securely, never exposed)</Label>
-                      {configDraft.dkimPrivateKey && !configDraft.dkimPublicKey && (
-                        <span className="text-xs text-amber-600 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Missing public key
-                        </span>
-                      )}
-                    </div>
-                    <textarea
-                      value={configDraft.dkimPrivateKey}
-                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
-                      placeholder="-----BEGIN RSA PRIVATE KEY----- (Use 'Generate' button above to create a new key pair)"
-                      className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      <strong>Tip:</strong> Use the "Generate" button to create a matching key pair. If you paste a private key manually, you must also provide the public key below.
-                    </p>
-                  </div>
-
-                  {/* Public Key Field - Always visible when private key exists */}
-                  {configDraft.dkimPrivateKey && (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs">Public Key (for DNS record)</Label>
-                        {configDraft.dkimPublicKey && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => {
-                              navigator.clipboard.writeText(configDraft.dkimPublicKey);
-                              toast({ title: "Copied!", description: "Public key copied to clipboard." });
-                            }}
-                          >
-                            Copy
-                          </Button>
+                <Collapsible 
+                  open={dnsSectionPrefs.spfExpanded} 
+                  onOpenChange={(open) => updateDnsPref("spfExpanded", open)}
+                  className={`rounded-lg border ${connectionStatus.dnsValidation?.spf.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+                      <div className="flex items-center gap-2">
+                        {dnsSectionPrefs.spfExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
+                        {connectionStatus.dnsValidation?.spf.valid ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                        )}
+                        <span className={`text-xs font-medium ${connectionStatus.dnsValidation?.spf.valid ? 'text-green-700' : 'text-amber-700'}`}>
+                          SPF Record {connectionStatus.dnsValidation?.spf.valid ? 'Valid' : 'Missing'}
+                        </span>
                       </div>
-                      <textarea
-                        value={configDraft.dkimPublicKey}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPublicKey: e.target.value }))}
-                        placeholder="Base64-encoded public key (without headers)"
-                        className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
-                      />
-                      {!configDraft.dkimPublicKey && (
-                        <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
-                          <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
-                          <p className="text-xs text-amber-700">
-                            <strong>Public key required:</strong> If you pasted a private key from another source, you must also paste the corresponding public key here. 
-                            It's cryptographically impossible to derive the public key from the private key in the browser. 
-                            Use "Generate" to create a new matching pair.
-                          </p>
-                        </div>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(getSpfRecord());
+                          toast({ title: "Copied!", description: "SPF record copied to clipboard." });
+                        }}
+                      >
+                        Copy Suggested
+                      </Button>
                     </div>
-                  )}
-                  
-                  {configDraft.dkimSelector && configDraft.dkimDomain && (
-                    <div className="p-3 bg-muted rounded-lg space-y-2 border">
-                      <p className="text-xs font-medium text-foreground">DNS Record to Add:</p>
-                      <div className="space-y-1">
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="p-3 pt-0 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain.
+                    </p>
+                    
+                    {/* Show current DNS record if found */}
+                    {connectionStatus.dnsValidation?.spf.valid && connectionStatus.dnsValidation.spf.record && (
+                      <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">Host (Name):</p>
+                          <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs"
+                            className="h-5 px-2 text-xs text-green-700"
                             onClick={() => {
-                              navigator.clipboard.writeText(`${configDraft.dkimSelector}._domainkey.${configDraft.dkimDomain}`);
-                              toast({ title: "Copied!", description: "Host name copied to clipboard." });
+                              navigator.clipboard.writeText(connectionStatus.dnsValidation?.spf.record || '');
+                              toast({ title: "Copied!", description: "Current SPF record copied." });
                             }}
                           >
                             Copy
                           </Button>
                         </div>
                         <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                          {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}
+                          {connectionStatus.dnsValidation.spf.record}
                         </div>
+                        {connectionStatus.dnsValidation.spf.analysis && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="text-muted-foreground">Policy:</div>
+                            <div className="font-medium">
+                              {connectionStatus.dnsValidation.spf.analysis.policy || 'Not set'}
+                              {connectionStatus.dnsValidation.spf.analysis.isStrict && (
+                                <Badge variant="outline" className="ml-1 text-xs px-1 py-0 bg-green-500/10 text-green-600">Strict</Badge>
+                              )}
+                            </div>
+                            {connectionStatus.dnsValidation.spf.analysis.includes.length > 0 && (
+                              <>
+                                <div className="text-muted-foreground">Includes:</div>
+                                <div className="font-mono text-xs break-all">
+                                  {connectionStatus.dnsValidation.spf.analysis.includes.join(', ')}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {(connectionStatus.dnsValidation.spf.allRecords?.length || 0) > 1 && (
+                          <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                            <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                            <p className="text-xs text-amber-700">
+                              Warning: {connectionStatus.dnsValidation.spf.allRecords?.length} SPF records found. Only one should exist.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Include Domains (comma-separated)</Label>
+                        <Input
+                          value={configDraft.spfIncludeDomains}
+                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, spfIncludeDomains: e.target.value }))}
+                          placeholder={getDefaultSpfInclude()}
+                          className="h-8 text-sm"
+                        />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Type: <span className="font-medium text-foreground">TXT</span></p>
+                        <Label className="text-xs">Policy</Label>
+                        <Select
+                          value={configDraft.spfPolicy || "~all"}
+                          onValueChange={(value) => setConfigDraft((prev) => ({ ...prev, spfPolicy: value }))}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="~all">~all (Soft Fail)</SelectItem>
+                            <SelectItem value="-all">-all (Hard Fail)</SelectItem>
+                            <SelectItem value="?all">?all (Neutral)</SelectItem>
+                            <SelectItem value="+all">+all (Pass All)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Suggested Record:</p>
+                      <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                        {getSpfRecord()}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground italic">
+                      Host: @ (or your domain) • Type: TXT
+                    </p>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* DMARC Record */}
+                <Collapsible 
+                  open={dnsSectionPrefs.dmarcExpanded} 
+                  onOpenChange={(open) => updateDnsPref("dmarcExpanded", open)}
+                  className={`rounded-lg border ${connectionStatus.dnsValidation?.dmarc.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+                      <div className="flex items-center gap-2">
+                        {dnsSectionPrefs.dmarcExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                        {connectionStatus.dnsValidation?.dmarc.valid ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                        )}
+                        <span className={`text-xs font-medium ${connectionStatus.dnsValidation?.dmarc.valid ? 'text-green-700' : 'text-amber-700'}`}>
+                          DMARC Record {connectionStatus.dnsValidation?.dmarc.valid ? 'Valid' : 'Missing'}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(getDmarcRecord());
+                          toast({ title: "Copied!", description: "DMARC record copied to clipboard." });
+                        }}
+                      >
+                        Copy Suggested
+                      </Button>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="p-3 pt-0 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      DMARC (Domain-based Message Authentication) protects against email spoofing.
+                    </p>
+                    
+                    {/* Show current DNS record if found */}
+                    {connectionStatus.dnsValidation?.dmarc.valid && connectionStatus.dnsValidation.dmarc.record && (
+                      <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-2 text-xs text-green-700"
+                            onClick={() => {
+                              navigator.clipboard.writeText(connectionStatus.dnsValidation?.dmarc.record || '');
+                              toast({ title: "Copied!", description: "Current DMARC record copied." });
+                            }}
+                          >
+                            Copy
+                          </Button>
+                        </div>
+                        <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                          {connectionStatus.dnsValidation.dmarc.record}
+                        </div>
+                        {connectionStatus.dnsValidation.dmarc.analysis && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="text-muted-foreground">Policy:</div>
+                            <div className="font-medium">
+                              {connectionStatus.dnsValidation.dmarc.analysis.policy || 'Not set'}
+                              {connectionStatus.dnsValidation.dmarc.analysis.isStrict && (
+                                <Badge variant="outline" className="ml-1 text-xs px-1 py-0 bg-green-500/10 text-green-600">Strict</Badge>
+                              )}
+                            </div>
+                            {connectionStatus.dnsValidation.dmarc.analysis.subdomainPolicy && (
+                              <>
+                                <div className="text-muted-foreground">Subdomain Policy:</div>
+                                <div className="font-medium">{connectionStatus.dnsValidation.dmarc.analysis.subdomainPolicy}</div>
+                              </>
+                            )}
+                            {connectionStatus.dnsValidation.dmarc.analysis.reportEmail && (
+                              <>
+                                <div className="text-muted-foreground">Reports to:</div>
+                                <div className="font-mono text-xs break-all">{connectionStatus.dnsValidation.dmarc.analysis.reportEmail}</div>
+                              </>
+                            )}
+                            <div className="text-muted-foreground">Percentage:</div>
+                            <div className="font-medium">{connectionStatus.dnsValidation.dmarc.analysis.percentage}%</div>
+                          </div>
+                        )}
+                        {(connectionStatus.dnsValidation.dmarc.allRecords?.length || 0) > 1 && (
+                          <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                            <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                            <p className="text-xs text-amber-700">
+                              Warning: {connectionStatus.dnsValidation.dmarc.allRecords?.length} DMARC records found. Only one should exist.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Policy</Label>
+                        <Select
+                          value={configDraft.dmarcPolicy || "quarantine"}
+                          onValueChange={(value) => setConfigDraft((prev) => ({ ...prev, dmarcPolicy: value }))}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">none (Monitor Only)</SelectItem>
+                            <SelectItem value="quarantine">quarantine (Mark as Spam)</SelectItem>
+                            <SelectItem value="reject">reject (Block)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Report Email</Label>
+                        <Input
+                          value={configDraft.dmarcReportEmail}
+                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, dmarcReportEmail: e.target.value }))}
+                          placeholder={getDefaultDmarcEmail()}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Suggested Record:</p>
+                      <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                        {getDmarcRecord()}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground italic">
+                      Host: _dmarc • Type: TXT
+                    </p>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* DKIM Record */}
+                <Collapsible 
+                  open={dnsSectionPrefs.dkimExpanded} 
+                  onOpenChange={(open) => updateDnsPref("dkimExpanded", open)}
+                  className={`rounded-lg border ${connectionStatus.dnsValidation?.dkim.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-muted/30'}`}
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+                      <div className="flex items-center gap-2">
+                        {dnsSectionPrefs.dkimExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                        {connectionStatus.dnsValidation?.dkim.valid ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                        <p className={`text-xs font-medium uppercase tracking-wide ${connectionStatus.dnsValidation?.dkim.valid ? 'text-green-700' : 'text-muted-foreground'}`}>
+                          DKIM {connectionStatus.dnsValidation?.dkim.valid ? 'Valid' : '(Optional)'}
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          generateDkimKeys();
+                        }} 
+                        disabled={isGeneratingDkim}
+                      >
+                        {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
+                        {configDraft.dkimPrivateKey ? 'Regenerate' : 'Generate'}
+                      </Button>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="p-3 pt-0 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      DKIM (DomainKeys Identified Mail) adds a digital signature to emails, proving they haven't been altered. Click "Generate" to create keys, then add the public key to your DNS.
+                    </p>
+
+                    {/* Show current DNS record if found */}
+                    {connectionStatus.dnsValidation?.dkim.valid && connectionStatus.dnsValidation.dkim.record && (
+                      <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-2 text-xs text-green-700"
+                            onClick={() => {
+                              navigator.clipboard.writeText(connectionStatus.dnsValidation?.dkim.record || '');
+                              toast({ title: "Copied!", description: "Current DKIM record copied." });
+                            }}
+                          >
+                            Copy
+                          </Button>
+                        </div>
+                        <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-20 overflow-y-auto">
+                          {connectionStatus.dnsValidation.dkim.record}
+                        </div>
+                        {connectionStatus.dnsValidation.dkim.analysis && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="text-muted-foreground">Key Type:</div>
+                            <div className="font-medium">{connectionStatus.dnsValidation.dkim.analysis.keyType || 'RSA'}</div>
+                            <div className="text-muted-foreground">Public Key:</div>
+                            <div>
+                              {connectionStatus.dnsValidation.dkim.analysis.hasPublicKey ? (
+                                <Badge variant="outline" className="text-xs px-1 py-0 bg-green-500/10 text-green-600">Present</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs px-1 py-0 bg-amber-500/10 text-amber-600">Missing</Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Show warning if DKIM is configured but DNS not found */}
+                    {configDraft.dkimPrivateKey && configDraft.dkimSelector && configDraft.dkimDomain && !connectionStatus.dnsValidation?.dkim.valid && (
+                      <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                        <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                        <p className="text-xs text-amber-700">
+                          DKIM keys are configured locally but no matching DNS record found at {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}. Add the DNS record below.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Domain</Label>
+                        <Input
+                          value={configDraft.dkimDomain}
+                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimDomain: e.target.value }))}
+                          placeholder="example.com"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Selector</Label>
+                        <Input
+                          value={configDraft.dkimSelector}
+                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimSelector: e.target.value }))}
+                          placeholder="mail"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Private Key (stored securely, never exposed)</Label>
+                        {configDraft.dkimPrivateKey && !configDraft.dkimPublicKey && (
+                          <span className="text-xs text-amber-600 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Missing public key
+                          </span>
+                        )}
+                      </div>
+                      <textarea
+                        value={configDraft.dkimPrivateKey}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
+                        placeholder="-----BEGIN RSA PRIVATE KEY----- (Use 'Generate' button above to create a new key pair)"
+                        className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Tip:</strong> Use the "Generate" button to create a matching key pair. If you paste a private key manually, you must also provide the public key below.
+                      </p>
+                    </div>
+
+                    {/* Public Key Field - Always visible when private key exists */}
+                    {configDraft.dkimPrivateKey && (
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
-                          {(configDraft.dkimDnsRecord || configDraft.dkimPublicKey) && (
+                          <Label className="text-xs">Public Key (for DNS record)</Label>
+                          {configDraft.dkimPublicKey && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-6 px-2 text-xs"
                               onClick={() => {
-                                const dnsValue = configDraft.dkimDnsRecord || `v=DKIM1; k=rsa; p=${configDraft.dkimPublicKey}`;
-                                navigator.clipboard.writeText(dnsValue);
-                                toast({ title: "Copied!", description: "DNS record value copied to clipboard." });
+                                navigator.clipboard.writeText(configDraft.dkimPublicKey);
+                                toast({ title: "Copied!", description: "Public key copied to clipboard." });
                               }}
                             >
                               Copy
                             </Button>
                           )}
                         </div>
-                        {configDraft.dkimDnsRecord ? (
-                          <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
-                            {configDraft.dkimDnsRecord}
+                        <textarea
+                          value={configDraft.dkimPublicKey}
+                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPublicKey: e.target.value }))}
+                          placeholder="Base64-encoded public key (without headers)"
+                          className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
+                        />
+                        {!configDraft.dkimPublicKey && (
+                          <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                            <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                            <p className="text-xs text-amber-700">
+                              <strong>Public key required:</strong> If you pasted a private key from another source, you must also paste the corresponding public key here. 
+                              It's cryptographically impossible to derive the public key from the private key in the browser. 
+                              Use "Generate" to create a new matching pair.
+                            </p>
                           </div>
-                        ) : configDraft.dkimPublicKey ? (
-                          <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
-                            v=DKIM1; k=rsa; p={configDraft.dkimPublicKey}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-amber-600 italic">
-                            Click "Generate" to create keys, or enter the public key above to see the DNS record.
-                          </p>
                         )}
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                    
+                    {configDraft.dkimSelector && configDraft.dkimDomain && (
+                      <div className="p-3 bg-muted rounded-lg space-y-2 border">
+                        <p className="text-xs font-medium text-foreground">DNS Record to Add:</p>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">Host (Name):</p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${configDraft.dkimSelector}._domainkey.${configDraft.dkimDomain}`);
+                                toast({ title: "Copied!", description: "Host name copied to clipboard." });
+                              }}
+                            >
+                              Copy
+                            </Button>
+                          </div>
+                          <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                            {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Type: <span className="font-medium text-foreground">TXT</span></p>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
+                            {(configDraft.dkimDnsRecord || configDraft.dkimPublicKey) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => {
+                                  const dnsValue = configDraft.dkimDnsRecord || `v=DKIM1; k=rsa; p=${configDraft.dkimPublicKey}`;
+                                  navigator.clipboard.writeText(dnsValue);
+                                  toast({ title: "Copied!", description: "DNS record value copied to clipboard." });
+                                }}
+                              >
+                                Copy
+                              </Button>
+                            )}
+                          </div>
+                          {configDraft.dkimDnsRecord ? (
+                            <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
+                              {configDraft.dkimDnsRecord}
+                            </div>
+                          ) : configDraft.dkimPublicKey ? (
+                            <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
+                              v=DKIM1; k=rsa; p={configDraft.dkimPublicKey}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-amber-600 italic">
+                              Click "Generate" to create keys, or enter the public key above to see the DNS record.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* All Valid Message */}
                 {connectionStatus.dnsValidation?.spf.valid && 
