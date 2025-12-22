@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Globe, Maximize2, Minimize2, Loader2, Sparkles } from "lucide-react";
+import { Send, Globe, Maximize2, Minimize2, Loader2, Sparkles, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -125,6 +125,7 @@ export function EmailPreviewDialog({
   const [isMaximized, setIsMaximized] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Update language when dialog opens
   useEffect(() => {
@@ -201,6 +202,9 @@ export function EmailPreviewDialog({
       cost: 0,
     });
 
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -217,6 +221,7 @@ export function EmailPreviewDialog({
           sourceSubject,
           stream: true,
         }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
@@ -269,15 +274,30 @@ export function EmailPreviewDialog({
         }
       }
     } catch (error: any) {
-      console.error("Translation error:", error);
-      toast({
-        title: "Translation failed",
-        description: error.message || "Failed to translate email template",
-        variant: "destructive",
-      });
+      // Don't show error toast if cancelled by user
+      if (error.name === 'AbortError') {
+        toast({
+          title: "Translation cancelled",
+          description: "The translation was stopped",
+        });
+      } else {
+        console.error("Translation error:", error);
+        toast({
+          title: "Translation failed",
+          description: error.message || "Failed to translate email template",
+          variant: "destructive",
+        });
+      }
     } finally {
       setTranslating(false);
       setTranslationProgress(null);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancelTranslation = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
@@ -560,6 +580,15 @@ export function EmailPreviewDialog({
                 <Badge variant="outline" className="font-mono text-xs">
                   €{translationProgress.cost.toFixed(4)}
                 </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelTranslation}
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                  title="Cancel translation"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
               
               {translationProgress.totalLanguages && (
