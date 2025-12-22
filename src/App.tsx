@@ -31,11 +31,11 @@ function AppContent() {
           <Route path="/admin/quiz/:quizId/:tab" element={<QuizEditor />} />
           <Route path="/auth" element={<Auth />} />
           
-          {/* All quizzes listing */}
+          {/* All quizzes listing - now at root */}
+          <Route path="/" element={<AllQuizzes />} />
           <Route path="/all" element={<AllQuizzes />} />
           
           {/* Dynamic quiz routes with unique slugs */}
-          <Route path="/" element={<DynamicQuiz />} />
           <Route path="/:quizSlug" element={<DynamicQuiz />} />
           <Route path="/:quizSlug/:step" element={<DynamicQuiz />} />
           <Route path="/quiz/:step" element={<DynamicQuiz />} />
