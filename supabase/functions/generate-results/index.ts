@@ -175,6 +175,7 @@ Output format:
           { role: 'system', content: 'You are an expert quiz result designer. Always output valid JSON only, no markdown.' },
           { role: 'user', content: prompt }
         ],
+        max_tokens: 4096, // Ensure enough tokens for 10+ result levels
       }),
     });
 
