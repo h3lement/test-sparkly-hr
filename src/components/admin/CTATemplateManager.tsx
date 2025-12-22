@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,8 @@ import {
   Check,
   Link as LinkIcon,
   History,
-  Download
+  Download,
+  Plus
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
@@ -137,7 +138,23 @@ export function CTATemplateManager() {
   const [loadingFromQuiz, setLoadingFromQuiz] = useState(false);
   const [showLoadFromQuizDialog, setShowLoadFromQuizDialog] = useState(false);
 
+  const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const scrollToEditor = () => {
+    editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleAddCta = () => {
+    // Clear form for new CTA
+    setCtaTitle({});
+    setCtaDescription({});
+    setCtaButtonText({});
+    setCtaUrl("https://sparkly.hr");
+    setSelectedLanguage("en");
+    // Scroll to editor
+    setTimeout(() => scrollToEditor(), 100);
+  };
 
   // Cost estimation
   const COST_PER_1K_INPUT_TOKENS = 0.000075;
@@ -567,6 +584,14 @@ export function CTATemplateManager() {
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
+              <Button
+                size="sm"
+                onClick={handleAddCta}
+                className="gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add CTA
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -691,7 +716,7 @@ export function CTATemplateManager() {
       </Card>
 
       {/* Quiz and Language Selection */}
-      <div className="flex flex-wrap gap-4 items-end">
+      <div ref={editorRef} className="flex flex-wrap gap-4 items-end">
         <div className="flex-1 min-w-[200px]">
           <Label className="mb-2 block">Select Quiz</Label>
           <Select value={selectedQuizId} onValueChange={setSelectedQuizId}>
