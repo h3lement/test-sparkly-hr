@@ -509,16 +509,16 @@
     @apply transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none focus-visible:scale-[1.02];
   }
 
-  /* Admin Tabs Styling */
+  /* Admin Tabs Styling - High contrast */
   .admin-tabs-list {
-    @apply flex w-full bg-secondary/50 rounded-lg p-1 gap-1;
+    @apply flex w-full bg-muted rounded-lg p-1 gap-1 border border-border;
   }
 
   .admin-tab-trigger {
     @apply flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200;
-    @apply text-muted-foreground hover:text-foreground hover:bg-background/60;
+    @apply text-foreground/70 hover:text-foreground hover:bg-card/80;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1;
-    @apply data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm;
+    @apply data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-border;
   }
 
   .admin-tab-trigger-badge {
