@@ -354,19 +354,36 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
       
-      // Test SMTP connectivity using TCP connect
+      // Test SMTP connectivity - use TLS for port 465, regular TCP for others
       try {
         const port = parseInt(emailConfig.smtpPort, 10) || 587;
-        console.log(`Testing TCP connection to ${emailConfig.smtpHost}:${port}...`);
+        const useImplicitTls = port === 465;
+        console.log(`Testing ${useImplicitTls ? "TLS" : "TCP"} connection to ${emailConfig.smtpHost}:${port}...`);
         
-        const conn = await Deno.connect({
-          hostname: emailConfig.smtpHost,
-          port: port,
-        });
+        let conn: Deno.Conn;
         
-        // Read initial SMTP greeting (220 response)
+        if (useImplicitTls) {
+          // Port 465 uses implicit TLS (SSL from the start)
+          conn = await Deno.connectTls({
+            hostname: emailConfig.smtpHost,
+            port: port,
+          });
+        } else {
+          // Port 587/25 use STARTTLS (plain TCP first, then upgrade)
+          conn = await Deno.connect({
+            hostname: emailConfig.smtpHost,
+            port: port,
+          });
+        }
+        
+        // Read initial SMTP greeting (220 response) with timeout
         const buffer = new Uint8Array(512);
-        const bytesRead = await conn.read(buffer);
+        const readPromise = conn.read(buffer);
+        const timeoutPromise = new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error("Connection timeout")), 10000)
+        );
+        
+        const bytesRead = await Promise.race([readPromise, timeoutPromise]) as number | null;
         conn.close();
         
         if (bytesRead && bytesRead > 0) {
