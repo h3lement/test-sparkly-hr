@@ -2880,6 +2880,7 @@ export default function QuizEditor() {
                 quizId={quizId} 
                 quizSlug={slug}
                 includeOpenMindedness={includeOpenMindedness}
+                quizType={quizType}
               />
             ) : null}
           </TabsContent>
