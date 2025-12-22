@@ -70,6 +70,20 @@ export function useHypothesisQuizPublic(slug: string) {
       if (error) throw error;
       if (!data) return null;
 
+      // Fetch live CTA template for this quiz
+      const { data: ctaTemplate } = await supabase
+        .from('cta_templates')
+        .select('cta_title, cta_description, cta_text, cta_url')
+        .eq('quiz_id', data.id)
+        .eq('is_live', true)
+        .maybeSingle();
+
+      // Use CTA from cta_templates if available, fallback to quizzes table
+      const ctaTitle = ctaTemplate?.cta_title as Record<string, string> || ((data as any).cta_title || {}) as Record<string, string>;
+      const ctaDescription = ctaTemplate?.cta_description as Record<string, string> || ((data as any).cta_description || {}) as Record<string, string>;
+      const ctaText = ctaTemplate?.cta_text as Record<string, string> || data.cta_text as Record<string, string>;
+      const ctaUrl = ctaTemplate?.cta_url || data.cta_url;
+
       return {
         id: data.id,
         slug: data.slug,
@@ -80,10 +94,10 @@ export function useHypothesisQuizPublic(slug: string) {
         badge_text: data.badge_text as Record<string, string>,
         duration_text: data.duration_text as Record<string, string>,
         discover_items: (data.discover_items || []) as Record<string, string>[],
-        cta_text: data.cta_text as Record<string, string>,
-        cta_title: ((data as any).cta_title || {}) as Record<string, string>,
-        cta_description: ((data as any).cta_description || {}) as Record<string, string>,
-        cta_url: data.cta_url,
+        cta_text: ctaText,
+        cta_title: ctaTitle,
+        cta_description: ctaDescription,
+        cta_url: ctaUrl,
         quiz_type: data.quiz_type,
         include_open_mindedness: data.include_open_mindedness ?? false,
       } as QuizData;

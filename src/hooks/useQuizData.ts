@@ -101,6 +101,20 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           return;
         }
 
+        // Fetch live CTA template for this quiz
+        const { data: ctaTemplate } = await supabase
+          .from('cta_templates')
+          .select('cta_title, cta_description, cta_text, cta_url')
+          .eq('quiz_id', quizData.id)
+          .eq('is_live', true)
+          .maybeSingle();
+
+        // Use CTA from cta_templates if available, fallback to quizzes table
+        const ctaTitle = ctaTemplate?.cta_title as Record<string, string> || (quizData as any).cta_title as Record<string, string> || {};
+        const ctaDescription = ctaTemplate?.cta_description as Record<string, string> || (quizData as any).cta_description as Record<string, string> || {};
+        const ctaText = ctaTemplate?.cta_text as Record<string, string> || quizData.cta_text as Record<string, string>;
+        const ctaUrl = ctaTemplate?.cta_url || quizData.cta_url || 'https://sparkly.hr';
+
         setQuiz({
           id: quizData.id,
           slug: quizData.slug,
@@ -111,10 +125,10 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           headline_highlight: quizData.headline_highlight as Record<string, string>,
           discover_items: quizData.discover_items as Array<Record<string, string>>,
           duration_text: quizData.duration_text as Record<string, string>,
-          cta_url: quizData.cta_url || 'https://sparkly.hr',
-          cta_text: quizData.cta_text as Record<string, string>,
-          cta_title: (quizData as any).cta_title as Record<string, string> || {},
-          cta_description: (quizData as any).cta_description as Record<string, string> || {},
+          cta_url: ctaUrl,
+          cta_text: ctaText,
+          cta_title: ctaTitle,
+          cta_description: ctaDescription,
           shuffle_questions: quizData.shuffle_questions ?? false,
           shuffle_answers: (quizData as any).shuffle_answers ?? false,
           enable_scoring: quizData.enable_scoring ?? true,
