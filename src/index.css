@@ -542,6 +542,6 @@
 
   /* Admin Tab Content */
   .admin-tab-content {
-    @apply mt-4 animate-fade-in;
+    @apply mt-4 animate-fade-in bg-card rounded-lg border border-border p-6;
   }
 }
