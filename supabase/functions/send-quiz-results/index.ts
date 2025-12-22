@@ -1,43 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Helper function to get the Resend API key (from database first, then env variable)
-async function getResendApiKey(): Promise<string | null> {
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (supabaseUrl && supabaseServiceKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("setting_value")
-        .eq("setting_key", "RESEND_API_KEY")
-        .maybeSingle();
-      
-      if (!error && data?.setting_value) {
-        console.log("Using Resend API key from database");
-        return data.setting_value;
-      }
-    }
-  } catch (error) {
-    console.error("Error fetching API key from database:", error);
-  }
-  
-  // Fallback to environment variable
-  const envKey = Deno.env.get("RESEND_API_KEY");
-  if (envKey) {
-    console.log("Using Resend API key from environment variable");
-  }
-  return envKey || null;
-}
 
 // Helper function to get email configuration from app_settings
 interface EmailConfigSettings {
@@ -57,7 +25,7 @@ interface EmailConfigSettings {
 async function getEmailConfig(): Promise<EmailConfigSettings> {
   const defaults: EmailConfigSettings = {
     senderName: "Sparkly",
-    senderEmail: "onboarding@resend.dev",
+    senderEmail: "noreply@sparkly.hr",
     replyToEmail: "",
     smtpHost: "",
     smtpPort: "587",
@@ -106,7 +74,8 @@ async function getEmailConfig(): Promise<EmailConfigSettings> {
         console.log("Loaded email config from database:", {
           senderName: defaults.senderName,
           senderEmail: defaults.senderEmail,
-          hasSmtp: !!defaults.smtpHost,
+          smtpHost: defaults.smtpHost,
+          smtpPort: defaults.smtpPort,
           hasDkim: !!defaults.dkimDomain,
         });
       }
@@ -118,62 +87,90 @@ async function getEmailConfig(): Promise<EmailConfigSettings> {
   return defaults;
 }
 
-// Create a lazy-loaded resend instance
-let resendInstance: Resend | null = null;
-async function getResend(): Promise<Resend | null> {
-  if (resendInstance) return resendInstance;
-  
-  const apiKey = await getResendApiKey();
-  if (!apiKey) return null;
-  
-  resendInstance = new Resend(apiKey);
-  return resendInstance;
+// Create SMTP client
+async function createSmtpClient(config: EmailConfigSettings): Promise<SMTPClient | null> {
+  if (!config.smtpHost || !config.smtpUsername || !config.smtpPassword) {
+    console.error("SMTP not configured - missing host, username, or password");
+    return null;
+  }
+
+  try {
+    const client = new SMTPClient({
+      connection: {
+        hostname: config.smtpHost,
+        port: parseInt(config.smtpPort, 10) || 587,
+        tls: config.smtpTls,
+        auth: {
+          username: config.smtpUsername,
+          password: config.smtpPassword,
+        },
+      },
+    });
+    return client;
+  } catch (error) {
+    console.error("Failed to create SMTP client:", error);
+    return null;
+  }
 }
 
-// Retry configuration
-const MAX_RETRIES = 3;
-const INITIAL_DELAY_MS = 1000; // 1 second
+// Send email via SMTP with retry logic
+interface SendEmailParams {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+  replyTo?: string;
+}
 
-// Helper function to delay execution
+const MAX_RETRIES = 3;
+const INITIAL_DELAY_MS = 1000;
+
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Send email with exponential backoff retry
 async function sendEmailWithRetry(
-  resend: Resend,
-  emailParams: {
-    from: string;
-    to: string[];
-    subject: string;
-    html: string;
-  }
-): Promise<{ data: { id: string } | null; error: { message: string } | null; attempts: number }> {
-  let lastError: { message: string } | null = null;
+  config: EmailConfigSettings,
+  emailParams: SendEmailParams
+): Promise<{ success: boolean; error: string | null; attempts: number; messageId?: string }> {
+  let lastError: string | null = null;
   
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     console.log(`Email send attempt ${attempt}/${MAX_RETRIES} to: ${emailParams.to.join(", ")}`);
     
-    const response = await resend.emails.send(emailParams);
-    
-    if (!response.error) {
+    try {
+      const client = await createSmtpClient(config);
+      if (!client) {
+        return { success: false, error: "SMTP not configured", attempts: attempt };
+      }
+
+      await client.send({
+        from: emailParams.from,
+        to: emailParams.to,
+        subject: emailParams.subject,
+        content: emailParams.html,
+        html: emailParams.html,
+        ...(emailParams.replyTo ? { replyTo: emailParams.replyTo } : {}),
+      });
+
+      await client.close();
+      
       console.log(`Email sent successfully on attempt ${attempt}`);
-      return { data: response.data, error: null, attempts: attempt };
-    }
-    
-    lastError = response.error;
-    console.error(`Email send attempt ${attempt} failed:`, response.error.message);
-    
-    // Don't delay after the last attempt
-    if (attempt < MAX_RETRIES) {
-      const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff: 1s, 2s, 4s
-      console.log(`Waiting ${delayMs}ms before retry...`);
-      await delay(delayMs);
+      return { success: true, error: null, attempts: attempt, messageId: `smtp-${Date.now()}` };
+    } catch (error: any) {
+      lastError = error.message || "Unknown SMTP error";
+      console.error(`Email send attempt ${attempt} failed:`, lastError);
+      
+      if (attempt < MAX_RETRIES) {
+        const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`Waiting ${delayMs}ms before retry...`);
+        await delay(delayMs);
+      }
     }
   }
   
   console.error(`All ${MAX_RETRIES} email attempts failed`);
-  return { data: null, error: lastError, attempts: MAX_RETRIES };
+  return { success: false, error: lastError, attempts: MAX_RETRIES };
 }
 
 // HTML sanitization to prevent injection attacks
@@ -190,8 +187,8 @@ function escapeHtml(text: string): string {
 }
 
 // In-memory rate limiting
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const MAX_REQUESTS_PER_WINDOW = 5; // 5 submissions per hour per IP
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 5;
 
 interface RateLimitEntry {
   count: number;
@@ -201,21 +198,14 @@ interface RateLimitEntry {
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
 function getClientIP(req: Request): string {
-  // Try various headers that might contain the real IP
   const forwardedFor = req.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
-  }
+  if (forwardedFor) return forwardedFor.split(",")[0].trim();
   
   const realIP = req.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
-  }
+  if (realIP) return realIP;
   
   const cfConnectingIP = req.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP;
-  }
+  if (cfConnectingIP) return cfConnectingIP;
   
   return "unknown";
 }
@@ -224,7 +214,6 @@ function checkRateLimit(ip: string): { allowed: boolean; remainingRequests: numb
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   
-  // Clean up old entries periodically
   if (rateLimitMap.size > 1000) {
     for (const [key, value] of rateLimitMap.entries()) {
       if (now - value.windowStart > RATE_LIMIT_WINDOW_MS) {
@@ -234,33 +223,17 @@ function checkRateLimit(ip: string): { allowed: boolean; remainingRequests: numb
   }
   
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    // New window or expired entry
     rateLimitMap.set(ip, { count: 1, windowStart: now });
-    return { 
-      allowed: true, 
-      remainingRequests: MAX_REQUESTS_PER_WINDOW - 1,
-      resetTime: now + RATE_LIMIT_WINDOW_MS
-    };
+    return { allowed: true, remainingRequests: MAX_REQUESTS_PER_WINDOW - 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
   }
   
   if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
-    const resetTime = entry.windowStart + RATE_LIMIT_WINDOW_MS;
-    return { 
-      allowed: false, 
-      remainingRequests: 0,
-      resetTime
-    };
+    return { allowed: false, remainingRequests: 0, resetTime: entry.windowStart + RATE_LIMIT_WINDOW_MS };
   }
   
-  // Increment counter
   entry.count++;
   rateLimitMap.set(ip, entry);
-  
-  return { 
-    allowed: true, 
-    remainingRequests: MAX_REQUESTS_PER_WINDOW - entry.count,
-    resetTime: entry.windowStart + RATE_LIMIT_WINDOW_MS
-  };
+  return { allowed: true, remainingRequests: MAX_REQUESTS_PER_WINDOW - entry.count, resetTime: entry.windowStart + RATE_LIMIT_WINDOW_MS };
 }
 
 // Email translations
@@ -328,205 +301,7 @@ const emailTranslations: Record<string, {
     leadershipOpenMindedness: 'Aufgeschlossene Führung',
     openMindednessOutOf: 'von 4',
   },
-  fr: {
-    subject: 'Vos résultats de performance d\'équipe',
-    yourResults: 'Vos résultats de performance d\'équipe',
-    outOf: 'sur',
-    points: 'points',
-    keyInsights: 'Points clés',
-    wantToImprove: 'Prêt pour une évaluation précise des employés?',
-    ctaDescription: 'Ce quiz fournit un aperçu général. Pour une analyse précise et approfondie des performances de votre équipe et des stratégies d\'amélioration concrètes, continuez avec des tests professionnels.',
-    visitSparkly: 'Continuer vers Sparkly.hr',
-    newQuizSubmission: 'Nouvelle soumission de quiz',
-    userEmail: 'E-mail utilisateur',
-    score: 'Score',
-    resultCategory: 'Catégorie de résultat',
-    leadershipOpenMindedness: 'Leadership ouvert d\'esprit',
-    openMindednessOutOf: 'sur 4',
-  },
-  es: {
-    subject: 'Tus resultados de rendimiento del equipo',
-    yourResults: 'Tus resultados de rendimiento del equipo',
-    outOf: 'de',
-    points: 'puntos',
-    keyInsights: 'Puntos clave',
-    wantToImprove: '¿Listo para una evaluación precisa de empleados?',
-    ctaDescription: 'Este cuestionario proporciona una visión general. Para un análisis preciso y profundo del rendimiento de tu equipo y estrategias de mejora accionables, continúa con pruebas profesionales.',
-    visitSparkly: 'Continuar a Sparkly.hr',
-    newQuizSubmission: 'Nueva presentación de quiz',
-    userEmail: 'Email del usuario',
-    score: 'Puntuación',
-    resultCategory: 'Categoría de resultado',
-    leadershipOpenMindedness: 'Liderazgo de mente abierta',
-    openMindednessOutOf: 'de 4',
-  },
-  it: {
-    subject: 'I tuoi risultati di performance del team',
-    yourResults: 'I tuoi risultati di performance del team',
-    outOf: 'su',
-    points: 'punti',
-    keyInsights: 'Punti chiave',
-    wantToImprove: 'Pronto per una valutazione precisa dei dipendenti?',
-    ctaDescription: 'Questo quiz fornisce una panoramica generale. Per un\'analisi accurata e approfondita delle prestazioni del tuo team e strategie di miglioramento attuabili, continua con test professionali.',
-    visitSparkly: 'Continua su Sparkly.hr',
-    newQuizSubmission: 'Nuova sottomissione quiz',
-    userEmail: 'Email utente',
-    score: 'Punteggio',
-    resultCategory: 'Categoria risultato',
-    leadershipOpenMindedness: 'Leadership di mentalità aperta',
-    openMindednessOutOf: 'su 4',
-  },
-  pt: {
-    subject: 'Os seus resultados de desempenho da equipa',
-    yourResults: 'Os seus resultados de desempenho da equipa',
-    outOf: 'de',
-    points: 'pontos',
-    keyInsights: 'Pontos-chave',
-    wantToImprove: 'Pronto para uma avaliação precisa de funcionários?',
-    ctaDescription: 'Este questionário fornece uma visão geral. Para uma análise precisa e aprofundada do desempenho da sua equipa e estratégias de melhoria acionáveis, continue com testes profissionais.',
-    visitSparkly: 'Continuar para Sparkly.hr',
-    newQuizSubmission: 'Nova submissão de quiz',
-    userEmail: 'Email do utilizador',
-    score: 'Pontuação',
-    resultCategory: 'Categoria do resultado',
-    leadershipOpenMindedness: 'Liderança de mente aberta',
-    openMindednessOutOf: 'de 4',
-  },
-  nl: {
-    subject: 'Uw teamprestatie resultaten',
-    yourResults: 'Uw teamprestatie resultaten',
-    outOf: 'van',
-    points: 'punten',
-    keyInsights: 'Belangrijke inzichten',
-    wantToImprove: 'Klaar voor nauwkeurige werknemersbeoordeling?',
-    ctaDescription: 'Deze quiz geeft een algemeen overzicht. Voor nauwkeurige, diepgaande analyse van de prestaties van uw team en uitvoerbare verbeterstrategieën, ga verder met professionele testen.',
-    visitSparkly: 'Doorgaan naar Sparkly.hr',
-    newQuizSubmission: 'Nieuwe quiz inzending',
-    userEmail: 'Gebruiker email',
-    score: 'Score',
-    resultCategory: 'Resultaat categorie',
-    leadershipOpenMindedness: 'Open-minded leiderschap',
-    openMindednessOutOf: 'van 4',
-  },
-  pl: {
-    subject: 'Twoje wyniki wydajności zespołu',
-    yourResults: 'Twoje wyniki wydajności zespołu',
-    outOf: 'z',
-    points: 'punktów',
-    keyInsights: 'Kluczowe spostrzeżenia',
-    wantToImprove: 'Gotowy na precyzyjną ocenę pracowników?',
-    ctaDescription: 'Ten quiz daje ogólny przegląd. Aby uzyskać dokładną, dogłębną analizę wydajności zespołu i wykonalne strategie poprawy, kontynuuj z profesjonalnymi testami.',
-    visitSparkly: 'Przejdź do Sparkly.hr',
-    newQuizSubmission: 'Nowe zgłoszenie quizu',
-    userEmail: 'Email użytkownika',
-    score: 'Wynik',
-    resultCategory: 'Kategoria wyniku',
-    leadershipOpenMindedness: 'Przywództwo otwarte na innowacje',
-    openMindednessOutOf: 'z 4',
-  },
-  ru: {
-    subject: 'Результаты производительности вашей команды',
-    yourResults: 'Результаты производительности вашей команды',
-    outOf: 'из',
-    points: 'баллов',
-    keyInsights: 'Ключевые выводы',
-    wantToImprove: 'Готовы к точной оценке сотрудников?',
-    ctaDescription: 'Этот тест дает общий обзор. Для точного, глубокого анализа производительности вашей команды и практических стратегий улучшения продолжите с профессиональным тестированием.',
-    visitSparkly: 'Перейти на Sparkly.hr',
-    newQuizSubmission: 'Новая отправка теста',
-    userEmail: 'Email пользователя',
-    score: 'Баллы',
-    resultCategory: 'Категория результата',
-    leadershipOpenMindedness: 'Открытое лидерство',
-    openMindednessOutOf: 'из 4',
-  },
-  sv: {
-    subject: 'Dina teamprestationsresultat',
-    yourResults: 'Dina teamprestationsresultat',
-    outOf: 'av',
-    points: 'poäng',
-    keyInsights: 'Viktiga insikter',
-    wantToImprove: 'Redo för en exakt medarbetarbedömning?',
-    ctaDescription: 'Denna quiz ger en allmän översikt. För noggrann, djupgående analys av ditt teams prestationer och genomförbara förbättringsstrategier, fortsätt med professionella tester.',
-    visitSparkly: 'Fortsätt till Sparkly.hr',
-    newQuizSubmission: 'Ny quiz-inlämning',
-    userEmail: 'Användaremail',
-    score: 'Poäng',
-    resultCategory: 'Resultatkategori',
-    leadershipOpenMindedness: 'Öppensinnat ledarskap',
-    openMindednessOutOf: 'av 4',
-  },
-  no: {
-    subject: 'Dine teamytelsesresultater',
-    yourResults: 'Dine teamytelsesresultater',
-    outOf: 'av',
-    points: 'poeng',
-    keyInsights: 'Viktige innsikter',
-    wantToImprove: 'Klar for nøyaktig medarbeidervurdering?',
-    ctaDescription: 'Denne quizen gir en generell oversikt. For nøyaktig, dyptgående analyse av teamets ytelse og handlingsrettede forbedringsstrategier, fortsett med profesjonell testing.',
-    visitSparkly: 'Fortsett til Sparkly.hr',
-    newQuizSubmission: 'Ny quiz-innsending',
-    userEmail: 'Bruker-e-post',
-    score: 'Poengsum',
-    resultCategory: 'Resultatkategori',
-    leadershipOpenMindedness: 'Åpent lederskap',
-    openMindednessOutOf: 'av 4',
-  },
-  da: {
-    subject: 'Dine teampræstationsresultater',
-    yourResults: 'Dine teampræstationsresultater',
-    outOf: 'af',
-    points: 'point',
-    keyInsights: 'Vigtige indsigter',
-    wantToImprove: 'Klar til præcis medarbejdervurdering?',
-    ctaDescription: 'Denne quiz giver et generelt overblik. For præcis, dybdegående analyse af dit teams præstationer og handlingsorienterede forbedringsstrategier, fortsæt med professionel test.',
-    visitSparkly: 'Fortsæt til Sparkly.hr',
-    newQuizSubmission: 'Ny quiz-indsendelse',
-    userEmail: 'Bruger-email',
-    score: 'Score',
-    resultCategory: 'Resultatkategori',
-    leadershipOpenMindedness: 'Åbensindet lederskab',
-    openMindednessOutOf: 'af 4',
-  },
-  fi: {
-    subject: 'Tiimisuorituksesi tulokset',
-    yourResults: 'Tiimisuorituksesi tulokset',
-    outOf: '/',
-    points: 'pistettä',
-    keyInsights: 'Keskeiset oivallukset',
-    wantToImprove: 'Valmis tarkkaan työntekijäarviointiin?',
-    ctaDescription: 'Tämä kysely antaa yleiskuvan. Tarkkaan, syvälliseen analyysiin tiimisi suorituskyvystä ja toteutettaviin parannusstrategioihin, jatka ammattimaisella testauksella.',
-    visitSparkly: 'Jatka Sparkly.hr-sivustolle',
-    newQuizSubmission: 'Uusi tietovisavastaus',
-    userEmail: 'Käyttäjän sähköposti',
-    score: 'Pisteet',
-    resultCategory: 'Tuloskategoria',
-    leadershipOpenMindedness: 'Avoimen mielen johtajuus',
-    openMindednessOutOf: '/ 4',
-  },
-  uk: {
-    subject: 'Результати продуктивності вашої команди',
-    yourResults: 'Результати продуктивності вашої команди',
-    outOf: 'з',
-    points: 'балів',
-    keyInsights: 'Ключові висновки',
-    wantToImprove: 'Готові до точної оцінки співробітників?',
-    ctaDescription: 'Цей тест дає загальний огляд. Для точного, глибокого аналізу продуктивності вашої команди та практичних стратегій покращення продовжуйте з професійним тестуванням.',
-    visitSparkly: 'Перейти до Sparkly.hr',
-    newQuizSubmission: 'Нове подання тесту',
-    userEmail: 'Email користувача',
-    score: 'Бали',
-    resultCategory: 'Категорія результату',
-    leadershipOpenMindedness: 'Відкрите лідерство',
-    openMindednessOutOf: 'з 4',
-  },
 };
-
-interface TemplateOverride {
-  sender_name?: string;
-  sender_email?: string;
-  subject?: string;
-}
 
 interface QuizResultsRequest {
   email: string;
@@ -536,18 +311,21 @@ interface QuizResultsRequest {
   resultDescription: string;
   insights: string[];
   language?: string;
-  answers?: Array<{ questionId: number; selectedOption: number }>;
+  answers?: unknown;
   opennessScore?: number;
   opennessMaxScore?: number;
   opennessTitle?: string;
   opennessDescription?: string;
   quizId?: string;
-  quizSlug?: string;
-  templateOverride?: TemplateOverride;
+  templateOverride?: {
+    sender_name?: string;
+    sender_email?: string;
+    subject?: string;
+  };
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  console.log("send-quiz-results function called");
+  console.log("send-quiz-results function called (SMTP mode)");
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -555,64 +333,114 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const body = await req.json();
+    const emailConfig = await getEmailConfig();
     
-    // Handle special actions
+    // Handle check_connection action
     if (body.action === "check_connection") {
-      console.log("Checking Resend connection...");
-      const apiKey = await getResendApiKey();
+      console.log("Checking SMTP connection...");
       
-      if (!apiKey) {
+      if (!emailConfig.smtpHost || !emailConfig.smtpUsername || !emailConfig.smtpPassword) {
         return new Response(
-          JSON.stringify({ connected: false, error: "RESEND_API_KEY not configured" }),
+          JSON.stringify({ 
+            connected: false, 
+            error: "SMTP not configured. Please set SMTP host, username, and password.",
+            config: {
+              hasHost: !!emailConfig.smtpHost,
+              hasUsername: !!emailConfig.smtpUsername,
+              hasPassword: !!emailConfig.smtpPassword,
+            }
+          }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
       
-      // Test the connection by checking domains endpoint (doesn't send email)
       try {
-        const response = await fetch("https://api.resend.com/domains", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
-        
-        // 200 = success, 401/403 = invalid key
-        const isConnected = response.status === 200;
-        console.log("Connection check result:", response.status, isConnected);
-        
-        let domains: Array<{ name: string; status: string; region: string }> = [];
-        if (isConnected) {
-          const domainsData = await response.json();
-          domains = (domainsData.data || []).map((d: any) => ({
-            name: d.name,
-            status: d.status,
-            region: d.region || "unknown",
-          }));
-          console.log("Domains found:", domains.length);
+        const client = await createSmtpClient(emailConfig);
+        if (client) {
+          await client.close();
+          console.log("SMTP connection successful");
+          return new Response(
+            JSON.stringify({ 
+              connected: true, 
+              provider: "SMTP",
+              config: {
+                host: emailConfig.smtpHost,
+                port: emailConfig.smtpPort,
+                tls: emailConfig.smtpTls,
+                senderEmail: emailConfig.senderEmail,
+                senderName: emailConfig.senderName,
+              },
+              domains: [{
+                name: emailConfig.senderEmail.split('@')[1] || 'unknown',
+                status: 'configured',
+                region: 'smtp'
+              }]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
         }
-        
-        return new Response(
-          JSON.stringify({ connected: isConnected, domains }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+        throw new Error("Failed to create SMTP client");
       } catch (connError: any) {
-        console.error("Connection check failed:", connError);
+        console.error("SMTP connection check failed:", connError);
         return new Response(
           JSON.stringify({ connected: false, error: connError.message }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     }
+
+    // Handle DKIM key generation
+    if (body.action === "generate_dkim") {
+      console.log("Generating DKIM keys...");
+      try {
+        const selector = `sparkly${Date.now().toString(36)}`;
+        
+        const keyPair = await crypto.subtle.generateKey(
+          {
+            name: "RSASSA-PKCS1-v1_5",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: "SHA-256",
+          },
+          true,
+          ["sign", "verify"]
+        );
+        
+        const privateKeyBuffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+        const privateKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(privateKeyBuffer)));
+        const privateKeyPem = `-----BEGIN PRIVATE KEY-----\n${privateKeyBase64.match(/.{1,64}/g)?.join("\n")}\n-----END PRIVATE KEY-----`;
+        
+        const publicKeyBuffer = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+        const publicKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(publicKeyBuffer)));
+        
+        console.log("DKIM keys generated successfully");
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            selector,
+            privateKey: privateKeyPem,
+            publicKey: publicKeyBase64,
+            dnsRecord: `v=DKIM1; k=rsa; p=${publicKeyBase64}`,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      } catch (dkimError: any) {
+        console.error("DKIM generation failed:", dkimError);
+        return new Response(
+          JSON.stringify({ success: false, error: dkimError.message }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
     
+    // Handle test_email action
     if (body.action === "test_email") {
       console.log("Sending test email to:", body.testEmail, "type:", body.emailType);
-      const resend = await getResend();
       
-      if (!resend) {
+      if (!emailConfig.smtpHost) {
         return new Response(
-          JSON.stringify({ success: false, error: "RESEND_API_KEY not configured" }),
+          JSON.stringify({ success: false, error: "SMTP not configured" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
@@ -667,39 +495,48 @@ const handler = async (req: Request): Promise<Response> => {
         html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #1a1a1a; margin: 0;">✅ Email Configuration Working</h1>
+              <h1 style="color: #1a1a1a; margin: 0;">✅ SMTP Email Configuration Working</h1>
             </div>
             <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-              <p style="color: #4a4a4a; margin: 0; line-height: 1.6;">
-                This is a test email from your Sparkly application. If you received this, your email configuration is working correctly.
+              <p style="color: #4a4a4a; margin: 0 0 12px 0; line-height: 1.6;">
+                This is a test email from your Sparkly application via SMTP. If you received this, your email configuration is working correctly.
+              </p>
+              <p style="color: #6b7280; margin: 0; font-size: 13px;">
+                <strong>SMTP Host:</strong> ${emailConfig.smtpHost}:${emailConfig.smtpPort}<br>
+                <strong>Sender:</strong> ${emailConfig.senderName} &lt;${emailConfig.senderEmail}&gt;<br>
+                <strong>TLS:</strong> ${emailConfig.smtpTls ? 'Enabled' : 'Disabled'}
               </p>
             </div>
             <div style="text-align: center; color: #888; font-size: 12px;">
-              <p>Sent from Sparkly.hr</p>
+              <p>Sent via SMTP from ${emailConfig.senderName}</p>
               <p>Timestamp: ${new Date().toISOString()}</p>
             </div>
           </div>
         `;
       }
       
-      const testResult = await resend.emails.send({
-        from: "Sparkly Test <onboarding@resend.dev>",
+      const fromAddress = `${emailConfig.senderName} <${emailConfig.senderEmail}>`;
+      console.log("Sending test email from:", fromAddress);
+      
+      const testResult = await sendEmailWithRetry(emailConfig, {
+        from: fromAddress,
         to: [body.testEmail],
         subject,
         html,
+        replyTo: emailConfig.replyToEmail || undefined,
       });
       
-      if (testResult.error) {
+      if (!testResult.success) {
         console.error("Test email failed:", testResult.error);
         return new Response(
-          JSON.stringify({ success: false, error: testResult.error.message }),
+          JSON.stringify({ success: false, error: testResult.error }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
       
-      console.log("Test email sent successfully:", testResult.data?.id);
+      console.log("Test email sent successfully");
       return new Response(
-        JSON.stringify({ success: true, id: testResult.data?.id }),
+        JSON.stringify({ success: true, id: testResult.messageId }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -715,19 +552,8 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Rate limit exceeded for IP: ${clientIP}. Reset at: ${resetDate.toISOString()}`);
       
       return new Response(
-        JSON.stringify({ 
-          error: "Too many requests. Please try again later.",
-          resetTime: rateLimitResult.resetTime
-        }),
-        {
-          status: 429,
-          headers: { 
-            "Content-Type": "application/json",
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
-            ...corsHeaders 
-          },
-        }
+        JSON.stringify({ error: "Too many requests. Please try again later.", resetTime: rateLimitResult.resetTime }),
+        { status: 429, headers: { "Content-Type": "application/json", "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": rateLimitResult.resetTime.toString(), ...corsHeaders } }
       );
     }
 
@@ -751,36 +577,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
-    console.log("Openness Score:", opennessScore, "/", opennessMaxScore);
-    console.log("Openness Title:", opennessTitle);
     console.log("Quiz ID:", quizId);
     console.log("Language:", language);
-    console.log("Is Test Email:", isTest);
-    console.log("Template Override:", templateOverride);
-    console.log(`Rate limit - Remaining requests: ${rateLimitResult.remainingRequests}`);
 
-    // Get translations for the language
     const trans = emailTranslations[language] || emailTranslations.en;
 
-    // Save lead to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Resend instance
-    const resend = await getResend();
-    if (!resend) {
-      console.error("RESEND_API_KEY not configured");
+    if (!emailConfig.smtpHost) {
+      console.error("SMTP not configured");
       return new Response(
         JSON.stringify({ error: "Email service not configured" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Fetch live email template configuration
-    // First try quiz-specific template, then fall back to global template
+    // Fetch email template configuration
     let templateData = null;
-    
     if (quizId) {
       const { data: quizTemplate } = await supabase
         .from("email_templates")
@@ -797,7 +612,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
     
-    // Fall back to global template if no quiz-specific template found
     if (!templateData) {
       const { data: globalTemplate } = await supabase
         .from("email_templates")
@@ -809,25 +623,17 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
       
       templateData = globalTemplate;
-      console.log("Using global email template");
     }
-    // Use template override (for test emails) > template values > fallback defaults
-    const senderName = templateOverride?.sender_name?.trim() 
-      || (templateData?.sender_name && templateData.sender_name.trim()) 
-      || "Sparkly.hr";
-    const senderEmail = templateOverride?.sender_email?.trim() 
-      || (templateData?.sender_email && templateData.sender_email.trim()) 
-      || "support@sparkly.hr";
-    const templateSubjects = templateData?.subjects as Record<string, string> || {};
-    const emailSubject = templateOverride?.subject?.trim() 
-      || templateSubjects[language] 
-      || trans.subject;
 
-    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject, usingOverride: !!templateOverride });
+    const senderName = templateOverride?.sender_name?.trim() || templateData?.sender_name?.trim() || emailConfig.senderName;
+    const senderEmail = templateOverride?.sender_email?.trim() || templateData?.sender_email?.trim() || emailConfig.senderEmail;
+    const templateSubjects = templateData?.subjects as Record<string, string> || {};
+    const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
+
+    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
 
     let quizLeadId: string | null = null;
 
-    // Only save to database if not a test email
     if (!isTest) {
       const { data: insertedLead, error: insertError } = await supabase.from("quiz_leads").insert({
         email,
@@ -843,125 +649,31 @@ const handler = async (req: Request): Promise<Response> => {
       if (insertError) {
         console.error("Error saving lead to database:", insertError);
       } else {
-        console.log("Lead saved to database successfully");
         quizLeadId = insertedLead?.id || null;
       }
-    } else {
-      console.log("Test email - skipping database save");
     }
 
-    // Sanitize user-provided content to prevent HTML injection
     const safeResultTitle = escapeHtml(resultTitle);
     const safeResultDescription = escapeHtml(resultDescription);
     const safeEmail = escapeHtml(email);
     const safeInsights = insights.map(insight => escapeHtml(insight));
-
     const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
-    // Sparkly.hr logo URL - hosted on sparkly.hr
     const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
-
-    // Build openness score section if available - now with title and description
     const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
     const safeOpennessDescription = opennessDescription ? escapeHtml(opennessDescription) : '';
     
     const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
-          <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 12px; padding: 24px; margin-bottom: 24px; color: white;">
-            <h3 style="font-size: 18px; margin: 0 0 12px 0; font-weight: 600;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-              <span style="font-size: 32px; font-weight: bold;">${opennessScore}</span>
-              <span style="opacity: 0.9;">/ ${opennessMaxScore}</span>
-            </div>
-            ${safeOpennessTitle ? `<p style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${safeOpennessTitle}</p>` : ''}
-            ${safeOpennessDescription ? `<p style="font-size: 14px; margin: 0; opacity: 0.95; line-height: 1.5;">${safeOpennessDescription}</p>` : ''}
-          </div>
+      <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 12px; padding: 24px; margin-bottom: 24px; color: white;">
+        <h3 style="font-size: 18px; margin: 0 0 12px 0; font-weight: 600;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <span style="font-size: 32px; font-weight: bold;">${opennessScore}</span>
+          <span style="opacity: 0.9;">/ ${opennessMaxScore}</span>
+        </div>
+        ${safeOpennessTitle ? `<p style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${safeOpennessTitle}</p>` : ''}
+        ${safeOpennessDescription ? `<p style="font-size: 14px; margin: 0; opacity: 0.95; line-height: 1.5;">${safeOpennessDescription}</p>` : ''}
+      </div>
     ` : '';
-
-    // Leadership Assessment Module - How answers are scored
-    const assessmentModuleTranslations: Record<string, {
-      howWeAssess: string;
-      scoringExplained: string;
-      delegationTitle: string;
-      delegationDesc: string;
-      deadlinesTitle: string;
-      deadlinesDesc: string;
-      communicationTitle: string;
-      communicationDesc: string;
-      scoreRange: string;
-      highScore: string;
-      lowScore: string;
-    }> = {
-      en: {
-        howWeAssess: 'How We Assess Leadership Performance',
-        scoringExplained: 'Your score reflects real operational patterns that impact business growth',
-        delegationTitle: 'Delegation Effectiveness',
-        delegationDesc: 'Leaders who rarely redo delegated work have built trust and clear expectations with their teams.',
-        deadlinesTitle: 'Deadline Management',
-        deadlinesDesc: 'Consistent deadline adherence signals strong team accountability and realistic planning.',
-        communicationTitle: 'Communication Clarity',
-        communicationDesc: 'Clear communication reduces rework, misunderstandings, and operational friction.',
-        scoreRange: 'Score Range',
-        highScore: 'High performers (4 pts): Demonstrate autonomy, accountability, and proactive ownership.',
-        lowScore: 'Growth areas (1-2 pts): Indicate opportunities for improved delegation, clarity, or team development.',
-      },
-      et: {
-        howWeAssess: 'Kuidas me hindame juhtimise tulemuslikkust',
-        scoringExplained: 'Sinu tulemus peegeldab tegelikke operatiivseid mustreid, mis mõjutavad äri kasvu',
-        delegationTitle: 'Delegeerimise efektiivsus',
-        delegationDesc: 'Juhid, kes harva teevad delegeeritud tööd ümber, on loonud usalduse ja selged ootused oma meeskondadega.',
-        deadlinesTitle: 'Tähtaegade haldamine',
-        deadlinesDesc: 'Järjepidev tähtaegadest kinnipidamine näitab tugevat meeskonna vastutust ja realistlikku planeerimist.',
-        communicationTitle: 'Suhtluse selgus',
-        communicationDesc: 'Selge suhtlus vähendab ümbertöötlemist, arusaamatusi ja operatiivset hõõrdumist.',
-        scoreRange: 'Punktide vahemik',
-        highScore: 'Kõrge tulemuslikkus (4 p): Demonstreerivad autonoomiat, vastutust ja proaktiivset omanikutunnet.',
-        lowScore: 'Kasvualad (1-2 p): Näitavad võimalusi paremaks delegeerimiseks, selguseks või meeskonna arendamiseks.',
-      },
-      de: {
-        howWeAssess: 'Wie wir Führungsleistung bewerten',
-        scoringExplained: 'Ihr Ergebnis spiegelt reale operative Muster wider, die das Geschäftswachstum beeinflussen',
-        delegationTitle: 'Delegationseffektivität',
-        delegationDesc: 'Führungskräfte, die delegierte Arbeit selten wiederholen, haben Vertrauen und klare Erwartungen mit ihren Teams aufgebaut.',
-        deadlinesTitle: 'Fristmanagement',
-        deadlinesDesc: 'Konstante Fristeneinhaltung signalisiert starke Teamverantwortung und realistische Planung.',
-        communicationTitle: 'Kommunikationsklarheit',
-        communicationDesc: 'Klare Kommunikation reduziert Nacharbeit, Missverständnisse und operativen Reibungsverlust.',
-        scoreRange: 'Punktebereich',
-        highScore: 'Hochleister (4 Pkt): Demonstrieren Autonomie, Verantwortung und proaktive Eigenverantwortung.',
-        lowScore: 'Wachstumsbereiche (1-2 Pkt): Zeigen Möglichkeiten für verbesserte Delegation, Klarheit oder Teamentwicklung.',
-      },
-    };
-
-    const assessTrans = assessmentModuleTranslations[language] || assessmentModuleTranslations.en;
-
-    // Build assessment module section
-    const assessmentModule = `
-          <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
-            <h3 style="color: #1e293b; font-size: 16px; margin: 0 0 8px 0; font-weight: 600;">📊 ${escapeHtml(assessTrans.howWeAssess)}</h3>
-            <p style="color: #64748b; font-size: 13px; margin: 0 0 16px 0; line-height: 1.5;">${escapeHtml(assessTrans.scoringExplained)}</p>
-            
-            <div style="display: grid; gap: 12px;">
-              <div style="background: white; border-radius: 8px; padding: 12px; border-left: 3px solid #6d28d9;">
-                <p style="color: #1e293b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">🎯 ${escapeHtml(assessTrans.delegationTitle)}</p>
-                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.4;">${escapeHtml(assessTrans.delegationDesc)}</p>
-              </div>
-              <div style="background: white; border-radius: 8px; padding: 12px; border-left: 3px solid #7c3aed;">
-                <p style="color: #1e293b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">⏰ ${escapeHtml(assessTrans.deadlinesTitle)}</p>
-                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.4;">${escapeHtml(assessTrans.deadlinesDesc)}</p>
-              </div>
-              <div style="background: white; border-radius: 8px; padding: 12px; border-left: 3px solid #8b5cf6;">
-                <p style="color: #1e293b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">💬 ${escapeHtml(assessTrans.communicationTitle)}</p>
-                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.4;">${escapeHtml(assessTrans.communicationDesc)}</p>
-              </div>
-            </div>
-            
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #1e293b; font-size: 12px; font-weight: 600; margin: 0 0 6px 0;">${escapeHtml(assessTrans.scoreRange)}:</p>
-              <p style="color: #22c55e; font-size: 11px; margin: 0 0 4px 0;">✓ ${escapeHtml(assessTrans.highScore)}</p>
-              <p style="color: #f59e0b; font-size: 11px; margin: 0;">→ ${escapeHtml(assessTrans.lowScore)}</p>
-            </div>
-          </div>
-    `;
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -985,7 +697,6 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${safeResultTitle}</h2>
-          
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
           
           ${opennessSection}
@@ -994,8 +705,6 @@ const handler = async (req: Request): Promise<Response> => {
           <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
             ${insightsList}
           </ul>
-          
-          ${assessmentModule}
           
           <div style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border-radius: 16px; padding: 32px; margin-top: 30px; text-align: center;">
             <h3 style="color: white; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(trans.wantToImprove)}</h3>
@@ -1014,28 +723,27 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send to user with dynamic sender config and retry logic
     console.log("Attempting to send user email to:", email);
     const userEmailSubject = `${emailSubject}: ${safeResultTitle}`;
-    const userEmailResponse = await sendEmailWithRetry(resend, {
+    const userEmailResponse = await sendEmailWithRetry(emailConfig, {
       from: `${senderName} <${senderEmail}>`,
       to: [email],
       subject: userEmailSubject,
       html: emailHtml,
+      replyTo: emailConfig.replyToEmail || undefined,
     });
 
     console.log("User email response:", JSON.stringify(userEmailResponse));
     
-    // Log user email to database with attempt count and HTML body
     await supabase.from("email_logs").insert({
       email_type: isTest ? "test" : "quiz_result_user",
       recipient_email: email,
       sender_email: senderEmail,
       sender_name: senderName,
       subject: userEmailSubject,
-      status: userEmailResponse.error ? "failed" : "sent",
-      resend_id: userEmailResponse.data?.id || null,
-      error_message: userEmailResponse.error?.message || null,
+      status: userEmailResponse.success ? "sent" : "failed",
+      resend_id: userEmailResponse.messageId || null,
+      error_message: userEmailResponse.error || null,
       language: language,
       quiz_lead_id: quizLeadId,
       resend_attempts: userEmailResponse.attempts - 1,
@@ -1043,25 +751,18 @@ const handler = async (req: Request): Promise<Response> => {
       html_body: emailHtml,
     });
     
-    if (userEmailResponse.error) {
-      console.error("Resend user email error after all retries:", userEmailResponse.error);
+    if (!userEmailResponse.success) {
+      console.error("User email error after all retries:", userEmailResponse.error);
     }
 
-    // Skip admin notification for test emails
     if (isTest) {
       console.log("Test email - skipping admin notification");
       return new Response(JSON.stringify({ success: true, isTest: true }), {
         status: 200,
-        headers: { 
-          "Content-Type": "application/json",
-          "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(),
-          "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
-          ...corsHeaders 
-        },
+        headers: { "Content-Type": "application/json", "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(), "X-RateLimit-Reset": rateLimitResult.resetTime.toString(), ...corsHeaders },
       });
     }
 
-    // Send copy to admin (mikk@sparkly.hr) - always in English for consistency
     const adminTrans = emailTranslations.en;
     const adminEmailHtml = `
       <!DOCTYPE html>
@@ -1100,25 +801,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Attempting to send admin email to: mikk@sparkly.hr");
     const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
-    const adminEmailResponse = await sendEmailWithRetry(resend, {
+    const adminEmailResponse = await sendEmailWithRetry(emailConfig, {
       from: `${senderName} Quiz <${senderEmail}>`,
       to: ["mikk@sparkly.hr"],
       subject: adminEmailSubject,
       html: adminEmailHtml,
+      replyTo: emailConfig.replyToEmail || undefined,
     });
 
     console.log("Admin email response:", JSON.stringify(adminEmailResponse));
 
-    // Log admin email to database with attempt count and HTML body
     await supabase.from("email_logs").insert({
       email_type: "quiz_result_admin",
       recipient_email: "mikk@sparkly.hr",
       sender_email: senderEmail,
       sender_name: senderName,
       subject: adminEmailSubject,
-      status: adminEmailResponse.error ? "failed" : "sent",
-      resend_id: adminEmailResponse.data?.id || null,
-      error_message: adminEmailResponse.error?.message || null,
+      status: adminEmailResponse.success ? "sent" : "failed",
+      resend_id: adminEmailResponse.messageId || null,
+      error_message: adminEmailResponse.error || null,
       language: language,
       quiz_lead_id: quizLeadId,
       resend_attempts: adminEmailResponse.attempts - 1,
@@ -1126,27 +827,19 @@ const handler = async (req: Request): Promise<Response> => {
       html_body: adminEmailHtml,
     });
     
-    if (adminEmailResponse.error) {
-      console.error("Resend admin email error after all retries:", adminEmailResponse.error);
+    if (!adminEmailResponse.success) {
+      console.error("Admin email error after all retries:", adminEmailResponse.error);
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { 
-        "Content-Type": "application/json",
-        "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(),
-        "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
-        ...corsHeaders 
-      },
+      headers: { "Content-Type": "application/json", "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(), "X-RateLimit-Reset": rateLimitResult.resetTime.toString(), ...corsHeaders },
     });
   } catch (error: any) {
     console.error("Error in send-quiz-results:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };
