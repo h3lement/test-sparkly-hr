@@ -344,7 +344,7 @@ async function sendAdminNotification(
       }
       
       // Log to activity log
-      await supabase.from("activity_logs").insert({
+      const { error: activityError } = await supabase.from("activity_logs").insert({
         action_type: "EMAIL_FAILED",
         table_name: "domain_reputation",
         record_id: domain,
@@ -353,6 +353,9 @@ async function sendAdminNotification(
         new_value: status,
         description: `Domain reputation alert email failed to send to ${adminEmails.length} admin(s): ${sendError.message || "Unknown error"}`,
       });
+      if (activityError) {
+        console.error("Failed to log activity:", activityError);
+      }
       
       return false;
     }
@@ -374,7 +377,7 @@ async function sendAdminNotification(
     }
     
     // Log to activity log
-    await supabase.from("activity_logs").insert({
+    const { error: activityError } = await supabase.from("activity_logs").insert({
       action_type: "EMAIL_SENT",
       table_name: "domain_reputation",
       record_id: domain,
@@ -383,6 +386,9 @@ async function sendAdminNotification(
       new_value: status,
       description: `Domain reputation alert (${statusText}) sent to ${adminEmails.length} admin(s): ${adminEmails.join(", ")}`,
     });
+    if (activityError) {
+      console.error("Failed to log activity:", activityError);
+    }
     
     return true;
   } catch (error) {
