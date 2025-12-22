@@ -2,12 +2,54 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Helper function to get the Resend API key (from database first, then env variable)
+async function getResendApiKey(): Promise<string | null> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "RESEND_API_KEY")
+        .maybeSingle();
+      
+      if (!error && data?.setting_value) {
+        console.log("Using Resend API key from database");
+        return data.setting_value;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching API key from database:", error);
+  }
+  
+  // Fallback to environment variable
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) {
+    console.log("Using Resend API key from environment variable");
+  }
+  return envKey || null;
+}
+
+// Create a lazy-loaded resend instance
+let resendInstance: Resend | null = null;
+async function getResend(): Promise<Resend | null> {
+  if (resendInstance) return resendInstance;
+  
+  const apiKey = await getResendApiKey();
+  if (!apiKey) return null;
+  
+  resendInstance = new Resend(apiKey);
+  return resendInstance;
+}
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -20,6 +62,7 @@ function delay(ms: number): Promise<void> {
 
 // Send email with exponential backoff retry
 async function sendEmailWithRetry(
+  resend: Resend,
   emailParams: {
     from: string;
     to: string[];
@@ -437,7 +480,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Handle special actions
     if (body.action === "check_connection") {
       console.log("Checking Resend connection...");
-      const apiKey = Deno.env.get("RESEND_API_KEY");
+      const apiKey = await getResendApiKey();
       
       if (!apiKey) {
         return new Response(
@@ -481,6 +524,15 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (body.action === "test_email") {
       console.log("Sending test email to:", body.testEmail);
+      const resend = await getResend();
+      
+      if (!resend) {
+        return new Response(
+          JSON.stringify({ success: false, error: "RESEND_API_KEY not configured" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
       const testResult = await resend.emails.send({
         from: "Sparkly Test <onboarding@resend.dev>",
         to: [body.testEmail],
@@ -580,6 +632,16 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get Resend instance
+    const resend = await getResend();
+    if (!resend) {
+      console.error("RESEND_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // Fetch live email template configuration
     // First try quiz-specific template, then fall back to global template
@@ -821,7 +883,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send to user with dynamic sender config and retry logic
     console.log("Attempting to send user email to:", email);
     const userEmailSubject = `${emailSubject}: ${safeResultTitle}`;
-    const userEmailResponse = await sendEmailWithRetry({
+    const userEmailResponse = await sendEmailWithRetry(resend, {
       from: `${senderName} <${senderEmail}>`,
       to: [email],
       subject: userEmailSubject,
@@ -904,7 +966,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Attempting to send admin email to: mikk@sparkly.hr");
     const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
-    const adminEmailResponse = await sendEmailWithRetry({
+    const adminEmailResponse = await sendEmailWithRetry(resend, {
       from: `${senderName} Quiz <${senderEmail}>`,
       to: ["mikk@sparkly.hr"],
       subject: adminEmailSubject,
