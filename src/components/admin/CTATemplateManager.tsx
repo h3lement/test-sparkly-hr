@@ -127,7 +127,6 @@ export function CTATemplateManager() {
   // Version history dialog
   const [historyOpen, setHistoryOpen] = useState(false);
   const [filterQuiz, setFilterQuiz] = useState<string>("all");
-  const [showOnlyLive, setShowOnlyLive] = useState(true);
   
   // Preview dialog state
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -238,17 +237,21 @@ export function CTATemplateManager() {
     fetchData();
   }, []);
 
-  // Load live template when quiz changes
+  // Load latest template when quiz changes
   useEffect(() => {
     if (!selectedQuizId) return;
 
-    const liveTemplate = templates.find(t => t.quiz_id === selectedQuizId && t.is_live);
-    if (liveTemplate) {
-      setCtaName(liveTemplate.name || "");
-      setCtaTitle(liveTemplate.cta_title);
-      setCtaDescription(liveTemplate.cta_description);
-      setCtaButtonText(liveTemplate.cta_text);
-      setCtaUrl(liveTemplate.cta_url || "https://sparkly.hr");
+    const quizTemplates = templates.filter(t => t.quiz_id === selectedQuizId);
+    const latestTemplate = quizTemplates.length > 0 
+      ? quizTemplates.reduce((a, b) => a.version_number > b.version_number ? a : b)
+      : null;
+    
+    if (latestTemplate) {
+      setCtaName(latestTemplate.name || "");
+      setCtaTitle(latestTemplate.cta_title);
+      setCtaDescription(latestTemplate.cta_description);
+      setCtaButtonText(latestTemplate.cta_text);
+      setCtaUrl(latestTemplate.cta_url || "https://sparkly.hr");
     } else {
       // Fall back to quiz table data if no template exists
       const quiz = quizzes.find(q => q.id === selectedQuizId);
@@ -294,13 +297,12 @@ export function CTATemplateManager() {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Insert new version (trigger will set others to not live)
+      // Insert new version
       const { error } = await supabase
         .from("cta_templates")
         .insert({
           quiz_id: selectedQuizId,
           version_number: maxVersion + 1,
-          is_live: true,
           name: ctaName.trim() || "Untitled CTA",
           cta_title: ctaTitle,
           cta_description: ctaDescription,
@@ -388,31 +390,6 @@ export function CTATemplateManager() {
     }
   };
 
-  const setLiveVersion = async (templateId: string, versionNumber: number) => {
-    try {
-      const { error } = await supabase
-        .from("cta_templates")
-        .update({ is_live: true })
-        .eq("id", templateId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Live version updated",
-        description: `Version ${versionNumber} is now live`,
-      });
-
-      fetchData();
-    } catch (error: any) {
-      console.error("Error setting live version:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update live version",
-        variant: "destructive",
-      });
-    }
-  };
-
   const loadVersionToEdit = (template: CTATemplate) => {
     setCtaName(template.name || "");
     setCtaTitle(template.cta_title);
@@ -490,23 +467,18 @@ export function CTATemplateManager() {
     return emailTemplateLinks.filter(e => e.cta_template_id === ctaId);
   };
 
-  // Filtered templates for history view
+  // Filtered templates for table view
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
-      const quizMatch = filterQuiz === "all" || t.quiz_id === filterQuiz;
-      const liveMatch = !showOnlyLive || t.is_live;
-      return quizMatch && liveMatch;
+      return filterQuiz === "all" || t.quiz_id === filterQuiz;
     });
 
     return filtered.sort((a, b) => {
-      if (a.is_live && !b.is_live) return -1;
-      if (!a.is_live && b.is_live) return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [templates, filterQuiz, showOnlyLive]);
+  }, [templates, filterQuiz]);
 
   const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
-  const currentLiveTemplate = templates.find(t => t.quiz_id === selectedQuizId && t.is_live);
 
   // Estimate translation cost
   const estimateTranslationCost = (regenerate = false) => {
@@ -567,15 +539,6 @@ export function CTATemplateManager() {
               CTA Templates
             </CardTitle>
             <div className="flex items-center gap-3 flex-wrap">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showOnlyLive}
-                  onChange={(e) => setShowOnlyLive(e.target.checked)}
-                  className="rounded border-input"
-                />
-                <span className="text-muted-foreground">Only Live</span>
-              </label>
               <Select value={filterQuiz} onValueChange={setFilterQuiz}>
                 <SelectTrigger className="w-[180px] h-9">
                   <SelectValue placeholder="All Quizzes" />
@@ -632,19 +595,10 @@ export function CTATemplateManager() {
               {filteredTemplates.map(template => (
                 <div
                   key={template.id}
-                  className={`flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm ${
-                    template.is_live ? "bg-primary/5" : ""
-                  }`}
+                  className="flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm"
                 >
                   <div className="w-[80px] px-3 py-2">
-                    <div className="flex items-center gap-1">
-                      <span className="font-mono">v{template.version_number}</span>
-                      {template.is_live && (
-                        <Badge variant="default" className="text-[10px] px-1 py-0 bg-green-600">
-                          Live
-                        </Badge>
-                      )}
-                    </div>
+                    <span className="font-mono">v{template.version_number}</span>
                   </div>
                   <div className="w-[150px] px-3 py-2 truncate">
                     {getQuizTitleById(template.quiz_id)}
@@ -714,17 +668,6 @@ export function CTATemplateManager() {
                       >
                         Edit
                       </Button>
-                      {!template.is_live && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setLiveVersion(template.id, template.version_number)}
-                          className="h-7 w-7 p-0 text-green-600"
-                          title="Set as live"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -777,12 +720,6 @@ export function CTATemplateManager() {
               <CardTitle className="flex items-center gap-2">
                 <LinkIcon className="w-5 h-5" />
                 CTA Block Editor
-                {currentLiveTemplate && (
-                  <Badge variant="default" className="ml-2 bg-green-600">
-                    <Check className="w-3 h-3 mr-1" />
-                    v{currentLiveTemplate.version_number} Live
-                  </Badge>
-                )}
               </CardTitle>
               <Button
                 variant="outline"
@@ -954,9 +891,6 @@ export function CTATemplateManager() {
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4" />
               CTA Preview - v{previewTemplate?.version_number}
-              {previewTemplate?.is_live && (
-                <Badge variant="default" className="text-xs bg-green-600">Live</Badge>
-              )}
             </DialogTitle>
           </DialogHeader>
           {previewTemplate && (
