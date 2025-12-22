@@ -41,6 +41,7 @@ const COST_PER_1K_OUTPUT_TOKENS = 0.0003;
 interface TranslateRequest {
   quizId: string;
   sourceLanguage: string;
+  regenerate?: boolean; // If true, regenerate all translations
 }
 
 serve(async (req) => {
@@ -58,8 +59,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { quizId, sourceLanguage }: TranslateRequest = await req.json();
-    console.log(`Starting CTA translation for quiz ${quizId} from ${sourceLanguage}`);
+    const { quizId, sourceLanguage, regenerate = false }: TranslateRequest = await req.json();
+    console.log(`Starting CTA translation for quiz ${quizId} from ${sourceLanguage} (regenerate: ${regenerate})`);
 
     // Fetch quiz CTA data
     const { data: quiz, error: quizError } = await supabase
@@ -87,7 +88,28 @@ serve(async (req) => {
     }
 
     // Get target languages (exclude source)
-    const targetLanguages = ALL_TARGET_LANGUAGES.filter(l => l.code !== sourceLanguage);
+    // If regenerate is false, only translate missing languages
+    let targetLanguages = ALL_TARGET_LANGUAGES.filter(l => l.code !== sourceLanguage);
+    
+    if (!regenerate) {
+      // Filter to only languages that don't have translations yet
+      targetLanguages = targetLanguages.filter(l => {
+        const hasTitle = quiz.cta_title?.[l.code]?.trim();
+        const hasDesc = quiz.cta_description?.[l.code]?.trim();
+        const hasButton = quiz.cta_text?.[l.code]?.trim();
+        return !hasTitle || !hasDesc || !hasButton;
+      });
+      
+      if (targetLanguages.length === 0) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "All languages already have translations",
+          translatedCount: 0,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Build source content object
     const sourceContent = {
@@ -96,7 +118,7 @@ serve(async (req) => {
       cta_text: sourceButtonText,
     };
 
-    console.log(`Translating CTA to ${targetLanguages.length} languages...`);
+    console.log(`Translating CTA to ${targetLanguages.length} languages (regenerate: ${regenerate})...`);
     console.log("Source content:", sourceContent);
 
     // Translate to all languages in one request
