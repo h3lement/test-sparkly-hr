@@ -210,9 +210,13 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [leadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
         supabase
           .from("quiz_leads")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("hypothesis_leads")
           .select("*")
           .order("created_at", { ascending: false }),
         supabase
@@ -229,11 +233,31 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
+      if (hypothesisLeadsRes.error) throw hypothesisLeadsRes.error;
       if (quizzesRes.error) throw quizzesRes.error;
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
 
-      setLeads(leadsRes.data || []);
+      // Convert hypothesis leads to match QuizLead interface
+      const hypothesisLeadsConverted: QuizLead[] = (hypothesisLeadsRes.data || []).map((hl) => ({
+        id: hl.id,
+        email: hl.email,
+        score: hl.score,
+        total_questions: hl.total_questions,
+        result_category: `${hl.score}/${hl.total_questions}`, // No category for hypothesis
+        created_at: hl.created_at,
+        openness_score: null,
+        language: hl.language,
+        quiz_id: hl.quiz_id,
+        answers: null,
+      }));
+
+      // Merge and sort by created_at
+      const allLeads = [...(leadsRes.data || []), ...hypothesisLeadsConverted].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setLeads(allLeads);
       setQuizzes(quizzesRes.data || []);
       setQuestions(questionsRes.data || []);
       setAnswers(answersRes.data || []);
