@@ -143,8 +143,12 @@ interface TranslationMeta {
   total_cost_usd?: number;
 }
 
+// Valid tab values for URL routing
+const VALID_TABS = ["general", "questions", "hypothesis", "results", "mindedness", "respondents", "stats", "web", "log", "translations"] as const;
+type TabValue = typeof VALID_TABS[number];
+
 export default function QuizEditor() {
-  const { quizId } = useParams<{ quizId: string }>();
+  const { quizId, tab: urlTab } = useParams<{ quizId: string; tab?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const isCreating = quizId === "new";
@@ -153,7 +157,18 @@ export default function QuizEditor() {
   const returnPath = (location.state as { from?: string })?.from || "/admin?tab=quizzes";
   
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("general");
+  
+  // Derive activeTab from URL, defaulting to "general"
+  const activeTab = VALID_TABS.includes(urlTab as TabValue) ? (urlTab as TabValue) : "general";
+  
+  // Navigate to new tab URL when tab changes
+  const setActiveTab = (newTab: string) => {
+    if (newTab === "general") {
+      navigate(`/admin/quiz/${quizId}`, { replace: true });
+    } else {
+      navigate(`/admin/quiz/${quizId}/${newTab}`, { replace: true });
+    }
+  };
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const { toast } = useToast();
