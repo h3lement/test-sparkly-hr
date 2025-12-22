@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,7 @@ interface PendingAdmin {
 }
 
 const Admin = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { tab: urlTab } = useParams();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [pendingAdmins, setPendingAdmins] = useState<PendingAdmin[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
@@ -48,17 +48,24 @@ const Admin = () => {
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "activity");
+  const [activeTab, setActiveTab] = useState(urlTab || "activity");
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
   const [emailHistoryFilter, setEmailHistoryFilter] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Sync tab with URL
+  // Sync tab with URL param
+  useEffect(() => {
+    if (urlTab && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
+
+  // Sync tab with URL using path-based routing
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    setSearchParams({ tab });
+    navigate(`/admin/${tab}`);
     setSearchQuery("");
   };
 
