@@ -32,6 +32,7 @@ interface QuizStatsProps {
   displayLanguage: string;
   questions?: Question[];
   includeOpenMindedness?: boolean;
+  quizType?: "standard" | "hypothesis" | "emotional";
 }
 
 interface StatsData {
@@ -59,24 +60,45 @@ const calculateMedian = (values: number[]): number => {
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-export function QuizStats({ quizId, displayLanguage, questions, includeOpenMindedness }: QuizStatsProps) {
+export function QuizStats({ quizId, displayLanguage, questions, includeOpenMindedness, quizType = "standard" }: QuizStatsProps) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StatsData | null>(null);
 
   // Get max openness score from questions
   const openMindednessQuestion = questions?.find(q => q.question_type === "open_mindedness");
   const maxOpennessScore = openMindednessQuestion?.answers?.length || 4;
+  
+  const isHypothesis = quizType === "hypothesis";
+  
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const { data: leads, error } = await supabase
-        .from("quiz_leads")
-        .select("score, total_questions, result_category, openness_score, created_at")
-        .eq("quiz_id", quizId);
+      // Fetch leads from the correct table based on quiz type
+      let leads: Array<{
+        score: number;
+        total_questions: number;
+        created_at: string;
+        result_category?: string;
+        openness_score?: number | null;
+      }> = [];
 
-      if (error) throw error;
+      if (isHypothesis) {
+        const { data, error } = await supabase
+          .from("hypothesis_leads")
+          .select("score, total_questions, created_at")
+          .eq("quiz_id", quizId);
+        if (error) throw error;
+        leads = (data || []).map(l => ({ ...l, result_category: undefined, openness_score: null }));
+      } else {
+        const { data, error } = await supabase
+          .from("quiz_leads")
+          .select("score, total_questions, result_category, openness_score, created_at")
+          .eq("quiz_id", quizId);
+        if (error) throw error;
+        leads = data || [];
+      }
 
-      if (!leads || leads.length === 0) {
+      if (leads.length === 0) {
         setStats({
           totalResponses: 0,
           averageScore: 0,
@@ -105,37 +127,49 @@ export function QuizStats({ quizId, displayLanguage, questions, includeOpenMinde
       const avgPercentage = percentages.reduce((sum, p) => sum + p, 0) / totalResponses;
       const medianPercentage = calculateMedian(percentages);
 
-      // Calculate openness stats
-      const opennessLeads = leads.filter((l) => l.openness_score !== null);
-      const opennessScores = opennessLeads.map(l => l.openness_score || 0);
-      const avgOpenness = opennessLeads.length > 0
-        ? opennessScores.reduce((sum, s) => sum + s, 0) / opennessLeads.length
-        : null;
-      const medianOpenness = opennessLeads.length > 0
-        ? calculateMedian(opennessScores)
-        : null;
+      // Calculate openness stats (only for standard quizzes)
+      let avgOpenness: number | null = null;
+      let medianOpenness: number | null = null;
+      let opennessDistribution: { score: number; count: number }[] = [];
+      
+      if (!isHypothesis) {
+        const opennessLeads = leads.filter(l => l.openness_score !== null && l.openness_score !== undefined);
+        const opennessScores = opennessLeads.map(l => l.openness_score || 0);
+        avgOpenness = opennessLeads.length > 0
+          ? opennessScores.reduce((sum, s) => sum + s, 0) / opennessLeads.length
+          : null;
+        medianOpenness = opennessLeads.length > 0
+          ? calculateMedian(opennessScores)
+          : null;
 
-      // Openness distribution
-      const opennessDistMap: Record<number, number> = {};
-      opennessScores.forEach(score => {
-        opennessDistMap[score] = (opennessDistMap[score] || 0) + 1;
-      });
-      const opennessDistribution = Object.entries(opennessDistMap)
-        .map(([score, count]) => ({ score: parseInt(score), count }))
-        .sort((a, b) => a.score - b.score);
+        // Openness distribution
+        const opennessDistMap: Record<number, number> = {};
+        opennessScores.forEach(score => {
+          opennessDistMap[score] = (opennessDistMap[score] || 0) + 1;
+        });
+        opennessDistribution = Object.entries(opennessDistMap)
+          .map(([score, count]) => ({ score: parseInt(score), count }))
+          .sort((a, b) => a.score - b.score);
+      }
 
-      // Result distribution
-      const resultCounts: Record<string, number> = {};
-      leads.forEach((l) => {
-        resultCounts[l.result_category] = (resultCounts[l.result_category] || 0) + 1;
-      });
-      const resultDistribution = Object.entries(resultCounts)
-        .map(([name, count]) => ({
-          name,
-          count,
-          percentage: (count / totalResponses) * 100,
-        }))
-        .sort((a, b) => b.count - a.count);
+      // Result distribution (only for standard quizzes with result_category)
+      let resultDistribution: { name: string; count: number; percentage: number }[] = [];
+      
+      if (!isHypothesis) {
+        const resultCounts: Record<string, number> = {};
+        leads.forEach(l => {
+          if (l.result_category) {
+            resultCounts[l.result_category] = (resultCounts[l.result_category] || 0) + 1;
+          }
+        });
+        resultDistribution = Object.entries(resultCounts)
+          .map(([name, count]) => ({
+            name,
+            count,
+            percentage: (count / totalResponses) * 100,
+          }))
+          .sort((a, b) => b.count - a.count);
+      }
 
       // Daily trend (last 14 days)
       const last14Days = Array.from({ length: 14 }, (_, i) => {

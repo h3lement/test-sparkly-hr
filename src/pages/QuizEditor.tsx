@@ -2846,6 +2846,7 @@ export default function QuizEditor() {
                   displayLanguage={displayLanguage}
                   questions={questions}
                   includeOpenMindedness={includeOpenMindedness}
+                  quizType={quizType}
                 />
               </>
             ) : null}
