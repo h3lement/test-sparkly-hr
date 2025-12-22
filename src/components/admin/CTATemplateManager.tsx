@@ -71,6 +71,14 @@ interface CTATemplate {
   created_by_email: string | null;
 }
 
+interface EmailTemplateLink {
+  id: string;
+  version_number: number;
+  template_type: string;
+  is_live: boolean;
+  cta_template_id: string;
+}
+
 const LANGUAGES = [
   { code: "en", name: "English" },
   { code: "et", name: "Estonian" },
@@ -101,6 +109,7 @@ const LANGUAGES = [
 export function CTATemplateManager() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [templates, setTemplates] = useState<CTATemplate[]>([]);
+  const [emailTemplateLinks, setEmailTemplateLinks] = useState<EmailTemplateLink[]>([]);
   const [selectedQuizId, setSelectedQuizId] = useState<string>("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
   const [loading, setLoading] = useState(true);
@@ -178,6 +187,19 @@ export function CTATemplateManager() {
           cta_text: (t.cta_text || {}) as Record<string, string>,
         }));
         setTemplates(typedTemplates);
+
+        // Fetch email templates that link to CTAs
+        const ctaIds = typedTemplates.map(t => t.id);
+        if (ctaIds.length > 0) {
+          const { data: emailData, error: emailError } = await supabase
+            .from("email_templates")
+            .select("id, version_number, template_type, is_live, cta_template_id")
+            .in("cta_template_id", ctaIds);
+
+          if (!emailError && emailData) {
+            setEmailTemplateLinks(emailData as EmailTemplateLink[]);
+          }
+        }
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -432,6 +454,10 @@ export function CTATemplateManager() {
     return Math.max(titleLangs.length, textLangs.length);
   };
 
+  const getLinkedEmailTemplates = (ctaId: string): EmailTemplateLink[] => {
+    return emailTemplateLinks.filter(e => e.cta_template_id === ctaId);
+  };
+
   // Filtered templates for history view
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
@@ -557,6 +583,7 @@ export function CTATemplateManager() {
                 <div className="w-[80px] px-3 py-2">Version</div>
                 <div className="w-[150px] px-3 py-2">Quiz</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
+                <div className="w-[140px] px-3 py-2">Email Templates</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
                 <div className="w-[60px] px-3 py-2 text-center">Lang</div>
                 <div className="w-[120px] px-3 py-2 text-center">Actions</div>
@@ -583,6 +610,27 @@ export function CTATemplateManager() {
                   </div>
                   <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
                     {template.cta_text?.en || template.cta_text?.et || "—"}
+                  </div>
+                  <div className="w-[140px] px-3 py-2">
+                    {(() => {
+                      const linkedEmails = getLinkedEmailTemplates(template.id);
+                      if (linkedEmails.length === 0) {
+                        return <span className="text-xs text-muted-foreground">—</span>;
+                      }
+                      return (
+                        <div className="flex flex-wrap gap-1">
+                          {linkedEmails.map(email => (
+                            <Badge 
+                              key={email.id} 
+                              variant={email.is_live ? "default" : "outline"}
+                              className={`text-[10px] px-1.5 py-0 ${email.is_live ? "bg-green-600" : ""}`}
+                            >
+                              v{email.version_number}
+                            </Badge>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="w-[130px] px-3 py-2">
                     <div className="text-xs text-muted-foreground">
