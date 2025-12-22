@@ -430,7 +430,7 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
             {logs.map((log, index) => (
               <div
                 key={log.id}
-                className={`grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 hover:bg-muted/20 transition-colors ${
+                className={`grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.1)] ${
                   index % 2 === 0 ? "bg-card" : "bg-muted/15"
                 }`}
               >
