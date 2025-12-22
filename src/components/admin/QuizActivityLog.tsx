@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -11,9 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AdminTable,
+  AdminTableHeader,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+} from "@/components/admin";
 import { 
   RefreshCw, 
-  Clock, 
   FileEdit, 
   Plus, 
   Trash2, 
@@ -414,76 +421,73 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
           )}
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
-          {/* Table Header */}
-          <div className="grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 bg-muted/40 text-[10px] font-medium text-foreground border-b">
-            <span>#</span>
-            <span>User</span>
-            <span>Quiz</span>
-            <span>Description</span>
-            <span>Action</span>
-            <span className="text-right">Timestamp</span>
-          </div>
-          
-          {/* Log Rows */}
-          <div className="max-h-[350px] overflow-y-auto">
-            {logs.map((log, index) => (
-              <div
-                key={log.id}
-                className={`grid grid-cols-[32px_70px_100px_1fr_70px_110px] gap-1 px-2 py-1 items-center text-[11px] border-b last:border-b-0 list-row-interactive ${
-                  index % 2 === 0 ? "list-row-even" : "list-row-odd"
-                }`}
-              >
-                {/* Row Number */}
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {getRowNumber(index)}
-                </span>
-
-                {/* User */}
-                <div 
-                  className="flex items-center gap-1 min-w-0"
-                  title={log.user_email || "System"}
-                >
-                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-medium text-primary flex-shrink-0">
-                    {getInitial(log.user_email)}
-                  </div>
-                  <span className="truncate text-[10px]">{getShortEmail(log.user_email)}</span>
-                </div>
-
-                {/* Quiz Title */}
-                <span className="text-[10px] text-muted-foreground truncate" title={log.table_name}>
-                  {log.table_name.replace("quiz_", "").replace("_", " ")}
-                </span>
-
-                {/* Description */}
-                <div className="min-w-0">
-                  <div className="truncate text-foreground" title={log.description || undefined}>
-                    {log.description || "No description"}
-                  </div>
-                  {log.field_name && (
-                    <div className="truncate text-[9px] text-muted-foreground" title={`${log.old_value} → ${log.new_value}`}>
-                      <span className="font-medium">{log.field_name}</span>
-                      {log.old_value && <span className="text-red-500/70"> {log.old_value.substring(0, 15)}{log.old_value.length > 15 ? "…" : ""}</span>}
-                      {log.new_value && <span className="text-green-500/70"> → {log.new_value.substring(0, 15)}{log.new_value.length > 15 ? "…" : ""}</span>}
+        <div className="border rounded-lg overflow-hidden">
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableCell header className="w-10">#</AdminTableCell>
+              <AdminTableCell header className="w-28">User</AdminTableCell>
+              <AdminTableCell header className="w-24">Table</AdminTableCell>
+              <AdminTableCell header>Description</AdminTableCell>
+              <AdminTableCell header className="w-20">Action</AdminTableCell>
+              <AdminTableCell header align="right" className="w-32">Timestamp</AdminTableCell>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {logs.map((log, index) => (
+                <AdminTableRow key={log.id} index={index}>
+                  <AdminTableCell>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {getRowNumber(index)}
+                    </span>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <div 
+                      className="flex items-center gap-2 min-w-0"
+                      title={log.user_email || "System"}
+                    >
+                      <Avatar className="h-8 w-8 flex-shrink-0 bg-secondary">
+                        <AvatarFallback className="text-xs bg-secondary text-foreground">
+                          {getInitial(log.user_email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm">{getShortEmail(log.user_email)}</span>
                     </div>
-                  )}
-                </div>
-
-                {/* Action Badge */}
-                <Badge
-                  variant="outline"
-                  className={`text-[8px] px-1 py-0 h-4 justify-center ${ACTION_COLORS[log.action_type] || "bg-muted"}`}
-                >
-                  {ACTION_ICONS[log.action_type] || <AlertCircle className="w-2.5 h-2.5" />}
-                </Badge>
-
-                {/* Timestamp */}
-                <div className="text-[9px] text-muted-foreground text-right font-mono">
-                  {formatTimestamp(log.created_at)}
-                </div>
-              </div>
-            ))}
-          </div>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <span className="text-sm text-muted-foreground truncate" title={log.table_name}>
+                      {log.table_name.replace("quiz_", "").replace("_", " ")}
+                    </span>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-foreground" title={log.description || undefined}>
+                        {log.description || "No description"}
+                      </div>
+                      {log.field_name && (
+                        <div className="truncate text-xs text-muted-foreground" title={`${log.old_value} → ${log.new_value}`}>
+                          <span className="font-medium">{log.field_name}</span>
+                          {log.old_value && <span className="text-red-500/70"> {log.old_value.substring(0, 15)}{log.old_value.length > 15 ? "…" : ""}</span>}
+                          {log.new_value && <span className="text-green-500/70"> → {log.new_value.substring(0, 15)}{log.new_value.length > 15 ? "…" : ""}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs px-2 py-0.5 ${ACTION_COLORS[log.action_type] || "bg-muted"}`}
+                    >
+                      {ACTION_ICONS[log.action_type] || <AlertCircle className="w-3 h-3" />}
+                    </Badge>
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    <span className="text-sm text-muted-foreground">
+                      {formatTimestamp(log.created_at)}
+                    </span>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTableBody>
+          </AdminTable>
         </div>
       )}
 
