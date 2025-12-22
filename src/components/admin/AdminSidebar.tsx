@@ -33,6 +33,7 @@ interface AdminSidebarProps {
 
 interface TableCounts {
   leads: number;
+  uniqueEmails: number;
   quizzes: number;
   admins: number;
   emailLogs: number;
@@ -129,6 +130,7 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const [counts, setCounts] = useState<TableCounts>({
     leads: 0,
+    uniqueEmails: 0,
     quizzes: 0,
     admins: 0,
     emailLogs: 0,
@@ -175,15 +177,20 @@ export function AdminSidebar({
   async function fetchCounts() {
     try {
       const [leadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes] = await Promise.all([
-        supabase.from("quiz_leads").select("*", { count: "exact", head: true }),
+        supabase.from("quiz_leads").select("email"),
         supabase.from("quizzes").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
         supabase.from("activity_logs").select("*", { count: "exact", head: true }),
       ]);
 
+      // Calculate unique emails from leads
+      const emails = leadsRes.data || [];
+      const uniqueEmails = new Set(emails.map(l => l.email.toLowerCase())).size;
+
       setCounts({
-        leads: leadsRes.count || 0,
+        leads: emails.length,
+        uniqueEmails,
         quizzes: quizzesRes.count || 0,
         admins: adminsRes.count || 0,
         emailLogs: emailLogsRes.count || 0,
@@ -231,7 +238,7 @@ export function AdminSidebar({
           count = counts.activity;
           break;
         case "leads":
-          count = counts.leads;
+          count = counts.uniqueEmails;
           break;
         case "quizzes":
           count = counts.quizzes;
