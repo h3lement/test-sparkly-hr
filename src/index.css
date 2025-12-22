@@ -274,6 +274,14 @@
    * 5. Ensure sufficient contrast between row backgrounds in both light/dark modes
    */
 
+  /* ===========================================
+   * LIST ROW STYLES
+   * ===========================================
+   * Zebra striping: Alternate row backgrounds for scannability
+   * Hover effect: Subtle primary tint with inset border for interactivity
+   * Usage: Apply .list-row-hover for interactive hover, combine with zebra classes
+   */
+
   /* Zebra-striped list rows - better contrast */
   .list-row:nth-child(even) {
     @apply bg-muted/30;
@@ -283,7 +291,36 @@
     @apply bg-card;
   }
 
-  /* Manual alternate row class (for non-sequential lists) */
+  /* Manual alternate row classes (for index-based zebra striping) */
+  .list-row-even {
+    @apply bg-card;
+  }
+
+  .list-row-odd {
+    @apply bg-secondary/20;
+  }
+
+  /* List row hover effect - subtle primary tint with inset border */
+  .list-row-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .list-row-hover:hover {
+    background-color: hsl(var(--primary) / 0.05);
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.1);
+  }
+
+  /* Combined zebra + hover utility classes */
+  .list-row-interactive {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .list-row-interactive:hover {
+    background-color: hsl(var(--primary) / 0.05);
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.1);
+  }
+
+  /* Manual alternate row class (for non-sequential lists) - legacy */
   .list-row-alt {
     @apply bg-muted/30;
   }
@@ -307,7 +344,12 @@
   }
 
   .admin-table-row {
-    @apply bg-card hover:bg-muted/40 transition-colors;
+    @apply bg-card transition-all duration-200 ease-out;
+  }
+
+  .admin-table-row:hover {
+    background-color: hsl(var(--primary) / 0.05);
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.1);
   }
 
   .admin-table-row-inactive {
