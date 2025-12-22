@@ -565,517 +565,439 @@ export function EmailSettings() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Test Email Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-blue-600" />
-            <CardTitle className="text-base">Send Test Email</CardTitle>
-            {getStatusBadge()}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0 space-y-3">
-          <div className="flex gap-2">
-            <Select value={emailType} onValueChange={(v) => setEmailType(v as EmailType)}>
-              <SelectTrigger className="w-[160px] h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="simple">Simple Test</SelectItem>
-                <SelectItem value="quiz_result">Quiz Results</SelectItem>
-                <SelectItem value="notification">Notification</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="email"
-              placeholder="Enter email address..."
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-              className="flex-1 h-9"
-              disabled={connectionStatus.status !== "connected"}
-            />
-            <Button
-              size="sm"
-              onClick={sendTestEmail}
-              disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim() || rateLimitCountdown > 0}
-            >
-              {isSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : rateLimitCountdown > 0 ? (
-                <span className="text-xs">{rateLimitCountdown}s</span>
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualReconnect}
-              disabled={isChecking}
-              title="Check SMTP connection"
-            >
-              <RefreshCw className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-
-          {/* Rate Limit Info */}
-          {rateLimitCountdown > 0 && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <AlertTriangle className="h-3 w-3" />
-              <span>Rate limit: {rateLimitInfo.emailsPerMinute} email/min. Next send available in {rateLimitCountdown}s</span>
-            </div>
+    <div className="space-y-3">
+      {/* Header Row: Status + Test Email */}
+      <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/30 border">
+        {/* Status Indicator */}
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm ${
+          connectionStatus.status === "connected" 
+            ? "bg-green-500/10 text-green-700" 
+            : connectionStatus.status === "error" 
+              ? "bg-amber-500/10 text-amber-700"
+              : connectionStatus.status === "checking"
+                ? "bg-muted text-muted-foreground"
+                : "bg-red-500/10 text-red-700"
+        }`}>
+          {connectionStatus.status === "connected" ? (
+            <Wifi className="h-3.5 w-3.5" />
+          ) : connectionStatus.status === "checking" ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : connectionStatus.status === "error" ? (
+            <AlertTriangle className="h-3.5 w-3.5" />
+          ) : (
+            <WifiOff className="h-3.5 w-3.5" />
           )}
+          <span className="font-medium">
+            {connectionStatus.status === "connected" ? "Connected" : 
+             connectionStatus.status === "checking" ? "Checking..." :
+             connectionStatus.status === "error" ? "Error" : "Disconnected"}
+          </span>
+        </div>
 
-          {/* Email Configuration - Always visible for setup */}
-          <div className="p-3 rounded-lg bg-muted/50 border">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">Email Configuration</p>
-                </div>
-                {!isEditingConfig ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => setIsEditingConfig(true)}
-                  >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                ) : (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={cancelEditConfig}
-                      disabled={isSavingConfig}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={saveEmailConfig}
-                      disabled={isSavingConfig}
-                    >
-                      {isSavingConfig ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-3 w-3 mr-1" />
-                          Save
-                        </>
-                      )}
-                    </Button>
+        {/* Reconnect info */}
+        {reconnectAttempts.current > 0 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS && connectionStatus.status !== "connected" && (
+          <span className="text-xs text-muted-foreground">
+            Retry {reconnectAttempts.current}/{MAX_RECONNECT_ATTEMPTS}
+          </span>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Test Email Controls */}
+        <div className="flex items-center gap-2">
+          <Select value={emailType} onValueChange={(v) => setEmailType(v as EmailType)}>
+            <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="simple">Simple</SelectItem>
+              <SelectItem value="quiz_result">Quiz Result</SelectItem>
+              <SelectItem value="notification">Notification</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            type="email"
+            placeholder="test@email.com"
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            className="w-[180px] h-8 text-sm"
+            disabled={connectionStatus.status !== "connected"}
+          />
+          <Button
+            size="sm"
+            className="h-8 px-3"
+            onClick={sendTestEmail}
+            disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim() || rateLimitCountdown > 0}
+          >
+            {isSending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : rateLimitCountdown > 0 ? (
+              <span className="text-xs">{rateLimitCountdown}s</span>
+            ) : (
+              <>
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Send
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2"
+            onClick={handleManualReconnect}
+            disabled={isChecking}
+            title="Refresh connection"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isChecking ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Rate Limit Warning */}
+      {rateLimitCountdown > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 text-xs text-amber-700 bg-amber-500/5 border border-amber-500/20 rounded-md">
+          <AlertTriangle className="h-3 w-3" />
+          Rate limit: Wait {rateLimitCountdown}s before next send
+        </div>
+      )}
+
+      {/* Success/Error Messages - Compact */}
+      {lastSuccess && (
+        <div className="flex items-center gap-2 px-3 py-2 text-xs text-green-700 bg-green-500/5 border border-green-500/20 rounded-md">
+          <CheckCircle2 className="h-3 w-3" />
+          {lastSuccess.message}
+          <span className="text-green-600/60 ml-auto">{formatTime(lastSuccess.timestamp)}</span>
+        </div>
+      )}
+
+      {errors.length > 0 && (
+        <div className="px-3 py-2 bg-destructive/5 border border-destructive/20 rounded-md">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-destructive">Errors ({errors.length})</span>
+            <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={clearErrors}>
+              Clear
+            </Button>
+          </div>
+          <div className="space-y-1 max-h-[80px] overflow-y-auto">
+            {errors.slice(0, 2).map((error, index) => (
+              <div key={index} className="flex items-start gap-2 text-xs text-destructive">
+                <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                <span className="truncate">{error.details || error.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content: Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Left: Your Configuration */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">Your Configuration</h3>
+            {!isEditingConfig ? (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setIsEditingConfig(true)}>
+                <Pencil className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+            ) : (
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={cancelEditConfig} disabled={isSavingConfig}>
+                  Cancel
+                </Button>
+                <Button size="sm" className="h-7 text-xs" onClick={saveEmailConfig} disabled={isSavingConfig}>
+                  {isSavingConfig ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Save className="h-3 w-3 mr-1" />Save</>}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {isEditingConfig ? (
+            <div className="space-y-4 p-4 rounded-lg border bg-background">
+              {/* Basic Settings */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sender Info</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      value={configDraft.senderName}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, senderName: e.target.value }))}
+                      placeholder="Company Name"
+                      className="h-8 text-sm"
+                    />
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email</Label>
+                    <Input
+                      type="email"
+                      value={configDraft.senderEmail}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, senderEmail: e.target.value }))}
+                      placeholder="noreply@domain.com"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Reply-To (optional)</Label>
+                  <Input
+                    type="email"
+                    value={configDraft.replyToEmail}
+                    onChange={(e) => setConfigDraft((prev) => ({ ...prev, replyToEmail: e.target.value }))}
+                    placeholder="support@domain.com"
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* SMTP Settings */}
+              <div className="space-y-3 pt-3 border-t">
+                <div className="flex items-center gap-2">
+                  <Server className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SMTP Server</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Host</Label>
+                    <Input
+                      value={configDraft.smtpHost}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpHost: e.target.value }))}
+                      placeholder="smtp.example.com"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Port</Label>
+                    <Input
+                      value={configDraft.smtpPort}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpPort: e.target.value }))}
+                      placeholder="587"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Username</Label>
+                    <Input
+                      value={configDraft.smtpUsername}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpUsername: e.target.value }))}
+                      placeholder="user@example.com"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Password</Label>
+                    <div className="relative">
+                      <Input
+                        type={showSmtpPassword ? "text" : "password"}
+                        value={configDraft.smtpPassword}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpPassword: e.target.value }))}
+                        placeholder="••••••••"
+                        className="h-8 text-sm pr-8"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-8 px-2"
+                        onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                      >
+                        {showSmtpPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Label className="text-xs">TLS/SSL</Label>
+                  </div>
+                  <Switch
+                    checked={configDraft.smtpTls}
+                    onCheckedChange={(checked) => setConfigDraft((prev) => ({ ...prev, smtpTls: checked }))}
+                  />
+                </div>
+              </div>
+
+              {/* DKIM Settings */}
+              <div className="space-y-3 pt-3 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DKIM (Optional)</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={generateDkimKeys} disabled={isGeneratingDkim}>
+                    {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
+                    Generate
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Domain</Label>
+                    <Input
+                      value={configDraft.dkimDomain}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimDomain: e.target.value }))}
+                      placeholder="example.com"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Selector</Label>
+                    <Input
+                      value={configDraft.dkimSelector}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimSelector: e.target.value }))}
+                      placeholder="mail"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Private Key</Label>
+                  <textarea
+                    value={configDraft.dkimPrivateKey}
+                    onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
+                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                    className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-lg border bg-background space-y-3">
+              {/* Sender Info */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <div className="text-muted-foreground">Sender Name</div>
+                <div className="font-medium truncate">{emailConfig.senderName || "—"}</div>
+                <div className="text-muted-foreground">Sender Email</div>
+                <div className="font-mono truncate">{emailConfig.senderEmail || "—"}</div>
+                <div className="text-muted-foreground">Reply-To</div>
+                <div className="font-mono truncate">{emailConfig.replyToEmail || "Same as sender"}</div>
+              </div>
+
+              {/* SMTP */}
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-2 mb-2">
+                  <Server className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">SMTP</span>
+                </div>
+                {emailConfig.smtpHost ? (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div className="text-muted-foreground">Server</div>
+                    <div className="font-mono truncate">{emailConfig.smtpHost}:{emailConfig.smtpPort}</div>
+                    <div className="text-muted-foreground">Username</div>
+                    <div className="font-mono truncate">{emailConfig.smtpUsername || "—"}</div>
+                    <div className="text-muted-foreground">TLS</div>
+                    <div>
+                      <Badge variant="outline" className={`text-xs px-1 py-0 ${emailConfig.smtpTls ? "bg-green-500/10 text-green-600" : ""}`}>
+                        {emailConfig.smtpTls ? "On" : "Off"}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Not configured</p>
                 )}
               </div>
 
-              {isEditingConfig ? (
-                <div className="space-y-4">
-                  {/* Basic Email Settings */}
-                  <div className="space-y-3">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Basic Settings</p>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="senderName" className="text-xs">Sender Name</Label>
-                      <Input
-                        id="senderName"
-                        value={configDraft.senderName}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, senderName: e.target.value }))}
-                        placeholder="Your Company Name"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="senderEmail" className="text-xs">Sender Email</Label>
-                      <Input
-                        id="senderEmail"
-                        type="email"
-                        value={configDraft.senderEmail}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, senderEmail: e.target.value }))}
-                        placeholder="noreply@yourdomain.com"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="replyToEmail" className="text-xs">Reply-To Email (optional)</Label>
-                      <Input
-                        id="replyToEmail"
-                        type="email"
-                        value={configDraft.replyToEmail}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, replyToEmail: e.target.value }))}
-                        placeholder="support@yourdomain.com"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* SMTP Settings */}
-                  <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center gap-2">
-                      <Server className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SMTP Configuration</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Configure your SMTP server for sending emails.
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="smtpHost" className="text-xs">SMTP Host</Label>
-                        <Input
-                          id="smtpHost"
-                          value={configDraft.smtpHost}
-                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpHost: e.target.value }))}
-                          placeholder="smtp.example.com"
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="smtpPort" className="text-xs">Port</Label>
-                        <Input
-                          id="smtpPort"
-                          value={configDraft.smtpPort}
-                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpPort: e.target.value }))}
-                          placeholder="587"
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="smtpUsername" className="text-xs">Username</Label>
-                      <Input
-                        id="smtpUsername"
-                        value={configDraft.smtpUsername}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpUsername: e.target.value }))}
-                        placeholder="smtp-user@example.com"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="smtpPassword" className="text-xs">Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="smtpPassword"
-                          type={showSmtpPassword ? "text" : "password"}
-                          value={configDraft.smtpPassword}
-                          onChange={(e) => setConfigDraft((prev) => ({ ...prev, smtpPassword: e.target.value }))}
-                          placeholder="••••••••"
-                          className="h-8 text-sm pr-8"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-8 px-2"
-                          onClick={() => setShowSmtpPassword(!showSmtpPassword)}
-                        >
-                          {showSmtpPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                        <Label htmlFor="smtpTls" className="text-xs">Enable TLS/SSL</Label>
-                      </div>
-                      <Switch
-                        id="smtpTls"
-                        checked={configDraft.smtpTls}
-                        onCheckedChange={(checked) => setConfigDraft((prev) => ({ ...prev, smtpTls: checked }))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* DKIM Settings */}
-                  <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Key className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DKIM Configuration (Optional)</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={generateDkimKeys}
-                        disabled={isGeneratingDkim}
-                      >
-                        {isGeneratingDkim ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        ) : (
-                          <Key className="h-3 w-3 mr-1" />
-                        )}
-                        Generate Keys
-                      </Button>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="dkimDomain" className="text-xs">Domain</Label>
-                      <Input
-                        id="dkimDomain"
-                        value={configDraft.dkimDomain}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimDomain: e.target.value }))}
-                        placeholder="example.com"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="dkimSelector" className="text-xs">Selector</Label>
-                      <Input
-                        id="dkimSelector"
-                        value={configDraft.dkimSelector}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimSelector: e.target.value }))}
-                        placeholder="mail"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="dkimPrivateKey" className="text-xs">Private Key (PEM format)</Label>
-                      <textarea
-                        id="dkimPrivateKey"
-                        value={configDraft.dkimPrivateKey}
-                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
-                        placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
-                        className="w-full h-20 text-xs font-mono p-2 rounded-md border bg-background resize-none"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Add DNS TXT record: <code className="bg-muted px-1 rounded">{configDraft.dkimSelector || "mail"}._domainkey.{configDraft.dkimDomain || "yourdomain.com"}</code>
-                      </p>
-                    </div>
-                  </div>
+              {/* DKIM */}
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-2 mb-2">
+                  <Key className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">DKIM</span>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Basic Settings Display */}
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between items-center py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Sender Name:</span>
-                      <span className="font-medium">{emailConfig.senderName || "Not set"}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Sender Email:</span>
-                      <span className="font-mono">{emailConfig.senderEmail || "Not set"}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-1 border-b border-border/50">
-                      <span className="text-muted-foreground">Reply-To:</span>
-                      <span className="font-mono">{emailConfig.replyToEmail || "Same as sender"}</span>
-                    </div>
+                {emailConfig.dkimDomain ? (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div className="text-muted-foreground">Domain</div>
+                    <div className="font-mono truncate">{emailConfig.dkimDomain}</div>
+                    <div className="text-muted-foreground">Selector</div>
+                    <div className="font-mono">{emailConfig.dkimSelector}</div>
+                    <div className="text-muted-foreground">Key</div>
+                    <div><Badge variant="outline" className="text-xs px-1 py-0 bg-green-500/10 text-green-600">Set</Badge></div>
                   </div>
-
-                  {/* SMTP Settings Display */}
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Server className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-xs font-medium text-muted-foreground">SMTP</p>
-                    </div>
-                    <div className="space-y-1.5 text-xs">
-                      {emailConfig.smtpHost ? (
-                        <>
-                          <div className="flex justify-between items-center py-1 border-b border-border/50">
-                            <span className="text-muted-foreground">Host:</span>
-                            <span className="font-mono">{emailConfig.smtpHost}:{emailConfig.smtpPort}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1 border-b border-border/50">
-                            <span className="text-muted-foreground">Username:</span>
-                            <span className="font-mono">{emailConfig.smtpUsername || "Not set"}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1 border-b border-border/50">
-                            <span className="text-muted-foreground">TLS:</span>
-                            <Badge variant="outline" className={`text-xs px-1.5 py-0 ${emailConfig.smtpTls ? "bg-green-500/10 text-green-600" : "bg-muted"}`}>
-                              {emailConfig.smtpTls ? "Enabled" : "Disabled"}
-                            </Badge>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-muted-foreground py-1">Not configured</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* DKIM Settings Display */}
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Key className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-xs font-medium text-muted-foreground">DKIM</p>
-                    </div>
-                    <div className="space-y-1.5 text-xs">
-                      {emailConfig.dkimDomain ? (
-                        <>
-                          <div className="flex justify-between items-center py-1 border-b border-border/50">
-                            <span className="text-muted-foreground">Domain:</span>
-                            <span className="font-mono">{emailConfig.dkimDomain}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1 border-b border-border/50">
-                            <span className="text-muted-foreground">Selector:</span>
-                            <span className="font-mono">{emailConfig.dkimSelector}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1">
-                            <span className="text-muted-foreground">Private Key:</span>
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 bg-green-500/10 text-green-600">
-                              Configured
-                            </Badge>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-muted-foreground py-1">Not configured</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Not configured</p>
+                )}
+              </div>
             </div>
+          )}
+        </div>
 
-          {/* SMTP Connection Status - Always visible */}
-          <div className={`p-3 rounded-lg border ${
+        {/* Right: Connection Details */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Connection Status</h3>
+          
+          <div className={`p-4 rounded-lg border ${
             connectionStatus.status === "connected" 
               ? "bg-green-500/5 border-green-500/20" 
               : connectionStatus.status === "error" 
                 ? "bg-amber-500/5 border-amber-500/20"
                 : connectionStatus.status === "checking"
-                  ? "bg-muted/50 border-border"
+                  ? "bg-muted/30"
                   : "bg-red-500/5 border-red-500/20"
           }`}>
-            <div className="flex items-center justify-between mb-2">
+            <div className="space-y-3">
+              {/* Status Header */}
               <div className="flex items-center gap-2">
-                <Server className={`h-4 w-4 ${
-                  connectionStatus.status === "connected" 
-                    ? "text-green-600" 
-                    : connectionStatus.status === "error"
-                      ? "text-amber-600"
-                      : connectionStatus.status === "checking"
-                        ? "text-muted-foreground"
-                        : "text-red-600"
-                }`} />
-                <p className="text-sm font-medium">SMTP Connection</p>
-              </div>
-              {getStatusBadge()}
-            </div>
-            
-            {connectionStatus.status === "connected" && connectionStatus.domains.length > 0 ? (
-              <div className="space-y-1.5">
-                {connectionStatus.domains.map((domain, index) => (
-                  <div key={index} className="flex items-center justify-between gap-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                      <span className="font-mono text-xs">{domain.name}</span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20"
-                    >
-                      {domain.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : connectionStatus.status === "connected" ? (
-              <p className="text-xs text-green-600 py-1">
-                SMTP configured and ready to send emails
-              </p>
-            ) : (
-              <div className="space-y-1.5 text-xs">
-                <p className={
-                  connectionStatus.status === "error" ? "text-amber-600" :
-                  connectionStatus.status === "disconnected" ? "text-red-600" :
-                  "text-muted-foreground"
-                }>
+                {connectionStatus.status === "connected" ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                ) : connectionStatus.status === "checking" ? (
+                  <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                ) : connectionStatus.status === "error" ? (
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-600" />
+                )}
+                <span className={`text-sm font-medium ${
+                  connectionStatus.status === "connected" ? "text-green-700" :
+                  connectionStatus.status === "error" ? "text-amber-700" :
+                  connectionStatus.status === "checking" ? "text-muted-foreground" :
+                  "text-red-700"
+                }`}>
                   {connectionStatus.message}
-                </p>
-                {connectionStatus.lastChecked && (
-                  <p className="text-muted-foreground">
-                    Last checked: {formatTime(connectionStatus.lastChecked)}
-                  </p>
-                )}
-                {reconnectAttempts.current > 0 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS && (
-                  <p className="text-muted-foreground">
-                    Reconnect attempts: {reconnectAttempts.current}/{MAX_RECONNECT_ATTEMPTS}
-                    {reconnectAttempts.current <= FAST_RECONNECT_ATTEMPTS ? " (fast)" : " (slow)"}
-                  </p>
-                )}
+                </span>
               </div>
-            )}
+
+              {/* Domains List */}
+              {connectionStatus.status === "connected" && connectionStatus.domains.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-green-500/20">
+                  <p className="text-xs text-muted-foreground">Verified Domains</p>
+                  {connectionStatus.domains.map((domain, index) => (
+                    <div key={index} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-3 w-3 text-green-600" />
+                        <span className="font-mono">{domain.name}</span>
+                      </div>
+                      <Badge variant="outline" className="text-xs px-1 py-0 bg-green-500/10 text-green-600 border-green-500/20">
+                        {domain.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Meta Info */}
+              {connectionStatus.lastChecked && (
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  Last checked: {formatTime(connectionStatus.lastChecked)}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Success Message */}
-          {lastSuccess && (
-            <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+          {/* Setup Warning */}
+          {connectionStatus.status !== "connected" && !emailConfig.smtpHost && (
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
               <div className="flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-green-700">
-                      {lastSuccess.type === "connection" ? "Connection Successful" : "Email Sent"}
-                    </p>
-                    <span className="text-xs text-green-600/70">{formatTime(lastSuccess.timestamp)}</span>
-                  </div>
-                  <p className="text-xs text-green-600 mt-0.5">{lastSuccess.message}</p>
+                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <div className="text-xs text-amber-700">
+                  <p className="font-medium mb-1">SMTP not configured</p>
+                  <p>Set your SMTP host, username, and password in the configuration panel to start sending emails.</p>
                 </div>
               </div>
             </div>
           )}
-
-          {/* Error Messages */}
-          {errors.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-destructive">
-                  Recent Errors ({errors.length})
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={clearErrors}
-                >
-                  Clear
-                </Button>
-              </div>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {errors.map((error, index) => (
-                  <div
-                    key={index}
-                    className="p-3 rounded-lg bg-destructive/5 border border-destructive/20"
-                  >
-                    <div className="flex items-start gap-2">
-                      <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-destructive">
-                            {error.type === "connection" ? "Connection Error" : "Send Error"}
-                          </p>
-                          <span className="text-xs text-destructive/70">{formatTime(error.timestamp)}</span>
-                        </div>
-                        <p className="text-xs text-destructive/80 mt-0.5">{error.message}</p>
-                        {error.details && (
-                          <p className="text-xs text-muted-foreground mt-1 break-words">
-                            {error.details}
-                          </p>
-                        )}
-                        {error.code && (
-                          <Badge variant="outline" className="mt-1.5 text-xs px-1.5 py-0">
-                            Code: {error.code}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* SMTP Configuration Warning */}
-      {connectionStatus.status !== "connected" && !emailConfig.smtpHost && (
-        <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-          <p className="text-sm text-amber-700 mb-2">
-            SMTP not configured. Please set your SMTP host, username, and password in the configuration above.
-          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }
