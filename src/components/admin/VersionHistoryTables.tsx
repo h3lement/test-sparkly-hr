@@ -95,6 +95,7 @@ interface Quiz {
   id: string;
   title: Record<string, string>;
   slug: string;
+  primary_language: string;
 }
 
 interface EmailVersionHistoryProps {
@@ -147,7 +148,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       // Fetch quizzes first
       const { data: quizzesData, error: quizzesError } = await supabase
         .from("quizzes")
-        .select("id, title, slug")
+        .select("id, title, slug, primary_language")
         .order("created_at", { ascending: false });
 
       if (quizzesError) throw quizzesError;
@@ -741,7 +742,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
       // Fetch quizzes first
       const { data: quizzesData, error: quizzesError } = await supabase
         .from("quizzes")
-        .select("id, title, slug")
+        .select("id, title, slug, primary_language")
         .order("created_at", { ascending: false });
 
       if (quizzesError) throw quizzesError;
@@ -1255,6 +1256,8 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
         onOpenChange={(open) => !open && setPreviewVersion(null)}
         version={previewVersion}
         quizTitle={previewVersion ? getQuizTitle(previewVersion.quiz_id) : undefined}
+        primaryLanguage={previewVersion ? quizzes.find(q => q.id === previewVersion.quiz_id)?.primary_language || "en" : "en"}
+        onTranslateComplete={fetchData}
       />
 
       {/* Translation Dialog */}
