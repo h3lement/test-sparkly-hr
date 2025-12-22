@@ -23,20 +23,26 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
     setQuizData, 
     setQuestions, 
     setResultLevels,
-    setOpenMindednessResultLevels
+    setOpenMindednessResultLevels,
+    quizData: existingQuizData
   } = useDynamicQuiz();
   const { setQuizId, dbTranslationsLoaded } = useLanguage();
 
   // Load quiz data into context and set quizId for translations
+  // Only set data if not already loaded (prevent reset during quiz)
   useEffect(() => {
-    if (quiz) {
+    if (quiz && !existingQuizData) {
+      setQuizData(quiz);
+      setQuizId(quiz.id);
+    } else if (quiz && existingQuizData && quiz.id !== existingQuizData.id) {
+      // Only update if quiz ID changed (navigated to different quiz)
       setQuizData(quiz);
       setQuizId(quiz.id);
     }
-    if (questions.length) setQuestions(questions);
+    if (questions.length && currentStep === 'welcome') setQuestions(questions);
     if (resultLevels.length) setResultLevels(resultLevels);
     if (openMindednessResultLevels.length) setOpenMindednessResultLevels(openMindednessResultLevels);
-  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels, setQuizId]);
+  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels, setQuizId, existingQuizData, currentStep]);
 
   // Show loading while data or translations are loading
   if (loading || !dbTranslationsLoaded) {
