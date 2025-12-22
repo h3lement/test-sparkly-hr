@@ -185,6 +185,37 @@ export function CTATemplateManager() {
     }
     
     try {
+      // Auto-save the current language content before translating
+      const updatedCtaTitle = { ...selectedQuiz.cta_title, [selectedLanguage]: ctaTitle };
+      const updatedCtaDescription = { ...selectedQuiz.cta_description, [selectedLanguage]: ctaDescription };
+      const updatedCtaText = { ...selectedQuiz.cta_text, [selectedLanguage]: ctaButtonText };
+
+      const { error: saveError } = await supabase
+        .from("quizzes")
+        .update({
+          cta_title: updatedCtaTitle,
+          cta_description: updatedCtaDescription,
+          cta_text: updatedCtaText,
+          cta_url: ctaUrl,
+        })
+        .eq("id", selectedQuiz.id);
+
+      if (saveError) {
+        throw new Error("Failed to save source content before translation");
+      }
+
+      // Update local state with saved content
+      setQuizzes(prev => prev.map(q => 
+        q.id === selectedQuiz.id 
+          ? { 
+              ...q, 
+              cta_title: updatedCtaTitle, 
+              cta_description: updatedCtaDescription, 
+              cta_text: updatedCtaText,
+              cta_url: ctaUrl,
+            } 
+          : q
+      ));
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
