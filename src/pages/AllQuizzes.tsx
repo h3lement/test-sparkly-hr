@@ -89,7 +89,7 @@ export default function AllQuizzes() {
     switch (type) {
       case "hypothesis":
         return {
-          label: "Bias Yourself To Learn 50+ Peoples' Behaviour",
+          label: "5 minute Anonymous Quiz",
           icon: Lightbulb,
           badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
           card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
