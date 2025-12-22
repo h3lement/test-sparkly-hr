@@ -485,7 +485,7 @@ export function EmailSettings() {
     return `dmarc@${configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}`;
   }, [configDraft.dkimDomain, configDraft.senderEmail]);
 
-
+  const addError = (error: Omit<EmailError, "timestamp">) => {
     setErrors((prev) => [{ ...error, timestamp: new Date() }, ...prev].slice(0, 5));
     setLastSuccess(null);
   };
