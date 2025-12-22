@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles, Loader2, RefreshCw, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
+import { CTATemplateManager } from "./CTATemplateManager";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
@@ -952,7 +953,7 @@ export function TemplateVersionsPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="web" className="gap-2">
             <Globe className="w-4 h-4" />
             Web Results
@@ -960,6 +961,10 @@ export function TemplateVersionsPage() {
           <TabsTrigger value="email" className="gap-2">
             <Mail className="w-4 h-4" />
             Email Templates
+          </TabsTrigger>
+          <TabsTrigger value="cta" className="gap-2">
+            <Target className="w-4 h-4" />
+            CTAs
           </TabsTrigger>
         </TabsList>
 
@@ -972,6 +977,10 @@ export function TemplateVersionsPage() {
             onLoadTemplate={handleLoadTemplate}
             onPreview={handlePreview}
           />
+        </TabsContent>
+
+        <TabsContent value="cta" className="mt-6">
+          <CTATemplateManager />
         </TabsContent>
       </Tabs>
 
