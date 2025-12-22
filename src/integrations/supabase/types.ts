@@ -831,6 +831,41 @@ export type Database = {
           },
         ]
       }
+      ui_translations: {
+        Row: {
+          created_at: string
+          id: string
+          quiz_id: string | null
+          translation_key: string
+          translations: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quiz_id?: string | null
+          translation_key: string
+          translations?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quiz_id?: string | null
+          translation_key?: string
+          translations?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ui_translations_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string

@@ -30,6 +30,7 @@ import { QuizStats } from "@/components/admin/QuizStats";
 import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
 import { QuizWebStats } from "@/components/admin/QuizWebStats";
 import { HypothesisQuizEditor } from "@/components/admin/HypothesisQuizEditor";
+import { TranslationDialog, type TranslationOptions } from "@/components/admin/TranslationDialog";
 import {
   Select,
   SelectContent,
@@ -171,6 +172,7 @@ export default function QuizEditor() {
   // Translation metadata state
   const [translationMeta, setTranslationMeta] = useState<TranslationMeta>({});
   const [showLanguageList, setShowLanguageList] = useState(false);
+  const [showTranslationDialog, setShowTranslationDialog] = useState(false);
 
   // Quiz details state
   const [slug, setSlug] = useState("");
@@ -1409,13 +1411,21 @@ export default function QuizEditor() {
     }
   };
 
-  const handleTranslate = async () => {
+  const handleTranslate = async (options: TranslationOptions) => {
     if (!quizId || isCreating) return;
     
     setTranslating(true);
+    setShowTranslationDialog(false);
+    
     try {
       const { data, error } = await supabase.functions.invoke("translate-quiz", {
-        body: { quizId, sourceLanguage: primaryLanguage, model: selectedAiModel },
+        body: { 
+          quizId, 
+          sourceLanguage: primaryLanguage, 
+          model: selectedAiModel,
+          targetLanguages: options.targetLanguages,
+          includeUiText: options.includeUiText,
+        },
       });
 
       if (error) throw error;
@@ -1426,10 +1436,11 @@ export default function QuizEditor() {
 
       const costInfo = data.sessionCost ? ` (Cost: $${data.sessionCost.toFixed(4)})` : "";
       const skippedInfo = data.skippedCount > 0 ? `, ${data.skippedCount} already translated` : "";
+      const uiInfo = data.uiTextsTranslated > 0 ? `, ${data.uiTextsTranslated} UI texts` : "";
       
       toast({
         title: "Translation complete",
-        description: `Translated ${data.translatedCount || 0} texts to ${data.translatedLanguages?.length || 0} languages${skippedInfo}${costInfo}`,
+        description: `Translated ${data.translatedCount || 0} texts to ${data.translatedLanguages?.length || 0} languages${uiInfo}${skippedInfo}${costInfo}`,
       });
 
       // Reload quiz data to show translations
@@ -2191,7 +2202,7 @@ export default function QuizEditor() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleTranslate}
+              onClick={() => setShowTranslationDialog(true)}
               disabled={translating}
               className="gap-2"
             >
@@ -2912,6 +2923,15 @@ export default function QuizEditor() {
         tasks={regenerationTasks}
         isRunning={isRegenerating}
         progress={regenerationProgress}
+      />
+
+      {/* Translation Dialog */}
+      <TranslationDialog
+        open={showTranslationDialog}
+        onOpenChange={setShowTranslationDialog}
+        onTranslate={handleTranslate}
+        primaryLanguage={primaryLanguage}
+        translating={translating}
       />
     </div>
   );

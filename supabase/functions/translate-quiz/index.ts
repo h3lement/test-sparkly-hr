@@ -34,6 +34,74 @@ const ALL_TARGET_LANGUAGES = [
   { code: "mt", name: "Maltese" },
 ];
 
+// Static UI text keys that should be translated
+const UI_TEXT_KEYS = [
+  "badge", "discoverTitle", "startButton", "learnMore", "duration", "selectLanguage",
+  "questionOf", "complete", "back", "next", "seeResults",
+  "resultsReady", "resultsReadyHighlight", "emailDescription", "emailPlaceholder",
+  "getResults", "sending", "privacyNotice", "invalidEmail", "emailError",
+  "emailSuccess", "emailSuccessDesc", "somethingWrong",
+  "resultsFor", "outOf", "points", "best", "needsWork",
+  "whatThisMeans", "keyInsights", "wantToImprove", "wantToImproveDesc",
+  "ctaAdvice", "visitSparkly", "takeQuizAgain",
+  "openMindedness_question", "openMindedness_humans", "openMindedness_ai",
+  "openMindedness_psychology", "openMindedness_humanDesign", "openMindedness_hint",
+  "keyboardHint", "finalQuestion", "leadershipOpenMindedness",
+  "openMindednessHigh", "openMindednessMedium", "openMindednessLow", "openMindednessNone",
+];
+
+// Default English UI texts
+const DEFAULT_UI_TEXTS: Record<string, string> = {
+  badge: "Backed by decades of HR Experience and Deep Research",
+  discoverTitle: "What you'll discover:",
+  startButton: "Start Free Assessment",
+  learnMore: "Learn More",
+  duration: "Takes only 2 minutes • 100% confidential",
+  selectLanguage: "Select Language",
+  questionOf: "Question {current} of {total}",
+  complete: "{percent}% complete",
+  back: "Back",
+  next: "Next",
+  seeResults: "See Results",
+  resultsReady: "Your Results Are",
+  resultsReadyHighlight: "Ready!",
+  emailDescription: "Enter your email to unlock your personalized performance assessment and get actionable insights delivered to your inbox.",
+  emailPlaceholder: "your@email.com",
+  getResults: "Get My Results",
+  sending: "Sending...",
+  privacyNotice: "🔒 We respect your privacy. No spam, ever.",
+  invalidEmail: "Invalid email",
+  emailError: "Error",
+  emailSuccess: "Success!",
+  emailSuccessDesc: "Your results have been sent to your email.",
+  somethingWrong: "Something went wrong. Please try again.",
+  resultsFor: "Results for",
+  outOf: "out of",
+  points: "points",
+  best: "Best",
+  needsWork: "Needs Work",
+  whatThisMeans: "What This Means",
+  keyInsights: "Key Insights:",
+  wantToImprove: "Ready for Precise Employee Assessment?",
+  wantToImproveDesc: "This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.",
+  ctaAdvice: "Visit Sparkly.hr for comprehensive employee assessments and personalized recommendations.",
+  visitSparkly: "Continue to Sparkly.hr",
+  takeQuizAgain: "Take Quiz Again",
+  openMindedness_question: "Which of these assessment methods do you believe can provide valuable insights when used together?",
+  openMindedness_humans: "Human judgment and intuition",
+  openMindedness_ai: "AI-powered analysis",
+  openMindedness_psychology: "Psychological assessments",
+  openMindedness_humanDesign: "Human Design methodology",
+  openMindedness_hint: "Select all methods you are open to exploring. Your choices help us understand your leadership style.",
+  keyboardHint: "Use Tab to navigate, Space to toggle",
+  finalQuestion: "Question {current} of {total}, final question",
+  leadershipOpenMindedness: "Open-Minded Leadership",
+  openMindednessHigh: "Highly open-minded - You embrace diverse approaches",
+  openMindednessMedium: "Moderately open-minded - You consider alternative methods",
+  openMindednessLow: "Somewhat rigid - You prefer traditional approaches",
+  openMindednessNone: "Very rigid - You rely solely on conventional methods",
+};
+
 // Cost per 1K tokens (approximate for gemini-2.5-flash)
 const COST_PER_1K_INPUT_TOKENS = 0.000075;
 const COST_PER_1K_OUTPUT_TOKENS = 0.0003;
@@ -49,15 +117,21 @@ function simpleHash(str: string): string {
   return hash.toString(36);
 }
 
-// Get target languages (exclude source language)
-function getTargetLanguages(sourceLanguage: string) {
-  return ALL_TARGET_LANGUAGES.filter(l => l.code !== sourceLanguage);
+// Get target languages based on selection or all
+function getTargetLanguages(sourceLanguage: string, selectedLanguages?: string[]) {
+  const allTargets = ALL_TARGET_LANGUAGES.filter(l => l.code !== sourceLanguage);
+  if (selectedLanguages && selectedLanguages.length > 0) {
+    return allTargets.filter(l => selectedLanguages.includes(l.code));
+  }
+  return allTargets;
 }
 
 interface TranslateRequest {
   quizId: string;
   sourceLanguage: string;
   model?: string;
+  targetLanguages?: string[];
+  includeUiText?: boolean;
 }
 
 interface TranslationMeta {
@@ -85,9 +159,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { quizId, sourceLanguage, model }: TranslateRequest = await req.json();
+    const { quizId, sourceLanguage, model, targetLanguages: selectedTargetLanguages, includeUiText }: TranslateRequest = await req.json();
     const selectedModel = model || 'google/gemini-2.5-flash';
+    const shouldIncludeUiText = includeUiText !== false; // Default to true
     console.log(`Starting smart translation for quiz ${quizId} from ${sourceLanguage} using model ${selectedModel}`);
+    console.log(`Target languages: ${selectedTargetLanguages?.length || 'all'}, Include UI text: ${shouldIncludeUiText}`);
 
     // Fetch quiz data
     const { data: quiz, error: quizError } = await supabase
@@ -118,7 +194,7 @@ serve(async (req) => {
       .select("*")
       .eq("quiz_id", quizId);
 
-    const targetLanguages = getTargetLanguages(sourceLanguage);
+    const targetLanguages = getTargetLanguages(sourceLanguage, selectedTargetLanguages);
     
     // Get existing translation metadata
     const existingMeta: TranslationMeta = quiz.translation_meta || {};
@@ -436,15 +512,119 @@ ${JSON.stringify(textsToTranslate.map(t => ({ path: t.path, text: t.text })), nu
       }
     }
 
+    // Translate UI text if requested
+    let uiTextsTranslated = 0;
+    if (shouldIncludeUiText) {
+      console.log("Translating UI text...");
+      
+      for (const langCode of Object.keys(translations)) {
+        // Prepare UI text for translation
+        const uiTextsToTranslate = UI_TEXT_KEYS.map(key => ({
+          path: `ui.${key}`,
+          text: DEFAULT_UI_TEXTS[key] || key,
+        }));
+
+        const lang = targetLanguages.find(l => l.code === langCode);
+        if (!lang) continue;
+
+        const uiPrompt = `You are a professional translator. Translate the following UI texts from English to ${lang.name}.
+These are button labels, form fields, and UI messages for a quiz/assessment website.
+Keep translations natural, concise, and appropriate for a professional context.
+Maintain any formatting like {current}, {total}, {percent} placeholders, emojis, and special characters.
+
+Return ONLY a JSON object where keys are the text paths and values are the translations.
+
+Texts to translate:
+${JSON.stringify(uiTextsToTranslate, null, 2)}`;
+
+        const inputTokenEstimate = Math.ceil(uiPrompt.length / 4);
+        totalInputTokens += inputTokenEstimate;
+
+        try {
+          const uiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: selectedModel,
+              messages: [
+                { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
+                { role: "user", content: uiPrompt }
+              ],
+            }),
+          });
+
+          if (!uiResponse.ok) {
+            console.error(`UI translation API error for ${langCode}`);
+            continue;
+          }
+
+          const uiData = await uiResponse.json();
+          let uiContent = uiData.choices?.[0]?.message?.content || "";
+          totalOutputTokens += Math.ceil(uiContent.length / 4);
+          
+          uiContent = uiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          
+          const uiParsed = JSON.parse(uiContent);
+          
+          // Upsert UI translations to database
+          for (const key of UI_TEXT_KEYS) {
+            const translatedText = uiParsed[`ui.${key}`];
+            if (translatedText) {
+              // Fetch existing translation or create new one
+              const { data: existing } = await supabase
+                .from("ui_translations")
+                .select("*")
+                .eq("quiz_id", quizId)
+                .eq("translation_key", key)
+                .maybeSingle();
+
+              const currentTranslations = existing?.translations || { en: DEFAULT_UI_TEXTS[key] };
+              currentTranslations[langCode] = translatedText;
+
+              if (existing) {
+                await supabase
+                  .from("ui_translations")
+                  .update({ translations: currentTranslations })
+                  .eq("id", existing.id);
+              } else {
+                await supabase
+                  .from("ui_translations")
+                  .insert({
+                    quiz_id: quizId,
+                    translation_key: key,
+                    translations: currentTranslations,
+                  });
+              }
+              uiTextsTranslated++;
+            }
+          }
+          
+          console.log(`UI text translated to ${langCode}`);
+        } catch (uiError) {
+          console.error(`Failed to translate UI text for ${langCode}:`, uiError);
+        }
+      }
+    }
+
+    // Recalculate session cost after UI translations
+    const finalSessionCost = (totalInputTokens / 1000 * COST_PER_1K_INPUT_TOKENS) + 
+                              (totalOutputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS);
+    const finalTotalCost = (existingMeta.total_cost_usd || 0) + finalSessionCost;
+
     console.log("Smart translation complete!");
+    console.log(`UI texts translated: ${uiTextsTranslated}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       translatedLanguages: Object.keys(translations),
       translatedCount: totalTextsToTranslate,
+      uiTextsTranslated,
       skippedCount: (allTexts.length * targetLanguages.length) - totalTextsToTranslate,
-      sessionCost: sessionCost,
-      totalCost: newTotalCost,
+      sessionCost: finalSessionCost,
+      totalCost: finalTotalCost,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
