@@ -282,14 +282,30 @@ export function EmailSettings() {
     key: "email_dns_sections",
     defaultValue: { spfExpanded: true, dmarcExpanded: true, dkimExpanded: true },
   });
+
+  // Connection recheck settings preferences
+  interface RecheckSettingsPrefs {
+    fastReconnectAttempts: number;
+    fastReconnectDelayMs: number;
+    slowReconnectDelayMs: number;
+    maxReconnectAttempts: number;
+    autoReconnectEnabled: boolean;
+  }
+  const { preferences: recheckSettings, updatePreference: updateRecheckSetting, savePreferences: saveRecheckSettings } = useUserPreferences<RecheckSettingsPrefs>({
+    key: "email_recheck_settings",
+    defaultValue: {
+      fastReconnectAttempts: 5,
+      fastReconnectDelayMs: 3000,
+      slowReconnectDelayMs: 30000,
+      maxReconnectAttempts: 10,
+      autoReconnectEnabled: true,
+    },
+  });
+  const [showRecheckSettings, setShowRecheckSettings] = useState(false);
   
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const FAST_RECONNECT_ATTEMPTS = 5;
-  const FAST_RECONNECT_DELAY_MS = 3000;
-  const SLOW_RECONNECT_DELAY_MS = 30000;
-  const MAX_RECONNECT_ATTEMPTS = 10;
   const { toast } = useToast();
 
   // Fetch quizzes on mount
@@ -701,11 +717,15 @@ export function EmailSettings() {
   }, []);
 
   const scheduleReconnect = useCallback(() => {
-    if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+    if (!recheckSettings.autoReconnectEnabled) {
+      return;
+    }
+    
+    if (reconnectAttempts.current >= recheckSettings.maxReconnectAttempts) {
       setConnectionStatus((prev) => ({
         ...prev,
         status: "disconnected",
-        message: `Connection failed after ${MAX_RECONNECT_ATTEMPTS} attempts. Click refresh to try again.`,
+        message: `Connection failed after ${recheckSettings.maxReconnectAttempts} attempts. Click refresh to try again.`,
       }));
       return;
     }
@@ -716,20 +736,20 @@ export function EmailSettings() {
 
     reconnectAttempts.current += 1;
     
-    // Use fast delay for first 5 attempts, then slow delay
-    const isFastPhase = reconnectAttempts.current <= FAST_RECONNECT_ATTEMPTS;
-    const baseDelay = isFastPhase ? FAST_RECONNECT_DELAY_MS : SLOW_RECONNECT_DELAY_MS;
-    const delay = isFastPhase ? baseDelay : baseDelay * (reconnectAttempts.current - FAST_RECONNECT_ATTEMPTS);
+    // Use fast delay for first N attempts, then slow delay
+    const isFastPhase = reconnectAttempts.current <= recheckSettings.fastReconnectAttempts;
+    const baseDelay = isFastPhase ? recheckSettings.fastReconnectDelayMs : recheckSettings.slowReconnectDelayMs;
+    const delay = isFastPhase ? baseDelay : baseDelay * (reconnectAttempts.current - recheckSettings.fastReconnectAttempts);
 
     setConnectionStatus((prev) => ({
       ...prev,
-      message: `Reconnecting in ${Math.ceil(delay / 1000)}s (attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS})...`,
+      message: `Reconnecting in ${Math.ceil(delay / 1000)}s (attempt ${reconnectAttempts.current}/${recheckSettings.maxReconnectAttempts})...`,
     }));
 
     reconnectTimerRef.current = setTimeout(() => {
       checkConnection(true);
     }, delay);
-  }, [checkConnection]);
+  }, [checkConnection, recheckSettings]);
 
   // Rate limit countdown effect
   useEffect(() => {
@@ -970,9 +990,9 @@ export function EmailSettings() {
         </div>
 
         {/* Reconnect info */}
-        {reconnectAttempts.current > 0 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS && connectionStatus.status !== "connected" && (
+        {reconnectAttempts.current > 0 && reconnectAttempts.current < recheckSettings.maxReconnectAttempts && connectionStatus.status !== "connected" && (
           <span className="text-xs text-muted-foreground">
-            Retry {reconnectAttempts.current}/{MAX_RECONNECT_ATTEMPTS}
+            Retry {reconnectAttempts.current}/{recheckSettings.maxReconnectAttempts}
           </span>
         )}
 
@@ -2066,6 +2086,139 @@ export function EmailSettings() {
               )}
             </div>
           </div>
+
+          {/* Connection Recheck Settings */}
+          <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between h-8 text-xs text-muted-foreground hover:text-foreground">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-3 w-3" />
+                  <span>Recheck Settings</span>
+                </div>
+                {showRecheckSettings ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 rounded-lg border bg-muted/30 space-y-3 mt-2">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-medium">Auto Reconnect</Label>
+                  <p className="text-[10px] text-muted-foreground">Automatically retry on connection failure</p>
+                </div>
+                <Switch
+                  checked={recheckSettings.autoReconnectEnabled}
+                  onCheckedChange={(checked) => updateRecheckSetting("autoReconnectEnabled", checked)}
+                />
+              </div>
+
+              {recheckSettings.autoReconnectEnabled && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Fast Retry Count</Label>
+                      <Select
+                        value={String(recheckSettings.fastReconnectAttempts)}
+                        onValueChange={(val) => updateRecheckSetting("fastReconnectAttempts", parseInt(val))}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 7, 10].map((n) => (
+                            <SelectItem key={n} value={String(n)}>{n} attempts</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Quick retries before slowing down</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Max Attempts</Label>
+                      <Select
+                        value={String(recheckSettings.maxReconnectAttempts)}
+                        onValueChange={(val) => updateRecheckSetting("maxReconnectAttempts", parseInt(val))}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[5, 10, 15, 20, 30, 50].map((n) => (
+                            <SelectItem key={n} value={String(n)}>{n} total</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Stop after this many failures</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Fast Delay</Label>
+                      <Select
+                        value={String(recheckSettings.fastReconnectDelayMs)}
+                        onValueChange={(val) => updateRecheckSetting("fastReconnectDelayMs", parseInt(val))}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1000">1 second</SelectItem>
+                          <SelectItem value="2000">2 seconds</SelectItem>
+                          <SelectItem value="3000">3 seconds</SelectItem>
+                          <SelectItem value="5000">5 seconds</SelectItem>
+                          <SelectItem value="10000">10 seconds</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Delay between fast retries</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Slow Delay</Label>
+                      <Select
+                        value={String(recheckSettings.slowReconnectDelayMs)}
+                        onValueChange={(val) => updateRecheckSetting("slowReconnectDelayMs", parseInt(val))}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10000">10 seconds</SelectItem>
+                          <SelectItem value="20000">20 seconds</SelectItem>
+                          <SelectItem value="30000">30 seconds</SelectItem>
+                          <SelectItem value="60000">1 minute</SelectItem>
+                          <SelectItem value="120000">2 minutes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Delay after fast phase</p>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-muted-foreground pt-2 border-t">
+                    <p><strong>Current strategy:</strong> {recheckSettings.fastReconnectAttempts} fast retries at {recheckSettings.fastReconnectDelayMs / 1000}s intervals, 
+                    then slower retries at {recheckSettings.slowReconnectDelayMs / 1000}s (max {recheckSettings.maxReconnectAttempts} total attempts)</p>
+                  </div>
+                </>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-7 text-xs"
+                onClick={() => {
+                  reconnectAttempts.current = 0;
+                  if (reconnectTimerRef.current) {
+                    clearTimeout(reconnectTimerRef.current);
+                  }
+                  checkConnection();
+                  toast({ title: "Reconnecting", description: "Connection check started with current settings." });
+                }}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Test Connection Now
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Setup Warning */}
           {connectionStatus.status !== "connected" && !emailConfig.smtpHost && (
