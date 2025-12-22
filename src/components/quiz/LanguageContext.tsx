@@ -28,6 +28,38 @@ export const languages: LanguageOption[] = [
   { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
 ];
 
+// All supported language codes for detection
+const SUPPORTED_LANGUAGE_CODES: Language[] = [
+  'da', 'nl', 'en', 'et', 'fi', 'fr', 'de', 'it', 'no', 'pl', 'pt', 'ru', 'es', 'sv', 'uk',
+  'ro', 'el', 'cs', 'hu', 'bg', 'sk', 'hr', 'lt', 'sl', 'lv', 'ga', 'mt'
+];
+
+/**
+ * Detects the user's preferred language from browser settings
+ * Returns the best matching supported language or 'en' as fallback
+ */
+const detectBrowserLanguage = (): Language => {
+  try {
+    // Get browser languages (ordered by preference)
+    const browserLanguages = navigator.languages || [navigator.language];
+    
+    for (const browserLang of browserLanguages) {
+      // Extract the primary language code (e.g., 'en-US' -> 'en')
+      const primaryCode = browserLang.split('-')[0].toLowerCase() as Language;
+      
+      // Check if it's a supported language
+      if (SUPPORTED_LANGUAGE_CODES.includes(primaryCode)) {
+        return primaryCode;
+      }
+    }
+  } catch (error) {
+    console.warn('Could not detect browser language:', error);
+  }
+  
+  // Default to English
+  return 'en';
+};
+
 export type TranslationKey = 
   // Page title and meta
   | 'pageTitle'
@@ -1766,7 +1798,8 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children, initialQuizId = null }: LanguageProviderProps) {
-  const [language, setLanguage] = useState<Language>('en');
+  // Detect browser language on initial load
+  const [language, setLanguage] = useState<Language>(() => detectBrowserLanguage());
   const [quizId, setQuizId] = useState<string | null>(initialQuizId);
   const [dbTranslations, setDbTranslations] = useState<Record<string, Record<string, string>>>({});
   const [dbTranslationsLoaded, setDbTranslationsLoaded] = useState(false);
