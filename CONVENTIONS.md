@@ -18,6 +18,9 @@ This document outlines the coding patterns, design system conventions, and best 
 10. [Accessibility](#accessibility)
 11. [File Organization](#file-organization)
 12. [Code Style](#code-style)
+13. [Supabase Integration](#supabase-integration)
+14. [Edge Functions](#edge-functions)
+15. [AI Integration](#ai-integration)
 
 ---
 
@@ -503,6 +506,283 @@ const { data, error } = await supabase
 
 ---
 
+## Supabase Integration
+
+### Client Usage
+
+Always import the Supabase client from the integration folder:
+
+```tsx
+// ✅ CORRECT
+import { supabase } from "@/integrations/supabase/client";
+
+// ❌ NEVER edit or create new client files
+// The client.ts file is auto-generated
+```
+
+### Query Patterns
+
+```tsx
+// Fetching data
+const { data, error } = await supabase
+  .from("table_name")
+  .select("*")
+  .eq("column", value);
+
+// Single row (use maybeSingle to avoid errors when no data)
+const { data, error } = await supabase
+  .from("table_name")
+  .select("*")
+  .eq("id", id)
+  .maybeSingle();  // ✅ Not .single() - avoids errors when no data
+
+// Insert
+const { data, error } = await supabase
+  .from("table_name")
+  .insert({ column: value })
+  .select();
+
+// Update
+const { data, error } = await supabase
+  .from("table_name")
+  .update({ column: newValue })
+  .eq("id", id);
+
+// Delete
+const { error } = await supabase
+  .from("table_name")
+  .delete()
+  .eq("id", id);
+```
+
+### Row Level Security (RLS)
+
+- **Always enable RLS** on tables containing user data
+- Use `auth.uid()` in policies for user-specific access
+- Use security definer functions to avoid infinite recursion
+
+```sql
+-- ✅ CORRECT - Use security definer function
+CREATE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role = _role
+  )
+$$;
+
+-- Use in policy
+CREATE POLICY "Admins can manage"
+ON public.table_name
+USING (public.has_role(auth.uid(), 'admin'));
+```
+
+### Realtime Subscriptions
+
+```tsx
+useEffect(() => {
+  const channel = supabase
+    .channel('schema-db-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',  // or 'UPDATE', 'DELETE', '*'
+        schema: 'public',
+        table: 'table_name'
+      },
+      (payload) => {
+        console.log('Change received:', payload);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+```
+
+### Important Limits
+
+- Default query limit: 1000 rows
+- Always handle errors gracefully
+- Use `.maybeSingle()` instead of `.single()` when data might not exist
+
+---
+
+## Edge Functions
+
+### File Structure
+
+```
+supabase/
+├── config.toml           # Only config file, never create others
+└── functions/
+    └── function-name/
+        └── index.ts      # All code in index.ts, no subfolders
+```
+
+### Standard Template
+
+```typescript
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// CORS headers - ALWAYS include for web app calls
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight - ALWAYS include
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { someParam } = await req.json();
+    
+    // Your logic here
+    console.log('Processing:', someParam);  // Good logging
+
+    return new Response(
+      JSON.stringify({ success: true, data: result }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (error) {
+    console.error('Error:', error);  // Always log errors
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+});
+```
+
+### Calling Edge Functions
+
+```tsx
+// ✅ CORRECT - Use supabase.functions.invoke
+const { data, error } = await supabase.functions.invoke('function-name', {
+  body: { param: value }
+});
+
+// ❌ NEVER use raw fetch with env variables
+// fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/...`)
+```
+
+### Making Functions Public
+
+Add to `supabase/config.toml`:
+
+```toml
+[functions.function-name]
+verify_jwt = false
+```
+
+### Must Do ✅
+
+- Always include CORS headers
+- Always handle OPTIONS preflight
+- Add comprehensive logging
+- Use `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+- Keep all code in `index.ts` (no subfolders)
+
+### Must Avoid ❌
+
+- Raw SQL execution in edge functions
+- Direct HTTP calls to Supabase API (use client methods)
+- Importing from `src/` directory (not in function context)
+- Creating multiple config.toml files
+
+---
+
+## AI Integration
+
+### Lovable AI Gateway
+
+This project uses the Lovable AI gateway for AI features. No API key required.
+
+```typescript
+const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'google/gemini-2.5-flash',  // or other supported models
+    messages: [
+      { role: 'system', content: 'System prompt' },
+      { role: 'user', content: userInput }
+    ],
+  }),
+});
+```
+
+### Supported Models
+
+| Model | Use Case |
+|-------|----------|
+| `google/gemini-2.5-flash` | Balanced speed/quality, default choice |
+| `google/gemini-2.5-pro` | Complex reasoning, multimodal |
+| `google/gemini-2.5-flash-lite` | Fast, cheap, simple tasks |
+| `openai/gpt-5` | High accuracy, expensive |
+| `openai/gpt-5-mini` | Good balance of cost/quality |
+| `openai/gpt-5-nano` | Fastest, cheapest |
+
+### Error Handling
+
+```typescript
+if (!response.ok) {
+  const errorData = await response.json();
+  
+  if (response.status === 429) {
+    // Rate limited
+    throw new Error('Rate limited, try again later');
+  }
+  
+  if (response.status === 402) {
+    // Credits exhausted
+    throw new Error('AI credits exhausted');
+  }
+  
+  throw new Error(errorData.error?.message || 'AI request failed');
+}
+```
+
+### Cost Tracking
+
+Track token usage for cost visibility:
+
+```typescript
+const data = await response.json();
+const usage = data.usage;
+
+// Log or store for analytics
+console.log(`Tokens - Input: ${usage.prompt_tokens}, Output: ${usage.completion_tokens}`);
+```
+
+---
+
 ## Quick Reference
 
 ### Must Do ✅
@@ -513,6 +793,10 @@ const { data, error } = await supabase
 - Use density-aware spacing utilities
 - Apply focus indicators for accessibility
 - Use zebra striping for lists/tables
+- Enable RLS on user data tables
+- Include CORS headers in edge functions
+- Use `supabase.functions.invoke()` for function calls
+- Log errors in edge functions
 
 ### Must Avoid ❌
 
@@ -521,6 +805,10 @@ const { data, error } = await supabase
 - Hardcoded spacing values in components
 - Missing focus states
 - Components that break in dark mode
+- Raw SQL in edge functions
+- Direct fetch to Supabase API endpoints
+- `.single()` when data might not exist (use `.maybeSingle()`)
+- Editing auto-generated files (`client.ts`, `types.ts`)
 
 ---
 
