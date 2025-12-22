@@ -545,9 +545,8 @@ export function EmailSettings() {
             </Button>
           </div>
 
-          {/* Email Configuration */}
-          {connectionStatus.status === "connected" && (
-            <div className="p-3 rounded-lg bg-muted/50 border">
+          {/* Email Configuration - Always visible for setup */}
+          <div className="p-3 rounded-lg bg-muted/50 border">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 text-muted-foreground" />
@@ -845,7 +844,6 @@ export function EmailSettings() {
                 </div>
               )}
             </div>
-          )}
 
           {/* SMTP Status */}
           {connectionStatus.status === "connected" && (
