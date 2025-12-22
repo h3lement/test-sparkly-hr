@@ -42,6 +42,7 @@ import { Switch } from "@/components/ui/switch";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { logActivity } from "@/hooks/useActivityLog";
 
 import { Json } from "@/integrations/supabase/types";
 
@@ -674,7 +675,7 @@ export function EmailSettings() {
     fetchUserEmail();
   }, []);
 
-  const checkConnection = useCallback(async (silent = false) => {
+  const checkConnection = useCallback(async (silent = false, isPeriodicCheck = false) => {
     if (!silent) {
       setIsChecking(true);
     }
@@ -683,6 +684,12 @@ export function EmailSettings() {
       status: "checking",
       message: "Checking connection...",
     }));
+
+    const checkStartTime = new Date();
+    let checkResult: { status: string; message: string; details?: string } = {
+      status: "unknown",
+      message: "Check in progress",
+    };
 
     try {
       const { data, error } = await supabase.functions.invoke("send-quiz-results", {
@@ -695,6 +702,11 @@ export function EmailSettings() {
 
       if (data?.connected) {
         reconnectAttempts.current = 0;
+        checkResult = {
+          status: "connected",
+          message: "SMTP connection active",
+          details: `Domains: ${data?.domains?.map((d: any) => d.name).join(", ") || "none"}`,
+        };
         setConnectionStatus({
           status: "connected",
           lastChecked: new Date(),
@@ -709,6 +721,11 @@ export function EmailSettings() {
         });
       } else {
         const errorMessage = data?.error || "SMTP not configured";
+        checkResult = {
+          status: "error",
+          message: errorMessage,
+          details: data?.code ? `Error code: ${data.code}` : undefined,
+        };
         setConnectionStatus({
           status: "error",
           lastChecked: new Date(),
@@ -728,6 +745,11 @@ export function EmailSettings() {
     } catch (error: any) {
       console.error("Connection check failed:", error);
       const errorMessage = error.message || "Failed to check connection";
+      checkResult = {
+        status: "failed",
+        message: errorMessage,
+        details: error.code ? `Error code: ${error.code}` : undefined,
+      };
       setConnectionStatus({
         status: "error",
         lastChecked: new Date(),
@@ -746,6 +768,20 @@ export function EmailSettings() {
       if (!silent) {
         setIsChecking(false);
       }
+
+      // Log SMTP check to activity log
+      const checkType = isPeriodicCheck ? "Periodic" : silent ? "Auto-retry" : "Manual";
+      const checkDuration = Date.now() - checkStartTime.getTime();
+      
+      logActivity({
+        actionType: "STATUS_CHANGE",
+        tableName: "smtp_connection",
+        recordId: "smtp_check",
+        fieldName: "connection_status",
+        oldValue: null,
+        newValue: checkResult.status,
+        description: `${checkType} SMTP check: ${checkResult.message}${checkResult.details ? ` (${checkResult.details})` : ""} - took ${checkDuration}ms`,
+      });
     }
   }, []);
 
@@ -827,8 +863,8 @@ export function EmailSettings() {
     }
 
     periodicCheckTimerRef.current = setInterval(() => {
-      console.log("Periodic connection health check...");
-      checkConnection(true);
+      console.log(`Periodic connection health check (interval: ${formatInterval()})...`);
+      checkConnection(true, true); // silent=true, isPeriodicCheck=true
     }, intervalMs);
 
     return () => {
@@ -2182,8 +2218,8 @@ export function EmailSettings() {
                     if (reconnectTimerRef.current) {
                       clearTimeout(reconnectTimerRef.current);
                     }
-                    checkConnection();
-                    toast({ title: "Reconnecting", description: "Connection check started with current settings." });
+                    checkConnection(false, false); // Manual test - not silent, not periodic
+                    toast({ title: "Testing Connection", description: "Manual connection check started." });
                   }}
                 >
                   <RefreshCw className="h-3 w-3 mr-1" />
