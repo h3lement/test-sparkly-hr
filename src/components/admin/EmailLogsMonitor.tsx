@@ -233,6 +233,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
         return { label: "Quiz Taker", icon: User, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
       case "quiz_result_admin":
         return { label: "Admin Notif", icon: Shield, color: "bg-purple-500/10 text-purple-600 border-purple-500/20" };
+      case "domain_reputation_alert":
+        return { label: "Domain Alert", icon: AlertCircle, color: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
       default:
         return { label: type, icon: Mail, color: "bg-secondary text-secondary-foreground" };
     }
