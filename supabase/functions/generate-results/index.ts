@@ -261,17 +261,38 @@ Output format:
     const estimatedCostUsd = (inputTokens * 0.000000075) + (outputTokens * 0.0000003);
     const estimatedCostEur = estimatedCostUsd * 0.92; // Approximate EUR conversion
 
-    // Format levels for storage
-    const resultLevels = (parsedLevels.levels || []).map((level: any, index: number) => ({
-      id: `new-${Date.now()}-${index}`,
-      min_score: level.min_score,
-      max_score: level.max_score,
-      title: { [language]: level.title },
-      description: { [language]: level.description },
-      insights: level.insights || [],
-      emoji: level.emoji || '🌟',
-      color_class: 'from-emerald-500 to-green-600',
-    }));
+    // Calculate proper score ranges regardless of what AI returned
+    const numLevels = (parsedLevels.levels || []).length;
+    const scoreRange = maxPossibleScore - minPossibleScore;
+    const pointsPerLevel = numLevels > 0 ? scoreRange / numLevels : 0;
+
+    // Format levels for storage with calculated score ranges
+    const resultLevels = (parsedLevels.levels || []).map((level: any, index: number) => {
+      // Calculate proper score ranges based on position
+      const calculatedMinScore = Math.round(minPossibleScore + (index * pointsPerLevel));
+      const calculatedMaxScore = index === numLevels - 1 
+        ? maxPossibleScore  // Last level gets exactly the max
+        : Math.round(minPossibleScore + ((index + 1) * pointsPerLevel) - 1);
+      
+      // Use calculated ranges if AI returned zeros or invalid ranges
+      const minScore = (level.min_score === 0 && level.max_score === 0) || level.min_score >= level.max_score
+        ? calculatedMinScore 
+        : level.min_score;
+      const maxScore = (level.min_score === 0 && level.max_score === 0) || level.min_score >= level.max_score
+        ? calculatedMaxScore 
+        : level.max_score;
+      
+      return {
+        id: `new-${Date.now()}-${index}`,
+        min_score: minScore,
+        max_score: maxScore,
+        title: { [language]: level.title },
+        description: { [language]: level.description },
+        insights: level.insights || [],
+        emoji: level.emoji || '🌟',
+        color_class: 'from-emerald-500 to-green-600',
+      };
+    });
 
     // Get next version number
     const { data: existingVersions } = await supabaseClient
