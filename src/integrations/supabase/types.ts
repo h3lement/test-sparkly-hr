@@ -91,6 +91,7 @@ export type Database = {
           cta_url: string | null
           id: string
           is_live: boolean
+          name: string | null
           quiz_id: string | null
           version_number: number
         }
@@ -104,6 +105,7 @@ export type Database = {
           cta_url?: string | null
           id?: string
           is_live?: boolean
+          name?: string | null
           quiz_id?: string | null
           version_number?: number
         }
@@ -117,6 +119,7 @@ export type Database = {
           cta_url?: string | null
           id?: string
           is_live?: boolean
+          name?: string | null
           quiz_id?: string | null
           version_number?: number
         }

@@ -64,6 +64,7 @@ interface CTATemplate {
   quiz_id: string;
   version_number: number;
   is_live: boolean;
+  name: string | null;
   cta_title: Record<string, string>;
   cta_description: Record<string, string>;
   cta_text: Record<string, string>;
@@ -117,6 +118,7 @@ export function CTATemplateManager() {
   const [saving, setSaving] = useState(false);
   
   // Form state
+  const [ctaName, setCtaName] = useState<string>("");
   const [ctaTitle, setCtaTitle] = useState<Record<string, string>>({});
   const [ctaDescription, setCtaDescription] = useState<Record<string, string>>({});
   const [ctaButtonText, setCtaButtonText] = useState<Record<string, string>>({});
@@ -148,6 +150,7 @@ export function CTATemplateManager() {
 
   const handleAddCta = () => {
     // Clear form for new CTA
+    setCtaName("");
     setCtaTitle({});
     setCtaDescription({});
     setCtaButtonText({});
@@ -241,6 +244,7 @@ export function CTATemplateManager() {
 
     const liveTemplate = templates.find(t => t.quiz_id === selectedQuizId && t.is_live);
     if (liveTemplate) {
+      setCtaName(liveTemplate.name || "");
       setCtaTitle(liveTemplate.cta_title);
       setCtaDescription(liveTemplate.cta_description);
       setCtaButtonText(liveTemplate.cta_text);
@@ -249,11 +253,13 @@ export function CTATemplateManager() {
       // Fall back to quiz table data if no template exists
       const quiz = quizzes.find(q => q.id === selectedQuizId);
       if (quiz) {
+        setCtaName("");
         setCtaTitle(quiz.cta_title || {});
         setCtaDescription(quiz.cta_description || {});
         setCtaButtonText(quiz.cta_text || {});
         setCtaUrl(quiz.cta_url || "https://sparkly.hr");
       } else {
+        setCtaName("");
         setCtaTitle({});
         setCtaDescription({});
         setCtaButtonText({});
@@ -295,6 +301,7 @@ export function CTATemplateManager() {
           quiz_id: selectedQuizId,
           version_number: maxVersion + 1,
           is_live: true,
+          name: ctaName.trim() || "Untitled CTA",
           cta_title: ctaTitle,
           cta_description: ctaDescription,
           cta_text: ctaButtonText,
@@ -407,6 +414,7 @@ export function CTATemplateManager() {
   };
 
   const loadVersionToEdit = (template: CTATemplate) => {
+    setCtaName(template.name || "");
     setCtaTitle(template.cta_title);
     setCtaDescription(template.cta_description);
     setCtaButtonText(template.cta_text);
@@ -614,6 +622,7 @@ export function CTATemplateManager() {
               <div className="flex bg-muted/40 text-sm font-medium border-b">
                 <div className="w-[80px] px-3 py-2">Version</div>
                 <div className="w-[150px] px-3 py-2">Quiz</div>
+                <div className="w-[150px] px-3 py-2">Name</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
                 <div className="w-[140px] px-3 py-2">Email Templates</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
@@ -639,6 +648,9 @@ export function CTATemplateManager() {
                   </div>
                   <div className="w-[150px] px-3 py-2 truncate">
                     {getQuizTitleById(template.quiz_id)}
+                  </div>
+                  <div className="w-[150px] px-3 py-2 truncate text-muted-foreground">
+                    {template.name || "Untitled CTA"}
                   </div>
                   <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
                     {template.cta_text?.en || template.cta_text?.et || "—"}
@@ -809,6 +821,17 @@ export function CTATemplateManager() {
 
             {/* Form Fields */}
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="cta-name">CTA Name (internal)</Label>
+                <Input
+                  id="cta-name"
+                  value={ctaName}
+                  onChange={(e) => setCtaName(e.target.value)}
+                  placeholder="e.g. Main CTA, Promo CTA, etc."
+                />
+                <p className="text-xs text-muted-foreground mt-1">For internal identification only, not shown to users</p>
+              </div>
+
               <div>
                 <Label htmlFor="cta-title">CTA Title ({selectedLanguage.toUpperCase()})</Label>
                 <Input
