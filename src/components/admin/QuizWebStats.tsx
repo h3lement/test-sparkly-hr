@@ -28,6 +28,7 @@ interface QuizWebStatsProps {
   quizId: string;
   quizSlug: string;
   includeOpenMindedness?: boolean;
+  quizType?: "standard" | "hypothesis" | "emotional";
 }
 
 const DATE_RANGES = [
@@ -37,7 +38,7 @@ const DATE_RANGES = [
   { value: '90', label: 'Last 90 days' },
 ];
 
-export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness }: QuizWebStatsProps) {
+export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness, quizType = "standard" }: QuizWebStatsProps) {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7');
   const [pageViews, setPageViews] = useState<PageViewData[]>([]);
@@ -51,8 +52,32 @@ export function QuizWebStats({ quizId, quizSlug, includeOpenMindedness }: QuizWe
   const [funnelData, setFunnelData] = useState<FunnelStep[]>([]);
   const { toast } = useToast();
 
-  // Build funnel steps based on quiz configuration
+  const isHypothesis = quizType === "hypothesis";
+
+  // Build funnel steps based on quiz type and configuration
   const getFunnelSteps = () => {
+    if (isHypothesis) {
+      // Hypothesis quiz has a different flow: welcome -> pages (p1, p2, etc.) -> email -> results
+      const steps = [
+        { slug: 'welcome', label: 'Welcome' },
+        { slug: 'p1', label: 'Page 1' },
+        { slug: 'p2', label: 'Page 2' },
+        { slug: 'p3', label: 'Page 3' },
+        { slug: 'p4', label: 'Page 4' },
+        { slug: 'p5', label: 'Page 5' },
+      ];
+      
+      if (includeOpenMindedness) {
+        steps.push({ slug: 'mindedness', label: 'Open-Mind' });
+      }
+      
+      steps.push({ slug: 'email', label: 'Email' });
+      steps.push({ slug: 'results', label: 'Results' });
+      
+      return steps;
+    }
+    
+    // Standard quiz flow
     const steps = [
       { slug: 'welcome', label: 'Welcome' },
       { slug: 'q1', label: 'Q1' },
