@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.translate-web-results]
 verify_jwt = true
+
+[functions.translate-hypothesis-to-english]
+verify_jwt = true
