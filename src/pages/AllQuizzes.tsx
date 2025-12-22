@@ -54,9 +54,11 @@ export default function AllQuizzes() {
   const { language, setLanguage } = useLanguage();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quizTypeLabels, setQuizTypeLabels] = useState<Record<string, Record<string, string>>>({});
 
   useEffect(() => {
     fetchQuizzes();
+    fetchQuizTypeLabels();
   }, []);
 
   const fetchQuizzes = async () => {
@@ -77,6 +79,27 @@ export default function AllQuizzes() {
     }
   };
 
+  const fetchQuizTypeLabels = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ui_translations")
+        .select("translation_key, translations")
+        .like("translation_key", "quizType.%")
+        .is("quiz_id", null);
+
+      if (error) throw error;
+      
+      const labels: Record<string, Record<string, string>> = {};
+      (data || []).forEach(item => {
+        const type = item.translation_key.replace("quizType.", "");
+        labels[type] = item.translations as Record<string, string>;
+      });
+      setQuizTypeLabels(labels);
+    } catch (error) {
+      console.error("Error fetching quiz type labels:", error);
+    }
+  };
+
   const getLocalizedText = (json: Json, lang: string = language): string => {
     if (typeof json === "string") return json;
     if (json && typeof json === "object" && !Array.isArray(json)) {
@@ -86,10 +109,19 @@ export default function AllQuizzes() {
   };
 
   const getQuizTypeStyle = (type: string) => {
+    // Get translated label from DB, fallback to English defaults
+    const getLabel = (quizType: string, defaultLabel: string) => {
+      const translations = quizTypeLabels[quizType];
+      if (translations) {
+        return translations[language] || translations["en"] || defaultLabel;
+      }
+      return defaultLabel;
+    };
+
     switch (type) {
       case "hypothesis":
         return {
-          label: "5 minute Anonymous Quiz",
+          label: getLabel("hypothesis", "5 minute Anonymous Quiz"),
           icon: Lightbulb,
           badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
           card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
@@ -97,7 +129,7 @@ export default function AllQuizzes() {
         };
       case "emotional":
         return {
-          label: "Emotional Self Measure Tool",
+          label: getLabel("emotional", "Emotional Self Measure Tool"),
           icon: Heart,
           badge: "bg-teal-600/20 text-teal-700 dark:text-teal-300 border-teal-600/30 font-medium",
           card: "hover:border-teal-600/60 hover:shadow-teal-600/15",
@@ -105,7 +137,7 @@ export default function AllQuizzes() {
         };
       default:
         return {
-          label: "5 minute Anonymous Quiz",
+          label: getLabel("standard", "5 minute Anonymous Quiz"),
           icon: ClipboardList,
           badge: "bg-primary/20 text-primary border-primary/30 font-medium",
           card: "hover:border-primary/60 hover:shadow-primary/15",

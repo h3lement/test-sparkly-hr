@@ -324,6 +324,128 @@ interface QuizResultsRequest {
   };
 }
 
+// Helper function to build email HTML
+interface EmailData {
+  totalScore: number;
+  maxScore: number;
+  resultTitle: string;
+  resultDescription: string;
+  insights: string[];
+  opennessScore?: number;
+  opennessMaxScore: number;
+  opennessTitle: string;
+  opennessDescription: string;
+  email: string;
+}
+
+function buildEmailHtml(
+  templateData: any,
+  language: string,
+  trans: typeof emailTranslations['en'],
+  data: EmailData
+): string {
+  const { totalScore, maxScore, resultTitle, resultDescription, insights, 
+          opennessScore, opennessMaxScore, opennessTitle, opennessDescription, email } = data;
+  
+  const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
+  const safeResultTitle = escapeHtml(resultTitle);
+  const safeResultDescription = escapeHtml(resultDescription);
+  const safeEmail = escapeHtml(email);
+  const safeInsights = insights.map(insight => escapeHtml(insight));
+  const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
+  const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
+  const safeOpennessDescription = opennessDescription ? escapeHtml(opennessDescription) : '';
+  
+  const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
+    <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 12px; padding: 24px; margin-bottom: 24px; color: white;">
+      <h3 style="font-size: 18px; margin: 0 0 12px 0; font-weight: 600;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <span style="font-size: 32px; font-weight: bold;">${opennessScore}</span>
+        <span style="opacity: 0.9;">/ ${opennessMaxScore}</span>
+      </div>
+      ${safeOpennessTitle ? `<p style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${safeOpennessTitle}</p>` : ''}
+      ${safeOpennessDescription ? `<p style="font-size: 14px; margin: 0; opacity: 0.95; line-height: 1.5;">${safeOpennessDescription}</p>` : ''}
+    </div>
+  ` : '';
+
+  // Check if template has custom body_content
+  const templateBodyContent = templateData?.body_content as Record<string, string> | null;
+  const customBody = templateBodyContent?.[language] || templateBodyContent?.en;
+  
+  if (customBody && customBody.trim()) {
+    // Use custom template with placeholder replacement
+    return customBody
+      .replace(/\{\{score\}\}/g, String(totalScore))
+      .replace(/\{\{maxScore\}\}/g, String(maxScore))
+      .replace(/\{\{resultTitle\}\}/g, safeResultTitle)
+      .replace(/\{\{resultDescription\}\}/g, safeResultDescription)
+      .replace(/\{\{insightsList\}\}/g, insightsList)
+      .replace(/\{\{opennessSection\}\}/g, opennessSection)
+      .replace(/\{\{opennessScore\}\}/g, String(opennessScore ?? ''))
+      .replace(/\{\{opennessTitle\}\}/g, safeOpennessTitle)
+      .replace(/\{\{opennessDescription\}\}/g, safeOpennessDescription)
+      .replace(/\{\{yourResultsTitle\}\}/g, escapeHtml(trans.yourResults))
+      .replace(/\{\{outOf\}\}/g, trans.outOf)
+      .replace(/\{\{points\}\}/g, trans.points)
+      .replace(/\{\{keyInsightsTitle\}\}/g, escapeHtml(trans.keyInsights))
+      .replace(/\{\{ctaTitle\}\}/g, escapeHtml(trans.wantToImprove))
+      .replace(/\{\{ctaDescription\}\}/g, escapeHtml(trans.ctaDescription))
+      .replace(/\{\{ctaButtonText\}\}/g, escapeHtml(trans.visitSparkly))
+      .replace(/\{\{ctaUrl\}\}/g, 'https://sparkly.hr')
+      .replace(/\{\{logoUrl\}\}/g, logoUrl)
+      .replace(/\{\{userEmail\}\}/g, safeEmail);
+  }
+  
+  // Use default hardcoded template
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 40px 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <a href="https://sparkly.hr" target="_blank">
+            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
+          </a>
+          <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">${escapeHtml(trans.yourResults)}</h1>
+        </div>
+        
+        <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${totalScore}</div>
+          <div style="opacity: 0.9;">${trans.outOf} ${maxScore} ${trans.points}</div>
+        </div>
+        
+        <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${safeResultTitle}</h2>
+        <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
+        
+        ${opennessSection}
+        
+        <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${escapeHtml(trans.keyInsights)}:</h3>
+        <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
+          ${insightsList}
+        </ul>
+        
+        <div style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border-radius: 16px; padding: 32px; margin-top: 30px; text-align: center;">
+          <h3 style="color: white; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(trans.wantToImprove)}</h3>
+          <p style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(trans.ctaDescription)}</p>
+          <a href="https://sparkly.hr" style="display: inline-block; background: white; color: #6d28d9; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(trans.visitSparkly)}</a>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          <a href="https://sparkly.hr" target="_blank">
+            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
+          </a>
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("send-quiz-results function called (SMTP mode)");
 
@@ -979,55 +1101,11 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (!emailConfig.smtpHost) {
-      console.error("SMTP not configured");
-      return new Response(
-        JSON.stringify({ error: "Email service not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // Fetch email template configuration
-    let templateData = null;
-    if (quizId) {
-      const { data: quizTemplate } = await supabase
-        .from("email_templates")
-        .select("*")
-        .eq("template_type", "quiz_results")
-        .eq("quiz_id", quizId)
-        .eq("is_live", true)
-        .limit(1)
-        .maybeSingle();
-      
-      if (quizTemplate) {
-        templateData = quizTemplate;
-        console.log("Using quiz-specific email template");
-      }
-    }
-    
-    if (!templateData) {
-      const { data: globalTemplate } = await supabase
-        .from("email_templates")
-        .select("*")
-        .eq("template_type", "quiz_results")
-        .is("quiz_id", null)
-        .eq("is_live", true)
-        .limit(1)
-        .maybeSingle();
-      
-      templateData = globalTemplate;
-    }
-
-    const senderName = templateOverride?.sender_name?.trim() || templateData?.sender_name?.trim() || emailConfig.senderName;
-    const senderEmail = templateOverride?.sender_email?.trim() || templateData?.sender_email?.trim() || emailConfig.senderEmail;
-    const templateSubjects = templateData?.subjects as Record<string, string> || {};
-    const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
-
-    console.log("Using email config:", { senderName, senderEmail, subject: emailSubject });
-
+    // PRIORITY 1: Store lead in database IMMEDIATELY (fast operation)
     let quizLeadId: string | null = null;
 
     if (!isTest) {
+      console.log("Storing lead in database (priority 1)...");
       const { data: insertedLead, error: insertError } = await supabase.from("quiz_leads").insert({
         email,
         score: totalScore,
@@ -1041,223 +1119,257 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (insertError) {
         console.error("Error saving lead to database:", insertError);
+        // Still continue - email might work
       } else {
         quizLeadId = insertedLead?.id || null;
+        console.log("Lead stored successfully with ID:", quizLeadId);
       }
     }
 
-    const safeResultTitle = escapeHtml(resultTitle);
-    const safeResultDescription = escapeHtml(resultDescription);
-    const safeEmail = escapeHtml(email);
-    const safeInsights = insights.map(insight => escapeHtml(insight));
-    const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
-
-    const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
-    const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
-    const safeOpennessDescription = opennessDescription ? escapeHtml(opennessDescription) : '';
-    
-    const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
-      <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 12px; padding: 24px; margin-bottom: 24px; color: white;">
-        <h3 style="font-size: 18px; margin: 0 0 12px 0; font-weight: 600;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <span style="font-size: 32px; font-weight: bold;">${opennessScore}</span>
-          <span style="opacity: 0.9;">/ ${opennessMaxScore}</span>
-        </div>
-        ${safeOpennessTitle ? `<p style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${safeOpennessTitle}</p>` : ''}
-        ${safeOpennessDescription ? `<p style="font-size: 14px; margin: 0; opacity: 0.95; line-height: 1.5;">${safeOpennessDescription}</p>` : ''}
-      </div>
-    ` : '';
-
-    // Check if template has custom body_content
-    const templateBodyContent = templateData?.body_content as Record<string, string> | null;
-    const customBody = templateBodyContent?.[language] || templateBodyContent?.en;
-    
-    let emailHtml: string;
-    
-    if (customBody && customBody.trim()) {
-      // Use custom template with placeholder replacement
-      emailHtml = customBody
-        .replace(/\{\{score\}\}/g, String(totalScore))
-        .replace(/\{\{maxScore\}\}/g, String(maxScore))
-        .replace(/\{\{resultTitle\}\}/g, safeResultTitle)
-        .replace(/\{\{resultDescription\}\}/g, safeResultDescription)
-        .replace(/\{\{insightsList\}\}/g, insightsList)
-        .replace(/\{\{opennessSection\}\}/g, opennessSection)
-        .replace(/\{\{opennessScore\}\}/g, String(opennessScore ?? ''))
-        .replace(/\{\{opennessTitle\}\}/g, safeOpennessTitle)
-        .replace(/\{\{opennessDescription\}\}/g, safeOpennessDescription)
-        .replace(/\{\{yourResultsTitle\}\}/g, escapeHtml(trans.yourResults))
-        .replace(/\{\{outOf\}\}/g, trans.outOf)
-        .replace(/\{\{points\}\}/g, trans.points)
-        .replace(/\{\{keyInsightsTitle\}\}/g, escapeHtml(trans.keyInsights))
-        .replace(/\{\{ctaTitle\}\}/g, escapeHtml(trans.wantToImprove))
-        .replace(/\{\{ctaDescription\}\}/g, escapeHtml(trans.ctaDescription))
-        .replace(/\{\{ctaButtonText\}\}/g, escapeHtml(trans.visitSparkly))
-        .replace(/\{\{ctaUrl\}\}/g, 'https://sparkly.hr')
-        .replace(/\{\{logoUrl\}\}/g, logoUrl)
-        .replace(/\{\{userEmail\}\}/g, safeEmail);
-      
-      console.log("Using custom body template from database");
-    } else {
-      // Use default hardcoded template
-      emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 40px 20px;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <a href="https://sparkly.hr" target="_blank">
-              <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
-            </a>
-            <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">${escapeHtml(trans.yourResults)}</h1>
-          </div>
-          
-          <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-            <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${totalScore}</div>
-            <div style="opacity: 0.9;">${trans.outOf} ${maxScore} ${trans.points}</div>
-          </div>
-          
-          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${safeResultTitle}</h2>
-          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
-          
-          ${opennessSection}
-          
-          <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${escapeHtml(trans.keyInsights)}:</h3>
-          <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
-            ${insightsList}
-          </ul>
-          
-          <div style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border-radius: 16px; padding: 32px; margin-top: 30px; text-align: center;">
-            <h3 style="color: white; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(trans.wantToImprove)}</h3>
-            <p style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(trans.ctaDescription)}</p>
-            <a href="https://sparkly.hr" style="display: inline-block; background: white; color: #6d28d9; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(trans.visitSparkly)}</a>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <a href="https://sparkly.hr" target="_blank">
-              <img src="${logoUrl}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
-            </a>
-            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    }
-
-    console.log("Attempting to send user email to:", email);
-    const userEmailSubject = `${emailSubject}: ${safeResultTitle}`;
-    const userEmailResponse = await sendEmailWithRetry(emailConfig, {
-      from: `${senderName} <${senderEmail}>`,
-      to: [email],
-      subject: userEmailSubject,
-      html: emailHtml,
-      replyTo: emailConfig.replyToEmail || undefined,
-    });
-
-    console.log("User email response:", JSON.stringify(userEmailResponse));
-    
-    await supabase.from("email_logs").insert({
-      email_type: isTest ? "test" : "quiz_result_user",
-      recipient_email: email,
-      sender_email: senderEmail,
-      sender_name: senderName,
-      subject: userEmailSubject,
-      status: userEmailResponse.success ? "sent" : "failed",
-      resend_id: userEmailResponse.messageId || null,
-      error_message: userEmailResponse.error || null,
-      language: language,
-      quiz_lead_id: quizLeadId,
-      resend_attempts: userEmailResponse.attempts - 1,
-      last_attempt_at: new Date().toISOString(),
-      html_body: emailHtml,
-    });
-    
-    if (!userEmailResponse.success) {
-      console.error("User email error after all retries:", userEmailResponse.error);
-    }
-
+    // For test emails, wait for the email to complete
     if (isTest) {
-      console.log("Test email - skipping admin notification");
+      // Original synchronous behavior for test emails
+      if (!emailConfig.smtpHost) {
+        console.error("SMTP not configured");
+        return new Response(
+          JSON.stringify({ error: "Email service not configured" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Fetch email template configuration
+      let templateData = null;
+      if (quizId) {
+        const { data: quizTemplate } = await supabase
+          .from("email_templates")
+          .select("*")
+          .eq("template_type", "quiz_results")
+          .eq("quiz_id", quizId)
+          .eq("is_live", true)
+          .limit(1)
+          .maybeSingle();
+        
+        if (quizTemplate) {
+          templateData = quizTemplate;
+        }
+      }
+      
+      if (!templateData) {
+        const { data: globalTemplate } = await supabase
+          .from("email_templates")
+          .select("*")
+          .eq("template_type", "quiz_results")
+          .is("quiz_id", null)
+          .eq("is_live", true)
+          .limit(1)
+          .maybeSingle();
+        
+        templateData = globalTemplate;
+      }
+
+      const senderName = templateOverride?.sender_name?.trim() || templateData?.sender_name?.trim() || emailConfig.senderName;
+      const senderEmail = templateOverride?.sender_email?.trim() || templateData?.sender_email?.trim() || emailConfig.senderEmail;
+      const templateSubjects = templateData?.subjects as Record<string, string> || {};
+      const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
+
+      const emailHtml = buildEmailHtml(templateData, language, trans, {
+        totalScore, maxScore, resultTitle, resultDescription, insights,
+        opennessScore, opennessMaxScore, opennessTitle, opennessDescription, email
+      });
+
+      const userEmailSubject = `${emailSubject}: ${escapeHtml(resultTitle)}`;
+      const userEmailResponse = await sendEmailWithRetry(emailConfig, {
+        from: `${senderName} <${senderEmail}>`,
+        to: [email],
+        subject: userEmailSubject,
+        html: emailHtml,
+        replyTo: emailConfig.replyToEmail || undefined,
+      });
+
       return new Response(JSON.stringify({ success: true, isTest: true }), {
         status: 200,
-        headers: { "Content-Type": "application/json", "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(), "X-RateLimit-Reset": rateLimitResult.resetTime.toString(), ...corsHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    const adminTrans = emailTranslations.en;
-    const adminEmailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
-            <h1 style="color: #1f2937; font-size: 24px; margin: 0;">${adminTrans.newQuizSubmission}</h1>
-          </div>
-          
-          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
-            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
-            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitle}</p>
-            <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / ${opennessMaxScore}` : 'N/A'}${safeOpennessTitle ? ` - ${safeOpennessTitle}` : ''}</p>
-            <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
-          </div>
-          
-          <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">${adminTrans.keyInsights}:</h3>
-          <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 20px;">
-            ${insightsList}
-          </ul>
-          
-          <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 12px;">© 2025 Sparkly.hr</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    // PRIORITY 2: Return success immediately to the user
+    // Email sending will happen in background
+    console.log("Returning success to user, starting background email task...");
 
-    console.log("Attempting to send admin email to: mikk@sparkly.hr");
-    const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
-    const adminEmailResponse = await sendEmailWithRetry(emailConfig, {
-      from: `${senderName} Quiz <${senderEmail}>`,
-      to: ["mikk@sparkly.hr"],
-      subject: adminEmailSubject,
-      html: adminEmailHtml,
-      replyTo: emailConfig.replyToEmail || undefined,
-    });
+    // Define the background email task
+    const sendEmailsInBackground = async () => {
+      console.log("Background task: Starting email sending...");
+      
+      try {
+        if (!emailConfig.smtpHost) {
+          console.error("Background task: SMTP not configured");
+          return;
+        }
 
-    console.log("Admin email response:", JSON.stringify(adminEmailResponse));
+        // Fetch email template configuration
+        let templateData = null;
+        if (quizId) {
+          const { data: quizTemplate } = await supabase
+            .from("email_templates")
+            .select("*")
+            .eq("template_type", "quiz_results")
+            .eq("quiz_id", quizId)
+            .eq("is_live", true)
+            .limit(1)
+            .maybeSingle();
+          
+          if (quizTemplate) {
+            templateData = quizTemplate;
+            console.log("Background task: Using quiz-specific email template");
+          }
+        }
+        
+        if (!templateData) {
+          const { data: globalTemplate } = await supabase
+            .from("email_templates")
+            .select("*")
+            .eq("template_type", "quiz_results")
+            .is("quiz_id", null)
+            .eq("is_live", true)
+            .limit(1)
+            .maybeSingle();
+          
+          templateData = globalTemplate;
+        }
 
-    await supabase.from("email_logs").insert({
-      email_type: "quiz_result_admin",
-      recipient_email: "mikk@sparkly.hr",
-      sender_email: senderEmail,
-      sender_name: senderName,
-      subject: adminEmailSubject,
-      status: adminEmailResponse.success ? "sent" : "failed",
-      resend_id: adminEmailResponse.messageId || null,
-      error_message: adminEmailResponse.error || null,
-      language: language,
-      quiz_lead_id: quizLeadId,
-      resend_attempts: adminEmailResponse.attempts - 1,
-      last_attempt_at: new Date().toISOString(),
-      html_body: adminEmailHtml,
-    });
-    
-    if (!adminEmailResponse.success) {
-      console.error("Admin email error after all retries:", adminEmailResponse.error);
+        const senderName = templateOverride?.sender_name?.trim() || templateData?.sender_name?.trim() || emailConfig.senderName;
+        const senderEmail = templateOverride?.sender_email?.trim() || templateData?.sender_email?.trim() || emailConfig.senderEmail;
+        const templateSubjects = templateData?.subjects as Record<string, string> || {};
+        const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
+
+        console.log("Background task: Using email config:", { senderName, senderEmail, subject: emailSubject });
+
+        const emailHtml = buildEmailHtml(templateData, language, trans, {
+          totalScore, maxScore, resultTitle, resultDescription, insights,
+          opennessScore, opennessMaxScore, opennessTitle, opennessDescription, email
+        });
+
+        // Send user email
+        console.log("Background task: Sending user email to:", email);
+        const userEmailSubject = `${emailSubject}: ${escapeHtml(resultTitle)}`;
+        const userEmailResponse = await sendEmailWithRetry(emailConfig, {
+          from: `${senderName} <${senderEmail}>`,
+          to: [email],
+          subject: userEmailSubject,
+          html: emailHtml,
+          replyTo: emailConfig.replyToEmail || undefined,
+        });
+
+        console.log("Background task: User email response:", JSON.stringify(userEmailResponse));
+        
+        // Log user email
+        await supabase.from("email_logs").insert({
+          email_type: "quiz_result_user",
+          recipient_email: email,
+          sender_email: senderEmail,
+          sender_name: senderName,
+          subject: userEmailSubject,
+          status: userEmailResponse.success ? "sent" : "failed",
+          resend_id: userEmailResponse.messageId || null,
+          error_message: userEmailResponse.error || null,
+          language: language,
+          quiz_lead_id: quizLeadId,
+          resend_attempts: userEmailResponse.attempts - 1,
+          last_attempt_at: new Date().toISOString(),
+          html_body: emailHtml,
+        });
+
+        // Send admin notification email
+        const adminTrans = emailTranslations.en;
+        const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
+        const safeEmail = escapeHtml(email);
+        const safeResultTitle = escapeHtml(resultTitle);
+        const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
+        const safeInsights = insights.map(insight => escapeHtml(insight));
+        const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
+
+        const adminEmailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
+                <h1 style="color: #1f2937; font-size: 24px; margin: 0;">${adminTrans.newQuizSubmission}</h1>
+              </div>
+              
+              <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
+                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
+                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitle}</p>
+                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / ${opennessMaxScore}` : 'N/A'}${safeOpennessTitle ? ` - ${safeOpennessTitle}` : ''}</p>
+                <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
+              </div>
+              
+              <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">${adminTrans.keyInsights}:</h3>
+              <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 20px;">
+                ${insightsList}
+              </ul>
+              
+              <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #9ca3af; font-size: 12px;">© 2025 Sparkly.hr</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        console.log("Background task: Sending admin email to: mikk@sparkly.hr");
+        const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
+        const adminEmailResponse = await sendEmailWithRetry(emailConfig, {
+          from: `${senderName} Quiz <${senderEmail}>`,
+          to: ["mikk@sparkly.hr"],
+          subject: adminEmailSubject,
+          html: adminEmailHtml,
+          replyTo: emailConfig.replyToEmail || undefined,
+        });
+
+        console.log("Background task: Admin email response:", JSON.stringify(adminEmailResponse));
+
+        await supabase.from("email_logs").insert({
+          email_type: "quiz_result_admin",
+          recipient_email: "mikk@sparkly.hr",
+          sender_email: senderEmail,
+          sender_name: senderName,
+          subject: adminEmailSubject,
+          status: adminEmailResponse.success ? "sent" : "failed",
+          resend_id: adminEmailResponse.messageId || null,
+          error_message: adminEmailResponse.error || null,
+          language: language,
+          quiz_lead_id: quizLeadId,
+          resend_attempts: adminEmailResponse.attempts - 1,
+          last_attempt_at: new Date().toISOString(),
+          html_body: adminEmailHtml,
+        });
+
+        console.log("Background task: Email sending complete");
+      } catch (bgError) {
+        console.error("Background task: Error sending emails:", bgError);
+      }
+    };
+
+    // Start the background task using EdgeRuntime.waitUntil
+    // This allows the function to return immediately while emails are sent in background
+    // @ts-ignore - EdgeRuntime is available in Deno Deploy
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(sendEmailsInBackground());
+    } else {
+      // Fallback: run in background without waiting (fire and forget)
+      sendEmailsInBackground();
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    // Return success immediately - lead is already stored
+    return new Response(JSON.stringify({ success: true, leadId: quizLeadId }), {
       status: 200,
       headers: { "Content-Type": "application/json", "X-RateLimit-Remaining": rateLimitResult.remainingRequests.toString(), "X-RateLimit-Reset": rateLimitResult.resetTime.toString(), ...corsHeaders },
     });
