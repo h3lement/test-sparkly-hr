@@ -729,7 +729,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 const WEB_DEFAULT_WIDTHS = {
   version: 80,
   quiz: 150,
-  levels: 80,
+  levels: 100,
   created: 130,
   lang: 70,
   leads: 70,
@@ -741,6 +741,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
   const [versions, setVersions] = useState<WebResultVersion[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [leadStats, setLeadStats] = useState<Record<string, number>>({});
+  const [configuredLevels, setConfiguredLevels] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
@@ -801,6 +802,23 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
       }));
 
       setVersions(typedData);
+
+      // Fetch configured level counts for each quiz from quiz_result_levels
+      const uniqueQuizIds = [...new Set(typedData.map(v => v.quiz_id))];
+      if (uniqueQuizIds.length > 0) {
+        const { data: levelCounts } = await supabase
+          .from("quiz_result_levels")
+          .select("quiz_id")
+          .in("quiz_id", uniqueQuizIds);
+        
+        if (levelCounts) {
+          const configuredMap: Record<string, number> = {};
+          uniqueQuizIds.forEach(qId => {
+            configuredMap[qId] = levelCounts.filter(l => l.quiz_id === qId).length;
+          });
+          setConfiguredLevels(configuredMap);
+        }
+      }
 
       // Fetch lead counts per version (by matching time ranges)
       if (typedData.length > 0) {
@@ -1018,8 +1036,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
               <div 
                 className="flex items-center px-3 py-3 relative group"
                 style={{ width: columnWidths.levels }}
+                title="Generated / Configured result levels"
               >
-                <span>Results</span>
+                <span>Levels</span>
                 <div
                   className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
                   onMouseDown={(e) => handleMouseDown("levels", e)}
@@ -1115,15 +1134,29 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
                         </div>
                       )}
 
-                      {/* Results */}
-                      <div 
-                        className="px-3 py-3 shrink-0"
-                        style={{ width: columnWidths.levels }}
-                      >
-                        <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                          {version.result_levels.length} results
-                        </Badge>
-                      </div>
+                      {/* Levels: Generated / Configured */}
+                      {(() => {
+                        const generated = version.result_levels.length;
+                        const configured = configuredLevels[version.quiz_id] || 0;
+                        const isMismatch = configured > 0 && generated !== configured;
+                        return (
+                          <div 
+                            className="px-3 py-3 shrink-0"
+                            style={{ width: columnWidths.levels }}
+                            title={isMismatch 
+                              ? `Mismatch! Generated ${generated} but quiz has ${configured} configured levels. Regenerate to fix.` 
+                              : `${generated} generated / ${configured} configured`
+                            }
+                          >
+                            <Badge 
+                              variant={isMismatch ? "destructive" : "secondary"} 
+                              className={`text-xs h-5 px-1.5 ${isMismatch ? 'animate-pulse' : ''}`}
+                            >
+                              {generated}/{configured}
+                            </Badge>
+                          </div>
+                        );
+                      })()}
 
                       {/* Created - with user name */}
                       <div 
