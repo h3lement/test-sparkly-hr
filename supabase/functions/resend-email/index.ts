@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,13 +11,109 @@ interface ResendRequest {
   logId: string;
 }
 
+interface EmailConfigSettings {
+  senderName: string;
+  senderEmail: string;
+  replyToEmail: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUsername: string;
+  smtpPassword: string;
+  smtpTls: boolean;
+}
+
+async function getEmailConfig(supabase: any): Promise<EmailConfigSettings> {
+  const defaults: EmailConfigSettings = {
+    senderName: "Sparkly",
+    senderEmail: "noreply@sparkly.hr",
+    replyToEmail: "",
+    smtpHost: "",
+    smtpPort: "587",
+    smtpUsername: "",
+    smtpPassword: "",
+    smtpTls: true,
+  };
+
+  try {
+    const settingKeys = [
+      "email_sender_name", "email_sender_email", "email_reply_to",
+      "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls"
+    ];
+    
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", settingKeys);
+    
+    if (!error && data && data.length > 0) {
+      data.forEach((setting: { setting_key: string; setting_value: string }) => {
+        switch (setting.setting_key) {
+          case "email_sender_name": defaults.senderName = setting.setting_value || defaults.senderName; break;
+          case "email_sender_email": defaults.senderEmail = setting.setting_value || defaults.senderEmail; break;
+          case "email_reply_to": defaults.replyToEmail = setting.setting_value; break;
+          case "smtp_host": defaults.smtpHost = setting.setting_value; break;
+          case "smtp_port": defaults.smtpPort = setting.setting_value || defaults.smtpPort; break;
+          case "smtp_username": defaults.smtpUsername = setting.setting_value; break;
+          case "smtp_password": defaults.smtpPassword = setting.setting_value; break;
+          case "smtp_tls": defaults.smtpTls = setting.setting_value === "true"; break;
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching email config:", error);
+  }
+  
+  return defaults;
+}
+
+async function sendEmailViaSMTP(
+  config: EmailConfigSettings,
+  to: string,
+  subject: string,
+  html: string
+): Promise<{ success: boolean; error: string | null; messageId?: string }> {
+  if (!config.smtpHost || !config.smtpUsername || !config.smtpPassword) {
+    return { success: false, error: "SMTP not configured" };
+  }
+
+  try {
+    const client = new SMTPClient({
+      connection: {
+        hostname: config.smtpHost,
+        port: parseInt(config.smtpPort, 10) || 587,
+        tls: config.smtpTls,
+        auth: {
+          username: config.smtpUsername,
+          password: config.smtpPassword,
+        },
+      },
+    });
+
+    await client.send({
+      from: `${config.senderName} <${config.senderEmail}>`,
+      to: [to],
+      subject: subject,
+      content: html,
+      html: html,
+      ...(config.replyToEmail ? { replyTo: config.replyToEmail } : {}),
+    });
+
+    await client.close();
+    
+    return { success: true, error: null, messageId: `smtp-${Date.now()}` };
+  } catch (error: any) {
+    console.error("SMTP send error:", error);
+    return { success: false, error: error.message || "SMTP send failed" };
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("resend-email function called");
+  console.log("resend-email function called (SMTP mode)");
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -87,7 +181,10 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Resending email to:", emailLog.recipient_email);
     console.log("Subject:", emailLog.subject);
 
-    // Fetch live email template for the HTML content
+    // Get email config
+    const emailConfig = await getEmailConfig(supabase);
+
+    // Fetch live email template for fallback sender info
     const { data: templateData } = await supabase
       .from("email_templates")
       .select("*")
@@ -96,9 +193,9 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .maybeSingle();
 
-    // Ensure sender values are never undefined/empty - some email clients show "Undefined" otherwise
-    const senderName = (templateData?.sender_name?.trim() || emailLog.sender_name?.trim() || "Sparkly.hr");
-    const senderEmail = (templateData?.sender_email?.trim() || emailLog.sender_email?.trim() || "support@sparkly.hr");
+    // Use configured sender info
+    const senderName = emailConfig.senderName || templateData?.sender_name || emailLog.sender_name || "Sparkly.hr";
+    const senderEmail = emailConfig.senderEmail || templateData?.sender_email || emailLog.sender_email || "support@sparkly.hr";
 
     // Use the original email HTML body if available, otherwise create a fallback
     const emailHtml = emailLog.html_body || `
@@ -132,27 +229,27 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send the email with original content
-    const emailResponse = await resend.emails.send({
-      from: `${senderName} <${senderEmail}>`,
-      to: [emailLog.recipient_email],
-      subject: emailLog.subject,
-      html: emailHtml,
-    });
+    // Send the email via SMTP
+    const emailResponse = await sendEmailViaSMTP(
+      { ...emailConfig, senderName, senderEmail },
+      emailLog.recipient_email,
+      emailLog.subject,
+      emailHtml
+    );
 
-    console.log("Resend response:", JSON.stringify(emailResponse));
+    console.log("SMTP response:", JSON.stringify(emailResponse));
 
     const newAttempts = (emailLog.resend_attempts || 0) + 1;
     const now = new Date().toISOString();
 
-    if (emailResponse.error) {
+    if (!emailResponse.success) {
       // Update the log with failed resend attempt
       await supabase
         .from("email_logs")
         .update({
           resend_attempts: newAttempts,
           last_attempt_at: now,
-          error_message: emailResponse.error.message,
+          error_message: emailResponse.error,
         })
         .eq("id", logId);
 
@@ -160,7 +257,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: emailResponse.error.message,
+          error: emailResponse.error,
           attempts: newAttempts 
         }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -174,7 +271,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: "sent",
         resend_attempts: newAttempts,
         last_attempt_at: now,
-        resend_id: emailResponse.data?.id || null,
+        resend_id: emailResponse.messageId || null,
         error_message: null,
       })
       .eq("id", logId);
@@ -187,19 +284,19 @@ const handler = async (req: Request): Promise<Response> => {
       sender_name: senderName,
       subject: emailLog.subject,
       status: "sent",
-      resend_id: emailResponse.data?.id || null,
+      resend_id: emailResponse.messageId || null,
       language: emailLog.language,
       quiz_lead_id: emailLog.quiz_lead_id,
       original_log_id: logId,
       html_body: emailHtml,
     });
 
-    console.log("Email resent successfully");
+    console.log("Email resent successfully via SMTP");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        resendId: emailResponse.data?.id,
+        resendId: emailResponse.messageId,
         attempts: newAttempts 
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

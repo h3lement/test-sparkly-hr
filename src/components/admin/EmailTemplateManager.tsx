@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Save, Check, Eye, Globe, Mail, Server } from "lucide-react";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
-import { ResendApiKeySettings } from "./ResendApiKeySettings";
+import { EmailSettings } from "./EmailSettings";
 interface EmailTemplate {
   id: string;
   version_number: number;
@@ -781,20 +781,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
 
           {/* Email Server Tab */}
           <TabsContent value="server" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Server className="w-5 h-5" />
-                  Resend Configuration
-                </CardTitle>
-                <CardDescription>
-                  Email delivery is powered by Resend. Configure your API key and domain settings.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResendApiKeySettings />
-              </CardContent>
-            </Card>
+            <EmailSettings />
           </TabsContent>
         </Tabs>
       )}
