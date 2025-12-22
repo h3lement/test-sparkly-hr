@@ -61,8 +61,13 @@ export function DynamicResultsScreen() {
     ? Math.max(...openMindednessResultLevels.map(l => l.max_score))
     : 4;
 
-  // Trigger confetti on mount
+  // Check if confetti is enabled for this quiz (default: true)
+  const showConfetti = quizData?.show_confetti !== false;
+
+  // Trigger confetti on mount (if enabled)
   useEffect(() => {
+    if (!showConfetti) return;
+    
     const duration = 3000;
     const end = Date.now() + duration;
     
@@ -90,7 +95,7 @@ export function DynamicResultsScreen() {
     };
     
     frame();
-  }, []);
+  }, [showConfetti]);
 
   return (
     <main className="animate-fade-in max-w-2xl mx-auto" role="main" aria-labelledby="results-heading">
