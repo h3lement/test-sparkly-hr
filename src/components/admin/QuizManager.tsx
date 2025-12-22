@@ -371,9 +371,15 @@ export function QuizManager() {
               .eq("quiz_id", quiz.id),
           ]);
           
+          // Get translation cost from quiz.translation_meta (stored in USD, convert to EUR ~0.92)
+          const translationMeta = quiz.translation_meta as { total_cost_usd?: number } | null;
+          const translationCostUsd = translationMeta?.total_cost_usd || 0;
+          const translationCostEur = translationCostUsd * 0.92; // USD to EUR conversion
+          
           const totalAiCost = 
             (versionCosts || []).reduce((sum, v) => sum + (Number(v.estimated_cost_eur) || 0), 0) +
-            (templateCosts || []).reduce((sum, t) => sum + (Number(t.estimated_cost_eur) || 0), 0);
+            (templateCosts || []).reduce((sum, t) => sum + (Number(t.estimated_cost_eur) || 0), 0) +
+            translationCostEur;
           
           return { 
             ...quiz, 
