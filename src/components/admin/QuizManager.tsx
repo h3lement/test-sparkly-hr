@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw, Languages, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DndContext,
@@ -43,6 +43,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
@@ -283,6 +284,8 @@ export function QuizManager() {
   const [sortColumn, setSortColumn] = useState<string>("display_order");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [compactView, setCompactView] = useState(false);
+  const [translatingAll, setTranslatingAll] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState({ current: 0, total: 0, currentQuiz: "" });
   const { toast } = useToast();
 
   // Default column widths
@@ -754,6 +757,65 @@ export function QuizManager() {
     navigate(`/admin/quiz/${quiz.id}`, { state: { from: "/admin?tab=quizzes" } });
   };
 
+  // Translate all quizzes to all languages
+  const translateAllQuizzes = async () => {
+    if (translatingAll) return;
+    
+    const activeQuizzes = quizzes.filter(q => q.is_active);
+    if (activeQuizzes.length === 0) {
+      toast({
+        title: "No active quizzes",
+        description: "There are no active quizzes to translate",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTranslatingAll(true);
+    setTranslationProgress({ current: 0, total: activeQuizzes.length, currentQuiz: "" });
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < activeQuizzes.length; i++) {
+      const quiz = activeQuizzes[i];
+      const quizTitle = getLocalizedText(quiz.title) || quiz.slug;
+      setTranslationProgress({ current: i + 1, total: activeQuizzes.length, currentQuiz: quizTitle });
+
+      try {
+        const { error } = await supabase.functions.invoke("translate-quiz", {
+          body: {
+            quizId: quiz.id,
+            sourceLanguage: "en",
+            includeUiText: true,
+          },
+        });
+
+        if (error) {
+          console.error(`Translation error for quiz ${quiz.id}:`, error);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      } catch (err) {
+        console.error(`Translation failed for quiz ${quiz.id}:`, err);
+        errorCount++;
+      }
+    }
+
+    setTranslatingAll(false);
+    setTranslationProgress({ current: 0, total: 0, currentQuiz: "" });
+
+    toast({
+      title: "Translation complete",
+      description: `Translated ${successCount} quizzes successfully${errorCount > 0 ? `, ${errorCount} failed` : ""}`,
+      variant: errorCount > 0 ? "destructive" : "default",
+    });
+
+    // Refresh to show updated translation costs
+    fetchQuizzes();
+  };
+
   // Check if drag is enabled (only when sorting by display_order)
   const isDragEnabled = sortColumn === "display_order" && !searchQuery;
 
@@ -768,6 +830,19 @@ export function QuizManager() {
           <Button onClick={fetchQuizzes} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
+          </Button>
+          <Button 
+            onClick={translateAllQuizzes} 
+            variant="outline" 
+            size="sm" 
+            disabled={translatingAll || loading}
+          >
+            {translatingAll ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Languages className="w-4 h-4 mr-2" />
+            )}
+            Translate All
           </Button>
           <Button onClick={handleCreateQuiz} size="sm">
             <Plus className="w-4 h-4 mr-2" />
@@ -828,6 +903,21 @@ export function QuizManager() {
           {sortedAndFilteredQuizzes.length} quiz{sortedAndFilteredQuizzes.length !== 1 ? "zes" : ""}
         </span>
       </div>
+
+      {/* Translation progress */}
+      {translatingAll && (
+        <div className="mb-6 p-4 bg-secondary/50 rounded-lg border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">
+              Translating: {translationProgress.currentQuiz}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {translationProgress.current} / {translationProgress.total}
+            </span>
+          </div>
+          <Progress value={(translationProgress.current / translationProgress.total) * 100} className="h-2" />
+        </div>
+      )}
 
       {/* Quizzes table */}
       {loading ? (
