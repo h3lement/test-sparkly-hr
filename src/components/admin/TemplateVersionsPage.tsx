@@ -47,6 +47,7 @@ interface QuizLiveStatus {
   quiz: Quiz;
   hasLiveEmail: boolean;
   hasLiveWeb: boolean;
+  hasLiveAdminEmail: boolean;
 }
 
 interface BulkGenerationProgress {
@@ -152,12 +153,19 @@ export function TemplateVersionsPage() {
   const fetchLiveStatus = useCallback(async (quizList: Quiz[]) => {
     if (quizList.length === 0) return;
 
-    // Fetch live email templates
+    // Fetch live email templates (quiz results)
     const { data: liveEmails } = await supabase
       .from("email_templates")
       .select("quiz_id")
       .eq("is_live", true)
       .eq("template_type", "quiz_results");
+
+    // Fetch live admin notification templates
+    const { data: liveAdminEmails } = await supabase
+      .from("email_templates")
+      .select("quiz_id")
+      .eq("is_live", true)
+      .eq("template_type", "admin_notification");
 
     // Fetch live web result versions
     const { data: liveWebs } = await supabase
@@ -166,12 +174,14 @@ export function TemplateVersionsPage() {
       .eq("is_live", true);
 
     const liveEmailQuizIds = new Set((liveEmails || []).map(e => e.quiz_id));
+    const liveAdminEmailQuizIds = new Set((liveAdminEmails || []).map(e => e.quiz_id));
     const liveWebQuizIds = new Set((liveWebs || []).map(w => w.quiz_id));
 
     const status: QuizLiveStatus[] = quizList.map(quiz => ({
       quiz,
       hasLiveEmail: liveEmailQuizIds.has(quiz.id),
       hasLiveWeb: liveWebQuizIds.has(quiz.id),
+      hasLiveAdminEmail: liveAdminEmailQuizIds.has(quiz.id),
     }));
 
     setLiveStatus(status);
@@ -229,8 +239,9 @@ export function TemplateVersionsPage() {
   const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
 
   // Compute missing live templates
-  const missingLiveTemplates = liveStatus.filter(s => !s.hasLiveEmail || !s.hasLiveWeb);
+  const missingLiveTemplates = liveStatus.filter(s => !s.hasLiveEmail || !s.hasLiveWeb || !s.hasLiveAdminEmail);
   const missingWebTemplates = liveStatus.filter(s => !s.hasLiveWeb);
+  const missingAdminEmailTemplates = liveStatus.filter(s => !s.hasLiveAdminEmail);
   const allComplete = missingLiveTemplates.length === 0 && liveStatus.length > 0;
 
   const handleBulkGenerateWeb = async () => {
@@ -508,6 +519,128 @@ export function TemplateVersionsPage() {
     }
   };
 
+  const handleBulkGenerateAdminEmails = async () => {
+    if (missingAdminEmailTemplates.length === 0) {
+      toast.info("All quizzes already have live admin notification templates");
+      return;
+    }
+
+    const quizzesToGenerate = missingAdminEmailTemplates.map(s => s.quiz);
+    
+    setBulkProgress({
+      isGenerating: true,
+      current: 0,
+      total: quizzesToGenerate.length,
+      currentQuizName: "",
+      completed: [],
+      failed: [],
+    });
+
+    const completed: string[] = [];
+    const failed: { quizId: string; name: string; error: string }[] = [];
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    for (let i = 0; i < quizzesToGenerate.length; i++) {
+      const quiz = quizzesToGenerate[i];
+      const quizName = getQuizTitle(quiz);
+
+      setBulkProgress(prev => ({
+        ...prev,
+        current: i + 1,
+        currentQuizName: quizName,
+      }));
+
+      try {
+        // Create admin notification template
+        const adminBody: Record<string, string> = {};
+        const adminSubjects: Record<string, string> = {};
+        
+        // Create in primary language
+        const lang = quiz.primary_language || "en";
+        adminSubjects[lang] = lang === "et" 
+          ? `Uus ${quizName} vastus` 
+          : `New ${quizName} Response`;
+        adminBody[lang] = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">${lang === "et" ? "Uus küsitluse vastus" : "New Quiz Response"}</h1>
+          <p>${lang === "et" ? `${quizName} küsitlusele on esitatud uus vastus.` : `A new response has been submitted for the ${quizName}.`}</p>
+          <p><strong>${lang === "et" ? "E-post" : "Email"}:</strong> {{email}}</p>
+          <p><strong>${lang === "et" ? "Tulemus" : "Score"}:</strong> {{score}} / {{totalQuestions}}</p>
+          <p><strong>${lang === "et" ? "Kategooria" : "Result"}:</strong> {{resultTitle}}</p>
+        </div>`;
+
+        // Also add English if primary is not English
+        if (lang !== "en") {
+          adminSubjects["en"] = `New ${quizName} Response`;
+          adminBody["en"] = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #333;">New Quiz Response</h1>
+            <p>A new response has been submitted for the ${quizName}.</p>
+            <p><strong>Email:</strong> {{email}}</p>
+            <p><strong>Score:</strong> {{score}} / {{totalQuestions}}</p>
+            <p><strong>Result:</strong> {{resultTitle}}</p>
+          </div>`;
+        }
+
+        // Get max version number for this quiz
+        const { data: existingVersions } = await supabase
+          .from("email_templates")
+          .select("version_number")
+          .eq("quiz_id", quiz.id)
+          .eq("template_type", "admin_notification")
+          .order("version_number", { ascending: false })
+          .limit(1);
+
+        const nextVersion = (existingVersions?.[0]?.version_number || 0) + 1;
+
+        const { error } = await supabase.from("email_templates").insert({
+          quiz_id: quiz.id,
+          template_type: "admin_notification",
+          sender_name: "Sparkly HR",
+          sender_email: "noreply@sparkly.hr",
+          subjects: adminSubjects,
+          body_content: adminBody,
+          is_live: true,
+          version_number: nextVersion,
+        });
+
+        if (error) throw error;
+
+        completed.push(quizName);
+        setBulkProgress(prev => ({
+          ...prev,
+          completed: [...prev.completed, quizName],
+        }));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error(`Failed to create admin template for ${quizName}:`, errorMessage);
+        failed.push({ quizId: quiz.id, name: quizName, error: errorMessage });
+        setBulkProgress(prev => ({
+          ...prev,
+          failed: [...prev.failed, { quizId: quiz.id, name: quizName, error: errorMessage }],
+        }));
+      }
+
+      if (i < quizzesToGenerate.length - 1) {
+        await sleep(300);
+      }
+    }
+
+    setBulkProgress(prev => ({
+      ...prev,
+      isGenerating: false,
+    }));
+
+    await fetchLiveStatus(quizzes);
+
+    if (failed.length === 0) {
+      toast.success(`Successfully created ${completed.length} admin notification templates`);
+    } else if (completed.length > 0) {
+      toast.warning(`Created ${completed.length} templates, ${failed.length} failed`);
+    } else {
+      toast.error(`All ${failed.length} creations failed`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -597,13 +730,18 @@ export function TemplateVersionsPage() {
           {!bulkProgress.isGenerating && (
             <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="text-sm text-amber-700 dark:text-amber-300">
-                  {missingWebTemplates.length > 0 
-                    ? `${missingWebTemplates.length} ${missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates`
-                    : `${quizzes.length} quizzes configured`
-                  }
+                <div className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
+                  {missingWebTemplates.length > 0 && (
+                    <div>{missingWebTemplates.length} {missingWebTemplates.length === 1 ? "quiz" : "quizzes"} missing web templates</div>
+                  )}
+                  {missingAdminEmailTemplates.length > 0 && (
+                    <div>{missingAdminEmailTemplates.length} {missingAdminEmailTemplates.length === 1 ? "quiz" : "quizzes"} missing admin email templates</div>
+                  )}
+                  {missingWebTemplates.length === 0 && missingAdminEmailTemplates.length === 0 && (
+                    <div>{quizzes.length} quizzes configured</div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {missingWebTemplates.length > 0 && (
                     <Button
                       onClick={handleBulkGenerateWeb}
@@ -611,7 +749,18 @@ export function TemplateVersionsPage() {
                       className="gap-2"
                     >
                       <Sparkles className="w-4 h-4" />
-                      Generate Missing ({missingWebTemplates.length})
+                      Generate Web ({missingWebTemplates.length})
+                    </Button>
+                  )}
+                  {missingAdminEmailTemplates.length > 0 && (
+                    <Button
+                      onClick={handleBulkGenerateAdminEmails}
+                      size="sm"
+                      variant="secondary"
+                      className="gap-2"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Generate Admin Emails ({missingAdminEmailTemplates.length})
                     </Button>
                   )}
                   <Button
@@ -717,7 +866,7 @@ export function TemplateVersionsPage() {
           {/* Expanded details */}
           {showMissingDetails && !allComplete && (
             <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 space-y-2">
-              {missingLiveTemplates.map(({ quiz, hasLiveEmail, hasLiveWeb }) => (
+              {missingLiveTemplates.map(({ quiz, hasLiveEmail, hasLiveWeb, hasLiveAdminEmail }) => (
                 <div 
                   key={quiz.id} 
                   className="flex items-center justify-between py-2 px-3 rounded-md bg-white/50 dark:bg-black/20"
@@ -725,7 +874,7 @@ export function TemplateVersionsPage() {
                   <span className="font-medium text-amber-900 dark:text-amber-100">
                     {getQuizTitle(quiz)}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {/* Status badges */}
                     <Badge 
                       variant={hasLiveWeb ? "default" : "destructive"} 
@@ -739,7 +888,14 @@ export function TemplateVersionsPage() {
                       className={`text-xs ${hasLiveEmail ? "bg-green-600" : ""}`}
                     >
                       <Mail className="w-3 h-3 mr-1" />
-                      Email {hasLiveEmail ? "✓" : "✗"}
+                      Results {hasLiveEmail ? "✓" : "✗"}
+                    </Badge>
+                    <Badge 
+                      variant={hasLiveAdminEmail ? "default" : "destructive"}
+                      className={`text-xs ${hasLiveAdminEmail ? "bg-green-600" : ""}`}
+                    >
+                      <Mail className="w-3 h-3 mr-1" />
+                      Admin {hasLiveAdminEmail ? "✓" : "✗"}
                     </Badge>
                     
                     {/* Quick action buttons */}
