@@ -178,16 +178,18 @@ export default function AllQuizzes() {
                         <h2 className={`text-xl font-bold text-foreground transition-colors ${typeStyle.accent}`}>
                           {title}
                         </h2>
-                        {/* Free Badge - shown for all quizzes */}
-                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 border-emerald-500/30 font-semibold text-xs">
-                          Free
-                        </Badge>
+                        {/* Free Badge - shown only if not already in badgeText */}
+                        {!badgeText?.toLowerCase().includes('free') && (
+                          <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 border-emerald-500/30 font-semibold text-xs">
+                            Free
+                          </Badge>
+                        )}
                         <Badge variant="outline" className={`${typeStyle.badge} flex items-center gap-1`}>
                           <TypeIcon className="w-3 h-3" />
                           {typeStyle.label}
                         </Badge>
                         {badgeText && (
-                          <Badge variant="secondary" className="text-xs font-medium">
+                          <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 border-emerald-500/30 font-semibold text-xs">
                             {badgeText}
                           </Badge>
                         )}
