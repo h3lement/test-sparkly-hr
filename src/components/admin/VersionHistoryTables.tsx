@@ -128,8 +128,7 @@ const EMAIL_DEFAULT_WIDTHS = {
   version: 70,
   type: 80,
   quiz: 150,
-  cta: 140,
-  sender: 180,
+  cta: 180,
   created: 130,
   lang: 70,
   sent: 70,
@@ -542,20 +541,10 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                   className="flex items-center px-3 py-3 relative group"
                   style={{ width: columnWidths.cta }}
                 >
-                  <span>CTA Template</span>
+                  <span>CTA</span>
                   <div
                     className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
                     onMouseDown={(e) => handleMouseDown("cta", e)}
-                  />
-                </div>
-                <div 
-                  className="flex items-center px-3 py-3 relative group"
-                  style={{ width: columnWidths.sender }}
-                >
-                  <span>Sender</span>
-                  <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown("sender", e)}
                   />
                 </div>
                 <div 
@@ -661,7 +650,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         </div>
                       )}
 
-                      {/* CTA Template */}
+                      {/* CTA */}
                       <div 
                         className="px-3 py-3 shrink-0"
                         style={{ width: columnWidths.cta }}
@@ -678,21 +667,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                                   LIVE
                                 </Badge>
                               )}
-                              <span className="text-xs truncate" title={ctaInfo.label}>
+                              <span className="text-sm truncate" title={ctaInfo.label}>
                                 {ctaInfo.label}
                               </span>
                             </div>
                           );
                         })()}
-                      </div>
-
-                      {/* Sender */}
-                      <div 
-                        className="truncate text-muted-foreground px-3 py-3 shrink-0"
-                        style={{ width: columnWidths.sender }}
-                        title={`${template.sender_name} <${template.sender_email}>`}
-                      >
-                        {template.sender_name} &lt;{template.sender_email}&gt;
                       </div>
 
                       {/* Created - with user name */}
