@@ -147,25 +147,15 @@ Language: ${language === 'et' ? 'Estonian' : 'English'}
 
 Create ${numberOfLevels} result levels that:
 1. Cover the entire score range from ${minPossibleScore} to ${maxPossibleScore} without gaps or overlaps
-2. Have meaningful, distinct titles and descriptions
+2. Have meaningful, distinct titles and descriptions (keep descriptions concise, max 2 sentences)
 3. Match the specified tone of voice and intensity level
 4. Use appropriate emojis
-5. Include 2-3 actionable insights for each level
+5. Include exactly 3 short, actionable insights for each level (max 15 words each)
 ${icpDescription || buyingPersona ? '6. Speak directly to the target audience described above' : ''}
 
-Return ONLY valid JSON in this exact format (no markdown, no explanation):
-{
-  "levels": [
-    {
-      "min_score": <number>,
-      "max_score": <number>,
-      "title": "<title in ${language}>",
-      "description": "<2-3 sentence description>",
-      "emoji": "<single emoji>",
-      "insights": ["<insight 1>", "<insight 2>", "<insight 3>"]
-    }
-  ]
-}`;
+CRITICAL: Return ONLY raw JSON. No markdown code blocks, no backticks, no explanation text before or after.
+Output format:
+{"levels":[{"min_score":0,"max_score":10,"title":"Title here","description":"Description here.","emoji":"🎯","insights":["Insight 1","Insight 2","Insight 3"]}]}`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -210,21 +200,59 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
     const content = aiData.choices?.[0]?.message?.content || '';
     const usage = aiData.usage || {};
 
-    console.log('AI response content:', content.substring(0, 500));
+    console.log('AI response content length:', content.length);
+    console.log('AI response first 1000 chars:', content.substring(0, 1000));
+    console.log('AI response last 500 chars:', content.substring(content.length - 500));
 
-    // Parse the JSON response
+    // Parse the JSON response with multiple fallback strategies
     let parsedLevels;
     try {
-      // Try to extract JSON from the response (handle markdown code blocks)
-      let jsonContent = content;
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonContent = jsonMatch[1].trim();
+      let jsonContent = content.trim();
+      
+      // Strategy 1: Extract from markdown code blocks (greedy match)
+      const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]+?)```/);
+      if (codeBlockMatch) {
+        jsonContent = codeBlockMatch[1].trim();
+        console.log('Extracted from code block, length:', jsonContent.length);
+      } else {
+        // Strategy 2: Find JSON object directly (look for { ... })
+        const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          jsonContent = jsonObjectMatch[0].trim();
+          console.log('Extracted JSON object directly, length:', jsonContent.length);
+        }
       }
-      parsedLevels = JSON.parse(jsonContent);
+      
+      // Strategy 3: Clean up any trailing incomplete content
+      // Find the last complete array bracket
+      const lastBracketIndex = jsonContent.lastIndexOf(']');
+      const lastBraceIndex = jsonContent.lastIndexOf('}');
+      
+      if (lastBracketIndex > 0 && lastBraceIndex > lastBracketIndex) {
+        // Looks like valid structure, try parsing as-is
+        parsedLevels = JSON.parse(jsonContent);
+      } else if (lastBracketIndex > 0) {
+        // Try to fix truncated JSON by finding the last complete object
+        const truncatedContent = jsonContent.substring(0, lastBracketIndex + 1);
+        // Count braces to ensure we close properly
+        const openBraces = (truncatedContent.match(/\{/g) || []).length;
+        const closeBraces = (truncatedContent.match(/\}/g) || []).length;
+        const missingBraces = openBraces - closeBraces;
+        
+        if (missingBraces > 0) {
+          jsonContent = truncatedContent + '}'.repeat(missingBraces);
+          console.log('Fixed truncated JSON by adding', missingBraces, 'closing braces');
+        }
+        parsedLevels = JSON.parse(jsonContent);
+      } else {
+        parsedLevels = JSON.parse(jsonContent);
+      }
+      
+      console.log('Successfully parsed levels:', parsedLevels?.levels?.length || 0);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
-      throw new Error('Failed to parse AI response as JSON');
+      console.error('Attempted to parse:', content.substring(0, 2000));
+      throw new Error('Failed to parse AI response as JSON. The AI may have returned an incomplete response.');
     }
 
     // Calculate estimated cost (based on Gemini Flash pricing ~$0.075/1M input, $0.30/1M output)
