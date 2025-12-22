@@ -159,7 +159,7 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
     return parts.length > 0 ? parts.join(' ') : '1d';
   }, [preferences.intervalDays, preferences.intervalHours, preferences.intervalMinutes]);
 
-  // Load history data
+  // Load history data and set latest result
   const loadHistory = useCallback(async () => {
     if (!domain) return;
     
@@ -174,12 +174,40 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
 
       if (error) throw error;
       setHistory(data || []);
+      
+      // Set the latest result from history if available and no current result
+      if (data && data.length > 0 && !result) {
+        const latest = data[0];
+        const latestResult: DomainReputationResult = (latest.full_result as unknown as DomainReputationResult) || {
+          domain: latest.domain,
+          checkedAt: latest.checked_at,
+          dnsbl: {
+            results: [],
+            listedCount: latest.dnsbl_listed_count,
+            checkedCount: latest.dnsbl_checked_count,
+          },
+          virusTotal: {
+            harmless: latest.vt_harmless,
+            malicious: latest.vt_malicious,
+            suspicious: latest.vt_suspicious,
+            undetected: 0,
+            timeout: 0,
+            lastAnalysisDate: null,
+            reputation: latest.vt_reputation,
+            categories: {},
+          },
+          overallStatus: latest.overall_status as "clean" | "warning" | "danger" | "error",
+          recommendations: (latest.recommendations as string[]) || [],
+          notificationSent: latest.notification_sent,
+        };
+        setResult(latestResult);
+      }
     } catch (error) {
       console.error("Error loading history:", error);
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [domain]);
+  }, [domain, result]);
 
   // Check domain reputation
   const checkReputation = useCallback(async (isPeriodicCheck = false, silent = false) => {
@@ -310,19 +338,8 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
     }
   }, [domain, loadHistory]);
 
-  // Check if we need to run an initial check
-  useEffect(() => {
-    if (prefsLoading || !domain || !preferences.periodicCheckEnabled) return;
-
-    const lastCheck = preferences.lastCheckAt ? new Date(preferences.lastCheckAt) : null;
-    const intervalMs = getIntervalMs();
-    const now = Date.now();
-
-    if (!lastCheck || (now - lastCheck.getTime()) > intervalMs) {
-      console.log("Running initial reputation check - interval exceeded or no previous check");
-      checkReputation(true, true);
-    }
-  }, [prefsLoading, domain, preferences.periodicCheckEnabled, preferences.lastCheckAt, getIntervalMs, checkReputation]);
+  // Periodic checks only run if interval has elapsed - don't auto-run on page load
+  // The periodic timer handles scheduled checks, manual refresh handles on-demand checks
 
   // Set up periodic checks
   useEffect(() => {
