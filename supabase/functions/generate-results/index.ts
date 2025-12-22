@@ -261,38 +261,44 @@ Output format:
     const estimatedCostUsd = (inputTokens * 0.000000075) + (outputTokens * 0.0000003);
     const estimatedCostEur = estimatedCostUsd * 0.92; // Approximate EUR conversion
 
-    // Calculate proper score ranges regardless of what AI returned
+    // Calculate proper score ranges (robust even when quiz has 0/1 scoring range)
     const numLevels = (parsedLevels.levels || []).length;
-    const scoreRange = maxPossibleScore - minPossibleScore;
-    const pointsPerLevel = numLevels > 0 ? scoreRange / numLevels : 0;
 
-    // Format levels for storage with calculated score ranges
+    // When there are no (non-open_mindedness) scored questions, min/max can collapse to 0..0.
+    // In that case, expand the range so each level gets at least 1 point.
+    const effectiveMin = minPossibleScore;
+    const effectiveMax = numLevels > 0
+      ? Math.max(maxPossibleScore, effectiveMin + (numLevels - 1))
+      : maxPossibleScore;
+
+    const totalRange = effectiveMax - effectiveMin + 1;
+    const base = numLevels > 0 ? Math.floor(totalRange / numLevels) : 0;
+    const remainder = numLevels > 0 ? totalRange % numLevels : 0;
+
+    // Format levels for storage with calculated score ranges (guaranteed contiguous coverage)
+    let currentMin = effectiveMin;
     const resultLevels = (parsedLevels.levels || []).map((level: any, index: number) => {
-      // Calculate proper score ranges based on position
-      const calculatedMinScore = Math.round(minPossibleScore + (index * pointsPerLevel));
-      const calculatedMaxScore = index === numLevels - 1 
-        ? maxPossibleScore  // Last level gets exactly the max
-        : Math.round(minPossibleScore + ((index + 1) * pointsPerLevel) - 1);
-      
-      // Use calculated ranges if AI returned zeros or invalid ranges
-      const minScore = (level.min_score === 0 && level.max_score === 0) || level.min_score >= level.max_score
-        ? calculatedMinScore 
-        : level.min_score;
-      const maxScore = (level.min_score === 0 && level.max_score === 0) || level.min_score >= level.max_score
-        ? calculatedMaxScore 
-        : level.max_score;
-      
-      return {
+      const extraPoint = index < remainder ? 1 : 0;
+      const levelRange = Math.max(1, base + extraPoint);
+      const currentMax = index === numLevels - 1
+        ? effectiveMax
+        : currentMin + levelRange - 1;
+
+      const out = {
         id: `new-${Date.now()}-${index}`,
-        min_score: minScore,
-        max_score: maxScore,
+        min_score: currentMin,
+        max_score: currentMax,
         title: { [language]: level.title },
         description: { [language]: level.description },
         insights: level.insights || [],
         emoji: level.emoji || '🌟',
         color_class: 'from-emerald-500 to-green-600',
       };
+
+      currentMin = currentMax + 1;
+      return out;
     });
+
 
     // Get next version number
     const { data: existingVersions } = await supabaseClient
