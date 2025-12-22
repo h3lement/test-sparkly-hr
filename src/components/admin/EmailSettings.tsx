@@ -116,10 +116,18 @@ export function EmailSettings() {
   const [configDraft, setConfigDraft] = useState<EmailConfig>(emailConfig);
   const [isGeneratingDkim, setIsGeneratingDkim] = useState(false);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{ lastSentAt: Date | null; emailsPerMinute: number }>({
+    lastSentAt: null,
+    emailsPerMinute: 1,
+  });
+  const [rateLimitCountdown, setRateLimitCountdown] = useState<number>(0);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const MAX_RECONNECT_ATTEMPTS = 5;
-  const RECONNECT_DELAY_MS = 5000;
+  const FAST_RECONNECT_ATTEMPTS = 5;
+  const FAST_RECONNECT_DELAY_MS = 3000;
+  const SLOW_RECONNECT_DELAY_MS = 30000;
+  const MAX_RECONNECT_ATTEMPTS = 10;
   const { toast } = useToast();
 
   // Load email config from app_settings
@@ -362,7 +370,11 @@ export function EmailSettings() {
     }
 
     reconnectAttempts.current += 1;
-    const delay = RECONNECT_DELAY_MS * reconnectAttempts.current;
+    
+    // Use fast delay for first 5 attempts, then slow delay
+    const isFastPhase = reconnectAttempts.current <= FAST_RECONNECT_ATTEMPTS;
+    const baseDelay = isFastPhase ? FAST_RECONNECT_DELAY_MS : SLOW_RECONNECT_DELAY_MS;
+    const delay = isFastPhase ? baseDelay : baseDelay * (reconnectAttempts.current - FAST_RECONNECT_ATTEMPTS);
 
     setConnectionStatus((prev) => ({
       ...prev,
@@ -374,6 +386,20 @@ export function EmailSettings() {
     }, delay);
   }, [checkConnection]);
 
+  // Rate limit countdown effect
+  useEffect(() => {
+    if (rateLimitCountdown > 0) {
+      countdownTimerRef.current = setTimeout(() => {
+        setRateLimitCountdown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => {
+      if (countdownTimerRef.current) {
+        clearTimeout(countdownTimerRef.current);
+      }
+    };
+  }, [rateLimitCountdown]);
+
   useEffect(() => {
     checkConnection();
 
@@ -381,14 +407,53 @@ export function EmailSettings() {
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
+      if (countdownTimerRef.current) {
+        clearTimeout(countdownTimerRef.current);
+      }
     };
   }, [checkConnection]);
+
+  const canSendEmail = useCallback(() => {
+    if (!rateLimitInfo.lastSentAt) return true;
+    const cooldownMs = (60 / rateLimitInfo.emailsPerMinute) * 1000;
+    const timeSinceLastSend = Date.now() - rateLimitInfo.lastSentAt.getTime();
+    return timeSinceLastSend >= cooldownMs;
+  }, [rateLimitInfo]);
+
+  const getRateLimitWaitTime = useCallback(() => {
+    if (!rateLimitInfo.lastSentAt) return 0;
+    const cooldownMs = (60 / rateLimitInfo.emailsPerMinute) * 1000;
+    const timeSinceLastSend = Date.now() - rateLimitInfo.lastSentAt.getTime();
+    return Math.max(0, Math.ceil((cooldownMs - timeSinceLastSend) / 1000));
+  }, [rateLimitInfo]);
 
   const sendTestEmail = async () => {
     if (!testEmail.trim()) {
       toast({
         title: "Error",
         description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check rate limit
+    if (!canSendEmail()) {
+      const waitTime = getRateLimitWaitTime();
+      toast({
+        title: "Rate limited",
+        description: `Please wait ${waitTime} seconds before sending another email`,
+        variant: "destructive",
+      });
+      setRateLimitCountdown(waitTime);
+      return;
+    }
+
+    // Ensure connection before sending - check directly without relying on state
+    if (connectionStatus.status !== "connected") {
+      toast({
+        title: "Not connected",
+        description: "Please connect to SMTP server first by clicking the refresh button.",
         variant: "destructive",
       });
       return;
@@ -408,6 +473,12 @@ export function EmailSettings() {
 
       if (data?.success) {
         const typeLabel = emailType === "quiz_result" ? "Quiz Result" : emailType === "notification" ? "Notification" : "Simple";
+        
+        // Update rate limit info
+        setRateLimitInfo((prev) => ({ ...prev, lastSentAt: new Date() }));
+        const cooldownSeconds = Math.ceil(60 / rateLimitInfo.emailsPerMinute);
+        setRateLimitCountdown(cooldownSeconds);
+        
         toast({
           title: "Test email sent",
           description: `${typeLabel} email sent to ${testEmail}`,
@@ -527,10 +598,12 @@ export function EmailSettings() {
             <Button
               size="sm"
               onClick={sendTestEmail}
-              disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim()}
+              disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim() || rateLimitCountdown > 0}
             >
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : rateLimitCountdown > 0 ? (
+                <span className="text-xs">{rateLimitCountdown}s</span>
               ) : (
                 <Send className="h-4 w-4" />
               )}
@@ -540,10 +613,19 @@ export function EmailSettings() {
               size="sm"
               onClick={handleManualReconnect}
               disabled={isChecking}
+              title="Check SMTP connection"
             >
               <RefreshCw className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} />
             </Button>
           </div>
+
+          {/* Rate Limit Info */}
+          {rateLimitCountdown > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="h-3 w-3" />
+              <span>Rate limit: {rateLimitInfo.emailsPerMinute} email/min. Next send available in {rateLimitCountdown}s</span>
+            </div>
+          )}
 
           {/* Email Configuration - Always visible for setup */}
           <div className="p-3 rounded-lg bg-muted/50 border">
@@ -845,37 +927,76 @@ export function EmailSettings() {
               )}
             </div>
 
-          {/* SMTP Status */}
-          {connectionStatus.status === "connected" && (
-            <div className="p-3 rounded-lg bg-muted/50 border">
-              <div className="flex items-center gap-2 mb-2">
-                <Server className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">SMTP Status</p>
+          {/* SMTP Connection Status - Always visible */}
+          <div className={`p-3 rounded-lg border ${
+            connectionStatus.status === "connected" 
+              ? "bg-green-500/5 border-green-500/20" 
+              : connectionStatus.status === "error" 
+                ? "bg-amber-500/5 border-amber-500/20"
+                : connectionStatus.status === "checking"
+                  ? "bg-muted/50 border-border"
+                  : "bg-red-500/5 border-red-500/20"
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Server className={`h-4 w-4 ${
+                  connectionStatus.status === "connected" 
+                    ? "text-green-600" 
+                    : connectionStatus.status === "error"
+                      ? "text-amber-600"
+                      : connectionStatus.status === "checking"
+                        ? "text-muted-foreground"
+                        : "text-red-600"
+                }`} />
+                <p className="text-sm font-medium">SMTP Connection</p>
               </div>
-              {connectionStatus.domains.length > 0 ? (
-                <div className="space-y-1.5">
-                  {connectionStatus.domains.map((domain, index) => (
-                    <div key={index} className="flex items-center justify-between gap-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                        <span className="font-mono text-xs">{domain.name}</span>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className="text-xs px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20"
-                      >
-                        {domain.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground py-1">
-                  SMTP configured and ready to send emails
-                </p>
-              )}
+              {getStatusBadge()}
             </div>
-          )}
+            
+            {connectionStatus.status === "connected" && connectionStatus.domains.length > 0 ? (
+              <div className="space-y-1.5">
+                {connectionStatus.domains.map((domain, index) => (
+                  <div key={index} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                      <span className="font-mono text-xs">{domain.name}</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="text-xs px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20"
+                    >
+                      {domain.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : connectionStatus.status === "connected" ? (
+              <p className="text-xs text-green-600 py-1">
+                SMTP configured and ready to send emails
+              </p>
+            ) : (
+              <div className="space-y-1.5 text-xs">
+                <p className={
+                  connectionStatus.status === "error" ? "text-amber-600" :
+                  connectionStatus.status === "disconnected" ? "text-red-600" :
+                  "text-muted-foreground"
+                }>
+                  {connectionStatus.message}
+                </p>
+                {connectionStatus.lastChecked && (
+                  <p className="text-muted-foreground">
+                    Last checked: {formatTime(connectionStatus.lastChecked)}
+                  </p>
+                )}
+                {reconnectAttempts.current > 0 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS && (
+                  <p className="text-muted-foreground">
+                    Reconnect attempts: {reconnectAttempts.current}/{MAX_RECONNECT_ATTEMPTS}
+                    {reconnectAttempts.current <= FAST_RECONNECT_ATTEMPTS ? " (fast)" : " (slow)"}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Success Message */}
           {lastSuccess && (
@@ -943,12 +1064,6 @@ export function EmailSettings() {
                 ))}
               </div>
             </div>
-          )}
-
-          {connectionStatus.status !== "connected" && !errors.length && (
-            <p className="text-xs text-muted-foreground">
-              {connectionStatus.message}
-            </p>
           )}
         </CardContent>
       </Card>
