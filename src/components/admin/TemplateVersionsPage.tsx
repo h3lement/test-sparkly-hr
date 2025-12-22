@@ -105,6 +105,7 @@ export function TemplateVersionsPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [liveStatus, setLiveStatus] = useState<QuizLiveStatus[]>([]);
   const [showMissingDetails, setShowMissingDetails] = useState(false);
+  const [webRefreshKey, setWebRefreshKey] = useState(0);
 
   const [bulkProgress, setBulkProgress] = useState<BulkGenerationProgress>({
     isGenerating: false,
@@ -332,8 +333,9 @@ export function TemplateVersionsPage() {
       isGenerating: false,
     }));
 
-    // Refresh live status
+    // Refresh live status and table
     await fetchLiveStatus(quizzes);
+    setWebRefreshKey(prev => prev + 1);
 
     if (failed.length === 0) {
       toast.success(`Successfully generated ${completed.length} web templates`);
@@ -524,7 +526,7 @@ export function TemplateVersionsPage() {
         </TabsList>
 
         <TabsContent value="web" className="mt-6">
-          <WebVersionHistory />
+          <WebVersionHistory refreshKey={webRefreshKey} />
         </TabsContent>
 
         <TabsContent value="email" className="mt-6">
