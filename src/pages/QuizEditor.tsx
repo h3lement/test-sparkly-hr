@@ -31,6 +31,7 @@ import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
 import { QuizWebStats } from "@/components/admin/QuizWebStats";
 import { HypothesisQuizEditor } from "@/components/admin/HypothesisQuizEditor";
 import { TranslationDialog, type TranslationOptions } from "@/components/admin/TranslationDialog";
+import { UiTranslationsEditor } from "@/components/admin/UiTranslationsEditor";
 import {
   Select,
   SelectContent,
@@ -2312,6 +2313,10 @@ export default function QuizEditor() {
                 {activityLogsCount}
               </span>
             </TabsTrigger>
+            <TabsTrigger value="translations" className="admin-tab-trigger gap-1.5">
+              <Languages className="w-4 h-4" />
+              UI Text
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="admin-tab-content space-y-3">
@@ -2906,6 +2911,19 @@ export default function QuizEditor() {
               </div>
             ) : quizId ? (
               <QuizActivityLog quizId={quizId} />
+            ) : null}
+          </TabsContent>
+
+          {/* UI Translations Tab */}
+          <TabsContent value="translations" className="admin-tab-content space-y-3">
+            {isCreating ? (
+              <div className="text-center py-8 border rounded-lg border-dashed">
+                <p className="text-sm text-muted-foreground">
+                  Save the quiz first to manage UI translations.
+                </p>
+              </div>
+            ) : quizId ? (
+              <UiTranslationsEditor quizId={quizId} displayLanguage={displayLanguage} />
             ) : null}
           </TabsContent>
         </Tabs>
