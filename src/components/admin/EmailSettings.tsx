@@ -1810,7 +1810,7 @@ export function EmailSettings() {
                     )}
                   </CollapsibleContent>
                 </Collapsible>
-
+                
                 {/* All Valid Message */}
                 {connectionStatus.dnsValidation?.spf.valid && 
                  connectionStatus.dnsValidation?.dmarc.valid && 
@@ -1818,14 +1818,6 @@ export function EmailSettings() {
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/5 border border-green-500/20">
                     <ShieldCheck className="h-4 w-4 text-green-600" />
                     <span className="text-xs text-green-700">All DNS records are properly configured!</span>
-                  </div>
-                )}
-                
-                {/* Last Update Info (Edit Mode) */}
-                {lastConfigUpdate.timestamp && (
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Last updated: {lastConfigUpdate.timestamp.toLocaleString()}
-                    {lastConfigUpdate.userEmail && <span> by {lastConfigUpdate.userEmail}</span>}
                   </div>
                 )}
               </div>
@@ -1885,14 +1877,14 @@ export function EmailSettings() {
                   <p className="text-xs text-muted-foreground italic">Not configured</p>
                 )}
               </div>
-              
-              {/* Last Update Info */}
-              {lastConfigUpdate.timestamp && (
-                <div className="text-xs text-muted-foreground pt-2">
-                  Last updated: {lastConfigUpdate.timestamp.toLocaleString()}
-                  {lastConfigUpdate.userEmail && <span> by {lastConfigUpdate.userEmail}</span>}
-                </div>
-              )}
+            </div>
+          )}
+          
+          {/* Last Update Info - Outside the block */}
+          {lastConfigUpdate.timestamp && (
+            <div className="text-xs text-muted-foreground text-left mt-2">
+              Last updated: {lastConfigUpdate.timestamp.toLocaleString()}
+              {lastConfigUpdate.userEmail && <span> by {lastConfigUpdate.userEmail}</span>}
             </div>
           )}
         </div>
