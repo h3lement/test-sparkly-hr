@@ -175,7 +175,7 @@ Output format:
           { role: 'system', content: 'You are an expert quiz result designer. Always output valid JSON only, no markdown.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 4096, // Ensure enough tokens for 10+ result levels
+        max_tokens: 8192,
       }),
     });
 
@@ -206,53 +206,55 @@ Output format:
     console.log('AI response last 500 chars:', content.substring(content.length - 500));
 
     // Parse the JSON response with multiple fallback strategies
-    let parsedLevels;
+    let parsedLevels: any;
     try {
       let jsonContent = content.trim();
-      
-      // Strategy 1: Extract from markdown code blocks (greedy match)
+
+      // Strategy 1: Extract from markdown code blocks
       const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]+?)```/);
       if (codeBlockMatch) {
         jsonContent = codeBlockMatch[1].trim();
         console.log('Extracted from code block, length:', jsonContent.length);
       } else {
-        // Strategy 2: Find JSON object directly (look for { ... })
-        const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonObjectMatch) {
-          jsonContent = jsonObjectMatch[0].trim();
+        // Strategy 2: Prefer extracting a full JSON array if present
+        const arrayMatch = content.match(/\[[\s\S]*\]/);
+        const objectMatch = content.match(/\{[\s\S]*\}/);
+
+        if (content.trim().startsWith('[') && arrayMatch) {
+          jsonContent = arrayMatch[0].trim();
+          console.log('Extracted JSON array directly, length:', jsonContent.length);
+        } else if (content.trim().startsWith('{') && objectMatch) {
+          jsonContent = objectMatch[0].trim();
           console.log('Extracted JSON object directly, length:', jsonContent.length);
+        } else if (arrayMatch) {
+          jsonContent = arrayMatch[0].trim();
+          console.log('Extracted JSON array (fallback), length:', jsonContent.length);
+        } else if (objectMatch) {
+          jsonContent = objectMatch[0].trim();
+          console.log('Extracted JSON object (fallback), length:', jsonContent.length);
         }
       }
-      
-      // Strategy 3: Clean up any trailing incomplete content
-      // Find the last complete array bracket
-      const lastBracketIndex = jsonContent.lastIndexOf(']');
-      const lastBraceIndex = jsonContent.lastIndexOf('}');
-      
-      if (lastBracketIndex > 0 && lastBraceIndex > lastBracketIndex) {
-        // Looks like valid structure, try parsing as-is
-        parsedLevels = JSON.parse(jsonContent);
-      } else if (lastBracketIndex > 0) {
-        // Try to fix truncated JSON by finding the last complete object
-        const truncatedContent = jsonContent.substring(0, lastBracketIndex + 1);
-        // Count braces to ensure we close properly
-        const openBraces = (truncatedContent.match(/\{/g) || []).length;
-        const closeBraces = (truncatedContent.match(/\}/g) || []).length;
-        const missingBraces = openBraces - closeBraces;
-        
-        if (missingBraces > 0) {
-          jsonContent = truncatedContent + '}'.repeat(missingBraces);
-          console.log('Fixed truncated JSON by adding', missingBraces, 'closing braces');
-        }
-        parsedLevels = JSON.parse(jsonContent);
+
+      const parsed = JSON.parse(jsonContent);
+
+      // Normalize accepted formats:
+      // 1) { levels: [...] }
+      // 2) [...] (array of levels)
+      // 3) { min_score, ... } (single level)
+      if (Array.isArray(parsed)) {
+        parsedLevels = { levels: parsed };
+      } else if (parsed && Array.isArray(parsed.levels)) {
+        parsedLevels = parsed;
+      } else if (parsed && typeof parsed === 'object' && 'min_score' in parsed && 'max_score' in parsed) {
+        parsedLevels = { levels: [parsed] };
       } else {
-        parsedLevels = JSON.parse(jsonContent);
+        parsedLevels = parsed;
       }
-      
+
       console.log('Successfully parsed levels:', parsedLevels?.levels?.length || 0);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
-      console.error('Attempted to parse:', content.substring(0, 2000));
+      console.error('Attempted to parse (first 2000 chars):', content.substring(0, 2000));
       throw new Error('Failed to parse AI response as JSON. The AI may have returned an incomplete response.');
     }
 
