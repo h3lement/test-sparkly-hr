@@ -42,6 +42,11 @@ interface TranslateRequest {
   quizId: string;
   sourceLanguage: string;
   regenerate?: boolean; // If true, regenerate all translations
+  sourceContent?: { // Content from the form to translate
+    cta_title: string;
+    cta_description: string;
+    cta_text: string;
+  };
 }
 
 serve(async (req) => {
@@ -59,10 +64,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { quizId, sourceLanguage, regenerate = false }: TranslateRequest = await req.json();
+    const { quizId, sourceLanguage, regenerate = false, sourceContent }: TranslateRequest = await req.json();
     console.log(`Starting CTA translation for quiz ${quizId} from ${sourceLanguage} (regenerate: ${regenerate})`);
 
-    // Fetch quiz CTA data
+    // Fetch quiz CTA data (for existing translations and to update)
     const { data: quiz, error: quizError } = await supabase
       .from("quizzes")
       .select("id, cta_title, cta_description, cta_text")
@@ -73,10 +78,24 @@ serve(async (req) => {
       throw new Error("Quiz not found");
     }
 
-    // Get source content
-    const sourceTitle = quiz.cta_title?.[sourceLanguage] || "";
-    const sourceDescription = quiz.cta_description?.[sourceLanguage] || "";
-    const sourceButtonText = quiz.cta_text?.[sourceLanguage] || "";
+    // Use provided sourceContent if available, otherwise fall back to database
+    let sourceTitle: string;
+    let sourceDescription: string;
+    let sourceButtonText: string;
+
+    if (sourceContent && (sourceContent.cta_title || sourceContent.cta_description || sourceContent.cta_text)) {
+      // Use the content from the form (what user is currently editing)
+      sourceTitle = sourceContent.cta_title || "";
+      sourceDescription = sourceContent.cta_description || "";
+      sourceButtonText = sourceContent.cta_text || "";
+      console.log("Using provided source content from form");
+    } else {
+      // Fall back to database content
+      sourceTitle = quiz.cta_title?.[sourceLanguage] || "";
+      sourceDescription = quiz.cta_description?.[sourceLanguage] || "";
+      sourceButtonText = quiz.cta_text?.[sourceLanguage] || "";
+      console.log("Using source content from database");
+    }
 
     if (!sourceTitle && !sourceDescription && !sourceButtonText) {
       return new Response(JSON.stringify({
@@ -111,15 +130,15 @@ serve(async (req) => {
       }
     }
 
-    // Build source content object
-    const sourceContent = {
+    // Build source content object for the prompt
+    const contentToTranslate = {
       cta_title: sourceTitle,
       cta_description: sourceDescription,
       cta_text: sourceButtonText,
     };
 
     console.log(`Translating CTA to ${targetLanguages.length} languages (regenerate: ${regenerate})...`);
-    console.log("Source content:", sourceContent);
+    console.log("Content to translate:", contentToTranslate);
 
     // Translate to all languages in one request
     const prompt = `You are a professional translator. Translate the following CTA (Call-to-Action) content from ${
@@ -137,7 +156,7 @@ Return ONLY a valid JSON object with this structure:
 }
 
 Source content to translate:
-${JSON.stringify(sourceContent, null, 2)}
+${JSON.stringify(contentToTranslate, null, 2)}
 
 Important:
 - Keep translations natural and professional

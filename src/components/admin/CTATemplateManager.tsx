@@ -172,6 +172,12 @@ export function CTATemplateManager() {
   const handleTranslate = async (regenerate = false) => {
     if (!selectedQuiz) return;
     
+    // Validate that we have content to translate
+    if (!ctaTitle.trim() && !ctaDescription.trim() && !ctaButtonText.trim()) {
+      toast.error("Please enter CTA content before translating");
+      return;
+    }
+    
     if (regenerate) {
       setRegenerating(true);
     } else {
@@ -190,8 +196,14 @@ export function CTATemplateManager() {
         },
         body: JSON.stringify({
           quizId: selectedQuiz.id,
-          sourceLanguage: selectedQuiz.primary_language || "en",
+          sourceLanguage: selectedLanguage, // Use currently selected language as source
           regenerate,
+          // Pass the current form content for translation
+          sourceContent: {
+            cta_title: ctaTitle,
+            cta_description: ctaDescription,
+            cta_text: ctaButtonText,
+          },
         }),
       });
 
