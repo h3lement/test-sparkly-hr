@@ -134,6 +134,9 @@ export function SortableResultLevel({
     >
       {/* Row 1: Title and controls */}
       <div className="flex items-center gap-3">
+        <span className="text-xs font-medium text-muted-foreground w-5 text-center flex-shrink-0">
+          {index + 1}.
+        </span>
         <div
           {...attributes}
           {...listeners}
