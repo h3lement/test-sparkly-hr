@@ -894,44 +894,138 @@ export function CTATemplateManager() {
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen && !!previewTemplate} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4" />
-              CTA Preview
+              CTA Preview - v{previewTemplate?.version_number}
+              {previewTemplate?.is_live && (
+                <Badge variant="default" className="text-xs bg-green-600">Live</Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           {previewTemplate && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm">Language:</Label>
-                <Select value={previewLang} onValueChange={setPreviewLang}>
-                  <SelectTrigger className="w-[120px] h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGES.map(lang => (
-                      <SelectItem key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-6">
+              {/* Controls */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Language:</Label>
+                  <Select value={previewLang} onValueChange={setPreviewLang}>
+                    <SelectTrigger className="w-[140px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      {LANGUAGES.map(lang => (
+                        <SelectItem key={lang.code} value={lang.code}>
+                          {lang.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadVersionToEdit(previewTemplate)}
+                    className="gap-1.5"
+                  >
+                    Edit
+                  </Button>
+                </div>
               </div>
 
+              {/* Visual Preview */}
               <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border">
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-xl font-semibold mb-3">
                   {previewTemplate.cta_title?.[previewLang] || previewTemplate.cta_title?.en || "CTA Title"}
                 </h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-muted-foreground mb-4 leading-relaxed">
                   {previewTemplate.cta_description?.[previewLang] || previewTemplate.cta_description?.en || "CTA description..."}
                 </p>
                 <Button className="w-full">
                   {previewTemplate.cta_text?.[previewLang] || previewTemplate.cta_text?.en || "Button"}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-3 text-center">
-                  Links to: {previewTemplate.cta_url}
+                <p className="text-xs text-muted-foreground mt-3 text-center flex items-center justify-center gap-1">
+                  <LinkIcon className="w-3 h-3" />
+                  {previewTemplate.cta_url}
                 </p>
+              </div>
+
+              {/* Full Content Details */}
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Content Details ({previewLang.toUpperCase()})</h4>
+                
+                <div className="grid gap-3">
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <Label className="text-xs text-muted-foreground">Title</Label>
+                    <p className="text-sm mt-1">
+                      {previewTemplate.cta_title?.[previewLang] || <span className="text-muted-foreground italic">Not translated</span>}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <p className="text-sm mt-1 whitespace-pre-wrap">
+                      {previewTemplate.cta_description?.[previewLang] || <span className="text-muted-foreground italic">Not translated</span>}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <Label className="text-xs text-muted-foreground">Button Text</Label>
+                      <p className="text-sm mt-1 font-medium">
+                        {previewTemplate.cta_text?.[previewLang] || <span className="text-muted-foreground italic">Not translated</span>}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <Label className="text-xs text-muted-foreground">URL</Label>
+                      <p className="text-sm mt-1 text-blue-500 truncate">
+                        {previewTemplate.cta_url}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Translation Status */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Translations</h4>
+                  <Badge variant="outline" className="gap-1">
+                    <Languages className="w-3 h-3" />
+                    {getTranslationCount(previewTemplate)}/{LANGUAGES.length}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {LANGUAGES.map(lang => {
+                    const hasTitle = !!previewTemplate.cta_title?.[lang.code]?.trim();
+                    const hasText = !!previewTemplate.cta_text?.[lang.code]?.trim();
+                    const isComplete = hasTitle && hasText;
+                    return (
+                      <Badge 
+                        key={lang.code}
+                        variant={isComplete ? "default" : "outline"}
+                        className={`text-[10px] px-1.5 cursor-pointer ${isComplete ? "bg-green-600" : "opacity-50"}`}
+                        onClick={() => setPreviewLang(lang.code)}
+                      >
+                        {lang.code.toUpperCase()}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Metadata */}
+              <div className="border-t pt-4 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>Quiz: {getQuizTitleById(previewTemplate.quiz_id)}</span>
+                  <span>Created: {formatDate(previewTemplate.created_at)}</span>
+                  {previewTemplate.created_by_email && (
+                    <span>By: {previewTemplate.created_by_email}</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
