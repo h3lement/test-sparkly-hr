@@ -110,6 +110,7 @@ interface DomainReputationMonitorProps {
 
 export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps) {
   const [isChecking, setIsChecking] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const [result, setResult] = useState<DomainReputationResult | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showDnsblDetails, setShowDnsblDetails] = useState(false);
@@ -257,6 +258,44 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
     }
   }, [domain, preferences, savePreferences, toast, loadHistory]);
 
+  // Send test notification
+  const sendTestNotification = useCallback(async () => {
+    if (!domain) return;
+
+    setIsSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-domain-reputation", {
+        body: { domain, testNotification: true },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.success ? "Test Notification Sent" : "Test Notification Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+
+      logActivity({
+        actionType: "UPDATE",
+        tableName: "domain_reputation",
+        recordId: domain,
+        fieldName: "test_notification",
+        oldValue: null,
+        newValue: data.success ? "sent" : "failed",
+        description: `Test notification ${data.success ? "sent successfully" : "failed"}`,
+      });
+    } catch (error: any) {
+      console.error("Test notification failed:", error);
+      toast({
+        title: "Test Notification Failed",
+        description: error.message || "Failed to send test notification",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
+  }, [domain, toast]);
   // Load cached result on mount
   useEffect(() => {
     if (!prefsLoading && preferences.lastResult) {
@@ -498,9 +537,30 @@ export function DomainReputationMonitor({ domain }: DomainReputationMonitorProps
               </div>
 
               <div className="mt-3 p-2 bg-blue-500/5 rounded border border-blue-500/20">
-                <div className="flex items-center gap-2 text-xs text-blue-600">
-                  <Bell className="h-3 w-3" />
-                  Email notifications are automatically sent to all admins when status changes to warning or danger.
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-blue-600">
+                    <Bell className="h-3 w-3" />
+                    Email notifications are automatically sent to all admins when status changes to warning or danger.
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={sendTestNotification}
+                    disabled={isSendingTest || !domain}
+                    className="h-7 text-xs ml-2"
+                  >
+                    {isSendingTest ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="h-3 w-3 mr-1" />
+                        Send Test
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
