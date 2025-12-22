@@ -479,10 +479,12 @@ const Admin = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {filteredAdmins.map((admin) => (
+                        {filteredAdmins.map((admin, index) => {
+                          const isEvenRow = index % 2 === 0;
+                          return (
                           <tr 
                             key={admin.id} 
-                            className={`hover:bg-secondary/30 transition-colors ${!admin.is_active ? 'opacity-60' : ''}`}
+                            className={`hover:bg-secondary/50 transition-colors ${isEvenRow ? "bg-card" : "bg-secondary/20"} ${!admin.is_active ? 'opacity-60' : ''}`}
                           >
                             <td className="density-px density-py">
                               <div 
@@ -533,7 +535,8 @@ const Admin = () => {
                               </Button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                         {filteredAdmins.length === 0 && (
                           <tr>
                             <td colSpan={4} className="density-px py-8 text-center text-muted-foreground">
@@ -564,8 +567,10 @@ const Admin = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {pendingAdmins.map((pending) => (
-                            <tr key={pending.id} className="hover:bg-secondary/30 transition-colors">
+                          {pendingAdmins.map((pending, index) => {
+                            const isEvenRow = index % 2 === 0;
+                            return (
+                            <tr key={pending.id} className={`hover:bg-secondary/50 transition-colors ${isEvenRow ? "bg-card" : "bg-secondary/20"}`}>
                               <td className="density-px density-py">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9 bg-secondary">
@@ -595,7 +600,8 @@ const Admin = () => {
                                 </Button>
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
