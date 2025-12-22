@@ -431,34 +431,120 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Rate limiting check
-  const clientIP = getClientIP(req);
-  console.log("Client IP:", clientIP);
-  
-  const rateLimitResult = checkRateLimit(clientIP);
-  
-  if (!rateLimitResult.allowed) {
-    const resetDate = new Date(rateLimitResult.resetTime);
-    console.log(`Rate limit exceeded for IP: ${clientIP}. Reset at: ${resetDate.toISOString()}`);
-    
-    return new Response(
-      JSON.stringify({ 
-        error: "Too many requests. Please try again later.",
-        resetTime: rateLimitResult.resetTime
-      }),
-      {
-        status: 429,
-        headers: { 
-          "Content-Type": "application/json",
-          "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
-          ...corsHeaders 
-        },
-      }
-    );
-  }
-
   try {
+    const body = await req.json();
+    
+    // Handle special actions
+    if (body.action === "check_connection") {
+      console.log("Checking Resend connection...");
+      const apiKey = Deno.env.get("RESEND_API_KEY");
+      
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ connected: false, error: "RESEND_API_KEY not configured" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Test the connection by making a simple API call
+      try {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "test@resend.dev",
+            to: ["test@example.com"],
+            subject: "Connection Test",
+            html: "<p>Test</p>",
+          }),
+        });
+        
+        // Even if the email fails (due to sandbox), a 422 means the API key is valid
+        const isConnected = response.status !== 401 && response.status !== 403;
+        console.log("Connection check result:", response.status, isConnected);
+        
+        return new Response(
+          JSON.stringify({ connected: isConnected }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      } catch (connError: any) {
+        console.error("Connection check failed:", connError);
+        return new Response(
+          JSON.stringify({ connected: false, error: connError.message }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+    
+    if (body.action === "test_email") {
+      console.log("Sending test email to:", body.testEmail);
+      const testResult = await resend.emails.send({
+        from: "Sparkly Test <onboarding@resend.dev>",
+        to: [body.testEmail],
+        subject: "Sparkly Email Configuration Test",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #1a1a1a; margin: 0;">✅ Email Configuration Working</h1>
+            </div>
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+              <p style="color: #4a4a4a; margin: 0; line-height: 1.6;">
+                This is a test email from your Sparkly application. If you received this, your email configuration is working correctly.
+              </p>
+            </div>
+            <div style="text-align: center; color: #888; font-size: 12px;">
+              <p>Sent from Sparkly.hr</p>
+              <p>Timestamp: ${new Date().toISOString()}</p>
+            </div>
+          </div>
+        `,
+      });
+      
+      if (testResult.error) {
+        console.error("Test email failed:", testResult.error);
+        return new Response(
+          JSON.stringify({ success: false, error: testResult.error.message }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      console.log("Test email sent successfully:", testResult.data?.id);
+      return new Response(
+        JSON.stringify({ success: true, id: testResult.data?.id }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Rate limiting check for regular email sending
+    const clientIP = getClientIP(req);
+    console.log("Client IP:", clientIP);
+    
+    const rateLimitResult = checkRateLimit(clientIP);
+    
+    if (!rateLimitResult.allowed) {
+      const resetDate = new Date(rateLimitResult.resetTime);
+      console.log(`Rate limit exceeded for IP: ${clientIP}. Reset at: ${resetDate.toISOString()}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many requests. Please try again later.",
+          resetTime: rateLimitResult.resetTime
+        }),
+        {
+          status: 429,
+          headers: { 
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": rateLimitResult.resetTime.toString(),
+            ...corsHeaders 
+          },
+        }
+      );
+    }
+
     const { 
       email, 
       totalScore, 
@@ -475,7 +561,7 @@ const handler = async (req: Request): Promise<Response> => {
       quizId,
       isTest = false,
       templateOverride 
-    }: QuizResultsRequest & { isTest?: boolean } = await req.json();
+    }: QuizResultsRequest & { isTest?: boolean } = body;
 
     console.log("Processing quiz results for:", email);
     console.log("Score:", totalScore, "/", maxScore);
