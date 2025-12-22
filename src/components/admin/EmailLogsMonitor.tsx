@@ -35,7 +35,6 @@ import {
   ChevronRight,
   Send,
   Clock,
-  Upload,
   ExternalLink
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
@@ -89,42 +88,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
-  const [importing, setImporting] = useState(false);
   const { toast } = useToast();
-
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImporting(true);
-    try {
-      const text = await file.text();
-      
-      const { data, error } = await supabase.functions.invoke("import-email-logs", {
-        body: { csvContent: text },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Import successful",
-        description: `Imported ${data.inserted} records (${data.parseErrors} parse errors)`,
-      });
-      
-      fetchLogs();
-    } catch (error: any) {
-      console.error("Import error:", error);
-      toast({
-        title: "Import failed",
-        description: error.message || "Failed to import CSV",
-        variant: "destructive",
-      });
-    } finally {
-      setImporting(false);
-      // Reset input
-      event.target.value = "";
-    }
-  };
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -372,21 +336,6 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="hidden"
-              disabled={importing}
-            />
-            <Button variant="outline" size="sm" disabled={importing} asChild>
-              <span>
-                <Upload className={`w-4 h-4 mr-2 ${importing ? "animate-pulse" : ""}`} />
-                {importing ? "Importing..." : "Import CSV"}
-              </span>
-            </Button>
-          </label>
         </div>
       </div>
 
