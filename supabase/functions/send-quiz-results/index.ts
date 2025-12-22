@@ -347,7 +347,7 @@ function getLocalizedValue(
   return jsonObj[language] || jsonObj[primaryLanguage] || jsonObj['en'] || fallback;
 }
 
-// Fetch dynamic content from quiz_result_levels and quizzes for a specific quiz
+// Fetch dynamic content from quiz_result_levels and cta_templates for a specific quiz
 async function fetchDynamicEmailContent(
   supabase: any,
   quizId: string,
@@ -357,7 +357,7 @@ async function fetchDynamicEmailContent(
   try {
     console.log(`Fetching dynamic content for quiz ${quizId}, score ${score}, language ${language}`);
     
-    // Fetch quiz info including CTA and primary language
+    // Fetch quiz info for primary language
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
       .select('slug, primary_language, cta_title, cta_description, cta_text, cta_url')
@@ -396,16 +396,31 @@ async function fetchDynamicEmailContent(
       console.log(`No result level found for score ${score}`);
       return null;
     }
+
+    // Fetch live CTA template for this quiz
+    const { data: ctaTemplate, error: ctaError } = await supabase
+      .from('cta_templates')
+      .select('cta_title, cta_description, cta_text, cta_url')
+      .eq('quiz_id', quizId)
+      .eq('is_live', true)
+      .maybeSingle();
+    
+    if (ctaError) {
+      console.log('Error fetching CTA template:', ctaError.message);
+    }
+
+    // Use CTA from cta_templates if available, fallback to quizzes table
+    const ctaSource = ctaTemplate || quiz;
     
     // Build dynamic content with fallback chain
     const dynamicContent: DynamicEmailContent = {
       resultTitle: getLocalizedValue(resultLevel.title, language, primaryLang, 'Your Result'),
       resultDescription: getLocalizedValue(resultLevel.description, language, primaryLang, ''),
       insights: Array.isArray(resultLevel.insights) ? resultLevel.insights : [],
-      ctaTitle: getLocalizedValue(quiz.cta_title, language, primaryLang, 'Ready for Precise Employee Assessment?'),
-      ctaDescription: getLocalizedValue(quiz.cta_description, language, primaryLang, 'Continue with professional testing for accurate analysis.'),
-      ctaButtonText: getLocalizedValue(quiz.cta_text, language, primaryLang, 'Continue to Sparkly.hr'),
-      ctaUrl: quiz.cta_url || 'https://sparkly.hr',
+      ctaTitle: getLocalizedValue(ctaSource.cta_title, language, primaryLang, 'Ready for Precise Employee Assessment?'),
+      ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, 'Continue with professional testing for accurate analysis.'),
+      ctaButtonText: getLocalizedValue(ctaSource.cta_text, language, primaryLang, 'Continue to Sparkly.hr'),
+      ctaUrl: ctaSource.cta_url || 'https://sparkly.hr',
       emoji: resultLevel.emoji || '🌟',
     };
     
@@ -413,6 +428,7 @@ async function fetchDynamicEmailContent(
       resultTitle: dynamicContent.resultTitle,
       hasInsights: dynamicContent.insights.length,
       ctaTitle: dynamicContent.ctaTitle,
+      ctaSource: ctaTemplate ? 'cta_templates' : 'quizzes',
     });
     
     return dynamicContent;
