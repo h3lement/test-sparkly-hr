@@ -555,6 +555,7 @@ const handler = async (req: Request): Promise<Response> => {
         answers: answers || null,
         openness_score: opennessScore ?? null,
         language: language,
+        quiz_id: quizId || null,
       }).select("id").single();
 
       if (insertError) {
