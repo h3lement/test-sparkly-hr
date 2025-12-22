@@ -290,6 +290,11 @@ export function EmailSettings() {
     slowReconnectDelayMs: number;
     maxReconnectAttempts: number;
     autoReconnectEnabled: boolean;
+    // Periodic health check interval
+    intervalDays: number;
+    intervalHours: number;
+    intervalMinutes: number;
+    periodicCheckEnabled: boolean;
   }
   const { preferences: recheckSettings, updatePreference: updateRecheckSetting, savePreferences: saveRecheckSettings } = useUserPreferences<RecheckSettingsPrefs>({
     key: "email_recheck_settings",
@@ -299,14 +304,42 @@ export function EmailSettings() {
       slowReconnectDelayMs: 30000,
       maxReconnectAttempts: 10,
       autoReconnectEnabled: true,
+      intervalDays: 0,
+      intervalHours: 1,
+      intervalMinutes: 0,
+      periodicCheckEnabled: true,
     },
   });
   const [showRecheckSettings, setShowRecheckSettings] = useState(false);
   
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const periodicCheckTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const { toast } = useToast();
+
+  // Calculate interval in milliseconds
+  const getIntervalMs = useCallback(() => {
+    const days = recheckSettings.intervalDays || 0;
+    const hours = recheckSettings.intervalHours || 0;
+    const minutes = recheckSettings.intervalMinutes || 0;
+    return (days * 24 * 60 * 60 * 1000) + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000);
+  }, [recheckSettings.intervalDays, recheckSettings.intervalHours, recheckSettings.intervalMinutes]);
+
+  // Format interval for display
+  const formatInterval = useCallback(() => {
+    const parts: string[] = [];
+    if (recheckSettings.intervalDays > 0) {
+      parts.push(`${recheckSettings.intervalDays}d`);
+    }
+    if (recheckSettings.intervalHours > 0) {
+      parts.push(`${recheckSettings.intervalHours}h`);
+    }
+    if (recheckSettings.intervalMinutes > 0) {
+      parts.push(`${recheckSettings.intervalMinutes}m`);
+    }
+    return parts.length > 0 ? parts.join(' ') : 'Not set';
+  }, [recheckSettings.intervalDays, recheckSettings.intervalHours, recheckSettings.intervalMinutes]);
 
   // Fetch quizzes on mount
   useEffect(() => {
@@ -777,6 +810,33 @@ export function EmailSettings() {
       }
     };
   }, [checkConnection]);
+
+  // Periodic health check interval
+  useEffect(() => {
+    if (periodicCheckTimerRef.current) {
+      clearInterval(periodicCheckTimerRef.current);
+    }
+
+    if (!recheckSettings.periodicCheckEnabled) {
+      return;
+    }
+
+    const intervalMs = getIntervalMs();
+    if (intervalMs < 60000) { // Minimum 1 minute
+      return;
+    }
+
+    periodicCheckTimerRef.current = setInterval(() => {
+      console.log("Periodic connection health check...");
+      checkConnection(true);
+    }, intervalMs);
+
+    return () => {
+      if (periodicCheckTimerRef.current) {
+        clearInterval(periodicCheckTimerRef.current);
+      }
+    };
+  }, [recheckSettings.periodicCheckEnabled, getIntervalMs, checkConnection]);
 
   const canSendEmail = useCallback(() => {
     if (!rateLimitInfo.lastSentAt) return true;
@@ -2195,11 +2255,86 @@ export function EmailSettings() {
                   </div>
 
                   <div className="text-[10px] text-muted-foreground pt-2 border-t">
-                    <p><strong>Current strategy:</strong> {recheckSettings.fastReconnectAttempts} fast retries at {recheckSettings.fastReconnectDelayMs / 1000}s intervals, 
+                    <p><strong>Failure retry:</strong> {recheckSettings.fastReconnectAttempts} fast retries at {recheckSettings.fastReconnectDelayMs / 1000}s intervals, 
                     then slower retries at {recheckSettings.slowReconnectDelayMs / 1000}s (max {recheckSettings.maxReconnectAttempts} total attempts)</p>
                   </div>
                 </>
               )}
+
+              {/* Periodic Health Check Interval */}
+              <div className="pt-3 border-t space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-medium">Periodic Health Check</Label>
+                    <p className="text-[10px] text-muted-foreground">Automatically verify connection at intervals</p>
+                  </div>
+                  <Switch
+                    checked={recheckSettings.periodicCheckEnabled}
+                    onCheckedChange={(checked) => updateRecheckSetting("periodicCheckEnabled", checked)}
+                  />
+                </div>
+
+                {recheckSettings.periodicCheckEnabled && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Check Interval</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Select
+                            value={String(recheckSettings.intervalDays || 0)}
+                            onValueChange={(val) => updateRecheckSetting("intervalDays", parseInt(val))}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[0, 1, 2, 3, 7, 14, 30].map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Select
+                            value={String(recheckSettings.intervalHours || 0)}
+                            onValueChange={(val) => updateRecheckSetting("intervalHours", parseInt(val))}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[0, 1, 2, 3, 4, 6, 8, 12, 24].map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n} hrs</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Select
+                            value={String(recheckSettings.intervalMinutes || 0)}
+                            onValueChange={(val) => updateRecheckSetting("intervalMinutes", parseInt(val))}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[0, 1, 5, 10, 15, 30, 45].map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n} min</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {getIntervalMs() >= 60000 
+                          ? `Checks every ${formatInterval()}` 
+                          : <span className="text-amber-600">Minimum interval is 1 minute</span>
+                        }
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
 
               <Button
                 variant="outline"
