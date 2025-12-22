@@ -44,12 +44,19 @@ interface DomainInfo {
   region: string;
 }
 
+interface DnsValidation {
+  spf: { valid: boolean; record: string | null; inUse: boolean };
+  dkim: { valid: boolean; configured: boolean; inUse: boolean; selector: string | null };
+  dmarc: { valid: boolean; record: string | null; inUse: boolean };
+}
+
 interface ConnectionStatus {
   status: "connected" | "disconnected" | "checking" | "error";
   lastChecked: Date | null;
   message: string;
   apiKeyConfigured: boolean;
   domains: DomainInfo[];
+  dnsValidation?: DnsValidation;
 }
 
 interface EmailError {
@@ -309,6 +316,7 @@ export function EmailSettings() {
           message: "SMTP connection active",
           apiKeyConfigured: true,
           domains: data?.domains || [],
+          dnsValidation: data?.dnsValidation,
         });
         setSuccess({
           type: "connection",
@@ -322,6 +330,7 @@ export function EmailSettings() {
           message: errorMessage,
           apiKeyConfigured: false,
           domains: [],
+          dnsValidation: data?.dnsValidation,
         });
         addError({
           type: "connection",
@@ -975,6 +984,122 @@ export function EmailSettings() {
                 </div>
               )}
 
+              {/* DNS Security Validation */}
+              {connectionStatus.dnsValidation && (
+                <div className="space-y-2 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground">Email Security (DNS Records)</p>
+                  
+                  {/* SPF */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {connectionStatus.dnsValidation.spf.valid ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-amber-500" />
+                      )}
+                      <span>SPF</span>
+                      {connectionStatus.dnsValidation.spf.inUse && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs px-1.5 py-0 ${
+                        connectionStatus.dnsValidation.spf.valid 
+                          ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                          : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                      }`}
+                    >
+                      {connectionStatus.dnsValidation.spf.valid ? "Valid" : "Missing"}
+                    </Badge>
+                  </div>
+                  {connectionStatus.dnsValidation.spf.record && (
+                    <p className="text-[10px] text-muted-foreground font-mono truncate pl-5">
+                      {connectionStatus.dnsValidation.spf.record.substring(0, 60)}...
+                    </p>
+                  )}
+                  
+                  {/* DKIM */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {connectionStatus.dnsValidation.dkim.valid ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      ) : connectionStatus.dnsValidation.dkim.configured ? (
+                        <AlertTriangle className="h-3 w-3 text-amber-500" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span>DKIM</span>
+                      {connectionStatus.dnsValidation.dkim.inUse && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs px-1.5 py-0 ${
+                        connectionStatus.dnsValidation.dkim.valid 
+                          ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                          : connectionStatus.dnsValidation.dkim.configured
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {connectionStatus.dnsValidation.dkim.valid 
+                        ? "Valid" 
+                        : connectionStatus.dnsValidation.dkim.configured 
+                          ? "DNS Missing" 
+                          : "Not Set"}
+                    </Badge>
+                  </div>
+                  {connectionStatus.dnsValidation.dkim.selector && (
+                    <p className="text-[10px] text-muted-foreground font-mono pl-5">
+                      Selector: {connectionStatus.dnsValidation.dkim.selector}
+                    </p>
+                  )}
+                  
+                  {/* DMARC */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {connectionStatus.dnsValidation.dmarc.valid ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-amber-500" />
+                      )}
+                      <span>DMARC</span>
+                      {connectionStatus.dnsValidation.dmarc.inUse && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs px-1.5 py-0 ${
+                        connectionStatus.dnsValidation.dmarc.valid 
+                          ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                          : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                      }`}
+                    >
+                      {connectionStatus.dnsValidation.dmarc.valid ? "Valid" : "Missing"}
+                    </Badge>
+                  </div>
+                  {connectionStatus.dnsValidation.dmarc.record && (
+                    <p className="text-[10px] text-muted-foreground font-mono truncate pl-5">
+                      {connectionStatus.dnsValidation.dmarc.record.substring(0, 60)}...
+                    </p>
+                  )}
+
+                  {/* Info about what's in use */}
+                  <div className="pt-2 mt-2 border-t text-[10px] text-muted-foreground">
+                    <p><span className="font-medium">Active</span> = checked by receiving servers when sending</p>
+                  </div>
+                </div>
+              )}
+
               {/* Meta Info */}
               {connectionStatus.lastChecked && (
                 <div className="text-xs text-muted-foreground pt-2 border-t">
@@ -992,6 +1117,31 @@ export function EmailSettings() {
                 <div className="text-xs text-amber-700">
                   <p className="font-medium mb-1">SMTP not configured</p>
                   <p>Set your SMTP host, username, and password in the configuration panel to start sending emails.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DNS Recommendations */}
+          {connectionStatus.dnsValidation && (
+            !connectionStatus.dnsValidation.spf.valid || 
+            !connectionStatus.dnsValidation.dmarc.valid ||
+            (connectionStatus.dnsValidation.dkim.configured && !connectionStatus.dnsValidation.dkim.valid)
+          ) && (
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <div className="text-xs text-amber-700 space-y-1">
+                  <p className="font-medium">DNS Records Missing</p>
+                  {!connectionStatus.dnsValidation.spf.valid && (
+                    <p>• Add SPF record to improve deliverability</p>
+                  )}
+                  {!connectionStatus.dnsValidation.dmarc.valid && (
+                    <p>• Add DMARC record for email authentication</p>
+                  )}
+                  {connectionStatus.dnsValidation.dkim.configured && !connectionStatus.dnsValidation.dkim.valid && (
+                    <p>• Add DKIM DNS record (key configured but DNS missing)</p>
+                  )}
                 </div>
               </div>
             </div>
