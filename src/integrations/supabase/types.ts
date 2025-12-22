@@ -269,6 +269,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_by_email: string | null
+          cta_template_id: string | null
           estimated_cost_eur: number | null
           id: string
           input_tokens: number | null
@@ -286,6 +287,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
+          cta_template_id?: string | null
           estimated_cost_eur?: number | null
           id?: string
           input_tokens?: number | null
@@ -303,6 +305,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
+          cta_template_id?: string | null
           estimated_cost_eur?: number | null
           id?: string
           input_tokens?: number | null
@@ -316,6 +319,13 @@ export type Database = {
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "email_templates_cta_template_id_fkey"
+            columns: ["cta_template_id"]
+            isOneToOne: false
+            referencedRelation: "cta_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_templates_quiz_id_fkey"
             columns: ["quiz_id"]

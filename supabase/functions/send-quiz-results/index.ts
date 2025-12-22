@@ -352,10 +352,11 @@ async function fetchDynamicEmailContent(
   supabase: any,
   quizId: string,
   score: number,
-  language: string
+  language: string,
+  ctaTemplateId?: string | null
 ): Promise<DynamicEmailContent | null> {
   try {
-    console.log(`Fetching dynamic content for quiz ${quizId}, score ${score}, language ${language}`);
+    console.log(`Fetching dynamic content for quiz ${quizId}, score ${score}, language ${language}, ctaTemplateId ${ctaTemplateId || 'none'}`);
     
     // Fetch quiz info for primary language
     const { data: quiz, error: quizError } = await supabase
@@ -397,16 +398,38 @@ async function fetchDynamicEmailContent(
       return null;
     }
 
-    // Fetch live CTA template for this quiz
-    const { data: ctaTemplate, error: ctaError } = await supabase
-      .from('cta_templates')
-      .select('cta_title, cta_description, cta_text, cta_url')
-      .eq('quiz_id', quizId)
-      .eq('is_live', true)
-      .maybeSingle();
+    // Priority 1: Fetch CTA template linked to email template (if provided)
+    let ctaTemplate = null;
+    if (ctaTemplateId) {
+      const { data: linkedCta, error: linkedCtaError } = await supabase
+        .from('cta_templates')
+        .select('cta_title, cta_description, cta_text, cta_url')
+        .eq('id', ctaTemplateId)
+        .maybeSingle();
+      
+      if (!linkedCtaError && linkedCta) {
+        ctaTemplate = linkedCta;
+        console.log('Using CTA linked to email template:', ctaTemplateId);
+      } else if (linkedCtaError) {
+        console.log('Error fetching linked CTA template:', linkedCtaError.message);
+      }
+    }
     
-    if (ctaError) {
-      console.log('Error fetching CTA template:', ctaError.message);
+    // Priority 2: Fetch live CTA template for this quiz (fallback)
+    if (!ctaTemplate) {
+      const { data: liveCta, error: liveCtaError } = await supabase
+        .from('cta_templates')
+        .select('cta_title, cta_description, cta_text, cta_url')
+        .eq('quiz_id', quizId)
+        .eq('is_live', true)
+        .maybeSingle();
+      
+      if (!liveCtaError && liveCta) {
+        ctaTemplate = liveCta;
+        console.log('Using live CTA for quiz');
+      } else if (liveCtaError) {
+        console.log('Error fetching live CTA template:', liveCtaError.message);
+      }
     }
 
     // Use CTA from cta_templates if available, fallback to quizzes table
@@ -1307,10 +1330,11 @@ const handler = async (req: Request): Promise<Response> => {
       const templateSubjects = templateData?.subjects as Record<string, string> || {};
       const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
 
-      // Fetch dynamic content for 50plus quiz
+      // Fetch dynamic content for 50plus quiz (pass CTA template ID from email template)
+      const ctaTemplateId = templateData?.cta_template_id as string | null;
       let dynamicContent: DynamicEmailContent | null = null;
       if (quizId) {
-        dynamicContent = await fetchDynamicEmailContent(supabase, quizId, totalScore, language);
+        dynamicContent = await fetchDynamicEmailContent(supabase, quizId, totalScore, language, ctaTemplateId);
       }
 
       const emailHtml = buildEmailHtmlDynamic(templateData, language, trans, {
@@ -1388,10 +1412,11 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("Background task: Using email config:", { senderName, senderEmail, subject: emailSubject });
 
-        // Fetch dynamic content for 50plus quiz
+        // Fetch dynamic content for 50plus quiz (pass CTA template ID from email template)
+        const ctaTemplateId = templateData?.cta_template_id as string | null;
         let dynamicContent: DynamicEmailContent | null = null;
         if (quizId) {
-          dynamicContent = await fetchDynamicEmailContent(supabase, quizId, totalScore, language);
+          dynamicContent = await fetchDynamicEmailContent(supabase, quizId, totalScore, language, ctaTemplateId);
         }
 
         const emailHtml = buildEmailHtmlDynamic(templateData, language, trans, {
