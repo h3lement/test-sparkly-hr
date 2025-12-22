@@ -434,7 +434,7 @@ const Admin = () => {
 
           {/* Admins Tab */}
           {activeTab === "admins" && (
-            <div className="max-w-6xl">
+            <div className="w-full">
               <div className="flex items-start justify-between mb-8">
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">Admins</h1>
@@ -612,7 +612,7 @@ const Admin = () => {
 
           {/* Versions Tab */}
           {activeTab === "versions" && (
-            <div className="max-w-6xl space-y-6">
+            <div className="w-full space-y-6">
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-foreground">Versions</h1>
                 <p className="text-muted-foreground mt-1">Web and email template versions across all quizzes</p>
@@ -624,7 +624,7 @@ const Admin = () => {
 
           {/* Email Logs Tab */}
           {activeTab === "email-logs" && (
-            <div className="max-w-6xl">
+            <div className="w-full">
               <EmailLogsMonitor 
                 onViewQuizLead={handleViewQuizLead}
                 initialEmailFilter={emailHistoryFilter}
