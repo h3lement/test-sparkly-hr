@@ -395,7 +395,7 @@ serve(async (req) => {
   }
 
   try {
-    const { domain, skipVirusTotal, skipNotification } = await req.json();
+    const { domain, skipVirusTotal, skipNotification, testNotification } = await req.json();
     
     if (!domain) {
       return new Response(
@@ -408,6 +408,51 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Handle test notification request
+    if (testNotification) {
+      console.log(`Sending test notification for domain: ${domain}`);
+      
+      const testResult: DomainReputationResult = {
+        domain,
+        checkedAt: new Date().toISOString(),
+        dnsbl: {
+          results: [
+            { name: "Test Blacklist 1", server: "test1.example.com", description: "Test blacklist", listed: true },
+            { name: "Test Blacklist 2", server: "test2.example.com", description: "Test blacklist", listed: false },
+          ],
+          listedCount: 1,
+          checkedCount: 2,
+        },
+        virusTotal: {
+          harmless: 70,
+          malicious: 1,
+          suspicious: 2,
+          undetected: 10,
+          timeout: 0,
+          lastAnalysisDate: new Date().toISOString(),
+          reputation: -5,
+          categories: { "test-vendor": "test-category" },
+        },
+        overallStatus: "warning",
+        recommendations: [
+          "This is a TEST notification to verify the alert system is working.",
+          "No action is required - this was manually triggered.",
+        ],
+      };
+
+      const notificationSent = await sendAdminNotification(supabase, domain, "warning", testResult);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: notificationSent, 
+          message: notificationSent 
+            ? "Test notification sent successfully to all admins" 
+            : "Failed to send test notification - check RESEND_API_KEY and admin emails" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     console.log(`Starting domain reputation check for: ${domain}`);
     const checkedAt = new Date().toISOString();
