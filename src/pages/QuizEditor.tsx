@@ -617,6 +617,8 @@ export default function QuizEditor() {
     if (!quizId || quizId === "new" || !slug) return;
 
     // Subscribe to quiz_leads changes for respondents/stats count
+    // Subscribe to leads changes based on quiz type
+    const leadsTable = quizType === "hypothesis" ? "hypothesis_leads" : "quiz_leads";
     const leadsChannel = supabase
       .channel(`quiz-leads-${quizId}`)
       .on(
@@ -624,12 +626,12 @@ export default function QuizEditor() {
         {
           event: '*',
           schema: 'public',
-          table: 'quiz_leads',
+          table: leadsTable,
           filter: `quiz_id=eq.${quizId}`
         },
         async () => {
           const { count } = await supabase
-            .from("quiz_leads")
+            .from(leadsTable)
             .select("*", { count: "exact", head: true })
             .eq("quiz_id", quizId);
           setRespondentsCount(count || 0);
@@ -813,9 +815,10 @@ export default function QuizEditor() {
       const totalCost = (versionsData || []).reduce((sum, v) => sum + (v.estimated_cost_eur || 0), 0);
       setTotalAiCost(totalCost);
 
-      // Load respondents count
+      // Load respondents count based on quiz type
+      const leadsTable = (quiz as any).quiz_type === "hypothesis" ? "hypothesis_leads" : "quiz_leads";
       const { count: leadsCount } = await supabase
-        .from("quiz_leads")
+        .from(leadsTable)
         .select("*", { count: "exact", head: true })
         .eq("quiz_id", id);
       setRespondentsCount(leadsCount || 0);
