@@ -2824,7 +2824,7 @@ export default function QuizEditor() {
                 </p>
               </div>
             ) : quizId ? (
-              <QuizRespondents quizId={quizId} displayLanguage={displayLanguage} />
+              <QuizRespondents quizId={quizId} displayLanguage={displayLanguage} quizType={quizType} />
             ) : null}
           </TabsContent>
 
