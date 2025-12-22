@@ -39,6 +39,85 @@ async function getResendApiKey(): Promise<string | null> {
   return envKey || null;
 }
 
+// Helper function to get email configuration from app_settings
+interface EmailConfigSettings {
+  senderName: string;
+  senderEmail: string;
+  replyToEmail: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUsername: string;
+  smtpPassword: string;
+  smtpTls: boolean;
+  dkimSelector: string;
+  dkimPrivateKey: string;
+  dkimDomain: string;
+}
+
+async function getEmailConfig(): Promise<EmailConfigSettings> {
+  const defaults: EmailConfigSettings = {
+    senderName: "Sparkly",
+    senderEmail: "onboarding@resend.dev",
+    replyToEmail: "",
+    smtpHost: "",
+    smtpPort: "587",
+    smtpUsername: "",
+    smtpPassword: "",
+    smtpTls: true,
+    dkimSelector: "",
+    dkimPrivateKey: "",
+    dkimDomain: "",
+  };
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const settingKeys = [
+        "email_sender_name", "email_sender_email", "email_reply_to",
+        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls",
+        "dkim_selector", "dkim_private_key", "dkim_domain"
+      ];
+      
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_key, setting_value")
+        .in("setting_key", settingKeys);
+      
+      if (!error && data && data.length > 0) {
+        data.forEach((setting: { setting_key: string; setting_value: string }) => {
+          switch (setting.setting_key) {
+            case "email_sender_name": defaults.senderName = setting.setting_value || defaults.senderName; break;
+            case "email_sender_email": defaults.senderEmail = setting.setting_value || defaults.senderEmail; break;
+            case "email_reply_to": defaults.replyToEmail = setting.setting_value; break;
+            case "smtp_host": defaults.smtpHost = setting.setting_value; break;
+            case "smtp_port": defaults.smtpPort = setting.setting_value || defaults.smtpPort; break;
+            case "smtp_username": defaults.smtpUsername = setting.setting_value; break;
+            case "smtp_password": defaults.smtpPassword = setting.setting_value; break;
+            case "smtp_tls": defaults.smtpTls = setting.setting_value === "true"; break;
+            case "dkim_selector": defaults.dkimSelector = setting.setting_value; break;
+            case "dkim_private_key": defaults.dkimPrivateKey = setting.setting_value; break;
+            case "dkim_domain": defaults.dkimDomain = setting.setting_value; break;
+          }
+        });
+        console.log("Loaded email config from database:", {
+          senderName: defaults.senderName,
+          senderEmail: defaults.senderEmail,
+          hasSmtp: !!defaults.smtpHost,
+          hasDkim: !!defaults.dkimDomain,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching email config from database:", error);
+  }
+  
+  return defaults;
+}
+
 // Create a lazy-loaded resend instance
 let resendInstance: Resend | null = null;
 async function getResend(): Promise<Resend | null> {
