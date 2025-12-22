@@ -249,7 +249,7 @@ export function TemplateVersionsPage() {
           const { data, error } = await supabase.functions.invoke("generate-results", {
             body: {
               quizId: quiz.id,
-              numberOfLevels: 4,
+              numberOfLevels: 5,
               toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
               higherScoreMeaning: "positive" as const,
               language: quiz.primary_language || "en",
