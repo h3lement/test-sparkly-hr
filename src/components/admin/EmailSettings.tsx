@@ -375,6 +375,38 @@ export function EmailSettings() {
             </Button>
           </div>
 
+          {/* Default SMTP Configuration */}
+          {connectionStatus.status === "connected" && (
+            <div className="p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Default SMTP Configuration</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Provider:</span>
+                  <span className="font-medium">Resend</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Protocol:</span>
+                  <span className="font-medium">HTTPS API</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Endpoint:</span>
+                  <span className="font-mono text-xs">api.resend.com</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Region:</span>
+                  <span className="font-medium">
+                    {connectionStatus.domains.length > 0 && connectionStatus.domains[0].region
+                      ? connectionStatus.domains[0].region.toUpperCase()
+                      : "US"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Domain Verification Status */}
           {connectionStatus.status === "connected" && (
             <div className="p-3 rounded-lg bg-muted/50 border">
@@ -408,18 +440,25 @@ export function EmailSettings() {
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
-                  <span>No domains verified. Using sandbox (onboarding@resend.dev)</span>
-                  <a
-                    href="https://resend.com/domains"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline ml-1"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Add domain
-                  </a>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                    <span className="font-medium text-amber-600">No domain connected</span>
+                  </div>
+                  <p className="pl-5.5 text-muted-foreground">
+                    Currently using sandbox mode with <span className="font-mono">onboarding@resend.dev</span>
+                  </p>
+                  <div className="pl-5.5">
+                    <a
+                      href="https://resend.com/domains"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Add your domain
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
