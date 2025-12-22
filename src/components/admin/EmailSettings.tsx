@@ -1623,14 +1623,64 @@ export function EmailSettings() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Private Key</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Private Key (stored securely, never exposed)</Label>
+                      {configDraft.dkimPrivateKey && !configDraft.dkimPublicKey && (
+                        <span className="text-xs text-amber-600 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Missing public key
+                        </span>
+                      )}
+                    </div>
                     <textarea
                       value={configDraft.dkimPrivateKey}
                       onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPrivateKey: e.target.value }))}
-                      placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                      placeholder="-----BEGIN RSA PRIVATE KEY----- (Use 'Generate' button above to create a new key pair)"
                       className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Tip:</strong> Use the "Generate" button to create a matching key pair. If you paste a private key manually, you must also provide the public key below.
+                    </p>
                   </div>
+
+                  {/* Public Key Field - Always visible when private key exists */}
+                  {configDraft.dkimPrivateKey && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Public Key (for DNS record)</Label>
+                        {configDraft.dkimPublicKey && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText(configDraft.dkimPublicKey);
+                              toast({ title: "Copied!", description: "Public key copied to clipboard." });
+                            }}
+                          >
+                            Copy
+                          </Button>
+                        )}
+                      </div>
+                      <textarea
+                        value={configDraft.dkimPublicKey}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dkimPublicKey: e.target.value }))}
+                        placeholder="Base64-encoded public key (without headers)"
+                        className="w-full h-16 text-xs font-mono p-2 rounded-md border bg-background resize-none"
+                      />
+                      {!configDraft.dkimPublicKey && (
+                        <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                          <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                          <p className="text-xs text-amber-700">
+                            <strong>Public key required:</strong> If you pasted a private key from another source, you must also paste the corresponding public key here. 
+                            It's cryptographically impossible to derive the public key from the private key in the browser. 
+                            Use "Generate" to create a new matching pair.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   {configDraft.dkimSelector && configDraft.dkimDomain && (
                     <div className="p-3 bg-muted rounded-lg space-y-2 border">
@@ -1661,14 +1711,15 @@ export function EmailSettings() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
-                          {configDraft.dkimDnsRecord && (
+                          {(configDraft.dkimDnsRecord || configDraft.dkimPublicKey) && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-6 px-2 text-xs"
                               onClick={() => {
-                                navigator.clipboard.writeText(configDraft.dkimDnsRecord);
+                                const dnsValue = configDraft.dkimDnsRecord || `v=DKIM1; k=rsa; p=${configDraft.dkimPublicKey}`;
+                                navigator.clipboard.writeText(dnsValue);
                                 toast({ title: "Copied!", description: "DNS record value copied to clipboard." });
                               }}
                             >
@@ -1680,22 +1731,16 @@ export function EmailSettings() {
                           <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
                             {configDraft.dkimDnsRecord}
                           </div>
+                        ) : configDraft.dkimPublicKey ? (
+                          <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
+                            v=DKIM1; k=rsa; p={configDraft.dkimPublicKey}
+                          </div>
                         ) : (
                           <p className="text-xs text-amber-600 italic">
-                            Click "Generate" to create keys and get the DNS record value.
+                            Click "Generate" to create keys, or enter the public key above to see the DNS record.
                           </p>
                         )}
                       </div>
-                      {configDraft.dkimPublicKey && (
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                            View raw public key
-                          </summary>
-                          <div className="mt-2 p-2 bg-background rounded font-mono break-all border max-h-20 overflow-y-auto">
-                            {configDraft.dkimPublicKey}
-                          </div>
-                        </details>
-                      )}
                     </div>
                   )}
                 </div>
