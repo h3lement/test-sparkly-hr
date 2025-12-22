@@ -188,7 +188,8 @@ async function sendAdminNotification(
   supabase: any,
   domain: string,
   status: string,
-  result: DomainReputationResult
+  result: DomainReputationResult,
+  isTest: boolean = false
 ) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) {
@@ -343,15 +344,17 @@ async function sendAdminNotification(
         });
       }
       
-      // Log to activity log
+      // Log to activity log - generate a UUID for the record_id
+      const activityRecordId = crypto.randomUUID();
+      const emailTypeLabel = isTest ? "TEST " : "";
       const { error: activityError } = await supabase.from("activity_logs").insert({
         action_type: "EMAIL_FAILED",
         table_name: "domain_reputation",
-        record_id: domain,
+        record_id: activityRecordId,
         field_name: "notification_email",
         old_value: null,
         new_value: status,
-        description: `Domain reputation alert email failed to send to ${adminEmails.length} admin(s): ${sendError.message || "Unknown error"}`,
+        description: `${emailTypeLabel}Domain reputation alert email failed to send to ${adminEmails.length} admin(s) for ${domain}: ${sendError.message || "Unknown error"}`,
       });
       if (activityError) {
         console.error("Failed to log activity:", activityError);
@@ -376,15 +379,17 @@ async function sendAdminNotification(
       });
     }
     
-    // Log to activity log
+    // Log to activity log - generate a UUID for the record_id
+    const activityRecordId = crypto.randomUUID();
+    const emailTypeLabel = isTest ? "TEST " : "";
     const { error: activityError } = await supabase.from("activity_logs").insert({
       action_type: "EMAIL_SENT",
       table_name: "domain_reputation",
-      record_id: domain,
+      record_id: activityRecordId,
       field_name: "notification_email",
       old_value: null,
       new_value: status,
-      description: `Domain reputation alert (${statusText}) sent to ${adminEmails.length} admin(s): ${adminEmails.join(", ")}`,
+      description: `${emailTypeLabel}Domain reputation alert (${statusText}) sent to ${adminEmails.length} admin(s) for ${domain}: ${adminEmails.join(", ")}`,
     });
     if (activityError) {
       console.error("Failed to log activity:", activityError);
@@ -501,7 +506,7 @@ serve(async (req) => {
         ],
       };
 
-      const notificationSent = await sendAdminNotification(supabase, domain, "warning", testResult);
+      const notificationSent = await sendAdminNotification(supabase, domain, "warning", testResult, true);
       
       return new Response(
         JSON.stringify({ 
@@ -571,10 +576,10 @@ serve(async (req) => {
     if (!skipNotification && (overallStatus === "warning" || overallStatus === "danger")) {
       // Only notify if status changed to warning/danger from clean
       if (previousStatus !== overallStatus && previousStatus !== "warning" && previousStatus !== "danger") {
-        notificationSent = await sendAdminNotification(supabase, domain, overallStatus, result);
+        notificationSent = await sendAdminNotification(supabase, domain, overallStatus, result, false);
       } else if (!previousStatus) {
         // First check ever, notify if not clean
-        notificationSent = await sendAdminNotification(supabase, domain, overallStatus, result);
+        notificationSent = await sendAdminNotification(supabase, domain, overallStatus, result, false);
       }
     }
 
