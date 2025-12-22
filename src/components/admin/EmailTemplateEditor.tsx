@@ -6,10 +6,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Save, Eye, Wand2, RefreshCw, Languages, Code, FileText, Check, X } from "lucide-react";
+import { Save, Eye, Wand2, RefreshCw, Languages, Code, FileText, Check, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+
+const SUPPORTED_LANGUAGES = [
+  { code: "en", name: "English" },
+  { code: "et", name: "Estonian" },
+  { code: "de", name: "German" },
+  { code: "fr", name: "French" },
+  { code: "es", name: "Spanish" },
+  { code: "it", name: "Italian" },
+  { code: "pt", name: "Portuguese" },
+  { code: "nl", name: "Dutch" },
+  { code: "pl", name: "Polish" },
+  { code: "ru", name: "Russian" },
+];
 
 interface EmailTemplate {
   id: string;
@@ -38,19 +51,6 @@ interface EmailTemplateEditorProps {
   onSave?: () => void;
   onPreview?: (template: Partial<EmailTemplate>) => void;
 }
-
-const SUPPORTED_LANGUAGES = [
-  { code: "en", name: "English" },
-  { code: "et", name: "Estonian" },
-  { code: "de", name: "German" },
-  { code: "fr", name: "French" },
-  { code: "es", name: "Spanish" },
-  { code: "it", name: "Italian" },
-  { code: "pt", name: "Portuguese" },
-  { code: "nl", name: "Dutch" },
-  { code: "pl", name: "Polish" },
-  { code: "ru", name: "Russian" },
-];
 
 const DEFAULT_TEMPLATE = `<!DOCTYPE html>
 <html>
@@ -129,6 +129,8 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
   const [saving, setSaving] = useState(false);
   const [translatingSubjects, setTranslatingSubjects] = useState(false);
   const [translatingBody, setTranslatingBody] = useState(false);
+  const [translatingAll, setTranslatingAll] = useState(false);
+  const [currentTranslatingLang, setCurrentTranslatingLang] = useState<string | null>(null);
   const [liveTemplate, setLiveTemplate] = useState<EmailTemplate | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const { toast } = useToast();
@@ -292,15 +294,25 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
       return;
     }
 
+    const targetLangs = SUPPORTED_LANGUAGES
+      .filter(l => l.code !== primaryLanguage && !bodyContent[l.code]?.trim())
+      .map(l => l.code);
+
+    if (targetLangs.length === 0) {
+      toast({
+        title: "All translations complete",
+        description: "All languages already have body content.",
+      });
+      return;
+    }
+
     setTranslatingBody(true);
     try {
       const { data, error } = await supabase.functions.invoke("translate-email-body", {
         body: {
           sourceLanguage: primaryLanguage,
           sourceBody: bodyContent[primaryLanguage],
-          targetLanguages: SUPPORTED_LANGUAGES
-            .filter(l => l.code !== primaryLanguage && !bodyContent[l.code]?.trim())
-            .map(l => l.code),
+          targetLanguages: targetLangs,
         },
       });
 
@@ -322,6 +334,84 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
       });
     } finally {
       setTranslatingBody(false);
+      setCurrentTranslatingLang(null);
+    }
+  };
+
+  const translateAllMissing = async () => {
+    const hasPrimarySubject = subjects[primaryLanguage]?.trim();
+    const hasPrimaryBody = bodyContent[primaryLanguage]?.trim();
+
+    if (!hasPrimarySubject && !hasPrimaryBody) {
+      toast({
+        title: "No content to translate",
+        description: `Please add content in the primary language (${primaryLanguage}) first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTranslatingAll(true);
+    let totalCost = 0;
+    let translatedCount = 0;
+
+    try {
+      // Translate subjects if needed
+      if (hasPrimarySubject && translationStats.subjectMissing > 0) {
+        setCurrentTranslatingLang("subjects");
+        const { data, error } = await supabase.functions.invoke("translate-email-template", {
+          body: {
+            templateId: liveTemplate?.id || "preview",
+            sourceLanguage: primaryLanguage,
+            sourceSubject: subjects[primaryLanguage],
+          },
+        });
+
+        if (!error && data?.subjects) {
+          setSubjects(prev => ({ ...prev, ...data.subjects }));
+          totalCost += data.cost || 0;
+          translatedCount += Object.keys(data.subjects).length - 1; // Exclude source
+        }
+      }
+
+      // Translate body content if needed
+      if (hasPrimaryBody && translationStats.bodyMissing > 0) {
+        const targetLangs = SUPPORTED_LANGUAGES
+          .filter(l => l.code !== primaryLanguage && !bodyContent[l.code]?.trim());
+
+        for (const lang of targetLangs) {
+          setCurrentTranslatingLang(lang.code);
+          
+          const { data, error } = await supabase.functions.invoke("translate-email-body", {
+            body: {
+              sourceLanguage: primaryLanguage,
+              sourceBody: bodyContent[primaryLanguage],
+              targetLanguages: [lang.code],
+            },
+          });
+
+          if (!error && data?.translations) {
+            setBodyContent(prev => ({ ...prev, ...data.translations }));
+            totalCost += data.cost || 0;
+            translatedCount++;
+          }
+        }
+      }
+
+      toast({
+        title: "All translations complete",
+        description: `Translated ${translatedCount} items. Total cost: €${totalCost.toFixed(4)}`,
+      });
+    } catch (error: any) {
+      console.error("Translation error:", error);
+      toast({
+        title: "Translation failed",
+        description: error.message || "Some translations could not be completed",
+        variant: "destructive",
+      });
+    } finally {
+      setTranslatingAll(false);
+      setCurrentTranslatingLang(null);
     }
   };
 
@@ -473,51 +563,88 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
           </div>
 
           {/* Translation Status */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Subjects
+          <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+            {/* Progress indicator during translation */}
+            {(translatingAll || translatingBody) && currentTranslatingLang && (
+              <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm font-medium">
+                  {currentTranslatingLang === "subjects" 
+                    ? "Translating subjects..."
+                    : `Translating body to ${SUPPORTED_LANGUAGES.find(l => l.code === currentTranslatingLang)?.name || currentTranslatingLang.toUpperCase()}...`
+                  }
                 </span>
-                <Badge variant={translationStats.subjectMissing === 0 ? "default" : "secondary"}>
-                  {translationStats.subjectTranslated}/{translationStats.total}
-                </Badge>
               </div>
-              <Progress value={(translationStats.subjectTranslated / translationStats.total) * 100} className="h-2" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={translateSubjects}
-                disabled={translatingSubjects || !subjects[primaryLanguage]?.trim()}
-                className="w-full gap-1.5"
-              >
-                <Languages className="w-4 h-4" />
-                {translatingSubjects ? "Translating..." : `Translate Subjects (${translationStats.subjectMissing} missing)`}
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium flex items-center gap-2">
-                  <Code className="w-4 h-4" />
-                  Body HTML
-                </span>
-                <Badge variant={translationStats.bodyMissing === 0 ? "default" : "secondary"}>
-                  {translationStats.bodyTranslated}/{translationStats.total}
-                </Badge>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Subjects
+                  </span>
+                  <Badge variant={translationStats.subjectMissing === 0 ? "default" : "secondary"}>
+                    {translationStats.subjectTranslated}/{translationStats.total}
+                  </Badge>
+                </div>
+                <Progress value={(translationStats.subjectTranslated / translationStats.total) * 100} className="h-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={translateSubjects}
+                  disabled={translatingSubjects || translatingAll || !subjects[primaryLanguage]?.trim()}
+                  className="w-full gap-1.5"
+                >
+                  <Languages className="w-4 h-4" />
+                  {translatingSubjects ? "Translating..." : `Translate Subjects (${translationStats.subjectMissing} missing)`}
+                </Button>
               </div>
-              <Progress value={(translationStats.bodyTranslated / translationStats.total) * 100} className="h-2" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={translateBodyContent}
-                disabled={translatingBody || !bodyContent[primaryLanguage]?.trim()}
-                className="w-full gap-1.5"
-              >
-                <Languages className="w-4 h-4" />
-                {translatingBody ? "Translating..." : `Translate Body (${translationStats.bodyMissing} missing)`}
-              </Button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Code className="w-4 h-4" />
+                    Body HTML
+                  </span>
+                  <Badge variant={translationStats.bodyMissing === 0 ? "default" : "secondary"}>
+                    {translationStats.bodyTranslated}/{translationStats.total}
+                  </Badge>
+                </div>
+                <Progress value={(translationStats.bodyTranslated / translationStats.total) * 100} className="h-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={translateBodyContent}
+                  disabled={translatingBody || translatingAll || !bodyContent[primaryLanguage]?.trim()}
+                  className="w-full gap-1.5"
+                >
+                  <Languages className="w-4 h-4" />
+                  {translatingBody ? "Translating..." : `Translate Body (${translationStats.bodyMissing} missing)`}
+                </Button>
+              </div>
             </div>
+
+            {/* Translate All Missing Button */}
+            {(translationStats.subjectMissing > 0 || translationStats.bodyMissing > 0) && (
+              <Button
+                variant="default"
+                onClick={translateAllMissing}
+                disabled={translatingAll || translatingSubjects || translatingBody}
+                className="w-full gap-2"
+              >
+                {translatingAll ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Translating All Missing...
+                  </>
+                ) : (
+                  <>
+                    <Languages className="w-4 h-4" />
+                    Translate All Missing ({translationStats.subjectMissing + translationStats.bodyMissing} items)
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Language Tabs */}

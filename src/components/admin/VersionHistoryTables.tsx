@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -182,10 +182,22 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
   };
 
-  const filteredTemplates = templates.filter(t => {
-    if (filterQuiz === "all") return true;
-    return t.quiz_id === filterQuiz;
-  });
+  // Sort: live templates first (grouped by quiz), then by created_at descending
+  const filteredTemplates = useMemo(() => {
+    const filtered = templates.filter(t => {
+      if (filterQuiz === "all") return true;
+      return t.quiz_id === filterQuiz;
+    });
+
+    // Sort: live first, then by created_at descending
+    return filtered.sort((a, b) => {
+      // Live templates first
+      if (a.is_live && !b.is_live) return -1;
+      if (!a.is_live && b.is_live) return 1;
+      // Then by created_at descending (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [templates, filterQuiz]);
 
   if (loading && templates.length === 0) {
     return (
@@ -257,7 +269,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_1fr_140px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_140px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
               {!quizId && <span>Quiz</span>}
               <span>Sender</span>
@@ -267,12 +279,17 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
             </div>
 
             {/* Table Rows */}
-            <div className="max-h-[300px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-y-auto">
               {filteredTemplates.map((template, index) => {
+                // Extract user name from email (before @)
+                const creatorName = template.created_by_email 
+                  ? template.created_by_email.split('@')[0]
+                  : null;
+
                 return (
                   <div
                     key={template.id}
-                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_140px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_140px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
                       template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                     }`}
                   >
@@ -298,9 +315,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       {template.sender_name} &lt;{template.sender_email}&gt;
                     </div>
 
-                    {/* Created */}
-                    <div className="text-sm text-muted-foreground truncate" title={template.created_by_email || "Unknown"}>
-                      {formatDate(template.created_at)}
+                    {/* Created - with user name */}
+                    <div className="text-sm text-muted-foreground" title={template.created_by_email || "Unknown"}>
+                      <div className="truncate">{formatDate(template.created_at)}</div>
+                      {creatorName && (
+                        <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
+                      )}
                     </div>
 
                     {/* Cost */}
@@ -427,10 +447,18 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
   };
 
-  const filteredVersions = versions.filter(v => {
-    if (filterQuiz === "all") return true;
-    return v.quiz_id === filterQuiz;
-  });
+  // Sort by created_at descending (newest first)
+  const filteredVersions = useMemo(() => {
+    const filtered = versions.filter(v => {
+      if (filterQuiz === "all") return true;
+      return v.quiz_id === filterQuiz;
+    });
+
+    // Sort by created_at descending
+    return filtered.sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [versions, filterQuiz]);
 
   return (
     <Card className="bg-card shadow-sm">
@@ -488,7 +516,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_140px_90px_100px]' : 'grid-cols-[70px_1fr_80px_140px_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
               {!quizId && <span>Quiz</span>}
               <span>Levels</span>
@@ -498,14 +526,18 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
             </div>
 
             {/* Table Rows */}
-            <div className="max-h-[300px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-y-auto">
               {filteredVersions.map((version, index) => {
                 const isExpanded = expandedId === version.id;
+                // Extract user name from email (before @)
+                const creatorName = version.created_by_email 
+                  ? version.created_by_email.split('@')[0]
+                  : null;
                 
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_140px_90px_100px]' : 'grid-cols-[70px_1fr_80px_140px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
@@ -532,9 +564,12 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                         </Badge>
                       </div>
 
-                      {/* Created */}
-                      <div className="text-sm text-muted-foreground truncate" title={version.created_by_email || "Unknown"}>
-                        {formatDate(version.created_at)}
+                      {/* Created - with user name */}
+                      <div className="text-sm text-muted-foreground" title={version.created_by_email || "Unknown"}>
+                        <div className="truncate">{formatDate(version.created_at)}</div>
+                        {creatorName && (
+                          <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
+                        )}
                       </div>
 
                       {/* Cost */}
