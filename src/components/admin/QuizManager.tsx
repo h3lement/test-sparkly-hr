@@ -724,7 +724,7 @@ export function QuizManager() {
   const isDragEnabled = sortColumn === "display_order" && !searchQuery;
 
   return (
-    <div className="w-full bg-card rounded-lg p-6">
+    <div className="w-full">
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Quizzes</h1>
