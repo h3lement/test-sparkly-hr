@@ -216,6 +216,10 @@ export function CTATemplateManager() {
     }
   };
 
+  const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
+
+  const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
+
   // Estimate translation cost
   const estimateTranslationCost = () => {
     if (!selectedQuiz) return 0;
@@ -249,10 +253,6 @@ export function CTATemplateManager() {
 
   const translationCostEur = estimateTranslationCost();
   const hasMissingTranslations = translationCostEur > 0;
-
-  const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
-
-  const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
 
   if (loading) {
     return (
