@@ -133,6 +133,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const [filterType, setFilterType] = useState<string>("quiz_results"); // Default to Quiz Taker
+  const [showOnlyLive, setShowOnlyLive] = useState(true); // Default to showing only live
   const { toast } = useToast();
 
   // Resizable columns with localStorage persistence
@@ -297,12 +298,13 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
   };
 
-  // Filter templates by quiz and type
+  // Filter templates by quiz, type, and live status
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
       const quizMatch = filterQuiz === "all" || t.quiz_id === filterQuiz;
       const typeMatch = filterType === "all" || t.template_type === filterType;
-      return quizMatch && typeMatch;
+      const liveMatch = !showOnlyLive || t.is_live;
+      return quizMatch && typeMatch && liveMatch;
     });
 
     // Sort: live first, then by created_at descending (newest first)
@@ -313,7 +315,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       // Then by created_at descending (newest first)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [templates, filterQuiz, filterType]);
+  }, [templates, filterQuiz, filterType, showOnlyLive]);
 
   const getTemplateTypeLabel = (type: string) => {
     switch (type) {
@@ -370,6 +372,15 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
               </Badge>
             </CardTitle>
             <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showOnlyLive}
+                  onChange={(e) => setShowOnlyLive(e.target.checked)}
+                  className="rounded border-input"
+                />
+                <span className="text-muted-foreground">Only Live</span>
+              </label>
               {!quizId && quizzes.length > 0 && (
                 <Select value={filterQuiz} onValueChange={setFilterQuiz}>
                   <SelectTrigger className="w-[180px] h-8 text-xs">
@@ -725,6 +736,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
+  const [showOnlyLive, setShowOnlyLive] = useState(true); // Default to showing only live
   const [previewVersion, setPreviewVersion] = useState<WebResultVersion | null>(null);
   const [translateVersion, setTranslateVersion] = useState<WebResultVersion | null>(null);
   const { toast } = useToast();
@@ -859,8 +871,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
   // Sort: live first, then by created_at descending (newest first)
   const filteredVersions = useMemo(() => {
     const filtered = versions.filter(v => {
-      if (filterQuiz === "all") return true;
-      return v.quiz_id === filterQuiz;
+      const quizMatch = filterQuiz === "all" || v.quiz_id === filterQuiz;
+      const liveMatch = !showOnlyLive || v.is_live;
+      return quizMatch && liveMatch;
     });
 
     // Sort: live templates first, then by created_at descending
@@ -869,7 +882,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
       if (!a.is_live && b.is_live) return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [versions, filterQuiz]);
+  }, [versions, filterQuiz, showOnlyLive]);
 
   const handleSetLive = async (versionId: string, versionNumber: number, versionQuizId: string) => {
     try {
@@ -909,6 +922,15 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
             </Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOnlyLive}
+                onChange={(e) => setShowOnlyLive(e.target.checked)}
+                className="rounded border-input"
+              />
+              <span className="text-muted-foreground">Only Live</span>
+            </label>
             {!quizId && quizzes.length > 0 && (
               <Select value={filterQuiz} onValueChange={setFilterQuiz}>
                 <SelectTrigger className="w-[180px] h-8 text-xs">

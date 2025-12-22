@@ -38,6 +38,7 @@ interface TableCounts {
   admins: number;
   emailLogs: number;
   activity: number;
+  liveVersions: number;
 }
 
 interface MenuItem {
@@ -135,6 +136,7 @@ export function AdminSidebar({
     admins: 0,
     emailLogs: 0,
     activity: 0,
+    liveVersions: 0,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [menuOrder, setMenuOrder] = useState<string[]>(DEFAULT_MENU_ITEMS.map(item => item.id));
@@ -176,13 +178,15 @@ export function AdminSidebar({
 
   async function fetchCounts() {
     try {
-      const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes, emailTemplatesRes, webVersionsRes] = await Promise.all([
         supabase.from("quiz_leads").select("email"),
         supabase.from("hypothesis_leads").select("email"),
         supabase.from("quizzes").select("*", { count: "exact", head: true }),
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
         supabase.from("activity_logs").select("*", { count: "exact", head: true }),
+        supabase.from("email_templates").select("*", { count: "exact", head: true }).eq("is_live", true),
+        supabase.from("quiz_result_versions").select("*", { count: "exact", head: true }).eq("is_live", true),
       ]);
 
       // Combine emails from both tables and calculate unique
@@ -191,6 +195,9 @@ export function AdminSidebar({
       const allEmails = [...quizEmails, ...hypothesisEmails];
       const uniqueEmails = new Set(allEmails.map(l => l.email.toLowerCase())).size;
 
+      // Total live versions = email templates + web versions
+      const liveVersions = (emailTemplatesRes.count || 0) + (webVersionsRes.count || 0);
+
       setCounts({
         leads: allEmails.length,
         uniqueEmails,
@@ -198,6 +205,7 @@ export function AdminSidebar({
         admins: adminsRes.count || 0,
         emailLogs: emailLogsRes.count || 0,
         activity: activityRes.count || 0,
+        liveVersions,
       });
     } catch (error) {
       console.error("Error fetching counts:", error);
@@ -253,6 +261,9 @@ export function AdminSidebar({
           break;
         case "admins":
           count = counts.admins;
+          break;
+        case "versions":
+          count = counts.liveVersions;
           break;
         case "email-logs":
           count = counts.emailLogs;
