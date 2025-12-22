@@ -283,13 +283,13 @@
    * Usage: Apply .list-row-interactive for zebra + hover
    */
 
-  /* Zebra-striped list rows - WHITE base with subtle alternate */
+  /* Zebra-striped list rows - WHITE base with very light grey alternate */
   .list-row:nth-child(even) {
     background-color: hsl(0 0% 100%);
   }
 
   .list-row:nth-child(odd) {
-    background-color: hsl(var(--muted) / 0.3);
+    background-color: hsl(var(--muted) / 0.18);
   }
 
   /* Manual alternate row classes (for index-based zebra striping) - WHITE base */
@@ -298,7 +298,7 @@
   }
 
   .list-row-odd {
-    background-color: hsl(var(--muted) / 0.3);
+    background-color: hsl(var(--muted) / 0.18);
   }
 
   .dark .list-row-even {
@@ -306,12 +306,12 @@
   }
 
   .dark .list-row-odd {
-    background-color: hsl(var(--muted) / 0.4);
+    background-color: hsl(var(--muted) / 0.32);
   }
 
   /* List row hover effect - primary tint with inset border */
   .list-row-hover {
-    @apply transition-all duration-200 ease-out text-base font-medium;
+    @apply transition-all duration-200 ease-out text-lg font-medium;
   }
 
   .list-row-hover:hover {
@@ -321,7 +321,7 @@
 
   /* Combined zebra + hover utility classes - larger font */
   .list-row-interactive {
-    @apply transition-all duration-200 ease-out text-base font-medium;
+    @apply transition-all duration-200 ease-out text-lg font-medium;
   }
 
   .list-row-interactive:hover {
