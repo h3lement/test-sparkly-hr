@@ -130,7 +130,7 @@ export function SortableResultLevel({
     <div
       ref={setNodeRef}
       style={style}
-      className={`px-4 py-3 border-b last:border-b-0 space-y-3 list-row-interactive ${isEven ? 'list-row-odd' : 'list-row-even'}`}
+      className={`px-4 py-4 border-b last:border-b-0 space-y-3 list-row-interactive ${isEven ? 'list-row-odd' : 'list-row-even'}`}
     >
       {/* Row 1: Title and controls */}
       <div className="flex items-center gap-3">
