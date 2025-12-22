@@ -14,7 +14,9 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
-  FileText
+  FileText,
+  Send,
+  Users
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -75,6 +77,7 @@ interface WebVersionHistoryProps {
 export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPreview }: EmailVersionHistoryProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [emailStats, setEmailStats] = useState<Record<string, { sent: number; failed: number }>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const { toast } = useToast();
@@ -119,6 +122,59 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       }));
 
       setTemplates(typedData);
+
+      // Fetch email stats per template version (by matching time ranges)
+      // For each template, count emails sent after its created_at and before the next version's created_at
+      if (typedData.length > 0) {
+        const statsMap: Record<string, { sent: number; failed: number }> = {};
+        
+        // Group templates by quiz_id for time-range calculations
+        const templatesByQuiz: Record<string, typeof typedData> = {};
+        typedData.forEach(t => {
+          if (t.quiz_id) {
+            if (!templatesByQuiz[t.quiz_id]) templatesByQuiz[t.quiz_id] = [];
+            templatesByQuiz[t.quiz_id].push(t);
+          }
+        });
+
+        // Sort each quiz's templates by created_at ascending for time range calculation
+        Object.values(templatesByQuiz).forEach(quizTemplates => {
+          quizTemplates.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        });
+
+        // Fetch email logs grouped by quiz and time
+        const { data: emailLogs } = await supabase
+          .from("email_logs")
+          .select("quiz_id, status, created_at")
+          .eq("email_type", "quiz_results");
+
+        if (emailLogs) {
+          // For each template, count emails in its time range
+          typedData.forEach(template => {
+            if (!template.quiz_id) return;
+            
+            const quizTemplates = templatesByQuiz[template.quiz_id] || [];
+            const templateIndex = quizTemplates.findIndex(t => t.id === template.id);
+            const nextTemplate = quizTemplates[templateIndex + 1];
+            
+            const startTime = new Date(template.created_at).getTime();
+            const endTime = nextTemplate ? new Date(nextTemplate.created_at).getTime() : Date.now();
+            
+            const relevantLogs = emailLogs.filter(log => {
+              if (log.quiz_id !== template.quiz_id) return false;
+              const logTime = new Date(log.created_at).getTime();
+              return logTime >= startTime && logTime < endTime;
+            });
+            
+            statsMap[template.id] = {
+              sent: relevantLogs.filter(l => l.status === 'sent').length,
+              failed: relevantLogs.filter(l => l.status === 'failed').length,
+            };
+          });
+        }
+        
+        setEmailStats(statsMap);
+      }
     } catch (error: any) {
       console.error("Error fetching email templates:", error);
       toast({
@@ -269,11 +325,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
               {!quizId && <span>Quiz</span>}
               <span>Sender</span>
               <span>Created</span>
+              <span className="text-center">Sent</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Actions</span>
             </div>
@@ -285,11 +342,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                 const creatorName = template.created_by_email 
                   ? template.created_by_email.split('@')[0]
                   : null;
+                const stats = emailStats[template.id] || { sent: 0, failed: 0 };
 
                 return (
                   <div
                     key={template.id}
-                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                    className={`grid ${quizId ? 'grid-cols-[70px_1fr_1fr_70px_80px_100px]' : 'grid-cols-[70px_1fr_1fr_1fr_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
                       template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                     }`}
                   >
@@ -320,6 +378,17 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       <div className="truncate">{formatDate(template.created_at)}</div>
                       {creatorName && (
                         <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
+                      )}
+                    </div>
+
+                    {/* Email Stats */}
+                    <div className="flex items-center justify-center gap-1" title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}>
+                      <Send className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className={stats.sent > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
+                        {stats.sent}
+                      </span>
+                      {stats.failed > 0 && (
+                        <span className="text-red-500 text-xs">({stats.failed})</span>
                       )}
                     </div>
 
@@ -378,6 +447,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistoryProps) {
   const [versions, setVersions] = useState<WebResultVersion[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [leadStats, setLeadStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
@@ -421,6 +491,50 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
       }));
 
       setVersions(typedData);
+
+      // Fetch lead counts per version (by matching time ranges)
+      if (typedData.length > 0) {
+        const statsMap: Record<string, number> = {};
+        
+        // Group versions by quiz_id for time-range calculations
+        const versionsByQuiz: Record<string, typeof typedData> = {};
+        typedData.forEach(v => {
+          if (!versionsByQuiz[v.quiz_id]) versionsByQuiz[v.quiz_id] = [];
+          versionsByQuiz[v.quiz_id].push(v);
+        });
+
+        // Sort each quiz's versions by created_at ascending for time range calculation
+        Object.values(versionsByQuiz).forEach(quizVersions => {
+          quizVersions.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        });
+
+        // Fetch quiz leads
+        const { data: quizLeads } = await supabase
+          .from("quiz_leads")
+          .select("quiz_id, created_at");
+
+        if (quizLeads) {
+          // For each version, count leads in its time range
+          typedData.forEach(version => {
+            const quizVersions = versionsByQuiz[version.quiz_id] || [];
+            const versionIndex = quizVersions.findIndex(v => v.id === version.id);
+            const nextVersion = quizVersions[versionIndex + 1];
+            
+            const startTime = new Date(version.created_at).getTime();
+            const endTime = nextVersion ? new Date(nextVersion.created_at).getTime() : Date.now();
+            
+            const relevantLeads = quizLeads.filter(lead => {
+              if (lead.quiz_id !== version.quiz_id) return false;
+              const leadTime = new Date(lead.created_at).getTime();
+              return leadTime >= startTime && leadTime < endTime;
+            });
+            
+            statsMap[version.id] = relevantLeads.length;
+          });
+        }
+        
+        setLeadStats(statsMap);
+      }
     } catch (error: any) {
       console.error("Error fetching web result versions:", error);
       toast({
@@ -516,11 +630,12 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
         ) : (
           <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
             {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_90px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
               <span>Version</span>
               {!quizId && <span>Quiz</span>}
               <span>Levels</span>
               <span>Created</span>
+              <span className="text-center">Leads</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Actions</span>
             </div>
@@ -533,11 +648,12 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                 const creatorName = version.created_by_email 
                   ? version.created_by_email.split('@')[0]
                   : null;
+                const leadCount = leadStats[version.id] || 0;
                 
                 return (
                   <div key={version.id}>
                     <div
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_70px_90px_100px]' : 'grid-cols-[70px_1fr_80px_1fr_70px_90px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b list-row-interactive cursor-pointer ${index % 2 === 0 ? "list-row-even" : "list-row-odd"}`}
                       onClick={() => setExpandedId(isExpanded ? null : version.id)}
                     >
                       {/* Version */}
@@ -570,6 +686,14 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                         {creatorName && (
                           <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
                         )}
+                      </div>
+
+                      {/* Lead Count */}
+                      <div className="flex items-center justify-center gap-1" title={`${leadCount} leads used this version`}>
+                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className={leadCount > 0 ? "text-blue-600 font-medium" : "text-muted-foreground"}>
+                          {leadCount}
+                        </span>
                       </div>
 
                       {/* Cost */}
