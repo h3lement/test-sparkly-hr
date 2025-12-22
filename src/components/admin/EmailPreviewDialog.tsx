@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -130,19 +131,47 @@ export function EmailPreviewDialog({
     translatedCount?: number;
     totalLanguages?: number;
   } | null>(null);
+
+  // Keep a local copy of the template so we can refresh it after AI translation
+  // (otherwise the dialog keeps showing the old `template` prop and languages stay disabled)
+  const [templateData, setTemplateData] = useState<EmailTemplate | null>(template);
+
   const [dialogSize, setDialogSize] = useState(getSavedDialogSize);
   const [isMaximized, setIsMaximized] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Update language when dialog opens
+  const activeTemplate = templateData ?? template;
+
+  const fetchLatestTemplate = async () => {
+    if (!activeTemplate?.id) return;
+    const { data, error } = await supabase
+      .from("email_templates")
+      .select("id, version_number, sender_name, sender_email, subjects, body_content, is_live, created_at")
+      .eq("id", activeTemplate.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to refresh email template:", error);
+      return;
+    }
+
+    if (data) {
+      setTemplateData(data as unknown as EmailTemplate);
+    }
+  };
+
+  // Update language + refresh latest template data when dialog opens
   useEffect(() => {
     if (open) {
       setTestLanguage(initialLanguage || "en");
       setTranslationProgress(null);
+      setTemplateData(template);
+      void fetchLatestTemplate();
     }
-  }, [open, initialLanguage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialLanguage, template?.id]);
 
   // Save dialog size to localStorage
   useEffect(() => {
@@ -153,25 +182,27 @@ export function EmailPreviewDialog({
 
   // Get available languages for this template
   const getAvailableLanguages = () => {
-    if (!template) return [];
+    if (!activeTemplate) return [];
     const available = new Set<string>();
-    Object.keys(template.subjects || {}).forEach(lang => {
-      if (template.subjects[lang]?.trim()) available.add(lang);
+    Object.keys(activeTemplate.subjects || {}).forEach((lang) => {
+      if (activeTemplate.subjects[lang]?.trim()) available.add(lang);
     });
-    Object.keys(template.body_content || {}).forEach(lang => {
-      if (template.body_content?.[lang]?.trim()) available.add(lang);
+    Object.keys(activeTemplate.body_content || {}).forEach((lang) => {
+      if (activeTemplate.body_content?.[lang]?.trim()) available.add(lang);
     });
     return Array.from(available);
   };
 
   const availableLanguages = getAvailableLanguages();
-  const missingLanguages = ALL_LANGUAGES.filter(l => !availableLanguages.includes(l.code));
+  const missingLanguages = ALL_LANGUAGES.filter((l) => !availableLanguages.includes(l.code));
 
   // Estimate translation cost for missing languages
   const estimateTranslationCost = () => {
     if (missingLanguages.length === 0) return 0;
     // Estimate based on subject translation
-    const subjectLength = template?.subjects?.[quiz?.primary_language || "en"]?.length || AVG_CHARS_PER_SUBJECT;
+    const subjectLength =
+      activeTemplate?.subjects?.[quiz?.primary_language || "en"]?.length ||
+      AVG_CHARS_PER_SUBJECT;
     const promptBase = 400; // Base prompt characters
     const languageList = missingLanguages.length * 20; // ~20 chars per language listing
     const inputChars = promptBase + languageList + subjectLength;
@@ -188,7 +219,9 @@ export function EmailPreviewDialog({
   // Estimate re-translation cost for ALL languages
   const estimateRetranslationCost = () => {
     const targetCount = ALL_LANGUAGES.length - 1; // Exclude source language
-    const subjectLength = template?.subjects?.[quiz?.primary_language || "en"]?.length || AVG_CHARS_PER_SUBJECT;
+    const subjectLength =
+      activeTemplate?.subjects?.[quiz?.primary_language || "en"]?.length ||
+      AVG_CHARS_PER_SUBJECT;
     const promptBase = 400;
     const languageList = targetCount * 20;
     const inputChars = promptBase + languageList + subjectLength;
@@ -206,11 +239,12 @@ export function EmailPreviewDialog({
   const retranslationCostEur = estimateRetranslationCost();
 
   const handleTranslate = async (forceRetranslate = false) => {
-    if (!template || !quiz) return;
-    
+    if (!activeTemplate || !quiz) return;
+
     const sourceLanguage = quiz.primary_language || "en";
-    const sourceSubject = template.subjects?.[sourceLanguage] || template.subjects?.en || "";
-    
+    const sourceSubject =
+      activeTemplate.subjects?.[sourceLanguage] || activeTemplate.subjects?.en || "";
+
     if (!sourceSubject.trim()) {
       toast({
         title: "Nothing to translate",
@@ -223,7 +257,9 @@ export function EmailPreviewDialog({
     setTranslating(true);
     setTranslationProgress({
       stage: "starting",
-      message: forceRetranslate ? "Re-generating all translations..." : "Initializing translation...",
+      message: forceRetranslate
+        ? "Re-generating all translations..."
+        : "Initializing translation...",
       inputTokens: 0,
       outputTokens: 0,
       cost: 0,
@@ -235,15 +271,15 @@ export function EmailPreviewDialog({
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
+
       const response = await fetch(`${supabaseUrl}/functions/v1/translate-email-template`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
+          Authorization: `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({
-          templateId: template.id,
+          templateId: activeTemplate.id,
           sourceLanguage,
           sourceSubject,
           stream: true,
@@ -269,20 +305,20 @@ export function EmailPreviewDialog({
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() || "";
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          
-          const eventMatch = line.match(/^event: (\w+)/);
-          const dataMatch = line.match(/data: (.+)/);
-          
+        for (const block of blocks) {
+          if (!block.trim()) continue;
+
+          const eventMatch = block.match(/^event: (\w+)/);
+          const dataMatch = block.match(/data: (.+)/);
+
           if (eventMatch && dataMatch) {
             const eventType = eventMatch[1];
             try {
               const data = JSON.parse(dataMatch[1]);
-              
+
               if (eventType === "progress") {
                 setTranslationProgress(data);
               } else if (eventType === "complete") {
@@ -290,8 +326,14 @@ export function EmailPreviewDialog({
                   title: "Translation complete",
                   description: `Translated to ${data.translatedLanguages?.length || 0} languages (€${data.cost?.toFixed(4) || "0.0000"})`,
                 });
-                // Close and reopen to refresh
-                onOpenChange(false);
+
+                // Refresh template data so the newly translated languages become selectable immediately
+                await fetchLatestTemplate();
+
+                // If the currently selected language is still unavailable, fall back to source
+                setTestLanguage((prev) =>
+                  (data.subjects && data.subjects[prev]) ? prev : sourceLanguage
+                );
               } else if (eventType === "error") {
                 throw new Error(data.message);
               }
@@ -303,7 +345,7 @@ export function EmailPreviewDialog({
       }
     } catch (error: any) {
       // Don't show error toast if cancelled by user
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         toast({
           title: "Translation cancelled",
           description: "The translation was stopped",
@@ -330,12 +372,13 @@ export function EmailPreviewDialog({
   };
 
   const getEmailPreviewHtml = () => {
-    if (!template) return "";
-    
+    if (!activeTemplate) return "";
+
     const trans = emailTranslations[testLanguage] || emailTranslations.en;
-    const previewSenderName = template.sender_name || "Sparkly.hr";
-    const previewSenderEmail = template.sender_email || "support@sparkly.hr";
-    const currentSubject = template.subjects?.[testLanguage] || template.subjects?.en || trans.yourResults;
+    const previewSenderName = activeTemplate.sender_name || "Sparkly.hr";
+    const previewSenderEmail = activeTemplate.sender_email || "support@sparkly.hr";
+    const currentSubject =
+      activeTemplate.subjects?.[testLanguage] || activeTemplate.subjects?.en || trans.yourResults;
     const logoUrl = "/sparkly-logo.png";
     const sampleScore = 15;
     const maxScore = 24;
@@ -406,7 +449,7 @@ export function EmailPreviewDialog({
       return;
     }
 
-    if (!template) {
+    if (!activeTemplate) {
       toast({
         title: "Error",
         description: "No template selected",
@@ -418,25 +461,24 @@ export function EmailPreviewDialog({
     setSendingTest(true);
     try {
       const trans = emailTranslations[testLanguage] || emailTranslations.en;
-      
+
       const testData = {
         email: testEmail.trim(),
         totalScore: 18,
         maxScore: 24,
         resultTitle: trans.sampleResultTitle,
         resultDescription: trans.sampleResultDescription,
-        insights: [
-          trans.sampleInsight1,
-          trans.sampleInsight2,
-          trans.sampleInsight3,
-        ],
+        insights: [trans.sampleInsight1, trans.sampleInsight2, trans.sampleInsight3],
         language: testLanguage,
         opennessScore: 3,
         isTest: true,
         templateOverride: {
-          sender_name: template.sender_name,
-          sender_email: template.sender_email,
-          subject: template.subjects[testLanguage] || template.subjects.en || "Your Quiz Results",
+          sender_name: activeTemplate.sender_name,
+          sender_email: activeTemplate.sender_email,
+          subject:
+            activeTemplate.subjects[testLanguage] ||
+            activeTemplate.subjects.en ||
+            "Your Quiz Results",
         },
       };
 
@@ -448,7 +490,7 @@ export function EmailPreviewDialog({
 
       toast({
         title: "Test email sent",
-        description: `Email sent to ${testEmail} in ${ALL_LANGUAGES.find(l => l.code === testLanguage)?.name || testLanguage}`,
+        description: `Email sent to ${testEmail} in ${ALL_LANGUAGES.find((l) => l.code === testLanguage)?.name || testLanguage}`,
       });
     } catch (error: any) {
       console.error("Error sending test email:", error);
@@ -518,10 +560,10 @@ export function EmailPreviewDialog({
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3">
               <span>Email Preview</span>
-              {template && (
-                <Badge variant={template.is_live ? "default" : "secondary"}>
-                  Version {template.version_number}
-                  {template.is_live && " • LIVE"}
+              {activeTemplate && (
+                <Badge variant={activeTemplate.is_live ? "default" : "secondary"}>
+                  Version {activeTemplate.version_number}
+                  {activeTemplate.is_live && " • LIVE"}
                 </Badge>
               )}
             </DialogTitle>
@@ -535,6 +577,9 @@ export function EmailPreviewDialog({
               {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </Button>
           </div>
+          <DialogDescription>
+            Preview and translate this email template across languages.
+          </DialogDescription>
           {quiz && (
             <p className="text-sm text-muted-foreground">
               Quiz: {getQuizTitle(quiz)}
@@ -575,7 +620,7 @@ export function EmailPreviewDialog({
                       variant="outline"
                       size="sm"
                       onClick={() => handleTranslate(false)}
-                      disabled={translating || !template}
+                      disabled={translating || !activeTemplate}
                       className="gap-1.5 h-7 text-xs"
                     >
                       {translating ? (
@@ -605,7 +650,7 @@ export function EmailPreviewDialog({
                       variant="outline"
                       size="sm"
                       onClick={() => handleTranslate(true)}
-                      disabled={translating || !template}
+                      disabled={translating || !activeTemplate}
                       className="gap-1.5 h-7 text-xs"
                     >
                       {translating ? (
@@ -681,7 +726,7 @@ export function EmailPreviewDialog({
             </div>
             <Button 
               onClick={sendTestEmail} 
-              disabled={sendingTest || !template}
+              disabled={sendingTest || !activeTemplate}
               className="gap-2"
             >
               <Send className="w-4 h-4" />
