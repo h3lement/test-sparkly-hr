@@ -445,7 +445,6 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
             <SelectItem value="test">Tests</SelectItem>
             <SelectItem value="quiz_result_user">Quiz Takers</SelectItem>
             <SelectItem value="quiz_result_admin">Admin Notifs</SelectItem>
-            <SelectItem value="quiz_results">Quiz Results (Legacy)</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
