@@ -182,9 +182,9 @@ export function RespondentsGrowthChart({
     return leadDate.getMonth() === now.getMonth() && leadDate.getFullYear() === now.getFullYear();
   }).length;
   
-  // Count unique email+quiz combinations (unique quiz responses)
-  const uniqueQuizResponses = new Set(
-    filteredLeads.map((l) => `${l.email.toLowerCase()}::${l.quiz_id || "unknown"}`)
+  // Count unique quizzes that have at least one respondent
+  const quizzesWithResponses = new Set(
+    filteredLeads.filter((l) => l.quiz_id).map((l) => l.quiz_id)
   ).size;
 
   const rangeLabel = dateRange === "all" ? "All Time" : `Last ${dateRange} days`;
@@ -266,7 +266,7 @@ export function RespondentsGrowthChart({
                 <ClipboardList className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{uniqueQuizResponses}</p>
+                <p className="text-2xl font-bold">{quizzesWithResponses}</p>
                 <p className="text-sm text-muted-foreground">Unique Quiz</p>
               </div>
             </div>
