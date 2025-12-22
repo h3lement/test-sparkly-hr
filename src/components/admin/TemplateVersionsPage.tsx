@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp, ExternalLink, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
@@ -83,6 +84,7 @@ const emailTranslations: Record<string, {
 };
 
 export function TemplateVersionsPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("web");
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
@@ -258,6 +260,7 @@ export function TemplateVersionsPage() {
                     {getQuizTitle(quiz)}
                   </span>
                   <div className="flex items-center gap-2">
+                    {/* Status badges */}
                     <Badge 
                       variant={hasLiveWeb ? "default" : "destructive"} 
                       className={`text-xs ${hasLiveWeb ? "bg-green-600" : ""}`}
@@ -272,6 +275,36 @@ export function TemplateVersionsPage() {
                       <Mail className="w-3 h-3 mr-1" />
                       Email {hasLiveEmail ? "✓" : "✗"}
                     </Badge>
+                    
+                    {/* Quick action buttons */}
+                    <div className="flex items-center gap-1 ml-2 pl-2 border-l border-amber-300 dark:border-amber-700">
+                      {!hasLiveWeb && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/admin/quiz/${quiz.id}/results`)}
+                          className="h-7 text-xs gap-1 bg-white dark:bg-gray-900"
+                          title="Generate web results"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Generate Web
+                          <ExternalLink className="w-3 h-3" />
+                        </Button>
+                      )}
+                      {!hasLiveEmail && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/admin/quiz/${quiz.id}/email`)}
+                          className="h-7 text-xs gap-1 bg-white dark:bg-gray-900"
+                          title="Create email template"
+                        >
+                          <Mail className="w-3 h-3" />
+                          Create Email
+                          <ExternalLink className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
