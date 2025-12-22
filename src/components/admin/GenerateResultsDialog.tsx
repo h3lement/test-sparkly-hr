@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Sparkles, TrendingUp, TrendingDown, ArrowLeft, Check, Euro, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -260,7 +259,7 @@ export function GenerateResultsDialog({
               </div>
 
               {/* Results Preview */}
-              <ScrollArea className="flex-1 min-h-0 pr-3">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-3">
                 <div className="space-y-3">
                   {generatedLevels.map((level, index) => (
                     <div
@@ -298,7 +297,7 @@ export function GenerateResultsDialog({
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-2 border-t">
