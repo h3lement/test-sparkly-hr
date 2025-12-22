@@ -343,6 +343,17 @@ async function sendAdminNotification(
         });
       }
       
+      // Log to activity log
+      await supabase.from("activity_logs").insert({
+        action_type: "EMAIL_FAILED",
+        table_name: "domain_reputation",
+        record_id: domain,
+        field_name: "notification_email",
+        old_value: null,
+        new_value: status,
+        description: `Domain reputation alert email failed to send to ${adminEmails.length} admin(s): ${sendError.message || "Unknown error"}`,
+      });
+      
       return false;
     }
 
@@ -361,6 +372,17 @@ async function sendAdminNotification(
         resend_id: sendData?.id || null,
       });
     }
+    
+    // Log to activity log
+    await supabase.from("activity_logs").insert({
+      action_type: "EMAIL_SENT",
+      table_name: "domain_reputation",
+      record_id: domain,
+      field_name: "notification_email",
+      old_value: null,
+      new_value: status,
+      description: `Domain reputation alert (${statusText}) sent to ${adminEmails.length} admin(s): ${adminEmails.join(", ")}`,
+    });
     
     return true;
   } catch (error) {
