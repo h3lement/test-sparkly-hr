@@ -340,6 +340,38 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     };
   };
 
+  const getCtasForQuiz = (quizId: string | null) => {
+    if (!quizId) return [];
+    return ctaTemplates.filter(cta => cta.quiz_id === quizId);
+  };
+
+  const handleCtaChange = async (templateId: string, ctaTemplateId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from("email_templates")
+        .update({ cta_template_id: ctaTemplateId })
+        .eq("id", templateId);
+
+      if (error) throw error;
+
+      setTemplates(prev => prev.map(t => 
+        t.id === templateId ? { ...t, cta_template_id: ctaTemplateId } : t
+      ));
+
+      toast({
+        title: "CTA updated",
+        description: "Email template CTA has been updated successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error updating CTA:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update CTA template.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Filter templates by quiz, type, and live status
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
@@ -651,28 +683,39 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       )}
 
                       {/* CTA */}
+                      {/* CTA Dropdown */}
                       <div 
-                        className="px-3 py-3 shrink-0"
+                        className="px-3 py-2 shrink-0"
                         style={{ width: columnWidths.cta }}
                       >
-                        {(() => {
-                          const ctaInfo = getCtaInfo(template.cta_template_id);
-                          if (!ctaInfo) {
-                            return <span className="text-muted-foreground text-xs">—</span>;
-                          }
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              {ctaInfo.isLive && (
-                                <Badge variant="default" className="text-xs h-4 px-1 bg-green-600">
-                                  LIVE
-                                </Badge>
-                              )}
-                              <span className="text-sm truncate" title={ctaInfo.label}>
-                                {ctaInfo.label}
-                              </span>
-                            </div>
-                          );
-                        })()}
+                        <Select
+                          value={template.cta_template_id || "none"}
+                          onValueChange={(value) => handleCtaChange(template.id, value === "none" ? null : value)}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-full bg-background">
+                            <SelectValue placeholder="Select CTA" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            <SelectItem value="none" className="text-xs">
+                              <span className="text-muted-foreground">No CTA</span>
+                            </SelectItem>
+                            {getCtasForQuiz(template.quiz_id).map((cta) => {
+                              const title = cta.cta_title?.en || cta.cta_title?.et || '';
+                              return (
+                                <SelectItem key={cta.id} value={cta.id} className="text-xs">
+                                  <div className="flex items-center gap-1.5">
+                                    {cta.is_live && (
+                                      <Badge variant="default" className="text-[10px] h-3.5 px-1 bg-green-600">
+                                        LIVE
+                                      </Badge>
+                                    )}
+                                    <span>v{cta.version_number}{title ? ` - ${title.substring(0, 18)}${title.length > 18 ? '...' : ''}` : ''}</span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Created - with user name */}
