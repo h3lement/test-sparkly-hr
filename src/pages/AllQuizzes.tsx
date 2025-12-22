@@ -4,8 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, ClipboardList, Lightbulb, Heart } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronRight, ClipboardList, Lightbulb, Heart, Globe } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import { useLanguage } from "@/components/quiz/LanguageContext";
+import { useForceLightMode } from "@/hooks/useForceLightMode";
 
 interface Quiz {
   id: string;
@@ -17,7 +20,38 @@ interface Quiz {
   display_order?: number;
 }
 
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "et", label: "Eesti" },
+  { code: "de", label: "Deutsch" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+  { code: "it", label: "Italiano" },
+  { code: "pl", label: "Polski" },
+  { code: "nl", label: "Nederlands" },
+  { code: "pt", label: "Português" },
+  { code: "sv", label: "Svenska" },
+  { code: "fi", label: "Suomi" },
+  { code: "da", label: "Dansk" },
+  { code: "ro", label: "Română" },
+  { code: "el", label: "Ελληνικά" },
+  { code: "cs", label: "Čeština" },
+  { code: "hu", label: "Magyar" },
+  { code: "bg", label: "Български" },
+  { code: "sk", label: "Slovenčina" },
+  { code: "hr", label: "Hrvatski" },
+  { code: "lt", label: "Lietuvių" },
+  { code: "sl", label: "Slovenščina" },
+  { code: "lv", label: "Latviešu" },
+  { code: "ga", label: "Gaeilge" },
+  { code: "mt", label: "Malti" },
+];
+
 export default function AllQuizzes() {
+  // Force light mode on public site
+  useForceLightMode();
+  
+  const { language, setLanguage } = useLanguage();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +77,7 @@ export default function AllQuizzes() {
     }
   };
 
-  const getLocalizedText = (json: Json, lang: string = "en"): string => {
+  const getLocalizedText = (json: Json, lang: string = language): string => {
     if (typeof json === "string") return json;
     if (json && typeof json === "object" && !Array.isArray(json)) {
       return (json as Record<string, string>)[lang] || (json as Record<string, string>)["en"] || "";
@@ -55,7 +89,7 @@ export default function AllQuizzes() {
     switch (type) {
       case "hypothesis":
         return {
-          label: "Hypothesis",
+          label: "Bias Test Yourself To Learn 50+ Peoples' Behaviour",
           icon: Lightbulb,
           badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
           card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
@@ -63,7 +97,7 @@ export default function AllQuizzes() {
         };
       case "emotional":
         return {
-          label: "Emotional",
+          label: "Emotional Self Measure Tool",
           icon: Heart,
           badge: "bg-teal-600/20 text-teal-700 dark:text-teal-300 border-teal-600/30 font-medium",
           card: "hover:border-teal-600/60 hover:shadow-teal-600/15",
@@ -83,8 +117,25 @@ export default function AllQuizzes() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-6 py-6">
+        <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
           <Logo />
+          
+          {/* Language Selector */}
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="w-[140px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </header>
 
@@ -127,6 +178,10 @@ export default function AllQuizzes() {
                         <h2 className={`text-xl font-bold text-foreground transition-colors ${typeStyle.accent}`}>
                           {title}
                         </h2>
+                        {/* Free Badge - shown for all quizzes */}
+                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 border-emerald-500/30 font-semibold text-xs">
+                          Free
+                        </Badge>
                         <Badge variant="outline" className={`${typeStyle.badge} flex items-center gap-1`}>
                           <TypeIcon className="w-3 h-3" />
                           {typeStyle.label}
