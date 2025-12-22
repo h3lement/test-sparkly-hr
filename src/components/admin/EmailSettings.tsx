@@ -141,7 +141,7 @@ interface EmailSuccess {
   message: string;
 }
 
-type EmailType = "simple" | "quiz_result" | "notification";
+
 
 interface EmailConfig {
   senderName: string;
