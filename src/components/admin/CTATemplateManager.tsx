@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, Loader2, Languages, Globe, Eye, Sparkles } from "lucide-react";
+import { Save, Loader2, Languages, Globe, Eye, Sparkles, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
 import {
@@ -72,6 +72,7 @@ export function CTATemplateManager() {
   
   // Translation state
   const [translating, setTranslating] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   // Cost estimation
   const COST_PER_1K_INPUT_TOKENS = 0.000075;
@@ -168,10 +169,14 @@ export function CTATemplateManager() {
     setSaving(false);
   };
 
-  const handleTranslate = async () => {
+  const handleTranslate = async (regenerate = false) => {
     if (!selectedQuiz) return;
     
-    setTranslating(true);
+    if (regenerate) {
+      setRegenerating(true);
+    } else {
+      setTranslating(true);
+    }
     
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -186,6 +191,7 @@ export function CTATemplateManager() {
         body: JSON.stringify({
           quizId: selectedQuiz.id,
           sourceLanguage: selectedQuiz.primary_language || "en",
+          regenerate,
         }),
       });
 
@@ -195,7 +201,8 @@ export function CTATemplateManager() {
         throw new Error(data.message || "Translation failed");
       }
 
-      toast.success(`Translated CTA to ${data.translatedCount} languages (€${data.costEur?.toFixed(4) || "0.0000"})`);
+      const action = regenerate ? "Regenerated" : "Translated";
+      toast.success(`${action} CTA to ${data.translatedCount} languages (€${data.costEur?.toFixed(4) || "0.0000"})`);
       
       // Update local state with new translations
       setQuizzes(prev => prev.map(q => 
@@ -213,6 +220,7 @@ export function CTATemplateManager() {
       toast.error(error.message || "Failed to translate CTA content");
     } finally {
       setTranslating(false);
+      setRegenerating(false);
     }
   };
 
@@ -221,17 +229,24 @@ export function CTATemplateManager() {
   const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
 
   // Estimate translation cost
-  const estimateTranslationCost = () => {
+  const estimateTranslationCost = (regenerate = false) => {
     if (!selectedQuiz) return 0;
     
-    // Count available languages
-    const availableLanguages = new Set<string>();
-    Object.keys(selectedQuiz.cta_title || {}).forEach(lang => {
-      if (selectedQuiz.cta_title[lang]?.trim()) availableLanguages.add(lang);
-    });
+    let missingCount: number;
     
-    const missingCount = LANGUAGES.length - availableLanguages.size;
-    if (missingCount <= 0) return 0;
+    if (regenerate) {
+      // For regenerate, we translate all languages except source
+      missingCount = LANGUAGES.length - 1;
+    } else {
+      // Count available languages
+      const availableLanguages = new Set<string>();
+      Object.keys(selectedQuiz.cta_title || {}).forEach(lang => {
+        if (selectedQuiz.cta_title[lang]?.trim()) availableLanguages.add(lang);
+      });
+      
+      missingCount = LANGUAGES.length - availableLanguages.size;
+      if (missingCount <= 0) return 0;
+    }
     
     const avgTitleLength = 50;
     const avgDescLength = 200;
@@ -251,8 +266,10 @@ export function CTATemplateManager() {
     return costUsd * 0.92;
   };
 
-  const translationCostEur = estimateTranslationCost();
+  const translationCostEur = estimateTranslationCost(false);
+  const regenerateCostEur = estimateTranslationCost(true);
   const hasMissingTranslations = translationCostEur > 0;
+  const hasAnyTranslations = Object.keys(selectedQuiz?.cta_title || {}).length > 0;
 
   if (loading) {
     return (
@@ -406,8 +423,8 @@ export function CTATemplateManager() {
                       <TooltipTrigger asChild>
                         <Button 
                           variant="outline" 
-                          onClick={handleTranslate}
-                          disabled={translating}
+                          onClick={() => handleTranslate(false)}
+                          disabled={translating || regenerating}
                           className="gap-2"
                         >
                           {translating ? (
@@ -422,7 +439,36 @@ export function CTATemplateManager() {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Translate CTA to all 24 languages</p>
+                        <p>Translate CTA to missing languages</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+
+                {/* Regenerate AI Translations Button */}
+                {hasAnyTranslations && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleTranslate(true)}
+                          disabled={translating || regenerating}
+                          className="gap-2"
+                        >
+                          {regenerating ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                          Regenerate
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-mono">
+                            ~€{regenerateCostEur.toFixed(4)}
+                          </Badge>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Regenerate all CTA translations from source</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
