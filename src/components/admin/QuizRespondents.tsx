@@ -60,15 +60,33 @@ interface QuizLead {
   quiz_id: string | null;
 }
 
+interface HypothesisLead {
+  id: string;
+  email: string;
+  score: number;
+  total_questions: number;
+  language: string | null;
+  created_at: string;
+  quiz_id: string;
+  session_id: string;
+  feedback_action_plan: string | null;
+  feedback_new_learnings: string | null;
+}
+
+// Unified type for display
+type RespondentLead = QuizLead | (HypothesisLead & { result_category: string; openness_score: null; answers: null });
+
 interface QuizRespondentsProps {
   quizId: string;
   displayLanguage: string;
+  quizType?: string;
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [20, 50, 100];
 
-export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProps) {
-  const [leads, setLeads] = useState<QuizLead[]>([]);
+export function QuizRespondents({ quizId, displayLanguage, quizType = "standard" }: QuizRespondentsProps) {
+  const [leads, setLeads] = useState<RespondentLead[]>([]);
+  const isHypothesisQuiz = quizType === "hypothesis";
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -102,23 +120,30 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
+      const tableName = isHypothesisQuiz ? "hypothesis_leads" : "quiz_leads";
+      
       // Build count query
       let countQuery = supabase
-        .from("quiz_leads")
+        .from(tableName)
         .select("*", { count: "exact", head: true })
         .eq("quiz_id", quizId);
 
       // Build data query
       let dataQuery = supabase
-        .from("quiz_leads")
+        .from(tableName)
         .select("*")
         .eq("quiz_id", quizId);
 
       // Apply search filter
       if (debouncedSearch) {
         const searchPattern = `%${debouncedSearch}%`;
-        countQuery = countQuery.or(`email.ilike.${searchPattern},result_category.ilike.${searchPattern}`);
-        dataQuery = dataQuery.or(`email.ilike.${searchPattern},result_category.ilike.${searchPattern}`);
+        if (isHypothesisQuiz) {
+          countQuery = countQuery.ilike("email", searchPattern);
+          dataQuery = dataQuery.ilike("email", searchPattern);
+        } else {
+          countQuery = countQuery.or(`email.ilike.${searchPattern},result_category.ilike.${searchPattern}`);
+          dataQuery = dataQuery.or(`email.ilike.${searchPattern},result_category.ilike.${searchPattern}`);
+        }
       }
 
       // Apply date filters
@@ -144,7 +169,19 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
         .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
 
       if (error) throw error;
-      setLeads(data || []);
+      
+      // Transform hypothesis leads to match the display format
+      if (isHypothesisQuiz && data) {
+        const transformedData = (data as HypothesisLead[]).map(lead => ({
+          ...lead,
+          result_category: `${Math.round((lead.score / lead.total_questions) * 100)}% correct`,
+          openness_score: null,
+          answers: null,
+        }));
+        setLeads(transformedData);
+      } else {
+        setLeads((data as QuizLead[]) || []);
+      }
     } catch (error: any) {
       console.error("Error fetching leads:", error);
       toast({
@@ -155,7 +192,7 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
     } finally {
       setLoading(false);
     }
-  }, [quizId, sortField, sortDirection, currentPage, debouncedSearch, dateFrom, dateTo, itemsPerPage, toast]);
+  }, [quizId, sortField, sortDirection, currentPage, debouncedSearch, dateFrom, dateTo, itemsPerPage, toast, isHypothesisQuiz]);
 
   useEffect(() => {
     fetchLeads();
@@ -163,19 +200,31 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
 
   // Real-time subscription for new leads
   useEffect(() => {
+    const tableName = isHypothesisQuiz ? "hypothesis_leads" : "quiz_leads";
     const channel = supabase
-      .channel(`quiz-leads-realtime-${quizId}`)
+      .channel(`${tableName}-realtime-${quizId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'quiz_leads',
+          table: tableName,
           filter: `quiz_id=eq.${quizId}`
         },
         (payload) => {
           if (currentPage === 1 && !debouncedSearch && !dateFrom && !dateTo) {
-            setLeads(prev => [payload.new as QuizLead, ...prev.slice(0, itemsPerPage - 1)]);
+            if (isHypothesisQuiz) {
+              const lead = payload.new as HypothesisLead;
+              const transformedLead = {
+                ...lead,
+                result_category: `${Math.round((lead.score / lead.total_questions) * 100)}% correct`,
+                openness_score: null,
+                answers: null,
+              };
+              setLeads(prev => [transformedLead, ...prev.slice(0, itemsPerPage - 1)]);
+            } else {
+              setLeads(prev => [payload.new as QuizLead, ...prev.slice(0, itemsPerPage - 1)]);
+            }
           }
           setTotalCount(prev => prev + 1);
         }
@@ -185,7 +234,7 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [quizId, currentPage, debouncedSearch, dateFrom, dateTo, itemsPerPage]);
+  }, [quizId, currentPage, debouncedSearch, dateFrom, dateTo, itemsPerPage, isHypothesisQuiz]);
 
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -199,9 +248,10 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
 
   const handleDelete = async () => {
     if (!selectedLead) return;
+    const tableName = isHypothesisQuiz ? "hypothesis_leads" : "quiz_leads";
     try {
       const { error } = await supabase
-        .from("quiz_leads")
+        .from(tableName)
         .delete()
         .eq("id", selectedLead.id);
 
@@ -209,7 +259,7 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
 
       await logActivity({
         actionType: "DELETE",
-        tableName: "quiz_leads",
+        tableName: tableName,
         recordId: selectedLead.id,
         description: `Deleted respondent ${selectedLead.email}`,
       });
