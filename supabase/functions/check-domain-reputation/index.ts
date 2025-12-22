@@ -317,19 +317,51 @@ async function sendAdminNotification(
       console.log("Could not fetch email settings, using defaults");
     }
 
-    const { error: sendError } = await resend.emails.send({
+    const subject = `${statusEmoji} Domain Reputation ${statusText}: ${domain}`;
+    
+    const { data: sendData, error: sendError } = await resend.emails.send({
       from: `${senderName} <${senderEmail}>`,
       to: adminEmails,
-      subject: `${statusEmoji} Domain Reputation ${statusText}: ${domain}`,
+      subject,
       html: emailHtml,
     });
 
     if (sendError) {
       console.error("Error sending notification:", sendError);
+      
+      // Log failed email for each recipient
+      for (const recipientEmail of adminEmails) {
+        await supabase.from("email_logs").insert({
+          email_type: "domain_reputation_alert",
+          recipient_email: recipientEmail,
+          sender_email: senderEmail,
+          sender_name: senderName,
+          subject,
+          html_body: emailHtml,
+          status: "failed",
+          error_message: sendError.message || "Failed to send",
+        });
+      }
+      
       return false;
     }
 
     console.log("Notification sent successfully");
+    
+    // Log successful email for each recipient
+    for (const recipientEmail of adminEmails) {
+      await supabase.from("email_logs").insert({
+        email_type: "domain_reputation_alert",
+        recipient_email: recipientEmail,
+        sender_email: senderEmail,
+        sender_name: senderName,
+        subject,
+        html_body: emailHtml,
+        status: "sent",
+        resend_id: sendData?.id || null,
+      });
+    }
+    
     return true;
   } catch (error) {
     console.error("Failed to send admin notification:", error);
