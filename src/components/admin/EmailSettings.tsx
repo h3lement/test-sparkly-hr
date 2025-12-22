@@ -18,7 +18,18 @@ import {
   Mail,
   Loader2,
   ExternalLink,
+  Key,
+  Copy,
+  Check,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ConnectionStatus {
   status: "connected" | "disconnected" | "checking" | "error";
@@ -371,6 +382,52 @@ export function EmailSettings() {
               Connect to Resend first to send test emails.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* API Key Management Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500/10 rounded-lg">
+              <Key className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">API Key Management</CardTitle>
+              <CardDescription>Update your Resend API key when needed</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 rounded-lg bg-muted/50 border border-border">
+            <p className="text-sm text-muted-foreground mb-4">
+              To update your Resend API key, follow these steps:
+            </p>
+            <ol className="text-sm space-y-2 list-decimal list-inside text-muted-foreground mb-4">
+              <li>Go to <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Resend API Keys</a> and create a new key</li>
+              <li>Copy the new API key</li>
+              <li>Ask Lovable to update the RESEND_API_KEY secret with your new key</li>
+              <li>Click "Refresh" above to verify the connection</li>
+            </ol>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="https://resend.com/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open Resend Dashboard
+                </Button>
+              </a>
+            </div>
+          </div>
+          
+          <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+            <p className="text-sm text-blue-700">
+              <strong>Tip:</strong> Type "update my Resend API key" in the chat to quickly update your API key through Lovable.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
