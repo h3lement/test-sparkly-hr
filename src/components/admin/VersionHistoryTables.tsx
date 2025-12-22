@@ -346,9 +346,22 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     };
   };
 
-  const getCtasForQuiz = (quizId: string | null) => {
-    if (!quizId) return [];
-    return ctaTemplates.filter(cta => cta.quiz_id === quizId);
+  const getCtasGroupedByQuiz = () => {
+    const grouped: Record<string, CTATemplate[]> = {};
+    ctaTemplates.forEach(cta => {
+      const quizId = cta.quiz_id || 'unknown';
+      if (!grouped[quizId]) {
+        grouped[quizId] = [];
+      }
+      grouped[quizId].push(cta);
+    });
+    return grouped;
+  };
+
+  const getQuizSlug = (quizId: string | null): string => {
+    if (!quizId) return "Unknown";
+    const quiz = quizzes.find(q => q.id === quizId);
+    return quiz?.slug || "Unknown";
   };
 
   const handleCtaChange = async (templateId: string, ctaTemplateId: string | null) => {
@@ -700,73 +713,80 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                           <SelectTrigger className="h-7 text-xs w-full bg-background">
                             <SelectValue placeholder="Select CTA" />
                           </SelectTrigger>
-                          <SelectContent className="bg-popover z-50 min-w-[280px]">
+                          <SelectContent className="bg-popover z-50 min-w-[300px] max-h-[400px]">
                             <SelectItem value="none" className="text-xs">
                               <span className="text-muted-foreground">No CTA</span>
                             </SelectItem>
-                            {getCtasForQuiz(template.quiz_id).map((cta) => {
-                              const title = cta.cta_title?.en || cta.cta_title?.et || '';
-                              const description = cta.cta_description?.en || cta.cta_description?.et || '';
-                              const buttonText = cta.cta_text?.en || cta.cta_text?.et || '';
-                              return (
-                                <HoverCard key={cta.id} openDelay={200} closeDelay={100}>
-                                  <HoverCardTrigger asChild>
-                                    <SelectItem value={cta.id} className="text-xs cursor-pointer">
-                                      <div className="flex items-center gap-1.5">
-                                        {cta.is_live && (
-                                          <Badge variant="default" className="text-[10px] h-3.5 px-1 bg-green-600">
-                                            LIVE
-                                          </Badge>
-                                        )}
-                                        <span>v{cta.version_number}{title ? ` - ${title.substring(0, 18)}${title.length > 18 ? '...' : ''}` : ''}</span>
-                                      </div>
-                                    </SelectItem>
-                                  </HoverCardTrigger>
-                                  <HoverCardContent 
-                                    side="right" 
-                                    align="start" 
-                                    className="w-72 bg-popover border shadow-lg z-[100]"
-                                  >
-                                    <div className="space-y-2">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs font-medium text-muted-foreground">CTA v{cta.version_number}</span>
-                                        {cta.is_live && (
-                                          <Badge variant="default" className="text-[10px] h-4 px-1.5 bg-green-600">
-                                            LIVE
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      {title && (
-                                        <div>
-                                          <p className="text-xs text-muted-foreground mb-0.5">Title</p>
-                                          <p className="text-sm font-medium">{title}</p>
+                            {Object.entries(getCtasGroupedByQuiz()).map(([quizId, ctas]) => (
+                              <div key={quizId}>
+                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                                  {getQuizSlug(quizId)}
+                                </div>
+                                {ctas.map((cta) => {
+                                  const title = cta.cta_title?.en || cta.cta_title?.et || '';
+                                  const description = cta.cta_description?.en || cta.cta_description?.et || '';
+                                  const buttonText = cta.cta_text?.en || cta.cta_text?.et || '';
+                                  return (
+                                    <HoverCard key={cta.id} openDelay={200} closeDelay={100}>
+                                      <HoverCardTrigger asChild>
+                                        <SelectItem value={cta.id} className="text-xs cursor-pointer pl-4">
+                                          <div className="flex items-center gap-1.5">
+                                            {cta.is_live && (
+                                              <Badge variant="default" className="text-[10px] h-3.5 px-1 bg-green-600">
+                                                LIVE
+                                              </Badge>
+                                            )}
+                                            <span>v{cta.version_number}{title ? ` - ${title.substring(0, 16)}${title.length > 16 ? '...' : ''}` : ''}</span>
+                                          </div>
+                                        </SelectItem>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent 
+                                        side="right" 
+                                        align="start" 
+                                        className="w-72 bg-popover border shadow-lg z-[100]"
+                                      >
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-muted-foreground">CTA v{cta.version_number} • {getQuizSlug(cta.quiz_id)}</span>
+                                            {cta.is_live && (
+                                              <Badge variant="default" className="text-[10px] h-4 px-1.5 bg-green-600">
+                                                LIVE
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          {title && (
+                                            <div>
+                                              <p className="text-xs text-muted-foreground mb-0.5">Title</p>
+                                              <p className="text-sm font-medium">{title}</p>
+                                            </div>
+                                          )}
+                                          {description && (
+                                            <div>
+                                              <p className="text-xs text-muted-foreground mb-0.5">Description</p>
+                                              <p className="text-xs text-foreground/80 line-clamp-3">{description}</p>
+                                            </div>
+                                          )}
+                                          {buttonText && (
+                                            <div>
+                                              <p className="text-xs text-muted-foreground mb-0.5">Button</p>
+                                              <span className="inline-block px-2 py-1 text-xs bg-primary text-primary-foreground rounded">
+                                                {buttonText}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {cta.cta_url && (
+                                            <div>
+                                              <p className="text-xs text-muted-foreground mb-0.5">URL</p>
+                                              <p className="text-xs text-blue-500 truncate">{cta.cta_url}</p>
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
-                                      {description && (
-                                        <div>
-                                          <p className="text-xs text-muted-foreground mb-0.5">Description</p>
-                                          <p className="text-xs text-foreground/80 line-clamp-3">{description}</p>
-                                        </div>
-                                      )}
-                                      {buttonText && (
-                                        <div>
-                                          <p className="text-xs text-muted-foreground mb-0.5">Button</p>
-                                          <span className="inline-block px-2 py-1 text-xs bg-primary text-primary-foreground rounded">
-                                            {buttonText}
-                                          </span>
-                                        </div>
-                                      )}
-                                      {cta.cta_url && (
-                                        <div>
-                                          <p className="text-xs text-muted-foreground mb-0.5">URL</p>
-                                          <p className="text-xs text-blue-500 truncate">{cta.cta_url}</p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </HoverCardContent>
-                                </HoverCard>
-                              );
-                            })}
+                                      </HoverCardContent>
+                                    </HoverCard>
+                                  );
+                                })}
+                              </div>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
