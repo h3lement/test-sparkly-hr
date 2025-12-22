@@ -83,7 +83,7 @@ export function SortableQuestion({
       ref={setNodeRef}
       style={style}
       value={question.id}
-      className={`border-b last:border-b-0 px-3 py-0 ${isEven ? 'bg-muted/40' : ''}`}
+      className={`border-b last:border-b-0 px-3 py-0 list-row-interactive ${isEven ? 'list-row-odd' : 'list-row-even'}`}
     >
       <AccordionTrigger className="hover:no-underline py-2">
         <div className="flex items-center gap-1.5 text-left text-sm">
