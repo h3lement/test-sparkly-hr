@@ -1120,60 +1120,98 @@ export function EmailSettings() {
                 </div>
 
                 {/* SPF Record */}
-                {connectionStatus.dnsValidation && !connectionStatus.dnsValidation.spf.valid && (
-                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                        <span className="text-xs font-medium text-amber-700">SPF Record Missing</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain. Add this TXT record to your DNS:
-                    </p>
-                    <div className="p-2 bg-muted rounded text-xs font-mono break-all">
-                      v=spf1 include:_spf.{configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'} ~all
-                    </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      Host: @ (or your domain) • Type: TXT
-                    </p>
-                  </div>
-                )}
-
-                {/* DMARC Record */}
-                {connectionStatus.dnsValidation && !connectionStatus.dnsValidation.dmarc.valid && (
-                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                        <span className="text-xs font-medium text-amber-700">DMARC Record Missing</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      DMARC (Domain-based Message Authentication) protects against email spoofing. Add this TXT record:
-                    </p>
-                    <div className="p-2 bg-muted rounded text-xs font-mono break-all">
-                      v=DMARC1; p=quarantine; rua=mailto:dmarc@{configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}
-                    </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      Host: _dmarc • Type: TXT
-                    </p>
-                  </div>
-                )}
-
-                {/* DKIM Settings */}
-                <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                <div className={`p-3 rounded-lg border space-y-2 ${connectionStatus.dnsValidation?.spf.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Key className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DKIM (Optional)</p>
+                      {connectionStatus.dnsValidation?.spf.valid ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                      )}
+                      <span className={`text-xs font-medium ${connectionStatus.dnsValidation?.spf.valid ? 'text-green-700' : 'text-amber-700'}`}>
+                        SPF Record {connectionStatus.dnsValidation?.spf.valid ? 'Valid' : 'Missing'}
+                      </span>
                     </div>
-                    {(!connectionStatus.dnsValidation?.dkim.valid || !configDraft.dkimPrivateKey) && (
-                      <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={generateDkimKeys} disabled={isGeneratingDkim}>
-                        {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
-                        Generate
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        const spfRecord = `v=spf1 include:_spf.${configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'} ~all`;
+                        navigator.clipboard.writeText(spfRecord);
+                        toast({ title: "Copied!", description: "SPF record copied to clipboard." });
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain.
+                  </p>
+                  <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                    v=spf1 include:_spf.{configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'} ~all
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Host: @ (or your domain) • Type: TXT
+                  </p>
+                </div>
+
+                {/* DMARC Record */}
+                <div className={`p-3 rounded-lg border space-y-2 ${connectionStatus.dnsValidation?.dmarc.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {connectionStatus.dnsValidation?.dmarc.valid ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                      )}
+                      <span className={`text-xs font-medium ${connectionStatus.dnsValidation?.dmarc.valid ? 'text-green-700' : 'text-amber-700'}`}>
+                        DMARC Record {connectionStatus.dnsValidation?.dmarc.valid ? 'Valid' : 'Missing'}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        const dmarcRecord = `v=DMARC1; p=quarantine; rua=mailto:dmarc@${configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}`;
+                        navigator.clipboard.writeText(dmarcRecord);
+                        toast({ title: "Copied!", description: "DMARC record copied to clipboard." });
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    DMARC (Domain-based Message Authentication) protects against email spoofing.
+                  </p>
+                  <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                    v=DMARC1; p=quarantine; rua=mailto:dmarc@{configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Host: _dmarc • Type: TXT
+                  </p>
+                </div>
+
+                {/* DKIM Settings */}
+                <div className={`space-y-3 p-3 rounded-lg border ${connectionStatus.dnsValidation?.dkim.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-muted/30'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {connectionStatus.dnsValidation?.dkim.valid ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <p className={`text-xs font-medium uppercase tracking-wide ${connectionStatus.dnsValidation?.dkim.valid ? 'text-green-700' : 'text-muted-foreground'}`}>
+                        DKIM {connectionStatus.dnsValidation?.dkim.valid ? 'Valid' : '(Optional)'}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={generateDkimKeys} disabled={isGeneratingDkim}>
+                      {isGeneratingDkim ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3 mr-1" />}
+                      {configDraft.dkimPrivateKey ? 'Regenerate' : 'Generate'}
+                    </Button>
                   </div>
                   
                   <p className="text-xs text-muted-foreground">
