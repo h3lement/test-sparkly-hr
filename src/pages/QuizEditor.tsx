@@ -54,6 +54,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { logActivity } from "@/hooks/useActivityLog";
+import { AdminBreadcrumb } from "@/components/admin/AdminBreadcrumb";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -1992,18 +1993,17 @@ export default function QuizEditor() {
       <main className="flex-1 flex flex-col min-h-0">
         <div className="flex-1 density-padding-lg overflow-y-auto min-h-0">
           <div className="admin-page">
+            {/* Breadcrumb */}
+            <AdminBreadcrumb 
+              items={[
+                { label: "Quizzes", href: "/admin/quizzes" },
+                { label: isCreating ? "Create New Quiz" : (getLocalizedValue(title, "en") || slug || "Quiz") }
+              ]} 
+            />
+
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(returnPath)}
-                  className="gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </Button>
                 <h1 className="text-2xl font-bold">
                   {isCreating ? "Create New Quiz" : `Edit Quiz: ${getLocalizedValue(title, "en") || slug}`}
                 </h1>
