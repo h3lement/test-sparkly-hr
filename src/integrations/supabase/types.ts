@@ -284,6 +284,7 @@ export type Database = {
           subjects: Json
           template_type: string
           version_number: number
+          web_result_version_id: string | null
         }
         Insert: {
           body_content?: Json
@@ -302,6 +303,7 @@ export type Database = {
           subjects?: Json
           template_type?: string
           version_number?: number
+          web_result_version_id?: string | null
         }
         Update: {
           body_content?: Json
@@ -320,6 +322,7 @@ export type Database = {
           subjects?: Json
           template_type?: string
           version_number?: number
+          web_result_version_id?: string | null
         }
         Relationships: [
           {
@@ -334,6 +337,13 @@ export type Database = {
             columns: ["quiz_id"]
             isOneToOne: false
             referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_templates_web_result_version_id_fkey"
+            columns: ["web_result_version_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_result_versions"
             referencedColumns: ["id"]
           },
         ]
