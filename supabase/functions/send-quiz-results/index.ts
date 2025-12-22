@@ -503,8 +503,19 @@ const handler = async (req: Request): Promise<Response> => {
         const isConnected = response.status === 200;
         console.log("Connection check result:", response.status, isConnected);
         
+        let domains: Array<{ name: string; status: string; region: string }> = [];
+        if (isConnected) {
+          const domainsData = await response.json();
+          domains = (domainsData.data || []).map((d: any) => ({
+            name: d.name,
+            status: d.status,
+            region: d.region || "unknown",
+          }));
+          console.log("Domains found:", domains.length);
+        }
+        
         return new Response(
-          JSON.stringify({ connected: isConnected }),
+          JSON.stringify({ connected: isConnected, domains }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       } catch (connError: any) {

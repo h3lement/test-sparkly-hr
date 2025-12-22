@@ -23,14 +23,24 @@ import {
   ExternalLink,
   XCircle,
   CheckCircle2,
+  Globe,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { ApiKeyManagementCard } from "./ApiKeyManagementCard";
+
+interface DomainInfo {
+  name: string;
+  status: string;
+  region: string;
+}
 
 interface ConnectionStatus {
   status: "connected" | "disconnected" | "checking" | "error";
   lastChecked: Date | null;
   message: string;
   apiKeyConfigured: boolean;
+  domains: DomainInfo[];
 }
 
 interface EmailError {
@@ -55,6 +65,7 @@ export function EmailSettings() {
     lastChecked: null,
     message: "Checking connection...",
     apiKeyConfigured: false,
+    domains: [],
   });
   const [testEmail, setTestEmail] = useState("");
   const [emailType, setEmailType] = useState<EmailType>("simple");
@@ -119,6 +130,7 @@ export function EmailSettings() {
           lastChecked: new Date(),
           message: "Resend API connection active",
           apiKeyConfigured: true,
+          domains: data?.domains || [],
         });
         setSuccess({
           type: "connection",
@@ -131,6 +143,7 @@ export function EmailSettings() {
           lastChecked: new Date(),
           message: errorMessage,
           apiKeyConfigured: false,
+          domains: [],
         });
         addError({
           type: "connection",
@@ -148,6 +161,7 @@ export function EmailSettings() {
         lastChecked: new Date(),
         message: errorMessage,
         apiKeyConfigured: false,
+        domains: [],
       });
       addError({
         type: "connection",
@@ -360,6 +374,56 @@ export function EmailSettings() {
               <RefreshCw className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} />
             </Button>
           </div>
+
+          {/* Domain Verification Status */}
+          {connectionStatus.status === "connected" && (
+            <div className="p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Domain Verification</p>
+              </div>
+              {connectionStatus.domains.length > 0 ? (
+                <div className="space-y-1.5">
+                  {connectionStatus.domains.map((domain, index) => (
+                    <div key={index} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        {domain.status === "verified" ? (
+                          <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                        )}
+                        <span className="font-mono text-xs">{domain.name}</span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs px-1.5 py-0 ${
+                          domain.status === "verified"
+                            ? "bg-green-500/10 text-green-600 border-green-500/20"
+                            : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        }`}
+                      >
+                        {domain.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                  <span>No domains verified. Using sandbox (onboarding@resend.dev)</span>
+                  <a
+                    href="https://resend.com/domains"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline ml-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Add domain
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Success Message */}
           {lastSuccess && (
