@@ -98,19 +98,19 @@ export function HypothesisQuestionEditor({
                 />
               </div>
 
-              {/* Correct Answer */}
+              {/* Correct Answer with Points */}
               <div className="flex items-center justify-between p-2 bg-pink-100 dark:bg-pink-900/30 rounded">
                 <span className="text-sm font-medium">Correct:</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm ${!question.correct_answer_woman ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
-                    False
+                  <span className={`text-sm ${!question.correct_answer_woman ? 'font-bold text-red-600' : 'text-muted-foreground'}`}>
+                    False (0pt)
                   </span>
                   <Switch
                     checked={question.correct_answer_woman}
                     onCheckedChange={(checked) => onUpdate({ correct_answer_woman: checked })}
                   />
-                  <span className={`text-sm ${question.correct_answer_woman ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
-                    True
+                  <span className={`text-sm ${question.correct_answer_woman ? 'font-bold text-green-600' : 'text-muted-foreground'}`}>
+                    True (1pt)
                   </span>
                 </div>
               </div>
@@ -138,19 +138,19 @@ export function HypothesisQuestionEditor({
                 />
               </div>
 
-              {/* Correct Answer */}
+              {/* Correct Answer with Points */}
               <div className="flex items-center justify-between p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
                 <span className="text-sm font-medium">Correct:</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm ${!question.correct_answer_man ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
-                    False
+                  <span className={`text-sm ${!question.correct_answer_man ? 'font-bold text-red-600' : 'text-muted-foreground'}`}>
+                    False (0pt)
                   </span>
                   <Switch
                     checked={question.correct_answer_man}
                     onCheckedChange={(checked) => onUpdate({ correct_answer_man: checked })}
                   />
-                  <span className={`text-sm ${question.correct_answer_man ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
-                    True
+                  <span className={`text-sm ${question.correct_answer_man ? 'font-bold text-green-600' : 'text-muted-foreground'}`}>
+                    True (1pt)
                   </span>
                 </div>
               </div>

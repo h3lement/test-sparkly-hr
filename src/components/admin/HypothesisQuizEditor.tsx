@@ -247,6 +247,26 @@ export function HypothesisQuizEditor({ quizId, language }: HypothesisQuizEditorP
 
   return (
     <div className="space-y-6">
+      {/* Scoring Info Banner */}
+      <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <span className="text-lg">🎯</span>
+          Scoring:
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-medium">
+            ✓ Correct = 1 point
+          </span>
+          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-medium">
+            ✗ Wrong = 0 points
+          </span>
+        </div>
+        <div className="flex-1" />
+        <span className="text-sm text-muted-foreground">
+          Max score: {totalHypotheses} pts
+        </span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
