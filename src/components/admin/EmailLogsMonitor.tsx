@@ -35,9 +35,11 @@ import {
   ChevronRight,
   Send,
   Clock,
-  ExternalLink
+  ExternalLink,
+  GripVertical
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
+import { useResizableColumns } from "@/hooks/useResizableColumns";
 
 interface EmailLog {
   id: string;
@@ -89,6 +91,23 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
   const { toast } = useToast();
+
+  // Default column widths
+  const defaultColumnWidths = {
+    type: 130,
+    status: 110,
+    quiz: 120,
+    recipient: 200,
+    subject: 250,
+    sent: 100,
+    actions: 180,
+  };
+
+  const { columnWidths, handleMouseDown } = useResizableColumns({
+    defaultWidths: defaultColumnWidths,
+    storageKey: "email-logs-column-widths",
+    minWidth: 60,
+  });
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -500,16 +519,52 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       ) : (
         <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Quiz</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Recipient</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Subject</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Sent</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Actions</th>
+                  <th style={{ width: columnWidths.type }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
+                    <span>Type</span>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("type", e)}
+                    />
+                  </th>
+                  <th style={{ width: columnWidths.status }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
+                    <span>Status</span>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("status", e)}
+                    />
+                  </th>
+                  <th style={{ width: columnWidths.quiz }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
+                    <span>Quiz</span>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("quiz", e)}
+                    />
+                  </th>
+                  <th style={{ width: columnWidths.recipient }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
+                    <span>Recipient</span>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("recipient", e)}
+                    />
+                  </th>
+                  <th style={{ width: columnWidths.subject }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
+                    <span>Subject</span>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("subject", e)}
+                    />
+                  </th>
+                  <th style={{ width: columnWidths.sent }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
+                    <span>Sent</span>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("sent", e)}
+                    />
+                  </th>
+                  <th style={{ width: columnWidths.actions }} className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -523,62 +578,62 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
 
                   return (
                     <tr key={log.id} className={`border-b border-border last:border-b-0 list-row-interactive ${isEvenRow ? "list-row-even" : "list-row-odd"}`}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <Badge variant="outline" className={`${typeInfo.color} gap-1`}>
+                      <td style={{ width: columnWidths.type }} className="px-4 py-3 overflow-hidden">
+                        <div className="flex items-center gap-1 overflow-hidden">
+                          <Badge variant="outline" className={`${typeInfo.color} gap-1 shrink-0`}>
                             <TypeIcon className="w-3 h-3" />
                             {typeInfo.label}
                           </Badge>
                           {isResend && (
-                            <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">
+                            <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs shrink-0">
                               Resent
                             </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td style={{ width: columnWidths.status }} className="px-4 py-3 overflow-hidden">
+                        <div className="flex items-center gap-2 overflow-hidden">
                           {log.status === "sent" ? (
-                            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 gap-1">
+                            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 shrink-0">
                               <CheckCircle2 className="w-3 h-3" />
                               Sent
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 gap-1">
+                            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 gap-1 shrink-0">
                               <AlertCircle className="w-3 h-3" />
                               Failed
                             </Badge>
                           )}
                           {totalAttempts > 1 && (
-                            <span className="text-xs text-amber-600 font-medium">×{totalAttempts}</span>
+                            <span className="text-xs text-amber-600 font-medium shrink-0">×{totalAttempts}</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-muted-foreground max-w-[120px] truncate block" title={quizTitle || "—"}>
+                      <td style={{ width: columnWidths.quiz }} className="px-4 py-3 overflow-hidden">
+                        <span className="text-sm text-muted-foreground truncate block" title={quizTitle || "—"}>
                           {quizTitle || "—"}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-foreground">{log.recipient_email}</span>
+                      <td style={{ width: columnWidths.recipient }} className="px-4 py-3 overflow-hidden">
+                        <span className="text-sm text-foreground truncate block" title={log.recipient_email}>{log.recipient_email}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td style={{ width: columnWidths.subject }} className="px-4 py-3 overflow-hidden">
+                        <div className="flex items-center gap-2 overflow-hidden">
                           <Badge variant="secondary" className="text-xs uppercase shrink-0">
                             {log.language || "en"}
                           </Badge>
-                          <span className="text-sm text-muted-foreground max-w-[200px] truncate" title={log.subject}>
+                          <span className="text-sm text-muted-foreground truncate" title={log.subject}>
                             {log.subject}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td style={{ width: columnWidths.sent }} className="px-4 py-3 overflow-hidden">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatDate(log.created_at)}
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{formatDate(log.created_at)}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td style={{ width: columnWidths.actions }} className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           {log.quiz_lead_id && onViewQuizLead && (
                             <Button
