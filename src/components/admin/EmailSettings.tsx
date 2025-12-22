@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   RefreshCw,
   Send,
@@ -26,6 +27,9 @@ import {
   Globe,
   ShieldCheck,
   ShieldAlert,
+  Settings,
+  Save,
+  Pencil,
 } from "lucide-react";
 import { ApiKeyManagementCard } from "./ApiKeyManagementCard";
 
@@ -59,6 +63,12 @@ interface EmailSuccess {
 
 type EmailType = "simple" | "quiz_result" | "notification";
 
+interface EmailConfig {
+  senderName: string;
+  senderEmail: string;
+  replyToEmail: string;
+}
+
 export function EmailSettings() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     status: "checking",
@@ -73,11 +83,91 @@ export function EmailSettings() {
   const [isChecking, setIsChecking] = useState(false);
   const [errors, setErrors] = useState<EmailError[]>([]);
   const [lastSuccess, setLastSuccess] = useState<EmailSuccess | null>(null);
+  const [emailConfig, setEmailConfig] = useState<EmailConfig>({
+    senderName: "Sparkly",
+    senderEmail: "onboarding@resend.dev",
+    replyToEmail: "",
+  });
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [configDraft, setConfigDraft] = useState<EmailConfig>(emailConfig);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 5000;
   const { toast } = useToast();
+
+  // Load email config from app_settings
+  useEffect(() => {
+    const loadEmailConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("app_settings")
+          .select("setting_key, setting_value")
+          .in("setting_key", ["email_sender_name", "email_sender_email", "email_reply_to"]);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const config: Partial<EmailConfig> = {};
+          data.forEach((setting) => {
+            if (setting.setting_key === "email_sender_name") {
+              config.senderName = setting.setting_value;
+            } else if (setting.setting_key === "email_sender_email") {
+              config.senderEmail = setting.setting_value;
+            } else if (setting.setting_key === "email_reply_to") {
+              config.replyToEmail = setting.setting_value;
+            }
+          });
+          const newConfig = { ...emailConfig, ...config };
+          setEmailConfig(newConfig);
+          setConfigDraft(newConfig);
+        }
+      } catch (error) {
+        console.error("Failed to load email config:", error);
+      }
+    };
+    loadEmailConfig();
+  }, []);
+
+  const saveEmailConfig = async () => {
+    setIsSavingConfig(true);
+    try {
+      const settings = [
+        { setting_key: "email_sender_name", setting_value: configDraft.senderName.trim() },
+        { setting_key: "email_sender_email", setting_value: configDraft.senderEmail.trim() },
+        { setting_key: "email_reply_to", setting_value: configDraft.replyToEmail.trim() },
+      ];
+
+      for (const setting of settings) {
+        const { error } = await supabase
+          .from("app_settings")
+          .upsert(setting, { onConflict: "setting_key" });
+        if (error) throw error;
+      }
+
+      setEmailConfig(configDraft);
+      setIsEditingConfig(false);
+      toast({
+        title: "Settings saved",
+        description: "Email configuration has been updated.",
+      });
+    } catch (error: any) {
+      console.error("Failed to save email config:", error);
+      toast({
+        title: "Failed to save",
+        description: error.message || "Could not save email configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  const cancelEditConfig = () => {
+    setConfigDraft(emailConfig);
+    setIsEditingConfig(false);
+  };
 
   const addError = (error: Omit<EmailError, "timestamp">) => {
     setErrors((prev) => [{ ...error, timestamp: new Date() }, ...prev].slice(0, 5));
@@ -375,35 +465,112 @@ export function EmailSettings() {
             </Button>
           </div>
 
-          {/* Default SMTP Configuration */}
+          {/* Email Configuration */}
           {connectionStatus.status === "connected" && (
             <div className="p-3 rounded-lg bg-muted/50 border">
-              <div className="flex items-center gap-2 mb-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">Default SMTP Configuration</p>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Email Configuration</p>
+                </div>
+                {!isEditingConfig ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setIsEditingConfig(true)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={cancelEditConfig}
+                      disabled={isSavingConfig}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={saveEmailConfig}
+                      disabled={isSavingConfig}
+                    >
+                      {isSavingConfig ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Save className="h-3 w-3 mr-1" />
+                          Save
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Provider:</span>
-                  <span className="font-medium">Resend</span>
+
+              {isEditingConfig ? (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="senderName" className="text-xs">Sender Name</Label>
+                    <Input
+                      id="senderName"
+                      value={configDraft.senderName}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, senderName: e.target.value }))}
+                      placeholder="Your Company Name"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="senderEmail" className="text-xs">Sender Email</Label>
+                    <Input
+                      id="senderEmail"
+                      type="email"
+                      value={configDraft.senderEmail}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, senderEmail: e.target.value }))}
+                      placeholder="noreply@yourdomain.com"
+                      className="h-8 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Must match a verified domain in Resend
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="replyToEmail" className="text-xs">Reply-To Email (optional)</Label>
+                    <Input
+                      id="replyToEmail"
+                      type="email"
+                      value={configDraft.replyToEmail}
+                      onChange={(e) => setConfigDraft((prev) => ({ ...prev, replyToEmail: e.target.value }))}
+                      placeholder="support@yourdomain.com"
+                      className="h-8 text-sm"
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Protocol:</span>
-                  <span className="font-medium">HTTPS API</span>
+              ) : (
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-border/50">
+                    <span className="text-muted-foreground">Sender Name:</span>
+                    <span className="font-medium">{emailConfig.senderName || "Not set"}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-border/50">
+                    <span className="text-muted-foreground">Sender Email:</span>
+                    <span className="font-mono">{emailConfig.senderEmail || "Not set"}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-border/50">
+                    <span className="text-muted-foreground">Reply-To:</span>
+                    <span className="font-mono">{emailConfig.replyToEmail || "Same as sender"}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-muted-foreground">Provider:</span>
+                    <span className="font-medium">Resend (HTTPS API)</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Endpoint:</span>
-                  <span className="font-mono text-xs">api.resend.com</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Region:</span>
-                  <span className="font-medium">
-                    {connectionStatus.domains.length > 0 && connectionStatus.domains[0].region
-                      ? connectionStatus.domains[0].region.toUpperCase()
-                      : "US"}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
