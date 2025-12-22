@@ -6,9 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Save, Eye, Wand2, RefreshCw, Languages, Code } from "lucide-react";
+import { Save, Eye, Wand2, RefreshCw, Languages, Code, FileText, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
 interface EmailTemplate {
   id: string;
@@ -126,11 +127,66 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
   const [bodyContent, setBodyContent] = useState<Record<string, string>>({});
   const [selectedLang, setSelectedLang] = useState(quiz?.primary_language || "en");
   const [saving, setSaving] = useState(false);
-  const [translating, setTranslating] = useState(false);
+  const [translatingSubjects, setTranslatingSubjects] = useState(false);
+  const [translatingBody, setTranslatingBody] = useState(false);
   const [liveTemplate, setLiveTemplate] = useState<EmailTemplate | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
   const { toast } = useToast();
 
   const primaryLanguage = quiz?.primary_language || "en";
+
+  // Calculate translation stats
+  const translationStats = useMemo(() => {
+    const subjectTranslated = SUPPORTED_LANGUAGES.filter(l => subjects[l.code]?.trim()).length;
+    const bodyTranslated = SUPPORTED_LANGUAGES.filter(l => bodyContent[l.code]?.trim()).length;
+    const total = SUPPORTED_LANGUAGES.length;
+    return {
+      subjectTranslated,
+      bodyTranslated,
+      total,
+      subjectMissing: total - subjectTranslated,
+      bodyMissing: total - bodyTranslated,
+    };
+  }, [subjects, bodyContent]);
+
+  // Sample data for preview
+  const sampleData = useMemo(() => ({
+    score: "75",
+    maxScore: "100",
+    resultTitle: "Strong Performer",
+    resultDescription: "You demonstrate excellent team collaboration skills with room for growth in strategic thinking.",
+    insightsList: "<li>Excellent communication skills</li><li>Strong team player</li><li>Room for growth in leadership</li>",
+    opennessSection: `<div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+      <h3 style="color: #1f2937; margin: 0 0 8px 0;">Open-Mindedness Score</h3>
+      <div style="font-size: 24px; font-weight: bold; color: #6d28d9;">85%</div>
+      <p style="color: #6b7280; margin: 8px 0 0 0;">High openness to new ideas</p>
+    </div>`,
+    opennessScore: "85%",
+    opennessTitle: "High Openness",
+    opennessDescription: "You show great receptivity to new ideas and perspectives.",
+    yourResultsTitle: "Your Results",
+    outOf: "out of",
+    points: "points",
+    keyInsightsTitle: "Key Insights",
+    ctaTitle: "Ready to level up?",
+    ctaDescription: "Book a consultation to discuss your results and growth opportunities.",
+    ctaButtonText: "Book Now",
+    ctaUrl: "https://sparkly.hr/book",
+    logoUrl: "https://sparkly.hr/logo.png",
+    userEmail: "user@example.com",
+  }), []);
+
+  // Render preview HTML with sample data
+  const renderedPreview = useMemo(() => {
+    let html = bodyContent[selectedLang] || "";
+    if (!html) return "";
+    
+    Object.entries(sampleData).forEach(([key, value]) => {
+      html = html.replace(new RegExp(`{{${key}}}`, "g"), value);
+    });
+    
+    return html;
+  }, [bodyContent, selectedLang, sampleData]);
 
   useEffect(() => {
     fetchLiveTemplate();
@@ -185,17 +241,17 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
     });
   };
 
-  const translateContent = async () => {
-    if (!subjects[primaryLanguage] && !bodyContent[primaryLanguage]) {
+  const translateSubjects = async () => {
+    if (!subjects[primaryLanguage]?.trim()) {
       toast({
-        title: "No content to translate",
-        description: `Please add content in the primary language (${primaryLanguage}) first.`,
+        title: "No subject to translate",
+        description: `Please add subject in the primary language (${primaryLanguage}) first.`,
         variant: "destructive",
       });
       return;
     }
 
-    setTranslating(true);
+    setTranslatingSubjects(true);
     try {
       const { data, error } = await supabase.functions.invoke("translate-email-template", {
         body: {
@@ -210,7 +266,7 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
       if (data?.subjects) {
         setSubjects(prev => ({ ...prev, ...data.subjects }));
         toast({
-          title: "Translation complete",
+          title: "Subjects translated",
           description: `Translated to ${Object.keys(data.subjects).length} languages. Cost: €${data.cost?.toFixed(4) || "0.0000"}`,
         });
       }
@@ -218,11 +274,54 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
       console.error("Translation error:", error);
       toast({
         title: "Translation failed",
-        description: error.message || "Could not translate content",
+        description: error.message || "Could not translate subjects",
         variant: "destructive",
       });
     } finally {
-      setTranslating(false);
+      setTranslatingSubjects(false);
+    }
+  };
+
+  const translateBodyContent = async () => {
+    if (!bodyContent[primaryLanguage]?.trim()) {
+      toast({
+        title: "No body content to translate",
+        description: `Please add HTML body in the primary language (${primaryLanguage}) first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTranslatingBody(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-email-body", {
+        body: {
+          sourceLanguage: primaryLanguage,
+          sourceBody: bodyContent[primaryLanguage],
+          targetLanguages: SUPPORTED_LANGUAGES
+            .filter(l => l.code !== primaryLanguage && !bodyContent[l.code]?.trim())
+            .map(l => l.code),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.translations) {
+        setBodyContent(prev => ({ ...prev, ...data.translations }));
+        toast({
+          title: "Body content translated",
+          description: `Translated to ${Object.keys(data.translations).length} languages. Cost: €${data.cost?.toFixed(4) || "0.0000"}`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Body translation error:", error);
+      toast({
+        title: "Translation failed",
+        description: error.message || "Could not translate body content",
+        variant: "destructive",
+      });
+    } finally {
+      setTranslatingBody(false);
     }
   };
 
@@ -373,34 +472,80 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
             </div>
           </div>
 
-          {/* Language Tabs */}
-          <Tabs value={selectedLang} onValueChange={setSelectedLang}>
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="flex-wrap h-auto gap-1">
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <TabsTrigger 
-                    key={lang.code} 
-                    value={lang.code}
-                    className="text-xs"
-                  >
-                    {lang.code.toUpperCase()}
-                    {lang.code === primaryLanguage && (
-                      <span className="ml-1 text-primary">•</span>
-                    )}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+          {/* Translation Status */}
+          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Subjects
+                </span>
+                <Badge variant={translationStats.subjectMissing === 0 ? "default" : "secondary"}>
+                  {translationStats.subjectTranslated}/{translationStats.total}
+                </Badge>
+              </div>
+              <Progress value={(translationStats.subjectTranslated / translationStats.total) * 100} className="h-2" />
               <Button
                 variant="outline"
                 size="sm"
-                onClick={translateContent}
-                disabled={translating}
-                className="gap-1.5"
+                onClick={translateSubjects}
+                disabled={translatingSubjects || !subjects[primaryLanguage]?.trim()}
+                className="w-full gap-1.5"
               >
                 <Languages className="w-4 h-4" />
-                {translating ? "Translating..." : "AI Translate All"}
+                {translatingSubjects ? "Translating..." : `Translate Subjects (${translationStats.subjectMissing} missing)`}
               </Button>
             </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <Code className="w-4 h-4" />
+                  Body HTML
+                </span>
+                <Badge variant={translationStats.bodyMissing === 0 ? "default" : "secondary"}>
+                  {translationStats.bodyTranslated}/{translationStats.total}
+                </Badge>
+              </div>
+              <Progress value={(translationStats.bodyTranslated / translationStats.total) * 100} className="h-2" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={translateBodyContent}
+                disabled={translatingBody || !bodyContent[primaryLanguage]?.trim()}
+                className="w-full gap-1.5"
+              >
+                <Languages className="w-4 h-4" />
+                {translatingBody ? "Translating..." : `Translate Body (${translationStats.bodyMissing} missing)`}
+              </Button>
+            </div>
+          </div>
+
+          {/* Language Tabs */}
+          <Tabs value={selectedLang} onValueChange={setSelectedLang}>
+            <TabsList className="flex-wrap h-auto gap-1 mb-4">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const hasSubject = !!subjects[lang.code]?.trim();
+                const hasBody = !!bodyContent[lang.code]?.trim();
+                const isComplete = hasSubject && hasBody;
+                
+                return (
+                  <TabsTrigger 
+                    key={lang.code} 
+                    value={lang.code}
+                    className="text-xs gap-1"
+                  >
+                    {lang.code.toUpperCase()}
+                    {lang.code === primaryLanguage ? (
+                      <span className="text-primary">•</span>
+                    ) : isComplete ? (
+                      <Check className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <X className="w-3 h-3 text-muted-foreground/50" />
+                    )}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
 
             {SUPPORTED_LANGUAGES.map((lang) => (
               <TabsContent key={lang.code} value={lang.code} className="space-y-4">
@@ -419,26 +564,63 @@ export function EmailTemplateEditor({ quizId, quiz, onSave, onPreview }: EmailTe
                   />
                 </div>
 
-                {/* Body Content */}
+                {/* Body Content with Preview Toggle */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>HTML Body ({lang.name})</Label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={applyDefaultTemplate}
-                      className="gap-1.5 text-xs"
-                    >
-                      <Code className="w-3.5 h-3.5" />
-                      Load Default Template
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={showPreview ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowPreview(!showPreview)}
+                        className="gap-1.5 text-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {showPreview ? "Hide Preview" : "Show Preview"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={applyDefaultTemplate}
+                        className="gap-1.5 text-xs"
+                      >
+                        <Code className="w-3.5 h-3.5" />
+                        Load Default
+                      </Button>
+                    </div>
                   </div>
-                  <Textarea
-                    value={bodyContent[lang.code] || ""}
-                    onChange={(e) => updateBodyContent(lang.code, e.target.value)}
-                    placeholder="Paste HTML email template here..."
-                    className="font-mono text-sm min-h-[300px]"
-                  />
+                  
+                  <div className={`grid gap-4 ${showPreview ? "grid-cols-2" : "grid-cols-1"}`}>
+                    <Textarea
+                      value={bodyContent[lang.code] || ""}
+                      onChange={(e) => updateBodyContent(lang.code, e.target.value)}
+                      placeholder="Paste HTML email template here..."
+                      className="font-mono text-sm min-h-[400px]"
+                    />
+                    
+                    {showPreview && (
+                      <div className="border rounded-lg overflow-hidden bg-background">
+                        <div className="bg-muted px-3 py-2 border-b flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">Live Preview</span>
+                        </div>
+                        <div className="h-[400px] overflow-auto">
+                          {renderedPreview ? (
+                            <iframe
+                              srcDoc={renderedPreview}
+                              className="w-full h-full border-0"
+                              title="Email Preview"
+                              sandbox="allow-same-origin"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                              Enter HTML to see preview
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
             ))}
