@@ -157,6 +157,8 @@ interface EmailConfig {
   dkimSelector: string;
   dkimPrivateKey: string;
   dkimDomain: string;
+  dkimPublicKey: string;
+  dkimDnsRecord: string;
 }
 
 export function EmailSettings() {
@@ -184,13 +186,13 @@ export function EmailSettings() {
     dkimSelector: "",
     dkimPrivateKey: "",
     dkimDomain: "",
+    dkimPublicKey: "",
+    dkimDnsRecord: "",
   });
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [configDraft, setConfigDraft] = useState<EmailConfig>(emailConfig);
   const [isGeneratingDkim, setIsGeneratingDkim] = useState(false);
-  const [dkimPublicKey, setDkimPublicKey] = useState<string>("");
-  const [dkimDnsRecord, setDkimDnsRecord] = useState<string>("");
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [rateLimitInfo, setRateLimitInfo] = useState<{ lastSentAt: Date | null; emailsPerMinute: number }>({
     lastSentAt: null,
@@ -318,7 +320,7 @@ export function EmailSettings() {
         const settingKeys = [
           "email_sender_name", "email_sender_email", "email_reply_to",
           "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls",
-          "dkim_selector", "dkim_private_key", "dkim_domain"
+          "dkim_selector", "dkim_private_key", "dkim_domain", "dkim_public_key", "dkim_dns_record"
         ];
         
         const { data, error } = await supabase
@@ -343,6 +345,8 @@ export function EmailSettings() {
               case "dkim_selector": config.dkimSelector = setting.setting_value; break;
               case "dkim_private_key": config.dkimPrivateKey = setting.setting_value; break;
               case "dkim_domain": config.dkimDomain = setting.setting_value; break;
+              case "dkim_public_key": config.dkimPublicKey = setting.setting_value; break;
+              case "dkim_dns_record": config.dkimDnsRecord = setting.setting_value; break;
             }
           });
           const newConfig = { ...emailConfig, ...config };
@@ -371,6 +375,8 @@ export function EmailSettings() {
         { setting_key: "dkim_selector", setting_value: configDraft.dkimSelector.trim() },
         { setting_key: "dkim_private_key", setting_value: configDraft.dkimPrivateKey },
         { setting_key: "dkim_domain", setting_value: configDraft.dkimDomain.trim() },
+        { setting_key: "dkim_public_key", setting_value: configDraft.dkimPublicKey },
+        { setting_key: "dkim_dns_record", setting_value: configDraft.dkimDnsRecord },
       ];
 
       for (const setting of settings) {
@@ -418,13 +424,12 @@ export function EmailSettings() {
           ...prev,
           dkimSelector: data.selector,
           dkimPrivateKey: data.privateKey,
+          dkimPublicKey: data.publicKey || "",
+          dkimDnsRecord: data.dnsRecord || "",
         }));
-        // Store public key and DNS record for display
-        setDkimPublicKey(data.publicKey || "");
-        setDkimDnsRecord(data.dnsRecord || "");
         toast({
           title: "DKIM keys generated",
-          description: "Both private and public keys generated. Copy the DNS record below to your domain.",
+          description: "Both private and public keys generated. Save to persist, then add DNS record.",
         });
       } else {
         throw new Error(data?.error || "Failed to generate DKIM keys");
@@ -1219,9 +1224,9 @@ export function EmailSettings() {
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
-                        {dkimDnsRecord ? (
+                        {configDraft.dkimDnsRecord ? (
                           <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
-                            {dkimDnsRecord}
+                            {configDraft.dkimDnsRecord}
                           </div>
                         ) : (
                           <p className="text-xs text-amber-600 italic">
@@ -1229,13 +1234,13 @@ export function EmailSettings() {
                           </p>
                         )}
                       </div>
-                      {dkimPublicKey && (
+                      {configDraft.dkimPublicKey && (
                         <details className="text-xs">
                           <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                             View raw public key
                           </summary>
                           <div className="mt-2 p-2 bg-background rounded font-mono break-all border max-h-20 overflow-y-auto">
-                            {dkimPublicKey}
+                            {configDraft.dkimPublicKey}
                           </div>
                         </details>
                       )}
