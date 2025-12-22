@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Mail } from "lucide-react";
+import { Globe, Mail, AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +26,12 @@ interface Quiz {
   title: Record<string, string>;
   slug: string;
   primary_language: string;
+}
+
+interface QuizLiveStatus {
+  quiz: Quiz;
+  hasLiveEmail: boolean;
+  hasLiveWeb: boolean;
 }
 
 // Email translations for preview - includes sample result data
@@ -81,24 +89,82 @@ export function TemplateVersionsPage() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
   const [previewLanguage, setPreviewLanguage] = useState<string>("en");
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [liveStatus, setLiveStatus] = useState<QuizLiveStatus[]>([]);
+  const [showMissingDetails, setShowMissingDetails] = useState(false);
 
-  useEffect(() => {
-    fetchQuizzes();
-  }, []);
-
-  const fetchQuizzes = async () => {
+  const fetchQuizzes = useCallback(async () => {
     const { data, error } = await supabase
       .from("quizzes")
       .select("id, title, slug, primary_language")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setQuizzes(data.map(q => ({
+      const typedQuizzes = data.map(q => ({
         ...q,
         title: q.title as Record<string, string>,
-      })));
+      }));
+      setQuizzes(typedQuizzes);
+      return typedQuizzes;
     }
-  };
+    return [];
+  }, []);
+
+  const fetchLiveStatus = useCallback(async (quizList: Quiz[]) => {
+    if (quizList.length === 0) return;
+
+    // Fetch live email templates
+    const { data: liveEmails } = await supabase
+      .from("email_templates")
+      .select("quiz_id")
+      .eq("is_live", true)
+      .eq("template_type", "quiz_results");
+
+    // Fetch live web result versions
+    const { data: liveWebs } = await supabase
+      .from("quiz_result_versions")
+      .select("quiz_id")
+      .eq("is_live", true);
+
+    const liveEmailQuizIds = new Set((liveEmails || []).map(e => e.quiz_id));
+    const liveWebQuizIds = new Set((liveWebs || []).map(w => w.quiz_id));
+
+    const status: QuizLiveStatus[] = quizList.map(quiz => ({
+      quiz,
+      hasLiveEmail: liveEmailQuizIds.has(quiz.id),
+      hasLiveWeb: liveWebQuizIds.has(quiz.id),
+    }));
+
+    setLiveStatus(status);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      const quizList = await fetchQuizzes();
+      await fetchLiveStatus(quizList);
+    };
+    init();
+  }, [fetchQuizzes, fetchLiveStatus]);
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("template-versions-live-status")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "email_templates" },
+        () => fetchLiveStatus(quizzes)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "quiz_result_versions" },
+        () => fetchLiveStatus(quizzes)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [quizzes, fetchLiveStatus]);
 
   const handlePreview = async (template: EmailTemplate, language?: string) => {
     setPreviewTemplate(template);
@@ -120,6 +186,12 @@ export function TemplateVersionsPage() {
     console.log("Load template:", template);
   };
 
+  const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
+
+  // Compute missing live templates
+  const missingLiveTemplates = liveStatus.filter(s => !s.hasLiveEmail || !s.hasLiveWeb);
+  const allComplete = missingLiveTemplates.length === 0 && liveStatus.length > 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -128,6 +200,85 @@ export function TemplateVersionsPage() {
           View and manage all web result and email template versions
         </p>
       </div>
+
+      {/* Live Template Status Banner */}
+      {liveStatus.length > 0 && (
+        <div className={`rounded-lg border p-4 ${
+          allComplete 
+            ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800" 
+            : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {allComplete ? (
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900">
+                  <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                </div>
+              )}
+              <div>
+                <h3 className={`font-medium ${allComplete ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}`}>
+                  {allComplete 
+                    ? "All quizzes have live templates" 
+                    : `${missingLiveTemplates.length} ${missingLiveTemplates.length === 1 ? "quiz is" : "quizzes are"} missing live templates`
+                  }
+                </h3>
+                {!allComplete && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    Set live templates to ensure quiz takers see results and receive emails
+                  </p>
+                )}
+              </div>
+            </div>
+            {!allComplete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMissingDetails(!showMissingDetails)}
+                className="gap-1 text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
+              >
+                {showMissingDetails ? "Hide" : "Show"} details
+                {showMissingDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            )}
+          </div>
+
+          {/* Expanded details */}
+          {showMissingDetails && !allComplete && (
+            <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 space-y-2">
+              {missingLiveTemplates.map(({ quiz, hasLiveEmail, hasLiveWeb }) => (
+                <div 
+                  key={quiz.id} 
+                  className="flex items-center justify-between py-2 px-3 rounded-md bg-white/50 dark:bg-black/20"
+                >
+                  <span className="font-medium text-amber-900 dark:text-amber-100">
+                    {getQuizTitle(quiz)}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={hasLiveWeb ? "default" : "destructive"} 
+                      className={`text-xs ${hasLiveWeb ? "bg-green-600" : ""}`}
+                    >
+                      <Globe className="w-3 h-3 mr-1" />
+                      Web {hasLiveWeb ? "✓" : "✗"}
+                    </Badge>
+                    <Badge 
+                      variant={hasLiveEmail ? "default" : "destructive"}
+                      className={`text-xs ${hasLiveEmail ? "bg-green-600" : ""}`}
+                    >
+                      <Mail className="w-3 h-3 mr-1" />
+                      Email {hasLiveEmail ? "✓" : "✗"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
