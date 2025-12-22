@@ -192,7 +192,7 @@ export function WebStatsMonitor() {
   };
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
