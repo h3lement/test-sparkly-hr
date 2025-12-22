@@ -257,7 +257,9 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     }
 
     // Quiz filter
-    if (filterQuiz !== "all") {
+    if (filterQuiz === "no_quiz") {
+      result = result.filter((log) => !log.quiz_lead?.quiz_id);
+    } else if (filterQuiz !== "all") {
       result = result.filter((log) => log.quiz_lead?.quiz_id === filterQuiz);
     }
 
@@ -463,6 +465,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Quizzes</SelectItem>
+            <SelectItem value="no_quiz">No Quiz</SelectItem>
             {quizzes.map((quiz) => {
               const title = quiz.title as Record<string, string>;
               return (
