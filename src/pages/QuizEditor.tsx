@@ -414,8 +414,9 @@ export default function QuizEditor() {
       );
     }
 
-    // Handle deleted result levels (in parallel)
+    // Handle deleted result levels (in parallel) - skip temp IDs that were never saved
     for (const levelId of deletedResultLevelIds) {
+      if (levelId.startsWith("new-")) continue; // Skip temp IDs
       promises.push(
         (async () => {
           const { error } = await supabase
@@ -544,7 +545,8 @@ export default function QuizEditor() {
             ));
           })()
         );
-      } else {
+      } else if (!level.id.startsWith("new-")) {
+        // Only update if ID is a real UUID (not a temp ID)
         promises.push(
           (async () => {
             const { error } = await supabase
