@@ -354,6 +354,78 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
       
+      const senderDomain = emailConfig.senderEmail.split('@')[1] || '';
+      
+      // DNS record validation results
+      interface DnsValidation {
+        spf: { valid: boolean; record: string | null; inUse: boolean };
+        dkim: { valid: boolean; configured: boolean; inUse: boolean; selector: string | null };
+        dmarc: { valid: boolean; record: string | null; inUse: boolean };
+      }
+      
+      const dnsValidation: DnsValidation = {
+        spf: { valid: false, record: null, inUse: true }, // SPF is always checked by receiving servers
+        dkim: { 
+          valid: !!emailConfig.dkimPrivateKey && !!emailConfig.dkimSelector && !!emailConfig.dkimDomain, 
+          configured: !!emailConfig.dkimPrivateKey,
+          inUse: !!emailConfig.dkimPrivateKey && !!emailConfig.dkimSelector,
+          selector: emailConfig.dkimSelector || null
+        },
+        dmarc: { valid: false, record: null, inUse: true }, // DMARC is always checked by receiving servers
+      };
+      
+      // Check SPF record via DNS
+      if (senderDomain) {
+        try {
+          console.log(`Checking SPF record for ${senderDomain}...`);
+          const spfRecords = await Deno.resolveDns(senderDomain, "TXT");
+          const spfRecord = spfRecords.flat().find((r: string) => r.startsWith("v=spf1"));
+          if (spfRecord) {
+            dnsValidation.spf.valid = true;
+            dnsValidation.spf.record = spfRecord;
+            console.log("SPF record found:", spfRecord);
+          } else {
+            console.log("No SPF record found for domain");
+          }
+        } catch (e: any) {
+          console.log("SPF lookup failed:", e.message);
+        }
+        
+        // Check DMARC record via DNS
+        try {
+          console.log(`Checking DMARC record for _dmarc.${senderDomain}...`);
+          const dmarcRecords = await Deno.resolveDns(`_dmarc.${senderDomain}`, "TXT");
+          const dmarcRecord = dmarcRecords.flat().find((r: string) => r.startsWith("v=DMARC1"));
+          if (dmarcRecord) {
+            dnsValidation.dmarc.valid = true;
+            dnsValidation.dmarc.record = dmarcRecord;
+            console.log("DMARC record found:", dmarcRecord);
+          } else {
+            console.log("No DMARC record found for domain");
+          }
+        } catch (e: any) {
+          console.log("DMARC lookup failed:", e.message);
+        }
+        
+        // Check DKIM record via DNS if selector is configured
+        if (emailConfig.dkimSelector && emailConfig.dkimDomain) {
+          try {
+            const dkimHost = `${emailConfig.dkimSelector}._domainkey.${emailConfig.dkimDomain}`;
+            console.log(`Checking DKIM record at ${dkimHost}...`);
+            const dkimRecords = await Deno.resolveDns(dkimHost, "TXT");
+            const dkimRecord = dkimRecords.flat().find((r: string) => r.includes("v=DKIM1"));
+            if (dkimRecord) {
+              dnsValidation.dkim.valid = true;
+              console.log("DKIM DNS record found");
+            } else {
+              console.log("DKIM DNS record not found or invalid");
+            }
+          } catch (e: any) {
+            console.log("DKIM DNS lookup failed:", e.message);
+          }
+        }
+      }
+      
       // Test SMTP connectivity - use TLS for port 465, regular TCP for others
       try {
         const port = parseInt(emailConfig.smtpPort, 10) || 587;
@@ -363,20 +435,17 @@ const handler = async (req: Request): Promise<Response> => {
         let conn: Deno.Conn;
         
         if (useImplicitTls) {
-          // Port 465 uses implicit TLS (SSL from the start)
           conn = await Deno.connectTls({
             hostname: emailConfig.smtpHost,
             port: port,
           });
         } else {
-          // Port 587/25 use STARTTLS (plain TCP first, then upgrade)
           conn = await Deno.connect({
             hostname: emailConfig.smtpHost,
             port: port,
           });
         }
         
-        // Read initial SMTP greeting (220 response) with timeout
         const buffer = new Uint8Array(512);
         const readPromise = conn.read(buffer);
         const timeoutPromise = new Promise<null>((_, reject) => 
@@ -404,10 +473,11 @@ const handler = async (req: Request): Promise<Response> => {
                   senderName: emailConfig.senderName,
                 },
                 domains: [{
-                  name: emailConfig.senderEmail.split('@')[1] || 'unknown',
+                  name: senderDomain || 'unknown',
                   status: 'configured',
                   region: 'smtp'
-                }]
+                }],
+                dnsValidation,
               }),
               { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
             );
@@ -420,7 +490,11 @@ const handler = async (req: Request): Promise<Response> => {
       } catch (connError: any) {
         console.error("SMTP connection check failed:", connError);
         return new Response(
-          JSON.stringify({ connected: false, error: connError.message }),
+          JSON.stringify({ 
+            connected: false, 
+            error: connError.message,
+            dnsValidation, // Still return DNS validation even if connection failed
+          }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
