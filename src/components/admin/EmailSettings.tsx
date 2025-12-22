@@ -112,10 +112,53 @@ interface DomainInfo {
   region: string;
 }
 
+interface SpfAnalysis {
+  hasValidSyntax: boolean;
+  includes: string[];
+  policy: string | null;
+  isStrict: boolean;
+}
+
+interface DkimAnalysis {
+  hasValidSyntax: boolean;
+  keyType: string | null;
+  hasPublicKey: boolean;
+}
+
+interface DmarcAnalysis {
+  hasValidSyntax: boolean;
+  policy: string | null;
+  subdomainPolicy: string | null;
+  reportEmail: string | null;
+  percentage: number | null;
+  isStrict: boolean;
+}
+
 interface DnsValidation {
-  spf: { valid: boolean; record: string | null; inUse: boolean };
-  dkim: { valid: boolean; configured: boolean; inUse: boolean; selector: string | null };
-  dmarc: { valid: boolean; record: string | null; inUse: boolean };
+  spf: { 
+    valid: boolean; 
+    record: string | null; 
+    allRecords?: string[];
+    inUse: boolean;
+    analysis?: SpfAnalysis | null;
+  };
+  dkim: { 
+    valid: boolean; 
+    configured: boolean; 
+    inUse: boolean; 
+    selector: string | null;
+    record?: string | null;
+    allRecords?: string[];
+    analysis?: DkimAnalysis | null;
+  };
+  dmarc: { 
+    valid: boolean; 
+    record: string | null; 
+    allRecords?: string[];
+    inUse: boolean;
+    analysis?: DmarcAnalysis | null;
+  };
+  domain?: string;
 }
 
 interface ConnectionStatus {
@@ -1181,12 +1224,63 @@ export function EmailSettings() {
                         toast({ title: "Copied!", description: "SPF record copied to clipboard." });
                       }}
                     >
-                      Copy
+                      Copy Suggested
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain.
                   </p>
+                  
+                  {/* Show current DNS record if found */}
+                  {connectionStatus.dnsValidation?.spf.valid && connectionStatus.dnsValidation.spf.record && (
+                    <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-2 text-xs text-green-700"
+                          onClick={() => {
+                            navigator.clipboard.writeText(connectionStatus.dnsValidation?.spf.record || '');
+                            toast({ title: "Copied!", description: "Current SPF record copied." });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                      <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                        {connectionStatus.dnsValidation.spf.record}
+                      </div>
+                      {connectionStatus.dnsValidation.spf.analysis && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="text-muted-foreground">Policy:</div>
+                          <div className="font-medium">
+                            {connectionStatus.dnsValidation.spf.analysis.policy || 'Not set'}
+                            {connectionStatus.dnsValidation.spf.analysis.isStrict && (
+                              <Badge variant="outline" className="ml-1 text-xs px-1 py-0 bg-green-500/10 text-green-600">Strict</Badge>
+                            )}
+                          </div>
+                          {connectionStatus.dnsValidation.spf.analysis.includes.length > 0 && (
+                            <>
+                              <div className="text-muted-foreground">Includes:</div>
+                              <div className="font-mono text-xs break-all">
+                                {connectionStatus.dnsValidation.spf.analysis.includes.join(', ')}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {(connectionStatus.dnsValidation.spf.allRecords?.length || 0) > 1 && (
+                        <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                          <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                          <p className="text-xs text-amber-700">
+                            Warning: {connectionStatus.dnsValidation.spf.allRecords?.length} SPF records found. Only one should exist.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
@@ -1218,7 +1312,7 @@ export function EmailSettings() {
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Generated Record:</p>
+                    <p className="text-xs text-muted-foreground">Suggested Record:</p>
                     <div className="p-2 bg-background rounded text-xs font-mono break-all border">
                       {getSpfRecord()}
                     </div>
@@ -1251,12 +1345,69 @@ export function EmailSettings() {
                         toast({ title: "Copied!", description: "DMARC record copied to clipboard." });
                       }}
                     >
-                      Copy
+                      Copy Suggested
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     DMARC (Domain-based Message Authentication) protects against email spoofing.
                   </p>
+                  
+                  {/* Show current DNS record if found */}
+                  {connectionStatus.dnsValidation?.dmarc.valid && connectionStatus.dnsValidation.dmarc.record && (
+                    <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-2 text-xs text-green-700"
+                          onClick={() => {
+                            navigator.clipboard.writeText(connectionStatus.dnsValidation?.dmarc.record || '');
+                            toast({ title: "Copied!", description: "Current DMARC record copied." });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                      <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                        {connectionStatus.dnsValidation.dmarc.record}
+                      </div>
+                      {connectionStatus.dnsValidation.dmarc.analysis && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="text-muted-foreground">Policy:</div>
+                          <div className="font-medium">
+                            {connectionStatus.dnsValidation.dmarc.analysis.policy || 'Not set'}
+                            {connectionStatus.dnsValidation.dmarc.analysis.isStrict && (
+                              <Badge variant="outline" className="ml-1 text-xs px-1 py-0 bg-green-500/10 text-green-600">Strict</Badge>
+                            )}
+                          </div>
+                          {connectionStatus.dnsValidation.dmarc.analysis.subdomainPolicy && (
+                            <>
+                              <div className="text-muted-foreground">Subdomain Policy:</div>
+                              <div className="font-medium">{connectionStatus.dnsValidation.dmarc.analysis.subdomainPolicy}</div>
+                            </>
+                          )}
+                          {connectionStatus.dnsValidation.dmarc.analysis.reportEmail && (
+                            <>
+                              <div className="text-muted-foreground">Reports to:</div>
+                              <div className="font-mono text-xs break-all">{connectionStatus.dnsValidation.dmarc.analysis.reportEmail}</div>
+                            </>
+                          )}
+                          <div className="text-muted-foreground">Percentage:</div>
+                          <div className="font-medium">{connectionStatus.dnsValidation.dmarc.analysis.percentage}%</div>
+                        </div>
+                      )}
+                      {(connectionStatus.dnsValidation.dmarc.allRecords?.length || 0) > 1 && (
+                        <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                          <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                          <p className="text-xs text-amber-700">
+                            Warning: {connectionStatus.dnsValidation.dmarc.allRecords?.length} DMARC records found. Only one should exist.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
@@ -1287,7 +1438,7 @@ export function EmailSettings() {
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Generated Record:</p>
+                    <p className="text-xs text-muted-foreground">Suggested Record:</p>
                     <div className="p-2 bg-background rounded text-xs font-mono break-all border">
                       {getDmarcRecord()}
                     </div>
@@ -1317,6 +1468,54 @@ export function EmailSettings() {
                   <p className="text-xs text-muted-foreground">
                     DKIM (DomainKeys Identified Mail) adds a digital signature to emails, proving they haven't been altered. Click "Generate" to create keys, then add the public key to your DNS.
                   </p>
+
+                  {/* Show current DNS record if found */}
+                  {connectionStatus.dnsValidation?.dkim.valid && connectionStatus.dnsValidation.dkim.record && (
+                    <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-green-700">Current DNS Record:</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-2 text-xs text-green-700"
+                          onClick={() => {
+                            navigator.clipboard.writeText(connectionStatus.dnsValidation?.dkim.record || '');
+                            toast({ title: "Copied!", description: "Current DKIM record copied." });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                      <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-20 overflow-y-auto">
+                        {connectionStatus.dnsValidation.dkim.record}
+                      </div>
+                      {connectionStatus.dnsValidation.dkim.analysis && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="text-muted-foreground">Key Type:</div>
+                          <div className="font-medium">{connectionStatus.dnsValidation.dkim.analysis.keyType || 'RSA'}</div>
+                          <div className="text-muted-foreground">Public Key:</div>
+                          <div>
+                            {connectionStatus.dnsValidation.dkim.analysis.hasPublicKey ? (
+                              <Badge variant="outline" className="text-xs px-1 py-0 bg-green-500/10 text-green-600">Present</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs px-1 py-0 bg-amber-500/10 text-amber-600">Missing</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Show warning if DKIM is configured but DNS not found */}
+                  {configDraft.dkimPrivateKey && configDraft.dkimSelector && configDraft.dkimDomain && !connectionStatus.dnsValidation?.dkim.valid && (
+                    <div className="flex items-start gap-1 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                      <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-amber-700">
+                        DKIM keys are configured locally but no matching DNS record found at {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}. Add the DNS record below.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
