@@ -11,7 +11,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Send, Globe, Maximize2, Minimize2 } from "lucide-react";
+import { Send, Globe, Maximize2, Minimize2, Languages, Loader2, Sparkles } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Cost per 1K tokens (approximate for gemini-2.5-flash)
+const COST_PER_1K_INPUT_TOKENS = 0.000075;
+const COST_PER_1K_OUTPUT_TOKENS = 0.0003;
+const AVG_CHARS_PER_SUBJECT = 60;
 
 interface EmailTemplate {
   id: string;
@@ -99,6 +110,7 @@ export function EmailPreviewDialog({
   const [testEmail, setTestEmail] = useState(defaultEmail);
   const [testLanguage, setTestLanguage] = useState(initialLanguage || "en");
   const [sendingTest, setSendingTest] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [dialogSize, setDialogSize] = useState(getSavedDialogSize);
   const [isMaximized, setIsMaximized] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -132,6 +144,73 @@ export function EmailPreviewDialog({
   };
 
   const availableLanguages = getAvailableLanguages();
+  const missingLanguages = ALL_LANGUAGES.filter(l => !availableLanguages.includes(l.code));
+
+  // Estimate translation cost for missing languages
+  const estimateTranslationCost = () => {
+    if (missingLanguages.length === 0) return 0;
+    // Estimate based on subject translation
+    const subjectLength = template?.subjects?.[quiz?.primary_language || "en"]?.length || AVG_CHARS_PER_SUBJECT;
+    const promptBase = 400; // Base prompt characters
+    const languageList = missingLanguages.length * 20; // ~20 chars per language listing
+    const inputChars = promptBase + languageList + subjectLength;
+    const outputChars = missingLanguages.length * (subjectLength + 10); // translation + json overhead
+    
+    const inputTokens = Math.ceil(inputChars / 4);
+    const outputTokens = Math.ceil(outputChars / 4);
+    
+    const costUsd = (inputTokens / 1000 * COST_PER_1K_INPUT_TOKENS) + 
+                    (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS);
+    return costUsd * 0.92; // Convert to EUR
+  };
+
+  const translationCostEur = estimateTranslationCost();
+
+  const handleTranslate = async () => {
+    if (!template || !quiz) return;
+    
+    const sourceLanguage = quiz.primary_language || "en";
+    const sourceSubject = template.subjects?.[sourceLanguage] || template.subjects?.en || "";
+    
+    if (!sourceSubject.trim()) {
+      toast({
+        title: "Nothing to translate",
+        description: "No subject found in the source language",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-email-template", {
+        body: {
+          templateId: template.id,
+          sourceLanguage,
+          sourceSubject,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Translation complete",
+        description: `Translated to ${data.translatedLanguages?.length || 0} languages (€${data.cost?.toFixed(4) || "0.0000"})`,
+      });
+
+      // Close and reopen to refresh
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Translation error:", error);
+      toast({
+        title: "Translation failed",
+        description: error.message || "Failed to translate email template",
+        variant: "destructive",
+      });
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const getEmailPreviewHtml = () => {
     if (!template) return "";
@@ -347,26 +426,58 @@ export function EmailPreviewDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4 p-6">
-          {/* Horizontal Language Selector */}
-          <div className="flex items-center gap-1 flex-wrap flex-shrink-0">
-            <Globe className="w-4 h-4 text-muted-foreground mr-1" />
-            {ALL_LANGUAGES.map((lang) => {
-              const isAvailable = availableLanguages.includes(lang.code);
-              const isSelected = testLanguage === lang.code;
-              return (
-                <Button
-                  key={lang.code}
-                  variant={isSelected ? "default" : isAvailable ? "outline" : "ghost"}
-                  size="sm"
-                  onClick={() => isAvailable && setTestLanguage(lang.code)}
-                  disabled={!isAvailable}
-                  className={`h-7 px-2.5 font-mono uppercase text-xs ${!isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
-                  title={`${lang.name}${!isAvailable ? ' (not available)' : ''}`}
-                >
-                  {lang.code}
-                </Button>
-              );
-            })}
+          {/* Language Selector with Translate Button */}
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center gap-1 flex-wrap flex-1">
+              {ALL_LANGUAGES.map((lang) => {
+                const isAvailable = availableLanguages.includes(lang.code);
+                const isSelected = testLanguage === lang.code;
+                return (
+                  <Button
+                    key={lang.code}
+                    variant={isSelected ? "default" : isAvailable ? "outline" : "ghost"}
+                    size="sm"
+                    onClick={() => isAvailable && setTestLanguage(lang.code)}
+                    disabled={!isAvailable}
+                    className={`h-7 px-2.5 font-mono uppercase text-xs ${!isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    title={`${lang.name}${!isAvailable ? ' (not available)' : ''}`}
+                  >
+                    {lang.code}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            {/* AI Translate Button */}
+            {missingLanguages.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTranslate}
+                      disabled={translating || !template}
+                      className="gap-1.5 h-7 text-xs"
+                    >
+                      {translating ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" />
+                      )}
+                      AI Translate
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-mono">
+                        ~€{translationCostEur.toFixed(4)}
+                      </Badge>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Translate to {missingLanguages.length} missing languages</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
 
           {/* Controls Bar */}
