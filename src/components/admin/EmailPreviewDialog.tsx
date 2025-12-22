@@ -35,6 +35,7 @@ interface EmailTemplate {
   body_content?: Record<string, string>;
   is_live: boolean;
   created_at: string;
+  cta_template_id?: string | null;
 }
 
 interface Quiz {

@@ -23,6 +23,17 @@ interface EmailTemplate {
   created_at: string;
   created_by_email: string | null;
   quiz_id: string | null;
+  cta_template_id: string | null;
+}
+
+interface CTATemplate {
+  id: string;
+  quiz_id: string | null;
+  version_number: number;
+  is_live: boolean;
+  cta_title: Record<string, string>;
+  cta_text: Record<string, string>;
+  created_at: string;
 }
 
 interface EmailTemplateManagerProps {
@@ -318,11 +329,15 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   const [senderName, setSenderName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [subjects, setSubjects] = useState<Record<string, string>>({});
+  const [selectedCtaTemplateId, setSelectedCtaTemplateId] = useState<string>("");
+
+  // CTA templates state
+  const [ctaTemplates, setCtaTemplates] = useState<CTATemplate[]>([]);
+  const [ctaTemplatesLoading, setCtaTemplatesLoading] = useState(false);
 
   // Preview dialog state
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
-
 
   // Fetch quizzes and set default based on most recent activity
   useEffect(() => {
@@ -336,6 +351,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     const quizIdToUse = propQuizId || selectedQuizId;
     if (quizIdToUse) {
       fetchTemplates(quizIdToUse);
+      fetchCtaTemplates(quizIdToUse);
     }
   }, [propQuizId, selectedQuizId]);
 
@@ -383,6 +399,35 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     }
   };
 
+  const fetchCtaTemplates = async (quizIdToFetch?: string) => {
+    const quizIdToUse = quizIdToFetch || currentQuizId;
+    if (!quizIdToUse) return;
+    
+    setCtaTemplatesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("cta_templates")
+        .select("id, quiz_id, version_number, is_live, cta_title, cta_text, created_at")
+        .or(`quiz_id.eq.${quizIdToUse},quiz_id.is.null`)
+        .order("is_live", { ascending: false })
+        .order("version_number", { ascending: false });
+
+      if (error) throw error;
+
+      const typedData = (data || []).map(item => ({
+        ...item,
+        cta_title: item.cta_title as Record<string, string>,
+        cta_text: item.cta_text as Record<string, string>,
+      }));
+
+      setCtaTemplates(typedData);
+    } catch (error: any) {
+      console.error("Error fetching CTA templates:", error);
+    } finally {
+      setCtaTemplatesLoading(false);
+    }
+  };
+
   // Computed quiz ID - use prop if provided, otherwise use selected
   const currentQuizId = propQuizId || selectedQuizId;
 
@@ -418,11 +463,13 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
         setSenderName(liveTemplate.sender_name);
         setSenderEmail(liveTemplate.sender_email);
         setSubjects(liveTemplate.subjects);
+        setSelectedCtaTemplateId(liveTemplate.cta_template_id || "");
       } else if (typedData.length === 0) {
         // Reset form if no templates exist for this quiz
         setSenderName("");
         setSenderEmail("");
         setSubjects({});
+        setSelectedCtaTemplateId("");
       }
     } catch (error: any) {
       console.error("Error fetching templates:", error);
@@ -497,6 +544,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
           created_by: user?.id,
           created_by_email: user?.email || currentUserEmail,
           quiz_id: currentQuizId,
+          cta_template_id: selectedCtaTemplateId || null,
         })
         .select()
         .single();
@@ -738,7 +786,42 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
                   </p>
                 </div>
 
-                {/* Save Button */}
+                {/* CTA Template Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="ctaTemplate" className="text-base font-semibold">
+                    CTA Template
+                    <span className="text-muted-foreground font-normal ml-2">
+                      (optional - linked CTA block for this email)
+                    </span>
+                  </Label>
+                  <Select
+                    value={selectedCtaTemplateId}
+                    onValueChange={setSelectedCtaTemplateId}
+                    disabled={ctaTemplatesLoading}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a CTA template..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="">No CTA Template</SelectItem>
+                      {ctaTemplates.map((cta) => {
+                        const quizMatch = quizzes.find(q => q.id === cta.quiz_id);
+                        const ctaTitle = cta.cta_title?.en || cta.cta_title?.et || 'Untitled';
+                        const quizName = quizMatch?.title?.en || quizMatch?.slug || 'Unknown';
+                        return (
+                          <SelectItem key={cta.id} value={cta.id}>
+                            {cta.is_live && <Badge variant="default" className="mr-2 bg-green-600 text-xs">LIVE</Badge>}
+                            v{cta.version_number} - {ctaTitle.substring(0, 30)}{ctaTitle.length > 30 ? '...' : ''} ({quizName})
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Select a CTA template to link to this email template. The CTA will be shown in the email footer.
+                  </p>
+                </div>
+
                 <div className="flex justify-end pt-4 border-t">
                   <Button onClick={saveNewVersion} disabled={saving} className="gap-2">
                     <Save className="w-4 h-4" />

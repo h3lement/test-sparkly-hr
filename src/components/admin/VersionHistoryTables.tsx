@@ -66,6 +66,7 @@ interface EmailTemplate {
   created_at: string;
   created_by_email: string | null;
   quiz_id: string | null;
+  cta_template_id: string | null;
   estimated_cost_eur: number | null;
   input_tokens: number | null;
   output_tokens: number | null;
