@@ -1214,7 +1214,21 @@ export function EmailSettings() {
                     <div className="p-3 bg-muted rounded-lg space-y-2 border">
                       <p className="text-xs font-medium text-foreground">DNS Record to Add:</p>
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Host (Name):</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">Host (Name):</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${configDraft.dkimSelector}._domainkey.${configDraft.dkimDomain}`);
+                              toast({ title: "Copied!", description: "Host name copied to clipboard." });
+                            }}
+                          >
+                            Copy
+                          </Button>
+                        </div>
                         <div className="p-2 bg-background rounded text-xs font-mono break-all border">
                           {configDraft.dkimSelector}._domainkey.{configDraft.dkimDomain}
                         </div>
@@ -1223,7 +1237,23 @@ export function EmailSettings() {
                         <p className="text-xs text-muted-foreground">Type: <span className="font-medium text-foreground">TXT</span></p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">Value (paste this entire string):</p>
+                          {configDraft.dkimDnsRecord && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                navigator.clipboard.writeText(configDraft.dkimDnsRecord);
+                                toast({ title: "Copied!", description: "DNS record value copied to clipboard." });
+                              }}
+                            >
+                              Copy
+                            </Button>
+                          )}
+                        </div>
                         {configDraft.dkimDnsRecord ? (
                           <div className="p-2 bg-background rounded text-xs font-mono break-all border max-h-24 overflow-y-auto">
                             {configDraft.dkimDnsRecord}
