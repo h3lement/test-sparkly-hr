@@ -1,0 +1,20 @@
+-- Enable RLS on all tables that have policies but RLS disabled
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hypothesis_leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hypothesis_pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hypothesis_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hypothesis_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.open_mindedness_result_levels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.page_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_admin_emails ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_result_levels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_result_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quizzes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scheduled_emails ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ui_translations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
