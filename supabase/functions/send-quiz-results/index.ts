@@ -1068,7 +1068,39 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     ` : '';
 
-    const emailHtml = `
+    // Check if template has custom body_content
+    const templateBodyContent = templateData?.body_content as Record<string, string> | null;
+    const customBody = templateBodyContent?.[language] || templateBodyContent?.en;
+    
+    let emailHtml: string;
+    
+    if (customBody && customBody.trim()) {
+      // Use custom template with placeholder replacement
+      emailHtml = customBody
+        .replace(/\{\{score\}\}/g, String(totalScore))
+        .replace(/\{\{maxScore\}\}/g, String(maxScore))
+        .replace(/\{\{resultTitle\}\}/g, safeResultTitle)
+        .replace(/\{\{resultDescription\}\}/g, safeResultDescription)
+        .replace(/\{\{insightsList\}\}/g, insightsList)
+        .replace(/\{\{opennessSection\}\}/g, opennessSection)
+        .replace(/\{\{opennessScore\}\}/g, String(opennessScore ?? ''))
+        .replace(/\{\{opennessTitle\}\}/g, safeOpennessTitle)
+        .replace(/\{\{opennessDescription\}\}/g, safeOpennessDescription)
+        .replace(/\{\{yourResultsTitle\}\}/g, escapeHtml(trans.yourResults))
+        .replace(/\{\{outOf\}\}/g, trans.outOf)
+        .replace(/\{\{points\}\}/g, trans.points)
+        .replace(/\{\{keyInsightsTitle\}\}/g, escapeHtml(trans.keyInsights))
+        .replace(/\{\{ctaTitle\}\}/g, escapeHtml(trans.wantToImprove))
+        .replace(/\{\{ctaDescription\}\}/g, escapeHtml(trans.ctaDescription))
+        .replace(/\{\{ctaButtonText\}\}/g, escapeHtml(trans.visitSparkly))
+        .replace(/\{\{ctaUrl\}\}/g, 'https://sparkly.hr')
+        .replace(/\{\{logoUrl\}\}/g, logoUrl)
+        .replace(/\{\{userEmail\}\}/g, safeEmail);
+      
+      console.log("Using custom body template from database");
+    } else {
+      // Use default hardcoded template
+      emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -1115,6 +1147,7 @@ const handler = async (req: Request): Promise<Response> => {
       </body>
       </html>
     `;
+    }
 
     console.log("Attempting to send user email to:", email);
     const userEmailSubject = `${emailSubject}: ${safeResultTitle}`;

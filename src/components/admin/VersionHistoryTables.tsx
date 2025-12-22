@@ -25,6 +25,7 @@ interface EmailTemplate {
   sender_name: string;
   sender_email: string;
   subjects: Record<string, string>;
+  body_content: Record<string, string>;
   is_live: boolean;
   created_at: string;
   created_by_email: string | null;
@@ -113,6 +114,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       const typedData = (data || []).map(item => ({
         ...item,
         subjects: item.subjects as Record<string, string>,
+        body_content: (item.body_content || {}) as Record<string, string>,
         quiz_id: item.quiz_id as string | null
       }));
 
