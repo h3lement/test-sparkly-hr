@@ -489,24 +489,18 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
       
-      // Test the connection by making a simple API call
+      // Test the connection by checking domains endpoint (doesn't send email)
       try {
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
+        const response = await fetch("https://api.resend.com/domains", {
+          method: "GET",
           headers: {
             "Authorization": `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            from: "test@resend.dev",
-            to: ["test@example.com"],
-            subject: "Connection Test",
-            html: "<p>Test</p>",
-          }),
         });
         
-        // Even if the email fails (due to sandbox), a 422 means the API key is valid
-        const isConnected = response.status !== 401 && response.status !== 403;
+        // 200 = success, 401/403 = invalid key
+        const isConnected = response.status === 200;
         console.log("Connection check result:", response.status, isConnected);
         
         return new Response(
@@ -523,7 +517,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
     
     if (body.action === "test_email") {
-      console.log("Sending test email to:", body.testEmail);
+      console.log("Sending test email to:", body.testEmail, "type:", body.emailType);
       const resend = await getResend();
       
       if (!resend) {
@@ -532,12 +526,55 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
+
+      const emailType = body.emailType || "simple";
+      let subject = "Sparkly Email Configuration Test";
+      let html = "";
       
-      const testResult = await resend.emails.send({
-        from: "Sparkly Test <onboarding@resend.dev>",
-        to: [body.testEmail],
-        subject: "Sparkly Email Configuration Test",
-        html: `
+      if (emailType === "quiz_result") {
+        subject = "Test: Your Quiz Results";
+        html = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f8f9fa;">
+            <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #1f2937; font-size: 24px; margin: 0;">🎯 Test Quiz Results</h1>
+              </div>
+              <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
+                <p style="color: white; font-size: 18px; margin: 0 0 8px 0;">Your Score</p>
+                <p style="color: white; font-size: 36px; font-weight: bold; margin: 0;">85 / 100</p>
+              </div>
+              <h3 style="color: #1f2937; margin-bottom: 12px;">Key Insights:</h3>
+              <ul style="color: #6b7280; line-height: 1.8;">
+                <li>This is a test insight about your results</li>
+                <li>Your team shows strong collaboration skills</li>
+                <li>Consider focusing on communication improvement</li>
+              </ul>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://sparkly.hr" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Continue to Sparkly.hr</a>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (emailType === "notification") {
+        subject = "Test: New Quiz Submission Notification";
+        html = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f8f9fa;">
+            <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #1f2937; font-size: 24px; margin: 0;">📬 New Quiz Submission</h1>
+              </div>
+              <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <p style="margin: 0 0 8px 0;"><strong>User Email:</strong> test@example.com</p>
+                <p style="margin: 0 0 8px 0;"><strong>Score:</strong> 85 / 100</p>
+                <p style="margin: 0 0 8px 0;"><strong>Result Category:</strong> High Performer</p>
+                <p style="margin: 0;"><strong>Language:</strong> EN</p>
+              </div>
+              <p style="color: #6b7280; text-align: center;">This is a test admin notification email.</p>
+            </div>
+          </div>
+        `;
+      } else {
+        html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
               <h1 style="color: #1a1a1a; margin: 0;">✅ Email Configuration Working</h1>
@@ -552,7 +589,14 @@ const handler = async (req: Request): Promise<Response> => {
               <p>Timestamp: ${new Date().toISOString()}</p>
             </div>
           </div>
-        `,
+        `;
+      }
+      
+      const testResult = await resend.emails.send({
+        from: "Sparkly Test <onboarding@resend.dev>",
+        to: [body.testEmail],
+        subject,
+        html,
       });
       
       if (testResult.error) {

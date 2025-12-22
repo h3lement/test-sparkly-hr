@@ -2,10 +2,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   RefreshCw,
   Send,
@@ -25,6 +31,8 @@ interface ConnectionStatus {
   apiKeyConfigured: boolean;
 }
 
+type EmailType = "simple" | "quiz_result" | "notification";
+
 export function EmailSettings() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     status: "checking",
@@ -33,6 +41,7 @@ export function EmailSettings() {
     apiKeyConfigured: false,
   });
   const [testEmail, setTestEmail] = useState("");
+  const [emailType, setEmailType] = useState<EmailType>("simple");
   const [isSending, setIsSending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -157,17 +166,18 @@ export function EmailSettings() {
         body: {
           action: "test_email",
           testEmail: testEmail.trim(),
+          emailType,
         },
       });
 
       if (error) throw error;
 
       if (data?.success) {
+        const typeLabel = emailType === "quiz_result" ? "Quiz Result" : emailType === "notification" ? "Notification" : "Simple";
         toast({
           title: "Test email sent",
-          description: `Email sent successfully to ${testEmail}`,
+          description: `${typeLabel} email sent to ${testEmail}`,
         });
-        setTestEmail("");
         // Refresh connection status after successful test
         checkConnection(true);
       } else {
@@ -192,6 +202,7 @@ export function EmailSettings() {
     }
     checkConnection();
   };
+
   const getStatusBadge = () => {
     switch (connectionStatus.status) {
       case "connected":
@@ -227,7 +238,7 @@ export function EmailSettings() {
 
   return (
     <div className="space-y-4">
-      {/* Test Email Section - Compact inline */}
+      {/* Test Email Section */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -236,8 +247,18 @@ export function EmailSettings() {
             {getStatusBadge()}
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 space-y-3">
           <div className="flex gap-2">
+            <Select value={emailType} onValueChange={(v) => setEmailType(v as EmailType)}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="simple">Simple Test</SelectItem>
+                <SelectItem value="quiz_result">Quiz Results</SelectItem>
+                <SelectItem value="notification">Notification</SelectItem>
+              </SelectContent>
+            </Select>
             <Input
               type="email"
               placeholder="Enter email address..."
@@ -267,7 +288,7 @@ export function EmailSettings() {
             </Button>
           </div>
           {connectionStatus.status !== "connected" && (
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground">
               {connectionStatus.message}
             </p>
           )}
