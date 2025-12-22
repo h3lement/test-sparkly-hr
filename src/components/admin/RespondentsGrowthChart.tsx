@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, User, Users, Wifi, Calendar } from "lucide-react";
+import { TrendingUp, User, Users, Wifi, Calendar, ClipboardList } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -181,13 +181,10 @@ export function RespondentsGrowthChart({
     const leadDate = new Date(l.created_at);
     return leadDate.getMonth() === now.getMonth() && leadDate.getFullYear() === now.getFullYear();
   }).length;
-  const thisMonthUniqueEmails = new Set(
-    filteredLeads
-      .filter((l) => {
-        const leadDate = new Date(l.created_at);
-        return leadDate.getMonth() === now.getMonth() && leadDate.getFullYear() === now.getFullYear();
-      })
-      .map((l) => l.email)
+  
+  // Count unique email+quiz combinations (unique quiz responses)
+  const uniqueQuizResponses = new Set(
+    filteredLeads.map((l) => `${l.email.toLowerCase()}::${l.quiz_id || "unknown"}`)
   ).size;
 
   const rangeLabel = dateRange === "all" ? "All Time" : `Last ${dateRange} days`;
@@ -266,11 +263,11 @@ export function RespondentsGrowthChart({
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Users className="h-5 w-5 text-blue-600" />
+                <ClipboardList className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{thisMonthUniqueEmails}</p>
-                <p className="text-sm text-muted-foreground">New Unique</p>
+                <p className="text-2xl font-bold">{uniqueQuizResponses}</p>
+                <p className="text-sm text-muted-foreground">Unique Quiz</p>
               </div>
             </div>
           </CardContent>
