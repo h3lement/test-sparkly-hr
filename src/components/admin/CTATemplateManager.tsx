@@ -137,6 +137,7 @@ export function CTATemplateManager() {
   const [regenerating, setRegenerating] = useState(false);
   const [loadingFromQuiz, setLoadingFromQuiz] = useState(false);
   const [showLoadFromQuizDialog, setShowLoadFromQuizDialog] = useState(false);
+  const [dialogQuizId, setDialogQuizId] = useState<string>("");
 
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -419,15 +420,15 @@ export function CTATemplateManager() {
   };
 
   // Load original CTA data from quiz table
-  const loadFromQuiz = async () => {
-    if (!selectedQuizId) return;
+  const loadFromQuiz = async (quizId: string) => {
+    if (!quizId) return;
     
     setLoadingFromQuiz(true);
     try {
       const { data: quizData, error } = await supabase
         .from("quizzes")
         .select("cta_title, cta_description, cta_text, cta_url")
-        .eq("id", selectedQuizId)
+        .eq("id", quizId)
         .single();
 
       if (error) throw error;
@@ -438,9 +439,10 @@ export function CTATemplateManager() {
         setCtaButtonText((quizData.cta_text || {}) as Record<string, string>);
         setCtaUrl(quizData.cta_url || "https://sparkly.hr");
         
+        const quiz = quizzes.find(q => q.id === quizId);
         toast({
           title: "Loaded from Quiz",
-          description: "Original CTA content loaded into editor",
+          description: `CTA content loaded from "${getQuizTitle(quiz!)}"`,
         });
       }
     } catch (error: any) {
@@ -453,6 +455,11 @@ export function CTATemplateManager() {
     } finally {
       setLoadingFromQuiz(false);
     }
+  };
+
+  const openLoadFromQuizDialog = () => {
+    setDialogQuizId(selectedQuizId || (quizzes.length > 0 ? quizzes[0].id : ""));
+    setShowLoadFromQuizDialog(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -768,7 +775,7 @@ export function CTATemplateManager() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowLoadFromQuizDialog(true)}
+                onClick={openLoadFromQuizDialog}
                 disabled={loadingFromQuiz}
                 className="gap-2"
               >
@@ -1059,19 +1066,39 @@ export function CTATemplateManager() {
 
       {/* Load from Quiz Confirmation Dialog */}
       <AlertDialog open={showLoadFromQuizDialog} onOpenChange={setShowLoadFromQuizDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Load CTA from Quiz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will replace your current editor content with the original CTA data from the quiz. Any unsaved changes will be lost.
+            <AlertDialogTitle>Load CTA from Quiz</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <span className="block">
+                This will replace your current editor content with the original CTA data from the selected quiz. Any unsaved changes will be lost.
+              </span>
+              <div className="pt-2">
+                <Label className="mb-2 block text-foreground">Select Quiz</Label>
+                <Select value={dialogQuizId} onValueChange={setDialogQuizId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a quiz" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50 max-h-[300px]">
+                    {quizzes.map((quiz) => (
+                      <SelectItem key={quiz.id} value={quiz.id}>
+                        {getQuizTitle(quiz)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              setShowLoadFromQuizDialog(false);
-              loadFromQuiz();
-            }}>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowLoadFromQuizDialog(false);
+                loadFromQuiz(dialogQuizId);
+              }}
+              disabled={!dialogQuizId}
+            >
               Load from Quiz
             </AlertDialogAction>
           </AlertDialogFooter>
