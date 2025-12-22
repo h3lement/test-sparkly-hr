@@ -36,7 +36,10 @@ import {
   Send,
   Clock,
   ExternalLink,
-  GripVertical
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
@@ -91,6 +94,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
+  const [sortColumn, setSortColumn] = useState<string>("created_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const { toast } = useToast();
 
   // Default column widths
@@ -252,6 +257,26 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return title?.en || title?.et || quiz.slug;
   };
 
+  // Handle column sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === "created_at" ? "desc" : "asc");
+    }
+  };
+
+  // Get sort icon for column header
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    }
+    return sortDirection === "asc" 
+      ? <ArrowUp className="w-3 h-3 ml-1" />
+      : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
+
   // Filter and search
   const filteredLogs = useMemo(() => {
     let result = logs;
@@ -288,17 +313,59 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return result;
   }, [logs, searchQuery, filterType, filterStatus, filterQuiz]);
 
+  // Sort filtered logs
+  const sortedLogs = useMemo(() => {
+    const sorted = [...filteredLogs].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (sortColumn) {
+        case "email_type":
+          aVal = a.email_type;
+          bVal = b.email_type;
+          break;
+        case "status":
+          aVal = a.status;
+          bVal = b.status;
+          break;
+        case "quiz":
+          aVal = a.quiz_id || a.quiz_lead?.quiz_id || "";
+          bVal = b.quiz_id || b.quiz_lead?.quiz_id || "";
+          break;
+        case "recipient":
+          aVal = a.recipient_email.toLowerCase();
+          bVal = b.recipient_email.toLowerCase();
+          break;
+        case "subject":
+          aVal = a.subject.toLowerCase();
+          bVal = b.subject.toLowerCase();
+          break;
+        case "created_at":
+        default:
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
+          break;
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [filteredLogs, sortColumn, sortDirection]);
+
   // Pagination
-  const totalItems = filteredLogs.length;
+  const totalItems = sortedLogs.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  const paginatedLogs = sortedLogs.slice(startIndex, endIndex);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, filterStatus, filterQuiz]);
+  }, [searchQuery, filterType, filterStatus, filterQuiz, sortColumn, sortDirection]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -528,46 +595,88 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th style={{ width: columnWidths.row }} className="text-center px-2 py-3 text-sm font-medium text-muted-foreground">
                     #
                   </th>
-                  <th style={{ width: columnWidths.type }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
-                    <span>Type</span>
+                  <th 
+                    style={{ width: columnWidths.type }} 
+                    className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
+                    onClick={() => handleSort("email_type")}
+                  >
+                    <span className="flex items-center">
+                      Type
+                      {getSortIcon("email_type")}
+                    </span>
                     <div
                       className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown("type", e)}
+                      onMouseDown={(e) => { e.stopPropagation(); handleMouseDown("type", e); }}
                     />
                   </th>
-                  <th style={{ width: columnWidths.status }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
-                    <span>Status</span>
+                  <th 
+                    style={{ width: columnWidths.status }} 
+                    className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
+                    onClick={() => handleSort("status")}
+                  >
+                    <span className="flex items-center">
+                      Status
+                      {getSortIcon("status")}
+                    </span>
                     <div
                       className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown("status", e)}
+                      onMouseDown={(e) => { e.stopPropagation(); handleMouseDown("status", e); }}
                     />
                   </th>
-                  <th style={{ width: columnWidths.quiz }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
-                    <span>Quiz</span>
+                  <th 
+                    style={{ width: columnWidths.quiz }} 
+                    className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
+                    onClick={() => handleSort("quiz")}
+                  >
+                    <span className="flex items-center">
+                      Quiz
+                      {getSortIcon("quiz")}
+                    </span>
                     <div
                       className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown("quiz", e)}
+                      onMouseDown={(e) => { e.stopPropagation(); handleMouseDown("quiz", e); }}
                     />
                   </th>
-                  <th style={{ width: columnWidths.recipient }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
-                    <span>Recipient</span>
+                  <th 
+                    style={{ width: columnWidths.recipient }} 
+                    className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
+                    onClick={() => handleSort("recipient")}
+                  >
+                    <span className="flex items-center">
+                      Recipient
+                      {getSortIcon("recipient")}
+                    </span>
                     <div
                       className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown("recipient", e)}
+                      onMouseDown={(e) => { e.stopPropagation(); handleMouseDown("recipient", e); }}
                     />
                   </th>
-                  <th style={{ width: columnWidths.subject }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
-                    <span>Subject</span>
+                  <th 
+                    style={{ width: columnWidths.subject }} 
+                    className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
+                    onClick={() => handleSort("subject")}
+                  >
+                    <span className="flex items-center">
+                      Subject
+                      {getSortIcon("subject")}
+                    </span>
                     <div
                       className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown("subject", e)}
+                      onMouseDown={(e) => { e.stopPropagation(); handleMouseDown("subject", e); }}
                     />
                   </th>
-                  <th style={{ width: columnWidths.sent }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
-                    <span>Sent</span>
+                  <th 
+                    style={{ width: columnWidths.sent }} 
+                    className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
+                    onClick={() => handleSort("created_at")}
+                  >
+                    <span className="flex items-center">
+                      Sent
+                      {getSortIcon("created_at")}
+                    </span>
                     <div
                       className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown("sent", e)}
+                      onMouseDown={(e) => { e.stopPropagation(); handleMouseDown("sent", e); }}
                     />
                   </th>
                   <th style={{ width: columnWidths.actions }} className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Actions</th>
