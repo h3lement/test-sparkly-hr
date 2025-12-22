@@ -1976,7 +1976,7 @@ export function EmailSettings() {
 
         {/* Right: Connection Details */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative">
             <h3 className="text-sm font-semibold text-foreground">Connection Status</h3>
             <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
               <CollapsibleTrigger asChild>
@@ -1994,6 +1994,197 @@ export function EmailSettings() {
                   )}
                 </Button>
               </CollapsibleTrigger>
+              <CollapsibleContent className="p-3 rounded-lg border bg-muted/30 space-y-3 mt-2 absolute right-0 top-full z-50 w-80 bg-background shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-medium">Auto Reconnect</Label>
+                    <p className="text-[10px] text-muted-foreground">Automatically retry on connection failure</p>
+                  </div>
+                  <Switch
+                    checked={recheckSettings.autoReconnectEnabled}
+                    onCheckedChange={(checked) => updateRecheckSetting("autoReconnectEnabled", checked)}
+                  />
+                </div>
+
+                {recheckSettings.autoReconnectEnabled && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Fast Retry Count</Label>
+                        <Select
+                          value={String(recheckSettings.fastReconnectAttempts)}
+                          onValueChange={(val) => updateRecheckSetting("fastReconnectAttempts", parseInt(val))}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 7, 10].map((n) => (
+                              <SelectItem key={n} value={String(n)}>{n} attempts</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">Quick retries before slowing down</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Max Attempts</Label>
+                        <Select
+                          value={String(recheckSettings.maxReconnectAttempts)}
+                          onValueChange={(val) => updateRecheckSetting("maxReconnectAttempts", parseInt(val))}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[5, 10, 15, 20, 30, 50].map((n) => (
+                              <SelectItem key={n} value={String(n)}>{n} total</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">Stop after this many failures</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Fast Delay</Label>
+                        <Select
+                          value={String(recheckSettings.fastReconnectDelayMs)}
+                          onValueChange={(val) => updateRecheckSetting("fastReconnectDelayMs", parseInt(val))}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1000">1 second</SelectItem>
+                            <SelectItem value="2000">2 seconds</SelectItem>
+                            <SelectItem value="3000">3 seconds</SelectItem>
+                            <SelectItem value="5000">5 seconds</SelectItem>
+                            <SelectItem value="10000">10 seconds</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">Delay between fast retries</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Slow Delay</Label>
+                        <Select
+                          value={String(recheckSettings.slowReconnectDelayMs)}
+                          onValueChange={(val) => updateRecheckSetting("slowReconnectDelayMs", parseInt(val))}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10000">10 seconds</SelectItem>
+                            <SelectItem value="20000">20 seconds</SelectItem>
+                            <SelectItem value="30000">30 seconds</SelectItem>
+                            <SelectItem value="60000">1 minute</SelectItem>
+                            <SelectItem value="120000">2 minutes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">Delay after fast phase</p>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-muted-foreground pt-2 border-t">
+                      <p><strong>Failure retry:</strong> {recheckSettings.fastReconnectAttempts} fast retries at {recheckSettings.fastReconnectDelayMs / 1000}s intervals, 
+                      then slower retries at {recheckSettings.slowReconnectDelayMs / 1000}s (max {recheckSettings.maxReconnectAttempts} total attempts)</p>
+                    </div>
+                  </>
+                )}
+
+                {/* Periodic Health Check Interval */}
+                <div className="pt-3 border-t space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs font-medium">Periodic Health Check</Label>
+                      <p className="text-[10px] text-muted-foreground">Automatically verify connection at intervals</p>
+                    </div>
+                    <Switch
+                      checked={recheckSettings.periodicCheckEnabled}
+                      onCheckedChange={(checked) => updateRecheckSetting("periodicCheckEnabled", checked)}
+                    />
+                  </div>
+
+                  {recheckSettings.periodicCheckEnabled && (
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Check Interval</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <Select
+                              value={String(recheckSettings.intervalDays || 0)}
+                              onValueChange={(val) => updateRecheckSetting("intervalDays", parseInt(val))}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[0, 1, 2, 3, 7, 14, 30].map((n) => (
+                                  <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Select
+                              value={String(recheckSettings.intervalHours || 0)}
+                              onValueChange={(val) => updateRecheckSetting("intervalHours", parseInt(val))}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[0, 1, 2, 3, 4, 6, 8, 12, 24].map((n) => (
+                                  <SelectItem key={n} value={String(n)}>{n} hrs</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Select
+                              value={String(recheckSettings.intervalMinutes || 0)}
+                              onValueChange={(val) => updateRecheckSetting("intervalMinutes", parseInt(val))}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[0, 1, 5, 10, 15, 30, 45].map((n) => (
+                                  <SelectItem key={n} value={String(n)}>{n} min</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {getIntervalMs() >= 60000 
+                            ? `Checks every ${formatInterval()}` 
+                            : <span className="text-amber-600">Minimum interval is 1 minute</span>
+                          }
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-7 text-xs"
+                  onClick={() => {
+                    reconnectAttempts.current = 0;
+                    if (reconnectTimerRef.current) {
+                      clearTimeout(reconnectTimerRef.current);
+                    }
+                    checkConnection();
+                    toast({ title: "Reconnecting", description: "Connection check started with current settings." });
+                  }}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Test Connection Now
+                </Button>
+              </CollapsibleContent>
             </Collapsible>
           </div>
           
@@ -2171,200 +2362,6 @@ export function EmailSettings() {
             </div>
           </div>
 
-          {/* Connection Recheck Settings - Content only (trigger is in header) */}
-          <Collapsible open={showRecheckSettings} onOpenChange={setShowRecheckSettings}>
-            <CollapsibleContent className="p-3 rounded-lg border bg-muted/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-xs font-medium">Auto Reconnect</Label>
-                  <p className="text-[10px] text-muted-foreground">Automatically retry on connection failure</p>
-                </div>
-                <Switch
-                  checked={recheckSettings.autoReconnectEnabled}
-                  onCheckedChange={(checked) => updateRecheckSetting("autoReconnectEnabled", checked)}
-                />
-              </div>
-
-              {recheckSettings.autoReconnectEnabled && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Fast Retry Count</Label>
-                      <Select
-                        value={String(recheckSettings.fastReconnectAttempts)}
-                        onValueChange={(val) => updateRecheckSetting("fastReconnectAttempts", parseInt(val))}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[1, 2, 3, 4, 5, 7, 10].map((n) => (
-                            <SelectItem key={n} value={String(n)}>{n} attempts</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Quick retries before slowing down</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Max Attempts</Label>
-                      <Select
-                        value={String(recheckSettings.maxReconnectAttempts)}
-                        onValueChange={(val) => updateRecheckSetting("maxReconnectAttempts", parseInt(val))}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[5, 10, 15, 20, 30, 50].map((n) => (
-                            <SelectItem key={n} value={String(n)}>{n} total</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Stop after this many failures</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Fast Delay</Label>
-                      <Select
-                        value={String(recheckSettings.fastReconnectDelayMs)}
-                        onValueChange={(val) => updateRecheckSetting("fastReconnectDelayMs", parseInt(val))}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1000">1 second</SelectItem>
-                          <SelectItem value="2000">2 seconds</SelectItem>
-                          <SelectItem value="3000">3 seconds</SelectItem>
-                          <SelectItem value="5000">5 seconds</SelectItem>
-                          <SelectItem value="10000">10 seconds</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Delay between fast retries</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Slow Delay</Label>
-                      <Select
-                        value={String(recheckSettings.slowReconnectDelayMs)}
-                        onValueChange={(val) => updateRecheckSetting("slowReconnectDelayMs", parseInt(val))}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="10000">10 seconds</SelectItem>
-                          <SelectItem value="20000">20 seconds</SelectItem>
-                          <SelectItem value="30000">30 seconds</SelectItem>
-                          <SelectItem value="60000">1 minute</SelectItem>
-                          <SelectItem value="120000">2 minutes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Delay after fast phase</p>
-                    </div>
-                  </div>
-
-                  <div className="text-[10px] text-muted-foreground pt-2 border-t">
-                    <p><strong>Failure retry:</strong> {recheckSettings.fastReconnectAttempts} fast retries at {recheckSettings.fastReconnectDelayMs / 1000}s intervals, 
-                    then slower retries at {recheckSettings.slowReconnectDelayMs / 1000}s (max {recheckSettings.maxReconnectAttempts} total attempts)</p>
-                  </div>
-                </>
-              )}
-
-              {/* Periodic Health Check Interval */}
-              <div className="pt-3 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-medium">Periodic Health Check</Label>
-                    <p className="text-[10px] text-muted-foreground">Automatically verify connection at intervals</p>
-                  </div>
-                  <Switch
-                    checked={recheckSettings.periodicCheckEnabled}
-                    onCheckedChange={(checked) => updateRecheckSetting("periodicCheckEnabled", checked)}
-                  />
-                </div>
-
-                {recheckSettings.periodicCheckEnabled && (
-                  <>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Check Interval</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="space-y-1">
-                          <Select
-                            value={String(recheckSettings.intervalDays || 0)}
-                            onValueChange={(val) => updateRecheckSetting("intervalDays", parseInt(val))}
-                          >
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[0, 1, 2, 3, 7, 14, 30].map((n) => (
-                                <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Select
-                            value={String(recheckSettings.intervalHours || 0)}
-                            onValueChange={(val) => updateRecheckSetting("intervalHours", parseInt(val))}
-                          >
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[0, 1, 2, 3, 4, 6, 8, 12, 24].map((n) => (
-                                <SelectItem key={n} value={String(n)}>{n} hrs</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Select
-                            value={String(recheckSettings.intervalMinutes || 0)}
-                            onValueChange={(val) => updateRecheckSetting("intervalMinutes", parseInt(val))}
-                          >
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[0, 1, 5, 10, 15, 30, 45].map((n) => (
-                                <SelectItem key={n} value={String(n)}>{n} min</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        {getIntervalMs() >= 60000 
-                          ? `Checks every ${formatInterval()}` 
-                          : <span className="text-amber-600">Minimum interval is 1 minute</span>
-                        }
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full h-7 text-xs"
-                onClick={() => {
-                  reconnectAttempts.current = 0;
-                  if (reconnectTimerRef.current) {
-                    clearTimeout(reconnectTimerRef.current);
-                  }
-                  checkConnection();
-                  toast({ title: "Reconnecting", description: "Connection check started with current settings." });
-                }}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Test Connection Now
-              </Button>
-            </CollapsibleContent>
-          </Collapsible>
 
           {/* Setup Warning */}
           {connectionStatus.status !== "connected" && !emailConfig.smtpHost && (
