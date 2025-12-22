@@ -147,10 +147,11 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch quizzes first
+      // Fetch quizzes first (only active ones)
       const { data: quizzesData, error: quizzesError } = await supabase
         .from("quizzes")
-        .select("id, title, slug, primary_language")
+        .select("id, title, slug, primary_language, is_active")
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (quizzesError) throw quizzesError;
@@ -161,6 +162,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       }));
       setQuizzes(typedQuizzes);
 
+      // Get active quiz IDs for filtering
+      const activeQuizIds = typedQuizzes.map(q => q.id);
+
       // Fetch templates - all or filtered (include both quiz_results and admin_notification)
       let query = supabase
         .from("email_templates")
@@ -169,6 +173,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 
       if (quizId) {
         query = query.eq("quiz_id", quizId);
+      } else if (activeQuizIds.length > 0) {
+        // Only fetch templates for active quizzes
+        query = query.in("quiz_id", activeQuizIds);
       }
 
       const { data, error } = await query;
@@ -752,10 +759,11 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch quizzes first
+      // Fetch quizzes first (only active ones)
       const { data: quizzesData, error: quizzesError } = await supabase
         .from("quizzes")
-        .select("id, title, slug, primary_language")
+        .select("id, title, slug, primary_language, is_active")
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (quizzesError) throw quizzesError;
@@ -766,6 +774,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
       }));
       setQuizzes(typedQuizzes);
 
+      // Get active quiz IDs for filtering
+      const activeQuizIds = typedQuizzes.map(q => q.id);
+
       // Fetch versions - all or filtered
       let query = supabase
         .from("quiz_result_versions")
@@ -774,6 +785,9 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
 
       if (quizId) {
         query = query.eq("quiz_id", quizId);
+      } else if (activeQuizIds.length > 0) {
+        // Only fetch versions for active quizzes
+        query = query.in("quiz_id", activeQuizIds);
       }
 
       const { data, error } = await query;
