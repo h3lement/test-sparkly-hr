@@ -584,7 +584,6 @@ export function CTATemplateManager() {
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
                 <div className="w-[80px] px-3 py-2">Version</div>
-                <div className="w-[150px] px-3 py-2">Quiz</div>
                 <div className="w-[150px] px-3 py-2">Name</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
                 <div className="w-[140px] px-3 py-2">Email Templates</div>
@@ -599,9 +598,6 @@ export function CTATemplateManager() {
                 >
                   <div className="w-[80px] px-3 py-2">
                     <span className="font-mono">v{template.version_number}</span>
-                  </div>
-                  <div className="w-[150px] px-3 py-2 truncate">
-                    {getQuizTitleById(template.quiz_id)}
                   </div>
                   <div className="w-[150px] px-3 py-2 truncate text-muted-foreground">
                     {template.name || "Untitled CTA"}

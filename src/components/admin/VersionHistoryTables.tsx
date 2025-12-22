@@ -130,7 +130,7 @@ interface WebVersionHistoryProps {
 
 // Default column widths for email templates table
 const EMAIL_DEFAULT_WIDTHS = {
-  version: 70,
+  version: 220,
   type: 80,
   quiz: 150,
   cta: 180,
@@ -670,12 +670,19 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         className="flex items-center gap-2 px-3 py-3 shrink-0"
                         style={{ width: columnWidths.version }}
                       >
-                        <span className="font-medium">v{template.version_number}</span>
-                        {template.is_live && (
-                          <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
-                            LIVE
-                          </Badge>
-                        )}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">v{template.version_number}</span>
+                            {template.is_live && (
+                              <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
+                                LIVE
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={template.subjects?.en || template.subjects?.et || ""}>
+                            {template.subjects?.en || template.subjects?.et || "No subject"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Template Type */}
