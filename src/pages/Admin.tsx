@@ -12,6 +12,7 @@ import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
 import { EditAdminDialog } from "@/components/admin/EditAdminDialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { TemplateVersionsPage } from "@/components/admin/TemplateVersionsPage";
+import { AdminBreadcrumb, getTabLabel } from "@/components/admin/AdminBreadcrumb";
 import { EmailLogsMonitor } from "@/components/admin/EmailLogsMonitor";
 import { WebStatsMonitor } from "@/components/admin/WebStatsMonitor";
 import { QuizManager } from "@/components/admin/QuizManager";
@@ -415,6 +416,9 @@ const Admin = () => {
 
       <main className="flex-1 flex flex-col min-h-0 bg-card">
         <div className="flex-1 density-padding-lg overflow-y-auto min-h-0">
+          {/* Breadcrumb Navigation */}
+          <AdminBreadcrumb items={[{ label: getTabLabel(activeTab) }]} />
+
           {/* Activity Dashboard Tab */}
           {activeTab === "activity" && (
             <ActivityDashboard />
