@@ -80,6 +80,56 @@ export type Database = {
         }
         Relationships: []
       }
+      cta_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          cta_description: Json
+          cta_text: Json
+          cta_title: Json
+          cta_url: string | null
+          id: string
+          is_live: boolean
+          quiz_id: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          cta_description?: Json
+          cta_text?: Json
+          cta_title?: Json
+          cta_url?: string | null
+          id?: string
+          is_live?: boolean
+          quiz_id?: string | null
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          cta_description?: Json
+          cta_text?: Json
+          cta_title?: Json
+          cta_url?: string | null
+          id?: string
+          is_live?: boolean
+          quiz_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cta_templates_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domain_reputation_history: {
         Row: {
           checked_at: string
