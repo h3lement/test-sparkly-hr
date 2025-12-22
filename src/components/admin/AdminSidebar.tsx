@@ -190,7 +190,7 @@ export function AdminSidebar({
       const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes, emailTemplatesRes, webVersionsRes] = await Promise.all([
         supabase.from("quiz_leads").select("email"),
         supabase.from("hypothesis_leads").select("email"),
-        supabase.from("quizzes").select("*", { count: "exact", head: true }),
+        supabase.from("quizzes").select("*", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
         supabase.from("activity_logs").select("*", { count: "exact", head: true }),
