@@ -159,6 +159,12 @@ interface EmailConfig {
   dkimDomain: string;
   dkimPublicKey: string;
   dkimDnsRecord: string;
+  // SPF settings
+  spfIncludeDomains: string;
+  spfPolicy: string;
+  // DMARC settings
+  dmarcPolicy: string;
+  dmarcReportEmail: string;
 }
 
 export function EmailSettings() {
@@ -188,6 +194,10 @@ export function EmailSettings() {
     dkimDomain: "",
     dkimPublicKey: "",
     dkimDnsRecord: "",
+    spfIncludeDomains: "",
+    spfPolicy: "~all",
+    dmarcPolicy: "quarantine",
+    dmarcReportEmail: "",
   });
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
@@ -320,7 +330,8 @@ export function EmailSettings() {
         const settingKeys = [
           "email_sender_name", "email_sender_email", "email_reply_to",
           "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls",
-          "dkim_selector", "dkim_private_key", "dkim_domain", "dkim_public_key", "dkim_dns_record"
+          "dkim_selector", "dkim_private_key", "dkim_domain", "dkim_public_key", "dkim_dns_record",
+          "spf_include_domains", "spf_policy", "dmarc_policy", "dmarc_report_email"
         ];
         
         const { data, error } = await supabase
@@ -347,6 +358,10 @@ export function EmailSettings() {
               case "dkim_domain": config.dkimDomain = setting.setting_value; break;
               case "dkim_public_key": config.dkimPublicKey = setting.setting_value; break;
               case "dkim_dns_record": config.dkimDnsRecord = setting.setting_value; break;
+              case "spf_include_domains": config.spfIncludeDomains = setting.setting_value; break;
+              case "spf_policy": config.spfPolicy = setting.setting_value; break;
+              case "dmarc_policy": config.dmarcPolicy = setting.setting_value; break;
+              case "dmarc_report_email": config.dmarcReportEmail = setting.setting_value; break;
             }
           });
           const newConfig = { ...emailConfig, ...config };
@@ -377,6 +392,10 @@ export function EmailSettings() {
         { setting_key: "dkim_domain", setting_value: configDraft.dkimDomain.trim() },
         { setting_key: "dkim_public_key", setting_value: configDraft.dkimPublicKey },
         { setting_key: "dkim_dns_record", setting_value: configDraft.dkimDnsRecord },
+        { setting_key: "spf_include_domains", setting_value: configDraft.spfIncludeDomains.trim() },
+        { setting_key: "spf_policy", setting_value: configDraft.spfPolicy },
+        { setting_key: "dmarc_policy", setting_value: configDraft.dmarcPolicy },
+        { setting_key: "dmarc_report_email", setting_value: configDraft.dmarcReportEmail.trim() },
       ];
 
       for (const setting of settings) {
@@ -446,7 +465,27 @@ export function EmailSettings() {
     }
   };
 
-  const addError = (error: Omit<EmailError, "timestamp">) => {
+  // Helper functions for generating DNS records
+  const getSpfRecord = useCallback(() => {
+    const includes = configDraft.spfIncludeDomains || `_spf.${configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'}`;
+    const parts = includes.split(',').map(d => `include:${d.trim()}`).join(' ');
+    return `v=spf1 ${parts} ${configDraft.spfPolicy || '~all'}`;
+  }, [configDraft.spfIncludeDomains, configDraft.smtpHost, configDraft.spfPolicy]);
+
+  const getDmarcRecord = useCallback(() => {
+    const reportEmail = configDraft.dmarcReportEmail || `dmarc@${configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}`;
+    return `v=DMARC1; p=${configDraft.dmarcPolicy || 'quarantine'}; rua=mailto:${reportEmail}`;
+  }, [configDraft.dmarcReportEmail, configDraft.dkimDomain, configDraft.senderEmail, configDraft.dmarcPolicy]);
+
+  const getDefaultSpfInclude = useCallback(() => {
+    return `_spf.${configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'}`;
+  }, [configDraft.smtpHost]);
+
+  const getDefaultDmarcEmail = useCallback(() => {
+    return `dmarc@${configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}`;
+  }, [configDraft.dkimDomain, configDraft.senderEmail]);
+
+
     setErrors((prev) => [{ ...error, timestamp: new Date() }, ...prev].slice(0, 5));
     setLastSuccess(null);
   };
@@ -1120,7 +1159,7 @@ export function EmailSettings() {
                 </div>
 
                 {/* SPF Record */}
-                <div className={`p-3 rounded-lg border space-y-2 ${connectionStatus.dnsValidation?.spf.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
+                <div className={`p-3 rounded-lg border space-y-3 ${connectionStatus.dnsValidation?.spf.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {connectionStatus.dnsValidation?.spf.valid ? (
@@ -1138,8 +1177,7 @@ export function EmailSettings() {
                       size="sm"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        const spfRecord = `v=spf1 include:_spf.${configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'} ~all`;
-                        navigator.clipboard.writeText(spfRecord);
+                        navigator.clipboard.writeText(getSpfRecord());
                         toast({ title: "Copied!", description: "SPF record copied to clipboard." });
                       }}
                     >
@@ -1149,8 +1187,41 @@ export function EmailSettings() {
                   <p className="text-xs text-muted-foreground">
                     SPF (Sender Policy Framework) tells receiving servers which IPs can send email for your domain.
                   </p>
-                  <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                    v=spf1 include:_spf.{configDraft.smtpHost?.split('.').slice(-2).join('.') || 'yourmailserver.com'} ~all
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Include Domains (comma-separated)</Label>
+                      <Input
+                        value={configDraft.spfIncludeDomains}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, spfIncludeDomains: e.target.value }))}
+                        placeholder={getDefaultSpfInclude()}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Policy</Label>
+                      <Select
+                        value={configDraft.spfPolicy || "~all"}
+                        onValueChange={(value) => setConfigDraft((prev) => ({ ...prev, spfPolicy: value }))}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="~all">~all (Soft Fail)</SelectItem>
+                          <SelectItem value="-all">-all (Hard Fail)</SelectItem>
+                          <SelectItem value="?all">?all (Neutral)</SelectItem>
+                          <SelectItem value="+all">+all (Pass All)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Generated Record:</p>
+                    <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                      {getSpfRecord()}
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground italic">
                     Host: @ (or your domain) • Type: TXT
@@ -1158,7 +1229,7 @@ export function EmailSettings() {
                 </div>
 
                 {/* DMARC Record */}
-                <div className={`p-3 rounded-lg border space-y-2 ${connectionStatus.dnsValidation?.dmarc.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
+                <div className={`p-3 rounded-lg border space-y-3 ${connectionStatus.dnsValidation?.dmarc.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {connectionStatus.dnsValidation?.dmarc.valid ? (
@@ -1176,8 +1247,7 @@ export function EmailSettings() {
                       size="sm"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        const dmarcRecord = `v=DMARC1; p=quarantine; rua=mailto:dmarc@${configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}`;
-                        navigator.clipboard.writeText(dmarcRecord);
+                        navigator.clipboard.writeText(getDmarcRecord());
                         toast({ title: "Copied!", description: "DMARC record copied to clipboard." });
                       }}
                     >
@@ -1187,15 +1257,45 @@ export function EmailSettings() {
                   <p className="text-xs text-muted-foreground">
                     DMARC (Domain-based Message Authentication) protects against email spoofing.
                   </p>
-                  <div className="p-2 bg-background rounded text-xs font-mono break-all border">
-                    v=DMARC1; p=quarantine; rua=mailto:dmarc@{configDraft.dkimDomain || configDraft.senderEmail?.split('@')[1] || 'yourdomain.com'}
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Policy</Label>
+                      <Select
+                        value={configDraft.dmarcPolicy || "quarantine"}
+                        onValueChange={(value) => setConfigDraft((prev) => ({ ...prev, dmarcPolicy: value }))}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">none (Monitor Only)</SelectItem>
+                          <SelectItem value="quarantine">quarantine (Mark as Spam)</SelectItem>
+                          <SelectItem value="reject">reject (Block)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Report Email</Label>
+                      <Input
+                        value={configDraft.dmarcReportEmail}
+                        onChange={(e) => setConfigDraft((prev) => ({ ...prev, dmarcReportEmail: e.target.value }))}
+                        placeholder={getDefaultDmarcEmail()}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Generated Record:</p>
+                    <div className="p-2 bg-background rounded text-xs font-mono break-all border">
+                      {getDmarcRecord()}
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground italic">
                     Host: _dmarc • Type: TXT
                   </p>
                 </div>
-
-                {/* DKIM Settings */}
                 <div className={`space-y-3 p-3 rounded-lg border ${connectionStatus.dnsValidation?.dkim.valid ? 'bg-green-500/5 border-green-500/20' : 'bg-muted/30'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
