@@ -406,6 +406,10 @@ export function ActivityDashboard() {
         return <Trash2 className="h-4 w-4" />;
       case "STATUS_CHANGE":
         return <ToggleLeft className="h-4 w-4" />;
+      case "EMAIL_SENT":
+        return <Shield className="h-4 w-4" />;
+      case "EMAIL_FAILED":
+        return <Shield className="h-4 w-4" />;
       default:
         return <RefreshCw className="h-4 w-4" />;
     }
@@ -421,6 +425,10 @@ export function ActivityDashboard() {
         return "bg-red-500/10 text-red-600 border-red-500/20";
       case "STATUS_CHANGE":
         return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+      case "EMAIL_SENT":
+        return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
+      case "EMAIL_FAILED":
+        return "bg-red-500/10 text-red-600 border-red-500/20";
       default:
         return "bg-secondary text-secondary-foreground";
     }
@@ -438,6 +446,8 @@ export function ActivityDashboard() {
         return "Template";
       case "user_roles":
         return "Admin";
+      case "domain_reputation":
+        return "Domain Rep.";
       default:
         return table;
     }
@@ -668,6 +678,7 @@ export function ActivityDashboard() {
                   <SelectItem value="quiz_leads">Respondents</SelectItem>
                   <SelectItem value="email_logs">Emails</SelectItem>
                   <SelectItem value="email_templates">Templates</SelectItem>
+                  <SelectItem value="domain_reputation">Domain Rep.</SelectItem>
                 </SelectContent>
               </Select>
             </div>
