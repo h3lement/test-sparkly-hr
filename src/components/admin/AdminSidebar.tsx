@@ -43,19 +43,20 @@ interface TableCounts {
 
 interface MenuItem {
   id: string;
+  slug: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   count: number | null;
 }
 
 const DEFAULT_MENU_ITEMS: MenuItem[] = [
-  { id: "activity", label: "Activity", icon: Activity, count: null },
-  { id: "leads", label: "Respondents", icon: Users, count: null },
-  { id: "quizzes", label: "Quizzes", icon: ClipboardList, count: null },
-  { id: "admins", label: "Admin Users", icon: Shield, count: null },
-  { id: "versions", label: "Versions", icon: Layers, count: null },
-  { id: "email-logs", label: "Email History", icon: History, count: null },
-  { id: "appearance", label: "Appearance", icon: Palette, count: null },
+  { id: "activity", slug: "activity", label: "Activity", icon: Activity, count: null },
+  { id: "leads", slug: "leads", label: "Respondents", icon: Users, count: null },
+  { id: "quizzes", slug: "quizzes", label: "Quizzes", icon: ClipboardList, count: null },
+  { id: "admins", slug: "admins", label: "Admin Users", icon: Shield, count: null },
+  { id: "versions", slug: "versions", label: "Versions", icon: Layers, count: null },
+  { id: "email-logs", slug: "email-logs", label: "Email History", icon: History, count: null },
+  { id: "appearance", slug: "appearance", label: "Appearance", icon: Palette, count: null },
 ];
 
 interface SortableMenuItemProps {
@@ -178,6 +179,14 @@ export function AdminSidebar({
 
   async function fetchCounts() {
     try {
+      // First fetch active quizzes to filter versions
+      const activeQuizzesRes = await supabase
+        .from("quizzes")
+        .select("id")
+        .eq("is_active", true);
+      
+      const activeQuizIds = (activeQuizzesRes.data || []).map(q => q.id);
+
       const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes, emailTemplatesRes, webVersionsRes] = await Promise.all([
         supabase.from("quiz_leads").select("email"),
         supabase.from("hypothesis_leads").select("email"),
@@ -185,8 +194,13 @@ export function AdminSidebar({
         supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin"),
         supabase.from("email_logs").select("*", { count: "exact", head: true }),
         supabase.from("activity_logs").select("*", { count: "exact", head: true }),
-        supabase.from("email_templates").select("*", { count: "exact", head: true }).eq("is_live", true),
-        supabase.from("quiz_result_versions").select("*", { count: "exact", head: true }).eq("is_live", true),
+        // Only count live versions from active quizzes
+        activeQuizIds.length > 0 
+          ? supabase.from("email_templates").select("*", { count: "exact", head: true }).eq("is_live", true).in("quiz_id", activeQuizIds)
+          : Promise.resolve({ count: 0 }),
+        activeQuizIds.length > 0
+          ? supabase.from("quiz_result_versions").select("*", { count: "exact", head: true }).eq("is_live", true).in("quiz_id", activeQuizIds)
+          : Promise.resolve({ count: 0 }),
       ]);
 
       // Combine emails from both tables and calculate unique
@@ -195,7 +209,7 @@ export function AdminSidebar({
       const allEmails = [...quizEmails, ...hypothesisEmails];
       const uniqueEmails = new Set(allEmails.map(l => l.email.toLowerCase())).size;
 
-      // Total live versions = email templates + web versions
+      // Total live versions = email templates + web versions (only from active quizzes)
       const liveVersions = (emailTemplatesRes.count || 0) + (webVersionsRes.count || 0);
 
       setCounts({
@@ -244,6 +258,11 @@ export function AdminSidebar({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "quiz_result_versions" },
+        () => fetchCounts()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "quizzes" },
         () => fetchCounts()
       )
       .subscribe();
