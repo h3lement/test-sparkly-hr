@@ -42,6 +42,17 @@ export function EmailSettings() {
   const RECONNECT_DELAY_MS = 5000;
   const { toast } = useToast();
 
+  // Pre-fill test email with current admin user's email
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setTestEmail(user.email);
+      }
+    };
+    fetchUserEmail();
+  }, []);
+
   const checkConnection = useCallback(async (silent = false) => {
     if (!silent) {
       setIsChecking(true);
