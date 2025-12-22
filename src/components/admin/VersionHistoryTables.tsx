@@ -110,6 +110,7 @@ interface WebVersionHistoryProps {
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
   onPreview?: (version: WebResultVersion) => void;
   onTranslate?: (version: WebResultVersion) => void;
+  refreshKey?: number;
 }
 
 
@@ -729,7 +730,7 @@ const WEB_DEFAULT_WIDTHS = {
   actions: 100,
 };
 
-export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTranslate }: WebVersionHistoryProps) {
+export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTranslate, refreshKey }: WebVersionHistoryProps) {
   const [versions, setVersions] = useState<WebResultVersion[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [leadStats, setLeadStats] = useState<Record<string, number>>({});
@@ -844,7 +845,7 @@ export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTrans
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshKey]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd MMM yyyy HH:mm");
