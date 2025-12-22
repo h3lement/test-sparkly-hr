@@ -86,22 +86,29 @@ serve(async (req) => {
     const sourceLanguageName = ALL_TARGET_LANGUAGES.find(l => l.code === sourceLanguage)?.name || sourceLanguage;
     
     // Build translation prompt
-    const prompt = `You are a professional translator. Translate the following email subject line from ${sourceLanguageName} to multiple languages.
+    const prompt = `Translate the following email subject line from ${sourceLanguageName} to the specified languages.
 
 Original subject (${sourceLanguageName}): "${sourceSubject}"
 
-Translate to these languages and return ONLY a JSON object with language codes as keys and translations as values:
-${targetLanguages.map(l => `- ${l.code}: ${l.name}`).join('\n')}
+Target languages: ${targetLanguages.map(l => `${l.code} (${l.name})`).join(', ')}
 
-Keep the translation professional and suitable for a business email. Maintain any placeholders or special formatting.
-Return only valid JSON without any markdown formatting.`;
+Keep the translation professional and suitable for a business email. Maintain any placeholders or special formatting.`;
+
+    // Build properties for tool calling - each language gets a property
+    const translationProperties: Record<string, { type: string; description: string }> = {};
+    for (const lang of targetLanguages) {
+      translationProperties[lang.code] = {
+        type: "string",
+        description: `Translation in ${lang.name}`
+      };
+    }
 
     // Estimate input tokens (rough: 4 chars per token)
     const inputTokenEstimate = Math.ceil(prompt.length / 4);
 
-    console.log(`Translating subject to ${targetLanguages.length} languages...`);
+    console.log(`Translating subject to ${targetLanguages.length} languages using tool calling...`);
 
-    // If streaming is requested, use SSE
+    // If streaming is requested, use SSE with tool calling (non-streaming internally for reliability)
     if (stream) {
       const encoder = new TextEncoder();
       
@@ -122,6 +129,16 @@ Return only valid JSON without any markdown formatting.`;
               languages: targetLanguages.length
             });
 
+            sendEvent("progress", { 
+              stage: "translating", 
+              message: "AI is translating...",
+              inputTokens: inputTokenEstimate,
+              outputTokens: 0,
+              cost: (inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) * 0.92,
+              languages: targetLanguages.length
+            });
+
+            // Use non-streaming with tool calling for reliable JSON extraction
             const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -131,10 +148,25 @@ Return only valid JSON without any markdown formatting.`;
               body: JSON.stringify({
                 model: "google/gemini-2.5-flash",
                 messages: [
-                  { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
+                  { role: "system", content: "You are a professional translator. Translate precisely and maintain formatting." },
                   { role: "user", content: prompt }
                 ],
-                stream: true,
+                tools: [
+                  {
+                    type: "function",
+                    function: {
+                      name: "save_translations",
+                      description: "Save the translated email subjects for all languages",
+                      parameters: {
+                        type: "object",
+                        properties: translationProperties,
+                        required: targetLanguages.map(l => l.code),
+                        additionalProperties: false
+                      }
+                    }
+                  }
+                ],
+                tool_choice: { type: "function", function: { name: "save_translations" } }
               }),
             });
 
@@ -146,82 +178,40 @@ Return only valid JSON without any markdown formatting.`;
               return;
             }
 
-            sendEvent("progress", { 
-              stage: "translating", 
-              message: "AI is translating...",
-              inputTokens: inputTokenEstimate,
-              outputTokens: 0,
-              cost: (inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) * 0.92,
-              languages: targetLanguages.length
-            });
-
-            const reader = response.body?.getReader();
-            if (!reader) {
-              sendEvent("error", { message: "No response body" });
-              controller.close();
-              return;
-            }
-
-            const decoder = new TextDecoder();
-            let fullContent = "";
-            let outputTokens = 0;
-
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split('\n');
-
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const jsonStr = line.slice(6).trim();
-                  if (jsonStr === '[DONE]') continue;
-                  
-                  try {
-                    const parsed = JSON.parse(jsonStr);
-                    const content = parsed.choices?.[0]?.delta?.content;
-                    if (content) {
-                      fullContent += content;
-                      outputTokens = Math.ceil(fullContent.length / 4);
-                      
-                      const currentCost = ((inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) + 
-                                          (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS)) * 0.92;
-                      
-                      // Count how many translations we might have
-                      const matches = fullContent.match(/"[a-z]{2}":/g);
-                      const translatedCount = matches ? matches.length : 0;
-                      
-                      sendEvent("progress", {
-                        stage: "translating",
-                        message: `Translating... (${translatedCount}/${targetLanguages.length} languages)`,
-                        inputTokens: inputTokenEstimate,
-                        outputTokens,
-                        cost: currentCost,
-                        translatedCount,
-                        totalLanguages: targetLanguages.length
-                      });
-                    }
-                  } catch {
-                    // Skip invalid JSON
-                  }
-                }
-              }
-            }
-
-            // Parse final content
-            let content = fullContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-            let translations: Record<string, string> = {};
+            const data = await response.json();
             
-            try {
-              translations = JSON.parse(content);
-              console.log(`Got ${Object.keys(translations).length} translations`);
-            } catch (parseError) {
-              console.error("Failed to parse translations:", parseError);
-              sendEvent("error", { message: "Failed to parse AI response" });
+            // Extract translations from tool call
+            let translations: Record<string, string> = {};
+            const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+            
+            if (toolCall?.function?.arguments) {
+              try {
+                translations = JSON.parse(toolCall.function.arguments);
+                console.log(`Got ${Object.keys(translations).length} translations via tool calling`);
+              } catch (parseError) {
+                console.error("Failed to parse tool call arguments:", parseError);
+                sendEvent("error", { message: "Failed to parse AI response" });
+                controller.close();
+                return;
+              }
+            } else {
+              console.error("No tool call in response:", JSON.stringify(data));
+              sendEvent("error", { message: "AI did not return translations in expected format" });
               controller.close();
               return;
             }
+
+            const outputTokens = Math.ceil(JSON.stringify(translations).length / 4);
+            
+            sendEvent("progress", {
+              stage: "translating",
+              message: `Translated ${Object.keys(translations).length}/${targetLanguages.length} languages`,
+              inputTokens: inputTokenEstimate,
+              outputTokens,
+              cost: ((inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) + (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS)) * 0.92,
+              translatedCount: Object.keys(translations).length,
+              totalLanguages: targetLanguages.length
+            });
 
             // Add source language subject
             translations[sourceLanguage] = sourceSubject;
@@ -288,7 +278,7 @@ Return only valid JSON without any markdown formatting.`;
       });
     }
 
-    // Non-streaming path (original behavior)
+    // Non-streaming path with tool calling for reliable JSON extraction
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -298,9 +288,25 @@ Return only valid JSON without any markdown formatting.`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
+          { role: "system", content: "You are a professional translator. Translate precisely and maintain formatting." },
           { role: "user", content: prompt }
         ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "save_translations",
+              description: "Save the translated email subjects for all languages",
+              parameters: {
+                type: "object",
+                properties: translationProperties,
+                required: targetLanguages.map(l => l.code),
+                additionalProperties: false
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "save_translations" } }
       }),
     });
 
@@ -311,22 +317,26 @@ Return only valid JSON without any markdown formatting.`;
     }
 
     const data = await response.json();
-    let content = data.choices?.[0]?.message?.content || "";
     
-    // Estimate output tokens
-    const outputTokenEstimate = Math.ceil(content.length / 4);
-    
-    // Clean up markdown code blocks if present
-    content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    
+    // Extract translations from tool call
     let translations: Record<string, string> = {};
-    try {
-      translations = JSON.parse(content);
-      console.log(`Got ${Object.keys(translations).length} translations`);
-    } catch (parseError) {
-      console.error("Failed to parse translations:", parseError);
-      throw new Error("Failed to parse AI response");
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    
+    if (toolCall?.function?.arguments) {
+      try {
+        translations = JSON.parse(toolCall.function.arguments);
+        console.log(`Got ${Object.keys(translations).length} translations via tool calling`);
+      } catch (parseError) {
+        console.error("Failed to parse tool call arguments:", parseError);
+        throw new Error("Failed to parse AI response");
+      }
+    } else {
+      console.error("No tool call in response:", JSON.stringify(data));
+      throw new Error("AI did not return translations in expected format");
     }
+
+    // Estimate output tokens
+    const outputTokenEstimate = Math.ceil(JSON.stringify(translations).length / 4);
 
     // Add source language subject
     translations[sourceLanguage] = sourceSubject;
