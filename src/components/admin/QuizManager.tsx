@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4 } from "lucide-react";
+import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DndContext,
@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ResizableTableHead } from "@/components/ui/resizable-table-head";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { logActivity } from "@/hooks/useActivityLog";
+import { useResizableColumns } from "@/hooks/useResizableColumns";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Quiz {
@@ -282,6 +284,26 @@ export function QuizManager() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [compactView, setCompactView] = useState(false);
   const { toast } = useToast();
+
+  // Default column widths
+  const defaultColumnWidths = {
+    title: 200,
+    slug: 150,
+    ai_cost: 80,
+    questions: 90,
+    pages: 70,
+    respondents: 110,
+    status: 90,
+    updated: 130,
+    actions: 100,
+  };
+
+  // Resizable columns with user preference storage
+  const { columnWidths, handleMouseDown, resetWidths } = useResizableColumns({
+    defaultWidths: defaultColumnWidths,
+    storageKey: "quiz_manager_column_widths",
+    minWidth: 50,
+  });
 
   // DnD sensors
   const sensors = useSensors(
@@ -776,6 +798,16 @@ export function QuizManager() {
           {compactView ? <Rows3 className="h-4 w-4" /> : <Rows4 className="h-4 w-4" />}
           <span className="hidden sm:inline">{compactView ? "Normal" : "Compact"}</span>
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={resetWidths}
+          title="Reset column widths"
+          className="gap-1.5"
+        >
+          <RotateCcw className="h-4 w-4" />
+          <span className="hidden sm:inline">Reset Cols</span>
+        </Button>
         <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium whitespace-nowrap">
           {sortedAndFilteredQuizzes.length} quiz{sortedAndFilteredQuizzes.length !== 1 ? "zes" : ""}
         </span>
@@ -803,55 +835,87 @@ export function QuizManager() {
                   {isDragEnabled && (
                     <TableHead className="w-10"></TableHead>
                   )}
-                  <TableHead 
+                  <ResizableTableHead 
+                    columnKey="title"
+                    width={columnWidths.title}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("title")}
                   >
                     <span className="flex items-center">Title <SortIcon column="title" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="slug"
+                    width={columnWidths.slug}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("slug")}
                   >
                     <span className="flex items-center">Slug <SortIcon column="slug" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="ai_cost"
+                    width={columnWidths.ai_cost}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold text-right cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("ai_cost")}
                   >
                     <span className="flex items-center justify-end">AI € <SortIcon column="ai_cost" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="questions"
+                    width={columnWidths.questions}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("questions")}
                   >
                     <span className="flex items-center justify-center">Questions <SortIcon column="questions" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="pages"
+                    width={columnWidths.pages}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("pages")}
                   >
                     <span className="flex items-center justify-center">Pages <SortIcon column="pages" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="respondents"
+                    width={columnWidths.respondents}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("respondents")}
                   >
                     <span className="flex items-center justify-center">Respondents <SortIcon column="respondents" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="status"
+                    width={columnWidths.status}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("status")}
                   >
                     <span className="flex items-center justify-center">Status <SortIcon column="status" /></span>
-                  </TableHead>
-                  <TableHead 
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="updated"
+                    width={columnWidths.updated}
+                    onResizeStart={handleMouseDown}
                     className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("updated_at")}
                   >
                     <span className="flex items-center">Updated <SortIcon column="updated_at" /></span>
-                  </TableHead>
-                  <TableHead className="font-semibold text-center">Actions</TableHead>
+                  </ResizableTableHead>
+                  <ResizableTableHead 
+                    columnKey="actions"
+                    width={columnWidths.actions}
+                    onResizeStart={handleMouseDown}
+                    resizable={false}
+                    className="font-semibold text-center"
+                  >
+                    Actions
+                  </ResizableTableHead>
                 </TableRow>
               </TableHeader>
               <SortableContext
