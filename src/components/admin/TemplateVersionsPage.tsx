@@ -237,6 +237,70 @@ export function TemplateVersionsPage() {
     const completed: string[] = [];
     const failed: { quizId: string; name: string; error: string }[] = [];
 
+    const MAX_RETRIES = 3;
+    const INITIAL_DELAY_MS = 1000;
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const generateWithRetry = async (quiz: Quiz, quizName: string): Promise<boolean> => {
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-results", {
+            body: {
+              quizId: quiz.id,
+              numberOfLevels: 4,
+              toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
+              higherScoreMeaning: "positive" as const,
+              language: quiz.primary_language || "en",
+              model: "google/gemini-2.5-flash",
+            },
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          // Set the newly generated version as live
+          if (data?.version?.id) {
+            const { error: updateError } = await supabase
+              .from("quiz_result_versions")
+              .update({ is_live: true })
+              .eq("id", data.version.id);
+
+            if (updateError) {
+              console.error("Failed to set version live:", updateError);
+            }
+          }
+
+          return true; // Success
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "Unknown error";
+          console.error(`Attempt ${attempt}/${MAX_RETRIES} failed for ${quizName}:`, errorMessage);
+
+          if (attempt < MAX_RETRIES) {
+            // Exponential backoff: 1s, 2s, 4s
+            const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+            console.log(`Retrying in ${delayMs}ms...`);
+            
+            setBulkProgress(prev => ({
+              ...prev,
+              currentQuizName: `${quizName} (retry ${attempt}/${MAX_RETRIES - 1})`,
+            }));
+            
+            await sleep(delayMs);
+          } else {
+            // Final attempt failed
+            failed.push({ quizId: quiz.id, name: quizName, error: errorMessage });
+            setBulkProgress(prev => ({
+              ...prev,
+              failed: [...prev.failed, { quizId: quiz.id, name: quizName, error: errorMessage }],
+            }));
+            return false;
+          }
+        }
+      }
+      return false;
+    };
+
     for (let i = 0; i < quizzesToGenerate.length; i++) {
       const quiz = quizzesToGenerate[i];
       const quizName = getQuizTitle(quiz);
@@ -247,45 +311,19 @@ export function TemplateVersionsPage() {
         currentQuizName: quizName,
       }));
 
-      try {
-        const { data, error } = await supabase.functions.invoke("generate-results", {
-          body: {
-            quizId: quiz.id,
-            numberOfLevels: 4,
-            toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
-            higherScoreMeaning: "positive" as const,
-            language: quiz.primary_language || "en",
-            model: "google/gemini-2.5-flash",
-          },
-        });
-
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-
-        // Set the newly generated version as live
-        if (data?.version?.id) {
-          const { error: updateError } = await supabase
-            .from("quiz_result_versions")
-            .update({ is_live: true })
-            .eq("id", data.version.id);
-
-          if (updateError) {
-            console.error("Failed to set version live:", updateError);
-          }
-        }
-
+      const success = await generateWithRetry(quiz, quizName);
+      
+      if (success) {
         completed.push(quizName);
         setBulkProgress(prev => ({
           ...prev,
           completed: [...prev.completed, quizName],
         }));
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
-        failed.push({ quizId: quiz.id, name: quizName, error: errorMessage });
-        setBulkProgress(prev => ({
-          ...prev,
-          failed: [...prev.failed, { quizId: quiz.id, name: quizName, error: errorMessage }],
-        }));
+      }
+
+      // Small delay between quizzes to avoid rate limiting
+      if (i < quizzesToGenerate.length - 1) {
+        await sleep(500);
       }
     }
 
