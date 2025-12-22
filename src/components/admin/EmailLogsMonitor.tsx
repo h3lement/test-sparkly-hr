@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select,
@@ -39,10 +40,13 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  Settings,
+  History
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
+import { EmailSettings } from "./EmailSettings";
 
 interface EmailLog {
   id: string;
@@ -452,27 +456,46 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     };
   }, [filteredLogs]);
 
+  const [activeTab, setActiveTab] = useState("history");
+
   return (
     <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Email History</h1>
-          <p className="text-muted-foreground mt-1">Monitor all emails sent via Resend</p>
+          <h1 className="text-3xl font-bold text-foreground">Email Management</h1>
+          <p className="text-muted-foreground mt-1">Monitor emails and configure sending</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-sm text-green-600">
-            <Wifi className="h-4 w-4" />
-            <span>Live</span>
-          </div>
-          <Button onClick={fetchLogs} variant="outline" size="sm" disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          {activeTab === "history" && (
+            <>
+              <div className="flex items-center gap-1.5 text-sm text-green-600">
+                <Wifi className="h-4 w-4" />
+                <span>Live</span>
+              </div>
+              <Button onClick={fetchLogs} variant="outline" size="sm" disabled={loading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Email History
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Email Settings
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="history" className="mt-6 space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -987,6 +1010,12 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
         recordId={activityLogEmail?.id || ""}
         recordTitle={activityLogEmail?.recipient_email}
       />
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-6">
+          <EmailSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
