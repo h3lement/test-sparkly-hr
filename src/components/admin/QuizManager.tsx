@@ -114,7 +114,7 @@ function SortableQuizRow({
     <TableRow
       ref={setNodeRef}
       style={style}
-      className={`hover:bg-secondary/50 group ${isEvenRow ? "bg-white dark:bg-card" : "bg-secondary/20"}`}
+      className={`list-row-interactive group ${isEvenRow ? "list-row-even" : "list-row-odd"}`}
     >
       {isDragEnabled && (
         <TableCell className={`w-10 ${compactView ? "px-1" : "px-2"}`}>
