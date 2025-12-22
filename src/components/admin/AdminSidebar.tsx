@@ -236,6 +236,16 @@ export function AdminSidebar({
         { event: "*", schema: "public", table: "activity_logs" },
         () => fetchCounts()
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "email_templates" },
+        () => fetchCounts()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "quiz_result_versions" },
+        () => fetchCounts()
+      )
       .subscribe();
 
     return () => {
