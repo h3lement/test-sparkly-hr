@@ -450,6 +450,148 @@ export function CTATemplateManager() {
 
   return (
     <div className="space-y-6">
+      {/* CTA Templates Table - Shown First */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              CTA Templates
+            </CardTitle>
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showOnlyLive}
+                  onChange={(e) => setShowOnlyLive(e.target.checked)}
+                  className="rounded border-input"
+                />
+                <span className="text-muted-foreground">Only Live</span>
+              </label>
+              <Select value={filterQuiz} onValueChange={setFilterQuiz}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="All Quizzes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Quizzes</SelectItem>
+                  {quizzes.map(q => (
+                    <SelectItem key={q.id} value={q.id}>
+                      {getQuizTitle(q)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchData}
+                disabled={loading}
+                className="gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredTemplates.length === 0 ? (
+            <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
+              <LinkIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No CTA templates yet</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">Select a quiz below to create one</p>
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="flex bg-muted/40 text-sm font-medium border-b">
+                <div className="w-[80px] px-3 py-2">Version</div>
+                <div className="w-[150px] px-3 py-2">Quiz</div>
+                <div className="flex-1 px-3 py-2">Button Text</div>
+                <div className="w-[130px] px-3 py-2">Created</div>
+                <div className="w-[60px] px-3 py-2 text-center">Lang</div>
+                <div className="w-[120px] px-3 py-2 text-center">Actions</div>
+              </div>
+              {filteredTemplates.map(template => (
+                <div
+                  key={template.id}
+                  className={`flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm ${
+                    template.is_live ? "bg-primary/5" : ""
+                  }`}
+                >
+                  <div className="w-[80px] px-3 py-2">
+                    <div className="flex items-center gap-1">
+                      <span className="font-mono">v{template.version_number}</span>
+                      {template.is_live && (
+                        <Badge variant="default" className="text-[10px] px-1 py-0 bg-green-600">
+                          Live
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-[150px] px-3 py-2 truncate">
+                    {getQuizTitleById(template.quiz_id)}
+                  </div>
+                  <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
+                    {template.cta_text?.en || template.cta_text?.et || "—"}
+                  </div>
+                  <div className="w-[130px] px-3 py-2">
+                    <div className="text-xs text-muted-foreground">
+                      {formatDate(template.created_at)}
+                    </div>
+                    {template.created_by_email && (
+                      <div className="text-[10px] text-muted-foreground/70 truncate">
+                        {template.created_by_email.split("@")[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-[60px] px-3 py-2 text-center">
+                    <Badge variant="outline" className="text-[10px] gap-0.5">
+                      <Languages className="w-2.5 h-2.5" />
+                      {getTranslationCount(template)}
+                    </Badge>
+                  </div>
+                  <div className="w-[120px] px-3 py-2">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setPreviewTemplate(template);
+                          setPreviewOpen(true);
+                        }}
+                        className="h-7 w-7 p-0"
+                        title="Preview"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => loadVersionToEdit(template)}
+                        className="h-7 px-2 text-xs"
+                      >
+                        Edit
+                      </Button>
+                      {!template.is_live && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setLiveVersion(template.id, template.version_number)}
+                          className="h-7 w-7 p-0 text-green-600"
+                          title="Set as live"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Quiz and Language Selection */}
       <div className="flex flex-wrap gap-4 items-end">
         <div className="flex-1 min-w-[200px]">
@@ -484,20 +626,6 @@ export function CTATemplateManager() {
             </SelectContent>
           </Select>
         </div>
-
-        <Button
-          variant="outline"
-          onClick={() => setHistoryOpen(true)}
-          className="gap-2"
-        >
-          <History className="w-4 h-4" />
-          Version History
-          {currentLiveTemplate && (
-            <Badge variant="secondary" className="ml-1">
-              v{currentLiveTemplate.version_number}
-            </Badge>
-          )}
-        </Button>
       </div>
 
       {selectedQuiz && (
@@ -506,7 +634,7 @@ export function CTATemplateManager() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <LinkIcon className="w-5 h-5" />
-                CTA Block Content
+                CTA Block Editor
                 {currentLiveTemplate && (
                   <Badge variant="default" className="ml-2 bg-green-600">
                     <Check className="w-3 h-3 mr-1" />
@@ -651,151 +779,6 @@ export function CTATemplateManager() {
           </CardContent>
         </Card>
       )}
-
-      {/* Version History Dialog */}
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
-              CTA Template Versions
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Filters */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showOnlyLive}
-                  onChange={(e) => setShowOnlyLive(e.target.checked)}
-                  className="rounded border-input"
-                />
-                <span className="text-muted-foreground">Only Live</span>
-              </label>
-              <Select value={filterQuiz} onValueChange={setFilterQuiz}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All Quizzes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Quizzes</SelectItem>
-                  {quizzes.map(q => (
-                    <SelectItem key={q.id} value={q.id}>
-                      {getQuizTitle(q)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchData}
-                disabled={loading}
-                className="gap-1.5"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-            </div>
-
-            {/* Table */}
-            {filteredTemplates.length === 0 ? (
-              <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
-                <LinkIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No CTA templates yet</p>
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="flex bg-muted/40 text-sm font-medium border-b">
-                  <div className="w-[80px] px-3 py-2">Version</div>
-                  <div className="w-[150px] px-3 py-2">Quiz</div>
-                  <div className="flex-1 px-3 py-2">Button Text</div>
-                  <div className="w-[130px] px-3 py-2">Created</div>
-                  <div className="w-[60px] px-3 py-2 text-center">Lang</div>
-                  <div className="w-[120px] px-3 py-2 text-center">Actions</div>
-                </div>
-                {filteredTemplates.map(template => (
-                  <div
-                    key={template.id}
-                    className={`flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm ${
-                      template.is_live ? "bg-primary/5" : ""
-                    }`}
-                  >
-                    <div className="w-[80px] px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono">v{template.version_number}</span>
-                        {template.is_live && (
-                          <Badge variant="default" className="text-[10px] px-1 py-0 bg-green-600">
-                            Live
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="w-[150px] px-3 py-2 truncate">
-                      {getQuizTitleById(template.quiz_id)}
-                    </div>
-                    <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
-                      {template.cta_text?.en || template.cta_text?.et || "—"}
-                    </div>
-                    <div className="w-[130px] px-3 py-2">
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(template.created_at)}
-                      </div>
-                      {template.created_by_email && (
-                        <div className="text-[10px] text-muted-foreground/70 truncate">
-                          {template.created_by_email.split("@")[0]}
-                        </div>
-                      )}
-                    </div>
-                    <div className="w-[60px] px-3 py-2 text-center">
-                      <Badge variant="outline" className="text-[10px] gap-0.5">
-                        <Languages className="w-2.5 h-2.5" />
-                        {getTranslationCount(template)}
-                      </Badge>
-                    </div>
-                    <div className="w-[120px] px-3 py-2">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setPreviewTemplate(template);
-                            setPreviewOpen(true);
-                          }}
-                          className="h-7 w-7 p-0"
-                          title="Preview"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => loadVersionToEdit(template)}
-                          className="h-7 px-2 text-xs"
-                        >
-                          Edit
-                        </Button>
-                        {!template.is_live && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setLiveVersion(template.id, template.version_number)}
-                            className="h-7 w-7 p-0 text-green-600"
-                            title="Set as live"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen && !!previewTemplate} onOpenChange={setPreviewOpen}>
