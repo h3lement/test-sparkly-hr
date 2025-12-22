@@ -121,7 +121,7 @@ export default function AllQuizzes() {
     switch (type) {
       case "hypothesis":
         return {
-          label: getLabel("hypothesis", "5 minute Anonymous Quiz"),
+          label: null, // No tag for hypothesis quizzes
           icon: Lightbulb,
           badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
           card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
@@ -216,10 +216,12 @@ export default function AllQuizzes() {
                             Free
                           </Badge>
                         )}
-                        <Badge variant="outline" className={`${typeStyle.badge} flex items-center gap-1`}>
-                          <TypeIcon className="w-3 h-3" />
-                          {typeStyle.label}
-                        </Badge>
+                        {typeStyle.label && (
+                          <Badge variant="outline" className={`${typeStyle.badge} flex items-center gap-1`}>
+                            <TypeIcon className="w-3 h-3" />
+                            {typeStyle.label}
+                          </Badge>
+                        )}
                         {badgeText && (
                           <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 border-emerald-500/30 font-semibold text-xs">
                             {badgeText}
