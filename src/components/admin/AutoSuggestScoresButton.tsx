@@ -1,6 +1,12 @@
 import { Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Json } from "@/integrations/supabase/types";
 
 interface ResultLevel {
@@ -41,20 +47,25 @@ export function AutoSuggestScoresButton({
 
     const numLevels = resultLevels.length;
     
-    // If no scored questions exist, expand range to fit all levels
-    const effectiveMax = Math.max(maxPossibleScore, minPossibleScore + (numLevels - 1));
-    const totalRange = effectiveMax - minPossibleScore + 1;
-    const rangePerLevel = Math.floor(totalRange / numLevels);
+    // Smart range calculation:
+    // - Use actual min/max from quiz parameters
+    // - If range is too small for levels, expand max to fit
+    const effectiveMin = minPossibleScore;
+    const effectiveMax = Math.max(maxPossibleScore, minPossibleScore + numLevels - 1);
+    const totalRange = effectiveMax - effectiveMin + 1;
+    
+    // Calculate points per level (floor) and remainder
+    const pointsPerLevel = Math.floor(totalRange / numLevels);
     const remainder = totalRange % numLevels;
 
     // Sort levels by current min_score to maintain order
     const sortedLevels = [...resultLevels].sort((a, b) => a.min_score - b.min_score);
 
-    let currentMin = minPossibleScore;
+    let currentMin = effectiveMin;
     const updatedLevels = sortedLevels.map((level, index) => {
-      // Distribute remainder points to earlier levels
-      const extraPoint = index < remainder ? 1 : 0;
-      const levelRange = Math.max(1, rangePerLevel + extraPoint);
+      // Distribute remainder points to later levels (higher scores get extra)
+      const extraPoint = index >= (numLevels - remainder) ? 1 : 0;
+      const levelRange = Math.max(1, pointsPerLevel + extraPoint);
       const levelMax = index === numLevels - 1 ? effectiveMax : currentMin + levelRange - 1;
 
       const updated = {
@@ -69,23 +80,46 @@ export function AutoSuggestScoresButton({
 
     onUpdateLevels(updatedLevels);
 
+    const avgRange = Math.round(totalRange / numLevels);
     toast({
-      title: "Scores distributed",
-      description: `${numLevels} levels distributed across ${minPossibleScore}–${effectiveMax}`,
+      title: "Scores auto-distributed",
+      description: `${numLevels} levels × ~${avgRange} pts each (${effectiveMin}–${effectiveMax})`,
     });
   };
 
+  // Calculate what distribution would look like
+  const numLevels = resultLevels.length;
+  const effectiveMax = Math.max(maxPossibleScore, minPossibleScore + numLevels - 1);
+  const totalRange = effectiveMax - minPossibleScore + 1;
+  const avgPointsPerLevel = numLevels > 0 ? Math.round(totalRange / numLevels) : 0;
+
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-7 px-2 text-xs gap-1"
-      title={`Auto-distribute scores (${minPossibleScore}–${maxPossibleScore})`}
-      onClick={handleDistribute}
-      disabled={resultLevels.length === 0}
-    >
-      <Calculator className="w-3.5 h-3.5" />
-      Distribute
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+            onClick={handleDistribute}
+            disabled={resultLevels.length === 0}
+          >
+            <Calculator className="w-3.5 h-3.5" />
+            Distribute
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          <div className="text-xs space-y-1">
+            <p className="font-medium">Auto-distribute score ranges</p>
+            <p className="text-muted-foreground">
+              {numLevels} levels × ~{avgPointsPerLevel} pts = {minPossibleScore}–{effectiveMax}
+            </p>
+            <p className="text-muted-foreground">
+              Based on: {maxPossibleScore} max questions/pts
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
