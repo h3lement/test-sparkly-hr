@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useResizableColumns } from "@/hooks/useResizableColumns";
 import { 
   Dialog,
   DialogContent,
@@ -23,7 +24,8 @@ import {
   FileText,
   Send,
   Users,
-  Languages
+  Languages,
+  GripVertical
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -172,16 +174,36 @@ function LanguageSelectDialog({
   );
 }
 
+// Default column widths for email templates table
+const EMAIL_DEFAULT_WIDTHS = {
+  version: 70,
+  type: 80,
+  quiz: 150,
+  sender: 180,
+  created: 130,
+  lang: 70,
+  sent: 70,
+  cost: 80,
+  actions: 100,
+};
+
 export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPreview }: EmailVersionHistoryProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [emailStats, setEmailStats] = useState<Record<string, { sent: number; failed: number }>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("quiz_results"); // Default to Quiz Taker
   const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
   const [selectedTemplateForPreview, setSelectedTemplateForPreview] = useState<EmailTemplate | null>(null);
   const { toast } = useToast();
+
+  // Resizable columns with localStorage persistence
+  const { columnWidths, handleMouseDown } = useResizableColumns({
+    defaultWidths: EMAIL_DEFAULT_WIDTHS,
+    storageKey: "email-templates-column-widths",
+    minWidth: 50,
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -406,7 +428,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     <>
       <Card className="bg-card shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Mail className="w-4 h-4 text-primary" />
               Email Template Versions
@@ -415,16 +437,6 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
               </Badge>
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[130px] h-8 text-xs">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="quiz_results">Quiz Taker</SelectItem>
-                  <SelectItem value="admin_notification">Admin</SelectItem>
-                </SelectContent>
-              </Select>
               {!quizId && quizzes.length > 0 && (
                 <Select value={filterQuiz} onValueChange={setFilterQuiz}>
                   <SelectTrigger className="w-[180px] h-8 text-xs">
@@ -452,6 +464,40 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
               </Button>
             </div>
           </div>
+          
+          {/* Tab-like filter for template types */}
+          <div className="flex items-center gap-1 mt-3 border-b">
+            <button
+              onClick={() => setFilterType("all")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                filterType === "all"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilterType("quiz_results")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                filterType === "quiz_results"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+              }`}
+            >
+              Quiz Taker
+            </button>
+            <button
+              onClick={() => setFilterType("admin_notification")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                filterType === "admin_notification"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+              }`}
+            >
+              Admin
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading && templates.length === 0 ? (
@@ -467,18 +513,101 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
               <p className="text-sm text-muted-foreground mt-1">Save a template to get started</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
-              {/* Table Header */}
-              <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
-                <span>Version</span>
-                <span>Type</span>
-                {!quizId && <span>Quiz</span>}
-                <span>Sender</span>
-                <span>Created</span>
-                <span className="text-center" title="Languages translated">Lang</span>
-                <span className="text-center">Sent</span>
-                <span className="text-right">Cost</span>
-                <span className="text-right">Actions</span>
+            <div className="border rounded-lg overflow-hidden bg-card shadow-sm overflow-x-auto">
+              {/* Table Header with resizable columns */}
+              <div 
+                className="flex bg-muted/40 text-sm font-medium text-foreground border-b min-w-max"
+                style={{ minWidth: 'fit-content' }}
+              >
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.version }}
+                >
+                  <span>Version</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("version", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.type }}
+                >
+                  <span>Type</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("type", e)}
+                  />
+                </div>
+                {!quizId && (
+                  <div 
+                    className="flex items-center px-3 py-3 relative group"
+                    style={{ width: columnWidths.quiz }}
+                  >
+                    <span>Quiz</span>
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown("quiz", e)}
+                    />
+                  </div>
+                )}
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.sender }}
+                >
+                  <span>Sender</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("sender", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.created }}
+                >
+                  <span>Created</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("created", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center justify-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.lang }}
+                  title="Languages translated"
+                >
+                  <span>Lang</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("lang", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center justify-center px-3 py-3 relative group"
+                  style={{ width: columnWidths.sent }}
+                >
+                  <span>Sent</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("sent", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center justify-end px-3 py-3 relative group"
+                  style={{ width: columnWidths.cost }}
+                >
+                  <span>Cost</span>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown("cost", e)}
+                  />
+                </div>
+                <div 
+                  className="flex items-center justify-end px-3 py-3"
+                  style={{ width: columnWidths.actions }}
+                >
+                  <span>Actions</span>
+                </div>
               </div>
 
               {/* Table Rows */}
@@ -494,12 +623,15 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                   return (
                     <div
                       key={template.id}
-                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                      className={`flex items-center text-sm border-b last:border-b-0 list-row-interactive min-w-max ${
                         template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
                       }`}
                     >
                       {/* Version */}
-                      <div className="flex items-center gap-2">
+                      <div 
+                        className="flex items-center gap-2 px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.version }}
+                      >
                         <span className="font-medium">v{template.version_number}</span>
                         {template.is_live && (
                           <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
@@ -509,7 +641,10 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       </div>
 
                       {/* Template Type */}
-                      <div>
+                      <div 
+                        className="px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.type }}
+                      >
                         <Badge 
                           variant={getTemplateTypeBadgeVariant(template.template_type) as "secondary" | "outline"} 
                           className="text-xs"
@@ -520,18 +655,30 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
 
                       {/* Quiz (only when showing all) */}
                       {!quizId && (
-                        <div className="truncate text-foreground font-medium" title={getQuizTitle(template.quiz_id)}>
+                        <div 
+                          className="truncate text-foreground font-medium px-3 py-3 shrink-0"
+                          style={{ width: columnWidths.quiz }}
+                          title={getQuizTitle(template.quiz_id)}
+                        >
                           {getQuizTitle(template.quiz_id)}
                         </div>
                       )}
 
                       {/* Sender */}
-                      <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
+                      <div 
+                        className="truncate text-muted-foreground px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.sender }}
+                        title={`${template.sender_name} <${template.sender_email}>`}
+                      >
                         {template.sender_name} &lt;{template.sender_email}&gt;
                       </div>
 
                       {/* Created - with user name */}
-                      <div className="text-sm text-muted-foreground" title={template.created_by_email || "Unknown"}>
+                      <div 
+                        className="text-sm text-muted-foreground px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.created }}
+                        title={template.created_by_email || "Unknown"}
+                      >
                         <div className="truncate">{formatDate(template.created_at)}</div>
                         {creatorName && (
                           <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
@@ -539,7 +686,11 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       </div>
 
                       {/* Translation Count */}
-                      <div className="flex items-center justify-center" title={`Subjects: ${translationCount.subjects}/${TOTAL_LANGUAGES}, Body: ${translationCount.body}/${TOTAL_LANGUAGES}`}>
+                      <div 
+                        className="flex items-center justify-center px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.lang }}
+                        title={`Subjects: ${translationCount.subjects}/${TOTAL_LANGUAGES}, Body: ${translationCount.body}/${TOTAL_LANGUAGES}`}
+                      >
                         <div className="flex items-center gap-1">
                           <Languages className="w-3.5 h-3.5 text-muted-foreground" />
                           <span className={`text-xs ${Math.max(translationCount.subjects, translationCount.body) >= TOTAL_LANGUAGES ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
@@ -548,7 +699,12 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-center gap-1" title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}>
+                      {/* Sent */}
+                      <div 
+                        className="flex items-center justify-center gap-1 px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.sent }}
+                        title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}
+                      >
                         <Send className="w-3.5 h-3.5 text-muted-foreground" />
                         <span className={stats.sent > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
                           {stats.sent}
@@ -559,12 +715,18 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
                       </div>
 
                       {/* Cost */}
-                      <div className="text-sm text-muted-foreground text-right">
+                      <div 
+                        className="text-sm text-muted-foreground text-right px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.cost }}
+                      >
                         {template.estimated_cost_eur ? `€${template.estimated_cost_eur.toFixed(4)}` : "-"}
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center justify-end gap-1">
+                      <div 
+                        className="flex items-center justify-end gap-1 px-3 py-3 shrink-0"
+                        style={{ width: columnWidths.actions }}
+                      >
                         {onPreview && (
                           <Button
                             variant="ghost"
