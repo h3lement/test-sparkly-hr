@@ -37,6 +37,74 @@ import {
   Lock,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { EmailPreviewDialog } from "./EmailPreviewDialog";
+
+import { Json } from "@/integrations/supabase/types";
+
+interface Quiz {
+  id: string;
+  title: Json;
+  slug: string;
+  primary_language: string;
+}
+
+interface EmailTemplate {
+  id: string;
+  version_number: number;
+  sender_name: string;
+  sender_email: string;
+  subjects: Json;
+  is_live: boolean;
+  created_at: string;
+  quiz_id: string | null;
+}
+
+const EMAIL_TRANSLATIONS: Record<string, {
+  yourResults: string;
+  outOf: string;
+  points: string;
+  keyInsights: string;
+  wantToImprove: string;
+  visitSparkly: string;
+  leadershipOpenMindedness: string;
+  openMindednessOutOf: string;
+  sampleResultTitle: string;
+  sampleResultDescription: string;
+  sampleInsight1: string;
+  sampleInsight2: string;
+  sampleInsight3: string;
+}> = {
+  en: {
+    yourResults: "Your Quiz Results",
+    outOf: "out of",
+    points: "points",
+    keyInsights: "Key Insights",
+    wantToImprove: "Want to improve your leadership skills?",
+    visitSparkly: "Visit Sparkly.hr",
+    leadershipOpenMindedness: "Leadership Open-Mindedness",
+    openMindednessOutOf: "out of 5 points",
+    sampleResultTitle: "Strategic Thinker",
+    sampleResultDescription: "You demonstrate strong strategic thinking skills with a balanced approach to leadership challenges.",
+    sampleInsight1: "You excel at long-term planning and vision setting",
+    sampleInsight2: "Consider developing more agile decision-making processes",
+    sampleInsight3: "Your analytical skills are a strong asset for the team",
+  },
+  et: {
+    yourResults: "Sinu tulemused",
+    outOf: "punktist",
+    points: "punkti",
+    keyInsights: "Peamised järeldused",
+    wantToImprove: "Soovid oma juhtimisoskusi arendada?",
+    visitSparkly: "Külasta Sparkly.hr",
+    leadershipOpenMindedness: "Juhtimise avatus",
+    openMindednessOutOf: "5 punktist",
+    sampleResultTitle: "Strateegiline mõtleja",
+    sampleResultDescription: "Näitad tugevaid strateegilise mõtlemise oskusi tasakaalustatud lähenemisega juhtimisprobleemidele.",
+    sampleInsight1: "Oled tugev pikaajalises planeerimises ja visiooni seadmises",
+    sampleInsight2: "Kaalu agiilsemate otsustusprotsesside arendamist",
+    sampleInsight3: "Sinu analüütilised oskused on meeskonnale suureks varaks",
+  },
+};
 
 interface DomainInfo {
   name: string;
@@ -100,7 +168,6 @@ export function EmailSettings() {
     domains: [],
   });
   const [testEmail, setTestEmail] = useState("");
-  const [emailType, setEmailType] = useState<EmailType>("simple");
   const [isSending, setIsSending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [errors, setErrors] = useState<EmailError[]>([]);
@@ -128,6 +195,16 @@ export function EmailSettings() {
     emailsPerMinute: 1,
   });
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number>(0);
+  
+  // Quiz and template selection for test emails
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [selectedQuizId, setSelectedQuizId] = useState<string>("");
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(false);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
@@ -136,6 +213,101 @@ export function EmailSettings() {
   const SLOW_RECONNECT_DELAY_MS = 30000;
   const MAX_RECONNECT_ATTEMPTS = 10;
   const { toast } = useToast();
+
+  // Fetch quizzes on mount
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      setIsLoadingQuizzes(true);
+      try {
+        const { data, error } = await supabase
+          .from("quizzes")
+          .select("id, title, slug, primary_language")
+          .order("display_order", { ascending: true });
+        
+        if (error) throw error;
+        setQuizzes(data || []);
+        
+        // Auto-select first quiz if available
+        if (data && data.length > 0 && !selectedQuizId) {
+          setSelectedQuizId(data[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch quizzes:", error);
+      } finally {
+        setIsLoadingQuizzes(false);
+      }
+    };
+    fetchQuizzes();
+
+    // Subscribe to realtime updates for quizzes
+    const quizChannel = supabase
+      .channel("quizzes-email-settings")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "quizzes" },
+        () => fetchQuizzes()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(quizChannel);
+    };
+  }, []);
+
+  // Fetch templates when quiz is selected
+  useEffect(() => {
+    if (!selectedQuizId) {
+      setTemplates([]);
+      setSelectedTemplateId("");
+      return;
+    }
+
+    const fetchTemplates = async () => {
+      setIsLoadingTemplates(true);
+      try {
+        const { data, error } = await supabase
+          .from("email_templates")
+          .select("*")
+          .eq("quiz_id", selectedQuizId)
+          .order("version_number", { ascending: false });
+        
+        if (error) throw error;
+        setTemplates(data || []);
+        
+        // Auto-select live template or first template
+        const liveTemplate = data?.find(t => t.is_live);
+        if (liveTemplate) {
+          setSelectedTemplateId(liveTemplate.id);
+        } else if (data && data.length > 0) {
+          setSelectedTemplateId(data[0].id);
+        } else {
+          setSelectedTemplateId("");
+        }
+      } catch (error) {
+        console.error("Failed to fetch templates:", error);
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+    fetchTemplates();
+
+    // Subscribe to realtime updates for templates
+    const templateChannel = supabase
+      .channel(`templates-${selectedQuizId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "email_templates", filter: `quiz_id=eq.${selectedQuizId}` },
+        () => fetchTemplates()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(templateChannel);
+    };
+  }, [selectedQuizId]);
+
+  const selectedQuiz = quizzes.find(q => q.id === selectedQuizId) || null;
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId) || null;
 
   // Load email config from app_settings
   useEffect(() => {
@@ -470,18 +642,42 @@ export function EmailSettings() {
 
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-quiz-results", {
-        body: {
-          action: "test_email",
-          testEmail: testEmail.trim(),
-          emailType,
+      if (!selectedTemplate) {
+        throw new Error("No template selected");
+      }
+      
+      const trans = EMAIL_TRANSLATIONS[selectedQuiz?.primary_language || "en"] || EMAIL_TRANSLATIONS.en;
+      const subjects = selectedTemplate.subjects as Record<string, string>;
+      
+      const testData = {
+        email: testEmail.trim(),
+        totalScore: 18,
+        maxScore: 24,
+        resultTitle: trans.sampleResultTitle,
+        resultDescription: trans.sampleResultDescription,
+        insights: [
+          trans.sampleInsight1,
+          trans.sampleInsight2,
+          trans.sampleInsight3,
+        ],
+        language: selectedQuiz?.primary_language || "en",
+        opennessScore: 3,
+        isTest: true,
+        templateOverride: {
+          sender_name: selectedTemplate.sender_name,
+          sender_email: selectedTemplate.sender_email,
+          subject: subjects[selectedQuiz?.primary_language || "en"] || subjects.en || "Your Quiz Results",
         },
+      };
+
+      const { data, error } = await supabase.functions.invoke("send-quiz-results", {
+        body: testData,
       });
 
       if (error) throw error;
 
       if (data?.success) {
-        const typeLabel = emailType === "quiz_result" ? "Quiz Result" : emailType === "notification" ? "Notification" : "Simple";
+        const quizTitle = getQuizTitle(selectedQuiz);
         
         // Update rate limit info
         setRateLimitInfo((prev) => ({ ...prev, lastSentAt: new Date() }));
@@ -490,11 +686,11 @@ export function EmailSettings() {
         
         toast({
           title: "Test email sent",
-          description: `${typeLabel} email sent to ${testEmail}`,
+          description: `Template v${selectedTemplate.version_number} for "${quizTitle}" sent to ${testEmail}`,
         });
         setSuccess({
           type: "send",
-          message: `${typeLabel} email successfully sent to ${testEmail}`,
+          message: `Test email sent to ${testEmail}`,
         });
         // Refresh connection status after successful test
         checkConnection(true);
@@ -525,6 +721,12 @@ export function EmailSettings() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const getQuizTitle = (quiz: Quiz | null): string => {
+    if (!quiz) return "";
+    const title = quiz.title as Record<string, string>;
+    return title?.en || title?.et || quiz.slug || "";
   };
 
   const handleManualReconnect = () => {
@@ -612,31 +814,84 @@ export function EmailSettings() {
 
         <div className="flex-1" />
 
-        {/* Test Email Controls */}
-        <div className="flex items-center gap-2">
-          <Select value={emailType} onValueChange={(v) => setEmailType(v as EmailType)}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue />
+        {/* Test Email Controls - Quiz and Template Selection */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Quiz Selection */}
+          <Select 
+            value={selectedQuizId} 
+            onValueChange={setSelectedQuizId}
+            disabled={isLoadingQuizzes}
+          >
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              {isLoadingQuizzes ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <SelectValue placeholder="Select quiz" />
+              )}
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="simple">Simple</SelectItem>
-              <SelectItem value="quiz_result">Quiz Result</SelectItem>
-              <SelectItem value="notification">Notification</SelectItem>
+              {quizzes.map((quiz) => (
+                <SelectItem key={quiz.id} value={quiz.id}>
+                  {getQuizTitle(quiz)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
+
+          {/* Template Selection */}
+          <Select 
+            value={selectedTemplateId} 
+            onValueChange={setSelectedTemplateId}
+            disabled={!selectedQuizId || isLoadingTemplates}
+          >
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              {isLoadingTemplates ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <SelectValue placeholder="Template" />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {templates.length === 0 ? (
+                <SelectItem value="_none" disabled>No templates</SelectItem>
+              ) : (
+                templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    v{template.version_number}{template.is_live ? " ★" : ""}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+
+          {/* Preview Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => setShowPreviewDialog(true)}
+            disabled={!selectedTemplate}
+            title="Preview template"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+
+          {/* Email Input */}
           <Input
             type="email"
             placeholder="test@email.com"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
-            className="w-[180px] h-8 text-sm"
+            className="w-[160px] h-8 text-sm"
             disabled={connectionStatus.status !== "connected"}
           />
+
+          {/* Send Button */}
           <Button
             size="sm"
             className="h-8 px-3"
             onClick={sendTestEmail}
-            disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim() || rateLimitCountdown > 0}
+            disabled={isSending || connectionStatus.status !== "connected" || !testEmail.trim() || !selectedTemplate || rateLimitCountdown > 0}
           >
             {isSending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -649,6 +904,8 @@ export function EmailSettings() {
               </>
             )}
           </Button>
+
+          {/* Refresh Button */}
           <Button
             variant="outline"
             size="sm"
@@ -669,6 +926,22 @@ export function EmailSettings() {
           Rate limit: Wait {rateLimitCountdown}s before next send
         </div>
       )}
+
+      {/* Email Preview Dialog */}
+      <EmailPreviewDialog
+        open={showPreviewDialog}
+        onOpenChange={setShowPreviewDialog}
+        template={selectedTemplate ? {
+          ...selectedTemplate,
+          subjects: selectedTemplate.subjects as Record<string, string>
+        } : null}
+        quiz={selectedQuiz ? {
+          ...selectedQuiz,
+          title: selectedQuiz.title as Record<string, string>
+        } : null}
+        defaultEmail={testEmail}
+        emailTranslations={EMAIL_TRANSLATIONS}
+      />
 
       {/* Success/Error Messages - Compact */}
       {lastSuccess && (
