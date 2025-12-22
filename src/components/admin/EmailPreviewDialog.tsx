@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ interface EmailPreviewDialogProps {
   template: EmailTemplate | null;
   quiz: Quiz | null;
   defaultEmail?: string;
+  initialLanguage?: string;
   emailTranslations: Record<string, {
     yourResults: string;
     outOf: string;
@@ -84,17 +85,20 @@ export function EmailPreviewDialog({
   template,
   quiz,
   defaultEmail = "",
+  initialLanguage,
   emailTranslations,
 }: EmailPreviewDialogProps) {
   const { toast } = useToast();
   const [testEmail, setTestEmail] = useState(defaultEmail);
-  const [testLanguage, setTestLanguage] = useState(quiz?.primary_language || "en");
+  const [testLanguage, setTestLanguage] = useState(initialLanguage || quiz?.primary_language || "en");
   const [sendingTest, setSendingTest] = useState(false);
 
-  // Update language when quiz changes
-  if (quiz?.primary_language && testLanguage !== quiz.primary_language && !open) {
-    setTestLanguage(quiz.primary_language);
-  }
+  // Update language when dialog opens with a new initialLanguage or quiz changes
+  useEffect(() => {
+    if (open) {
+      setTestLanguage(initialLanguage || quiz?.primary_language || "en");
+    }
+  }, [open, initialLanguage, quiz?.primary_language]);
 
   const getEmailPreviewHtml = () => {
     if (!template) return "";

@@ -79,6 +79,7 @@ export function TemplateVersionsPage() {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+  const [previewLanguage, setPreviewLanguage] = useState<string>("en");
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
 
   useEffect(() => {
@@ -99,8 +100,9 @@ export function TemplateVersionsPage() {
     }
   };
 
-  const handlePreview = async (template: EmailTemplate) => {
+  const handlePreview = async (template: EmailTemplate, language?: string) => {
     setPreviewTemplate(template);
+    setPreviewLanguage(language || "en");
     
     // Find the quiz for this template
     if (template.quiz_id) {
@@ -158,6 +160,7 @@ export function TemplateVersionsPage() {
         template={previewTemplate}
         quiz={previewQuiz}
         emailTranslations={emailTranslations}
+        initialLanguage={previewLanguage}
       />
     </div>
   );

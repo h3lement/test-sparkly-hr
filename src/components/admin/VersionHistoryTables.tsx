@@ -7,6 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { 
   RefreshCw, 
   Mail, 
   Globe, 
@@ -23,6 +29,25 @@ import { format } from "date-fns";
 
 // Total number of supported languages in the system (from translate-quiz edge function)
 const TOTAL_LANGUAGES = 24;
+
+// All supported language codes for the horizontal selector
+const ALL_LANGUAGE_CODES = [
+  { code: "en", name: "English" },
+  { code: "et", name: "Estonian" },
+  { code: "da", name: "Danish" },
+  { code: "nl", name: "Dutch" },
+  { code: "fi", name: "Finnish" },
+  { code: "fr", name: "French" },
+  { code: "de", name: "German" },
+  { code: "it", name: "Italian" },
+  { code: "no", name: "Norwegian" },
+  { code: "pl", name: "Polish" },
+  { code: "pt", name: "Portuguese" },
+  { code: "ru", name: "Russian" },
+  { code: "es", name: "Spanish" },
+  { code: "sv", name: "Swedish" },
+  { code: "uk", name: "Ukrainian" },
+];
 
 interface EmailTemplate {
   id: string;
@@ -70,12 +95,74 @@ interface EmailVersionHistoryProps {
   quizId?: string;
   onLoadTemplate?: (template: EmailTemplate) => void;
   onSetLive?: (templateId: string, versionNumber: number) => void;
-  onPreview?: (template: EmailTemplate) => void;
+  onPreview?: (template: EmailTemplate, language?: string) => void;
 }
 
 interface WebVersionHistoryProps {
   quizId?: string;
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
+}
+
+// Language selection dialog for preview
+function LanguageSelectDialog({
+  open,
+  onOpenChange,
+  template,
+  onSelectLanguage,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  template: EmailTemplate | null;
+  onSelectLanguage: (template: EmailTemplate, language: string) => void;
+}) {
+  if (!template) return null;
+
+  const availableLanguages = ALL_LANGUAGE_CODES.filter(
+    lang => template.subjects?.[lang.code]?.trim() || template.body_content?.[lang.code]?.trim()
+  );
+
+  // Include EN as fallback if available
+  const hasEnglish = availableLanguages.some(l => l.code === "en");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Globe className="w-4 h-4" />
+            Select Preview Language
+          </DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground mb-4">
+            Choose a language to preview the email template (v{template.version_number})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {availableLanguages.map((lang) => (
+              <Button
+                key={lang.code}
+                variant={lang.code === "en" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  onSelectLanguage(template, lang.code);
+                  onOpenChange(false);
+                }}
+                className="min-w-[80px]"
+              >
+                <span className="font-mono text-xs mr-1.5 uppercase">{lang.code}</span>
+                {lang.name}
+              </Button>
+            ))}
+          </div>
+          {availableLanguages.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No translations available for this template
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPreview }: EmailVersionHistoryProps) {
@@ -85,6 +172,9 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   const [loading, setLoading] = useState(true);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
   const [filterType, setFilterType] = useState<string>("all");
+  const [filterLanguage, setFilterLanguage] = useState<string>("all");
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
+  const [selectedTemplateForPreview, setSelectedTemplateForPreview] = useState<EmailTemplate | null>(null);
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -242,15 +332,19 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     return quiz.title?.en || quiz.title?.et || quiz.slug || "Untitled";
   };
 
-  // Sort: live templates first (grouped by quiz), then by created_at descending
+  // Filter templates that have the selected language (if language filter is active)
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
       const quizMatch = filterQuiz === "all" || t.quiz_id === filterQuiz;
       const typeMatch = filterType === "all" || t.template_type === filterType;
-      return quizMatch && typeMatch;
+      // Language filter: check if template has this language in subjects or body
+      const langMatch = filterLanguage === "all" || 
+        (t.subjects?.[filterLanguage]?.trim()) || 
+        (t.body_content?.[filterLanguage]?.trim());
+      return quizMatch && typeMatch && langMatch;
     });
 
-    // Sort: live first, then by created_at descending
+    // Sort: live first, then by created_at descending (newest first)
     return filtered.sort((a, b) => {
       // Live templates first
       if (a.is_live && !b.is_live) return -1;
@@ -258,7 +352,7 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
       // Then by created_at descending (newest first)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [templates, filterQuiz, filterType]);
+  }, [templates, filterQuiz, filterType, filterLanguage]);
 
   const getTemplateTypeLabel = (type: string) => {
     switch (type) {
@@ -283,6 +377,27 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
     return { subjects: subjectLangs.length, body: bodyLangs.length };
   };
 
+  // Get available languages for a template
+  const getTemplateLanguages = (template: EmailTemplate): string[] => {
+    const langs = new Set<string>();
+    Object.keys(template.subjects || {}).forEach(k => {
+      if (template.subjects[k]?.trim()) langs.add(k);
+    });
+    Object.keys(template.body_content || {}).forEach(k => {
+      if (template.body_content[k]?.trim()) langs.add(k);
+    });
+    return Array.from(langs);
+  };
+
+  const handlePreviewClick = (template: EmailTemplate) => {
+    setSelectedTemplateForPreview(template);
+    setLanguageDialogOpen(true);
+  };
+
+  const handleLanguageSelect = (template: EmailTemplate, language: string) => {
+    onPreview?.(template, language);
+  };
+
   if (loading && templates.length === 0) {
     return (
       <div className="space-y-2">
@@ -298,209 +413,249 @@ export function EmailVersionHistory({ quizId, onLoadTemplate, onSetLive, onPrevi
   }
 
   return (
-    <Card className="bg-card shadow-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Mail className="w-4 h-4 text-primary" />
-            Email Template Versions
-            <Badge variant="secondary" className="text-xs ml-2">
-              {filteredTemplates.length}
-            </Badge>
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="quiz_results">Quiz Taker</SelectItem>
-                <SelectItem value="admin_notification">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            {!quizId && quizzes.length > 0 && (
-              <Select value={filterQuiz} onValueChange={setFilterQuiz}>
-                <SelectTrigger className="w-[180px] h-8 text-xs">
-                  <SelectValue placeholder="All Quizzes" />
+    <>
+      <Card className="bg-card shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Mail className="w-4 h-4 text-primary" />
+              Email Template Versions
+              <Badge variant="secondary" className="text-xs ml-2">
+                {filteredTemplates.length}
+              </Badge>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Quizzes</SelectItem>
-                  {quizzes.map((q) => (
-                    <SelectItem key={q.id} value={q.id}>
-                      {q.title?.en || q.title?.et || q.slug}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="quiz_results">Quiz Taker</SelectItem>
+                  <SelectItem value="admin_notification">Admin</SelectItem>
                 </SelectContent>
               </Select>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchData}
-              disabled={loading}
-              className="h-8 gap-1.5"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+              {!quizId && quizzes.length > 0 && (
+                <Select value={filterQuiz} onValueChange={setFilterQuiz}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <SelectValue placeholder="All Quizzes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Quizzes</SelectItem>
+                    {quizzes.map((q) => (
+                      <SelectItem key={q.id} value={q.id}>
+                        {q.title?.en || q.title?.et || q.slug}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchData}
+                disabled={loading}
+                className="h-8 gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading && templates.length === 0 ? (
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
+
+          {/* Horizontal Language Filter */}
+          <div className="flex items-center gap-1 mt-3 flex-wrap">
+            <span className="text-xs text-muted-foreground mr-2">Filter by language:</span>
+            <Button
+              variant={filterLanguage === "all" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setFilterLanguage("all")}
+              className="h-6 px-2 text-xs"
+            >
+              All
+            </Button>
+            {ALL_LANGUAGE_CODES.map((lang) => (
+              <Button
+                key={lang.code}
+                variant={filterLanguage === lang.code ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setFilterLanguage(lang.code)}
+                className="h-6 px-2 text-xs font-mono uppercase"
+                title={lang.name}
+              >
+                {lang.code}
+              </Button>
             ))}
           </div>
-        ) : filteredTemplates.length === 0 ? (
-          <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
-            <Mail className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-base text-muted-foreground">No email templates yet</p>
-            <p className="text-sm text-muted-foreground mt-1">Save a template to get started</p>
-          </div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
-            {/* Table Header */}
-            <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
-              <span>Version</span>
-              <span>Type</span>
-              {!quizId && <span>Quiz</span>}
-              <span>Sender</span>
-              <span>Created</span>
-              <span className="text-center" title="Languages translated">Lang</span>
-              <span className="text-center">Sent</span>
-              <span className="text-right">Cost</span>
-              <span className="text-right">Actions</span>
+        </CardHeader>
+        <CardContent>
+          {loading && templates.length === 0 ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
             </div>
+          ) : filteredTemplates.length === 0 ? (
+            <div className="text-center py-8 border rounded-lg border-dashed bg-muted/30">
+              <Mail className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-base text-muted-foreground">No email templates yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Save a template to get started</p>
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+              {/* Table Header */}
+              <div className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_100px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_100px_70px_80px_100px]'} gap-3 px-4 py-3 bg-muted/40 text-sm font-medium text-foreground border-b`}>
+                <span>Version</span>
+                <span>Type</span>
+                {!quizId && <span>Quiz</span>}
+                <span>Sender</span>
+                <span>Created</span>
+                <span className="text-center" title="Available languages">Languages</span>
+                <span className="text-center">Sent</span>
+                <span className="text-right">Cost</span>
+                <span className="text-right">Actions</span>
+              </div>
 
-            {/* Table Rows */}
-            <div className="max-h-[400px] overflow-y-auto">
-              {filteredTemplates.map((template, index) => {
-                // Extract user name from email (before @)
-                const creatorName = template.created_by_email 
-                  ? template.created_by_email.split('@')[0]
-                  : null;
-                const stats = emailStats[template.id] || { sent: 0, failed: 0 };
-                const translationCount = getEmailTranslationCount(template);
+              {/* Table Rows */}
+              <div className="max-h-[400px] overflow-y-auto">
+                {filteredTemplates.map((template, index) => {
+                  // Extract user name from email (before @)
+                  const creatorName = template.created_by_email 
+                    ? template.created_by_email.split('@')[0]
+                    : null;
+                  const stats = emailStats[template.id] || { sent: 0, failed: 0 };
+                  const templateLangs = getTemplateLanguages(template);
 
-                return (
-                  <div
-                    key={template.id}
-                    className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_70px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_70px_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
-                      template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
-                    }`}
-                  >
-                    {/* Version */}
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">v{template.version_number}</span>
-                      {template.is_live && (
-                        <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
-                          LIVE
+                  return (
+                    <div
+                      key={template.id}
+                      className={`grid ${quizId ? 'grid-cols-[70px_80px_1fr_1fr_100px_70px_80px_100px]' : 'grid-cols-[70px_80px_1fr_1fr_1fr_100px_70px_80px_100px]'} gap-3 px-4 py-3 items-center text-sm border-b last:border-b-0 list-row-interactive ${
+                        template.is_live ? "bg-primary/5" : index % 2 === 0 ? "list-row-even" : "list-row-odd"
+                      }`}
+                    >
+                      {/* Version */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">v{template.version_number}</span>
+                        {template.is_live && (
+                          <Badge variant="default" className="text-xs h-5 px-1.5 bg-primary">
+                            LIVE
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Template Type */}
+                      <div>
+                        <Badge 
+                          variant={getTemplateTypeBadgeVariant(template.template_type) as "secondary" | "outline"} 
+                          className="text-xs"
+                        >
+                          {getTemplateTypeLabel(template.template_type)}
                         </Badge>
-                      )}
-                    </div>
-
-                    {/* Template Type */}
-                    <div>
-                      <Badge 
-                        variant={getTemplateTypeBadgeVariant(template.template_type) as "secondary" | "outline"} 
-                        className="text-xs"
-                      >
-                        {getTemplateTypeLabel(template.template_type)}
-                      </Badge>
-                    </div>
-
-                    {/* Quiz (only when showing all) */}
-                    {!quizId && (
-                      <div className="truncate text-foreground font-medium" title={getQuizTitle(template.quiz_id)}>
-                        {getQuizTitle(template.quiz_id)}
                       </div>
-                    )}
 
-                    {/* Sender */}
-                    <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
-                      {template.sender_name} &lt;{template.sender_email}&gt;
-                    </div>
-
-                    {/* Created - with user name */}
-                    <div className="text-sm text-muted-foreground" title={template.created_by_email || "Unknown"}>
-                      <div className="truncate">{formatDate(template.created_at)}</div>
-                      {creatorName && (
-                        <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
+                      {/* Quiz (only when showing all) */}
+                      {!quizId && (
+                        <div className="truncate text-foreground font-medium" title={getQuizTitle(template.quiz_id)}>
+                          {getQuizTitle(template.quiz_id)}
+                        </div>
                       )}
-                    </div>
 
-                    {/* Translation Count */}
-                    <div className="flex items-center justify-center" title={`Subjects: ${translationCount.subjects}/${TOTAL_LANGUAGES}, Body: ${translationCount.body}/${TOTAL_LANGUAGES}`}>
-                      <div className="flex items-center gap-1">
-                        <Languages className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className={`text-xs ${Math.max(translationCount.subjects, translationCount.body) >= TOTAL_LANGUAGES ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
-                          {Math.max(translationCount.subjects, translationCount.body)}/{TOTAL_LANGUAGES}
+                      {/* Sender */}
+                      <div className="truncate text-muted-foreground" title={`${template.sender_name} <${template.sender_email}>`}>
+                        {template.sender_name} &lt;{template.sender_email}&gt;
+                      </div>
+
+                      {/* Created - with user name */}
+                      <div className="text-sm text-muted-foreground" title={template.created_by_email || "Unknown"}>
+                        <div className="truncate">{formatDate(template.created_at)}</div>
+                        {creatorName && (
+                          <div className="text-xs text-muted-foreground/70 truncate">by {creatorName}</div>
+                        )}
+                      </div>
+
+                      {/* Language codes - horizontal list */}
+                      <div className="flex items-center justify-center gap-0.5 flex-wrap" title={`Languages: ${templateLangs.join(', ')}`}>
+                        {templateLangs.slice(0, 5).map((lang) => (
+                          <span 
+                            key={lang} 
+                            className="text-[10px] font-mono uppercase bg-muted px-1 rounded text-muted-foreground"
+                          >
+                            {lang}
+                          </span>
+                        ))}
+                        {templateLangs.length > 5 && (
+                          <span className="text-[10px] text-muted-foreground">+{templateLangs.length - 5}</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-center gap-1" title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}>
+                        <Send className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className={stats.sent > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
+                          {stats.sent}
                         </span>
+                        {stats.failed > 0 && (
+                          <span className="text-red-500 text-xs">({stats.failed})</span>
+                        )}
+                      </div>
+
+                      {/* Cost */}
+                      <div className="text-sm text-muted-foreground text-right">
+                        {template.estimated_cost_eur ? `€${template.estimated_cost_eur.toFixed(4)}` : "-"}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-1">
+                        {onPreview && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePreviewClick(template)}
+                            className="h-8 w-8 p-0"
+                            title="Preview & send test"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {onLoadTemplate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onLoadTemplate(template)}
+                            className="h-8 w-8 p-0"
+                            title="Load to editor"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {!template.is_live && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSetLive(template.id, template.version_number, template.quiz_id)}
+                            className="h-8 w-8 p-0 text-primary"
+                            title="Set as live"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-center gap-1" title={`Sent: ${stats.sent}, Failed: ${stats.failed}`}>
-                      <Send className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className={stats.sent > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
-                        {stats.sent}
-                      </span>
-                      {stats.failed > 0 && (
-                        <span className="text-red-500 text-xs">({stats.failed})</span>
-                      )}
-                    </div>
-
-                    {/* Cost */}
-                    <div className="text-sm text-muted-foreground text-right">
-                      {template.estimated_cost_eur ? `€${template.estimated_cost_eur.toFixed(4)}` : "-"}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-1">
-                      {onPreview && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onPreview(template)}
-                          className="h-8 w-8 p-0"
-                          title="Preview & send test"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {onLoadTemplate && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onLoadTemplate(template)}
-                          className="h-8 w-8 p-0"
-                          title="Load to editor"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {!template.is_live && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSetLive(template.id, template.version_number, template.quiz_id)}
-                          className="h-8 w-8 p-0 text-primary"
-                          title="Set as live"
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Language Selection Dialog */}
+      <LanguageSelectDialog
+        open={languageDialogOpen}
+        onOpenChange={setLanguageDialogOpen}
+        template={selectedTemplateForPreview}
+        onSelectLanguage={handleLanguageSelect}
+      />
+    </>
   );
 }
 
