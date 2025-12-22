@@ -193,9 +193,9 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .maybeSingle();
 
-    // Use configured sender info
-    const senderName = emailConfig.senderName || templateData?.sender_name || emailLog.sender_name || "Sparkly.hr";
-    const senderEmail = emailConfig.senderEmail || templateData?.sender_email || emailLog.sender_email || "support@sparkly.hr";
+    // Global email config from app_settings takes priority for sender identity
+    const senderName = emailConfig.senderName;
+    const senderEmail = emailConfig.senderEmail;
 
     // Use the original email HTML body if available, otherwise create a fallback
     const emailHtml = emailLog.html_body || `

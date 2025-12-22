@@ -136,6 +136,10 @@ export function EmailPreviewDialog({
   // (otherwise the dialog keeps showing the old `template` prop and languages stay disabled)
   const [templateData, setTemplateData] = useState<EmailTemplate | null>(template);
 
+  // Global sender config from Email Settings
+  const [globalSenderName, setGlobalSenderName] = useState("Sparkly");
+  const [globalSenderEmail, setGlobalSenderEmail] = useState("noreply@sparkly.hr");
+
   const [dialogSize, setDialogSize] = useState(getSavedDialogSize);
   const [isMaximized, setIsMaximized] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -143,6 +147,29 @@ export function EmailPreviewDialog({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const activeTemplate = templateData ?? template;
+
+  // Fetch global email sender config from app_settings
+  const fetchGlobalSenderConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_key, setting_value")
+        .in("setting_key", ["email_sender_name", "email_sender_email"]);
+
+      if (!error && data) {
+        data.forEach((s) => {
+          if (s.setting_key === "email_sender_name" && s.setting_value) {
+            setGlobalSenderName(s.setting_value);
+          }
+          if (s.setting_key === "email_sender_email" && s.setting_value) {
+            setGlobalSenderEmail(s.setting_value);
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch global sender config:", err);
+    }
+  };
 
   const fetchLatestTemplate = async () => {
     if (!activeTemplate?.id) return;
@@ -169,6 +196,7 @@ export function EmailPreviewDialog({
       setTranslationProgress(null);
       setTemplateData(template);
       void fetchLatestTemplate();
+      void fetchGlobalSenderConfig();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialLanguage, template?.id]);
@@ -375,8 +403,9 @@ export function EmailPreviewDialog({
     if (!activeTemplate) return "";
 
     const trans = emailTranslations[testLanguage] || emailTranslations.en;
-    const previewSenderName = activeTemplate.sender_name || "Sparkly.hr";
-    const previewSenderEmail = activeTemplate.sender_email || "support@sparkly.hr";
+    // Always use global sender config from Email Settings
+    const previewSenderName = globalSenderName;
+    const previewSenderEmail = globalSenderEmail;
     const currentSubject =
       activeTemplate.subjects?.[testLanguage] || activeTemplate.subjects?.en || trans.yourResults;
     const logoUrl = "/sparkly-logo.png";
@@ -472,14 +501,7 @@ export function EmailPreviewDialog({
         language: testLanguage,
         opennessScore: 3,
         isTest: true,
-        templateOverride: {
-          sender_name: activeTemplate.sender_name,
-          sender_email: activeTemplate.sender_email,
-          subject:
-            activeTemplate.subjects[testLanguage] ||
-            activeTemplate.subjects.en ||
-            "Your Quiz Results",
-        },
+        // No templateOverride needed - edge function uses global Email Settings config
       };
 
       const { error } = await supabase.functions.invoke("send-quiz-results", {

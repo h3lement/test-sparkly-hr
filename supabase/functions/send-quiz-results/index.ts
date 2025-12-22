@@ -1167,8 +1167,9 @@ const handler = async (req: Request): Promise<Response> => {
         templateData = globalTemplate;
       }
 
-      const senderName = templateOverride?.sender_name?.trim() || templateData?.sender_name?.trim() || emailConfig.senderName;
-      const senderEmail = templateOverride?.sender_email?.trim() || templateData?.sender_email?.trim() || emailConfig.senderEmail;
+      // Global email config from app_settings takes priority for sender identity
+      const senderName = emailConfig.senderName;
+      const senderEmail = emailConfig.senderEmail;
       const templateSubjects = templateData?.subjects as Record<string, string> || {};
       const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
 
@@ -1237,8 +1238,9 @@ const handler = async (req: Request): Promise<Response> => {
           templateData = globalTemplate;
         }
 
-        const senderName = templateOverride?.sender_name?.trim() || templateData?.sender_name?.trim() || emailConfig.senderName;
-        const senderEmail = templateOverride?.sender_email?.trim() || templateData?.sender_email?.trim() || emailConfig.senderEmail;
+        // Global email config from app_settings takes priority for sender identity
+        const senderName = emailConfig.senderName;
+        const senderEmail = emailConfig.senderEmail;
         const templateSubjects = templateData?.subjects as Record<string, string> || {};
         const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
 
