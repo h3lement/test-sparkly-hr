@@ -258,7 +258,7 @@ export function GenerateResultsDialog({
               </div>
 
               {/* Results Preview */}
-              <ScrollArea className="max-h-[400px] pr-3">
+              <ScrollArea className="max-h-[60vh] pr-3">
                 <div className="space-y-3">
                   {generatedLevels.map((level, index) => (
                     <div
