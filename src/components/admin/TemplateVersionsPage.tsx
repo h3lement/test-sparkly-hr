@@ -133,7 +133,8 @@ export function TemplateVersionsPage() {
   const fetchQuizzes = useCallback(async () => {
     const { data, error } = await supabase
       .from("quizzes")
-      .select("id, title, slug, primary_language, tone_of_voice")
+      .select("id, title, slug, primary_language, tone_of_voice, is_active")
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
