@@ -94,8 +94,17 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
-  const [sortColumn, setSortColumn] = useState<string>("created_at");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sortColumns, setSortColumns] = useState<Array<{ column: string; direction: "asc" | "desc" }>>(() => {
+    try {
+      const stored = localStorage.getItem("email-logs-sort-preferences");
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    return [{ column: "created_at", direction: "desc" }];
+  });
   const { toast } = useToast();
 
   // Default column widths
@@ -257,24 +266,61 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return title?.en || title?.et || quiz.slug;
   };
 
-  // Handle column sorting
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection(column === "created_at" ? "desc" : "asc");
-    }
+  // Save sort preferences to localStorage
+  useEffect(() => {
+    localStorage.setItem("email-logs-sort-preferences", JSON.stringify(sortColumns));
+  }, [sortColumns]);
+
+  // Handle column sorting (Shift+click for multi-column)
+  const handleSort = (column: string, shiftKey: boolean) => {
+    setSortColumns((prev) => {
+      const existingIndex = prev.findIndex((s) => s.column === column);
+      
+      if (shiftKey) {
+        // Multi-column sort: add or toggle
+        if (existingIndex >= 0) {
+          // Toggle direction if already sorted
+          const newSort = [...prev];
+          newSort[existingIndex] = {
+            ...newSort[existingIndex],
+            direction: newSort[existingIndex].direction === "asc" ? "desc" : "asc",
+          };
+          return newSort;
+        } else {
+          // Add new column to sort
+          return [...prev, { column, direction: column === "created_at" ? "desc" : "asc" }];
+        }
+      } else {
+        // Single column sort
+        if (existingIndex >= 0 && prev.length === 1) {
+          // Toggle direction
+          return [{ column, direction: prev[0].direction === "asc" ? "desc" : "asc" }];
+        }
+        // Set as only sort column
+        return [{ column, direction: column === "created_at" ? "desc" : "asc" }];
+      }
+    });
   };
 
   // Get sort icon for column header
   const getSortIcon = (column: string) => {
-    if (sortColumn !== column) {
+    const sortInfo = sortColumns.find((s) => s.column === column);
+    const sortIndex = sortColumns.findIndex((s) => s.column === column);
+    
+    if (!sortInfo) {
       return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
     }
-    return sortDirection === "asc" 
-      ? <ArrowUp className="w-3 h-3 ml-1" />
-      : <ArrowDown className="w-3 h-3 ml-1" />;
+    
+    return (
+      <span className="flex items-center">
+        {sortInfo.direction === "asc" 
+          ? <ArrowUp className="w-3 h-3 ml-1" />
+          : <ArrowDown className="w-3 h-3 ml-1" />}
+        {sortColumns.length > 1 && (
+          <span className="text-[10px] ml-0.5 text-primary font-bold">{sortIndex + 1}</span>
+        )}
+      </span>
+    );
   };
 
   // Filter and search
@@ -313,47 +359,40 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return result;
   }, [logs, searchQuery, filterType, filterStatus, filterQuiz]);
 
-  // Sort filtered logs
+  // Helper to get value for sorting
+  const getSortValue = (log: EmailLog, column: string): any => {
+    switch (column) {
+      case "email_type":
+        return log.email_type;
+      case "status":
+        return log.status;
+      case "quiz":
+        return log.quiz_id || log.quiz_lead?.quiz_id || "";
+      case "recipient":
+        return log.recipient_email.toLowerCase();
+      case "subject":
+        return log.subject.toLowerCase();
+      case "created_at":
+      default:
+        return new Date(log.created_at).getTime();
+    }
+  };
+
+  // Sort filtered logs with multi-column support
   const sortedLogs = useMemo(() => {
     const sorted = [...filteredLogs].sort((a, b) => {
-      let aVal: any;
-      let bVal: any;
+      for (const { column, direction } of sortColumns) {
+        const aVal = getSortValue(a, column);
+        const bVal = getSortValue(b, column);
 
-      switch (sortColumn) {
-        case "email_type":
-          aVal = a.email_type;
-          bVal = b.email_type;
-          break;
-        case "status":
-          aVal = a.status;
-          bVal = b.status;
-          break;
-        case "quiz":
-          aVal = a.quiz_id || a.quiz_lead?.quiz_id || "";
-          bVal = b.quiz_id || b.quiz_lead?.quiz_id || "";
-          break;
-        case "recipient":
-          aVal = a.recipient_email.toLowerCase();
-          bVal = b.recipient_email.toLowerCase();
-          break;
-        case "subject":
-          aVal = a.subject.toLowerCase();
-          bVal = b.subject.toLowerCase();
-          break;
-        case "created_at":
-        default:
-          aVal = new Date(a.created_at).getTime();
-          bVal = new Date(b.created_at).getTime();
-          break;
+        if (aVal < bVal) return direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return direction === "asc" ? 1 : -1;
       }
-
-      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
 
     return sorted;
-  }, [filteredLogs, sortColumn, sortDirection]);
+  }, [filteredLogs, sortColumns]);
 
   // Pagination
   const totalItems = sortedLogs.length;
@@ -365,7 +404,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, filterStatus, filterQuiz, sortColumn, sortDirection]);
+  }, [searchQuery, filterType, filterStatus, filterQuiz, sortColumns]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -598,7 +637,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th 
                     style={{ width: columnWidths.type }} 
                     className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
-                    onClick={() => handleSort("email_type")}
+                    onClick={(e) => handleSort("email_type", e.shiftKey)}
                   >
                     <span className="flex items-center">
                       Type
@@ -612,7 +651,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th 
                     style={{ width: columnWidths.status }} 
                     className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
-                    onClick={() => handleSort("status")}
+                    onClick={(e) => handleSort("status", e.shiftKey)}
                   >
                     <span className="flex items-center">
                       Status
@@ -626,7 +665,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th 
                     style={{ width: columnWidths.quiz }} 
                     className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
-                    onClick={() => handleSort("quiz")}
+                    onClick={(e) => handleSort("quiz", e.shiftKey)}
                   >
                     <span className="flex items-center">
                       Quiz
@@ -640,7 +679,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th 
                     style={{ width: columnWidths.recipient }} 
                     className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
-                    onClick={() => handleSort("recipient")}
+                    onClick={(e) => handleSort("recipient", e.shiftKey)}
                   >
                     <span className="flex items-center">
                       Recipient
@@ -654,7 +693,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th 
                     style={{ width: columnWidths.subject }} 
                     className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
-                    onClick={() => handleSort("subject")}
+                    onClick={(e) => handleSort("subject", e.shiftKey)}
                   >
                     <span className="flex items-center">
                       Subject
@@ -668,7 +707,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   <th 
                     style={{ width: columnWidths.sent }} 
                     className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group cursor-pointer hover:bg-muted/60"
-                    onClick={() => handleSort("created_at")}
+                    onClick={(e) => handleSort("created_at", e.shiftKey)}
                   >
                     <span className="flex items-center">
                       Sent
