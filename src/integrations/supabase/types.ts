@@ -66,6 +66,7 @@ export type Database = {
           language: string | null
           last_attempt_at: string | null
           original_log_id: string | null
+          quiz_id: string | null
           quiz_lead_id: string | null
           recipient_email: string
           resend_attempts: number
@@ -84,6 +85,7 @@ export type Database = {
           language?: string | null
           last_attempt_at?: string | null
           original_log_id?: string | null
+          quiz_id?: string | null
           quiz_lead_id?: string | null
           recipient_email: string
           resend_attempts?: number
@@ -102,6 +104,7 @@ export type Database = {
           language?: string | null
           last_attempt_at?: string | null
           original_log_id?: string | null
+          quiz_id?: string | null
           quiz_lead_id?: string | null
           recipient_email?: string
           resend_attempts?: number
@@ -117,6 +120,13 @@ export type Database = {
             columns: ["original_log_id"]
             isOneToOne: false
             referencedRelation: "email_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
             referencedColumns: ["id"]
           },
           {

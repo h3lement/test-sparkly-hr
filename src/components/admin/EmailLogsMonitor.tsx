@@ -53,6 +53,7 @@ interface EmailLog {
   error_message: string | null;
   language: string | null;
   quiz_lead_id: string | null;
+  quiz_id: string | null;
   created_at: string;
   resend_attempts: number;
   last_attempt_at: string | null;
@@ -94,6 +95,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
 
   // Default column widths
   const defaultColumnWidths = {
+    row: 50,
     type: 130,
     status: 110,
     quiz: 120,
@@ -241,7 +243,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   };
 
   const getQuizTitle = (log: EmailLog) => {
-    const quizId = log.quiz_lead?.quiz_id;
+    // Try direct quiz_id first, then fall back to quiz_lead
+    const quizId = log.quiz_id || log.quiz_lead?.quiz_id;
     if (!quizId) return null;
     const quiz = quizzes.find(q => q.id === quizId);
     if (!quiz) return null;
@@ -275,11 +278,11 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       result = result.filter((log) => log.status === filterStatus);
     }
 
-    // Quiz filter
+    // Quiz filter - check both direct quiz_id and quiz_lead.quiz_id
     if (filterQuiz === "no_quiz") {
-      result = result.filter((log) => !log.quiz_lead?.quiz_id);
+      result = result.filter((log) => !log.quiz_id && !log.quiz_lead?.quiz_id);
     } else if (filterQuiz !== "all") {
-      result = result.filter((log) => log.quiz_lead?.quiz_id === filterQuiz);
+      result = result.filter((log) => log.quiz_id === filterQuiz || log.quiz_lead?.quiz_id === filterQuiz);
     }
 
     return result;
@@ -522,6 +525,9 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
             <table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
+                  <th style={{ width: columnWidths.row }} className="text-center px-2 py-3 text-sm font-medium text-muted-foreground">
+                    #
+                  </th>
                   <th style={{ width: columnWidths.type }} className="text-left px-4 py-3 text-sm font-medium text-muted-foreground relative group">
                     <span>Type</span>
                     <div
@@ -575,9 +581,13 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   const isResend = !!log.original_log_id;
                   const quizTitle = getQuizTitle(log);
                   const isEvenRow = index % 2 === 0;
+                  const rowNumber = startIndex + index + 1;
 
                   return (
                     <tr key={log.id} className={`border-b border-border last:border-b-0 list-row-interactive ${isEvenRow ? "list-row-even" : "list-row-odd"}`}>
+                      <td style={{ width: columnWidths.row }} className="px-2 py-3 text-center">
+                        <span className="text-xs text-muted-foreground font-mono">{rowNumber}</span>
+                      </td>
                       <td style={{ width: columnWidths.type }} className="px-4 py-3 overflow-hidden">
                         <div className="flex items-center gap-1 overflow-hidden">
                           <Badge variant="outline" className={`${typeInfo.color} gap-1 shrink-0`}>
