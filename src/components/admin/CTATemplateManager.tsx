@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Check,
   Link as LinkIcon,
-  History
+  History,
+  Download
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
@@ -114,6 +115,7 @@ export function CTATemplateManager() {
   // Translation state
   const [translating, setTranslating] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [loadingFromQuiz, setLoadingFromQuiz] = useState(false);
 
   const { toast } = useToast();
 
@@ -364,6 +366,43 @@ export function CTATemplateManager() {
       title: "Version loaded",
       description: "You can now edit and save as a new version",
     });
+  };
+
+  // Load original CTA data from quiz table
+  const loadFromQuiz = async () => {
+    if (!selectedQuizId) return;
+    
+    setLoadingFromQuiz(true);
+    try {
+      const { data: quizData, error } = await supabase
+        .from("quizzes")
+        .select("cta_title, cta_description, cta_text, cta_url")
+        .eq("id", selectedQuizId)
+        .single();
+
+      if (error) throw error;
+
+      if (quizData) {
+        setCtaTitle((quizData.cta_title || {}) as Record<string, string>);
+        setCtaDescription((quizData.cta_description || {}) as Record<string, string>);
+        setCtaButtonText((quizData.cta_text || {}) as Record<string, string>);
+        setCtaUrl(quizData.cta_url || "https://sparkly.hr");
+        
+        toast({
+          title: "Loaded from Quiz",
+          description: "Original CTA content loaded into editor",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error loading from quiz:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load CTA from quiz",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingFromQuiz(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -631,7 +670,7 @@ export function CTATemplateManager() {
       {selectedQuiz && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <CardTitle className="flex items-center gap-2">
                 <LinkIcon className="w-5 h-5" />
                 CTA Block Editor
@@ -642,6 +681,20 @@ export function CTATemplateManager() {
                   </Badge>
                 )}
               </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadFromQuiz}
+                disabled={loadingFromQuiz}
+                className="gap-2"
+              >
+                {loadingFromQuiz ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Load from Quiz
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
