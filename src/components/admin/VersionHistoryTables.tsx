@@ -25,9 +25,12 @@ import {
   Send,
   Users,
   Languages,
-  GripVertical
+  GripVertical,
+  Sparkles
 } from "lucide-react";
 import { format } from "date-fns";
+import { WebResultPreviewDialog } from "./WebResultPreviewDialog";
+import { WebTranslationDialog } from "./WebTranslationDialog";
 
 // Total number of supported languages in the system (from translate-quiz edge function)
 const TOTAL_LANGUAGES = 24;
@@ -103,6 +106,8 @@ interface EmailVersionHistoryProps {
 interface WebVersionHistoryProps {
   quizId?: string;
   onRestoreVersion?: (levels: WebResultVersion['result_levels']) => void;
+  onPreview?: (version: WebResultVersion) => void;
+  onTranslate?: (version: WebResultVersion) => void;
 }
 
 
@@ -711,13 +716,15 @@ const WEB_DEFAULT_WIDTHS = {
   actions: 100,
 };
 
-export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistoryProps) {
+export function WebVersionHistory({ quizId, onRestoreVersion, onPreview, onTranslate }: WebVersionHistoryProps) {
   const [versions, setVersions] = useState<WebResultVersion[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [leadStats, setLeadStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterQuiz, setFilterQuiz] = useState<string>(quizId || "all");
+  const [previewVersion, setPreviewVersion] = useState<WebResultVersion | null>(null);
+  const [translateVersion, setTranslateVersion] = useState<WebResultVersion | null>(null);
   const { toast } = useToast();
 
   // Resizable columns with localStorage persistence
@@ -1099,9 +1106,33 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
 
                       {/* Actions */}
                       <div 
-                        className="flex items-center justify-end gap-2 px-3 py-3 shrink-0"
+                        className="flex items-center justify-end gap-1 px-3 py-3 shrink-0"
                         style={{ width: columnWidths.actions }}
                       >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewVersion(version);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Preview"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTranslateVersion(version);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Translate"
+                        >
+                          <Languages className="w-4 h-4" />
+                        </Button>
                         {onRestoreVersion && (
                           <Button
                             variant="ghost"
@@ -1114,10 +1145,10 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
                                 description: `Applied version ${version.version_number} result levels`,
                               });
                             }}
-                            className="h-8 px-2 text-xs"
+                            className="h-8 w-8 p-0 text-primary"
                             title="Restore this version"
                           >
-                            Restore
+                            <Check className="w-4 h-4" />
                           </Button>
                         )}
                         {isExpanded ? (
@@ -1174,6 +1205,25 @@ export function WebVersionHistory({ quizId, onRestoreVersion }: WebVersionHistor
           </div>
         )}
       </CardContent>
+
+      {/* Preview Dialog */}
+      <WebResultPreviewDialog
+        open={!!previewVersion}
+        onOpenChange={(open) => !open && setPreviewVersion(null)}
+        version={previewVersion}
+        quizTitle={previewVersion ? getQuizTitle(previewVersion.quiz_id) : undefined}
+      />
+
+      {/* Translation Dialog */}
+      <WebTranslationDialog
+        open={!!translateVersion}
+        onOpenChange={(open) => !open && setTranslateVersion(null)}
+        versionId={translateVersion?.id || ""}
+        quizId={translateVersion?.quiz_id || ""}
+        resultLevels={translateVersion?.result_levels || []}
+        primaryLanguage={quizzes.find(q => q.id === translateVersion?.quiz_id)?.slug === "50plus" ? "et" : "en"}
+        onTranslationComplete={fetchData}
+      />
     </Card>
   );
 }

@@ -38,3 +38,6 @@ verify_jwt = true
 
 [functions.translate-email-body]
 verify_jwt = true
+
+[functions.translate-web-results]
+verify_jwt = true
