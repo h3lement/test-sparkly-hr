@@ -43,6 +43,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RespondentDetailDialog } from "./RespondentDetailDialog";
+import { ImportRespondentsDialog } from "./ImportRespondentsDialog";
 import { logActivity } from "@/hooks/useActivityLog";
 import { format, parseISO, startOfDay, endOfDay } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
@@ -308,6 +309,7 @@ export function QuizRespondents({ quizId, displayLanguage }: QuizRespondentsProp
           </Badge>
         </div>
         <div className="flex items-center gap-2">
+          <ImportRespondentsDialog quizId={quizId} onImportComplete={fetchLeads} />
           <Button
             variant="outline"
             size="sm"
