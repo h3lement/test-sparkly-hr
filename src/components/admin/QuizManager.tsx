@@ -808,6 +808,22 @@ export function QuizManager() {
           <RotateCcw className="h-4 w-4" />
           <span className="hidden sm:inline">Reset Cols</span>
         </Button>
+        <Button
+          variant={isDragEnabled ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            if (!isDragEnabled) {
+              setSortColumn("display_order");
+              setSortDirection("asc");
+              setSearchQuery("");
+            }
+          }}
+          title={isDragEnabled ? "Drag mode active - drag rows to reorder" : "Enable drag-and-drop reordering"}
+          className="gap-1.5"
+        >
+          <GripVertical className="h-4 w-4" />
+          <span className="hidden sm:inline">Reorder</span>
+        </Button>
         <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-foreground font-medium whitespace-nowrap">
           {sortedAndFilteredQuizzes.length} quiz{sortedAndFilteredQuizzes.length !== 1 ? "zes" : ""}
         </span>
