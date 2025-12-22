@@ -27,6 +27,7 @@ function AppContent() {
           {/* Admin routes */}
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/quiz/:quizId" element={<QuizEditor />} />
+          <Route path="/admin/quiz/:quizId/:tab" element={<QuizEditor />} />
           <Route path="/auth" element={<Auth />} />
           
           {/* All quizzes listing */}
