@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-export type Language = 'da' | 'nl' | 'en' | 'et' | 'fi' | 'fr' | 'de' | 'it' | 'no' | 'pl' | 'pt' | 'ru' | 'es' | 'sv' | 'uk';
+export type Language = 'da' | 'nl' | 'en' | 'et' | 'fi' | 'fr' | 'de' | 'it' | 'no' | 'pl' | 'pt' | 'ru' | 'es' | 'sv' | 'uk' |
+  'ro' | 'el' | 'cs' | 'hu' | 'bg' | 'sk' | 'hr' | 'lt' | 'sl' | 'lv' | 'ga' | 'mt';
 
 interface LanguageOption {
   code: Language;
@@ -124,7 +126,7 @@ export type TranslationKey =
   | 'criticalPerformanceGapInsight2'
   | 'criticalPerformanceGapInsight3';
 
-export const translations: Record<Language, Record<TranslationKey, string>> = {
+export const translations: Partial<Record<Language, Record<TranslationKey, string>>> = {
   en: {
     pageTitle: 'Team Performance Assessment | Sparkly.hr',
     metaDescription: 'Take this 2-minute assessment to discover if employee performance issues are secretly draining your time, energy, and business growth.',
@@ -1751,19 +1753,81 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: TranslationKey) => string;
+  quizId: string | null;
+  setQuizId: (id: string | null) => void;
+  dbTranslationsLoaded: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+interface LanguageProviderProps {
+  children: ReactNode;
+  initialQuizId?: string | null;
+}
 
-  const t = (key: TranslationKey): string => {
-    return translations[language]?.[key] || translations.en[key] || key;
-  };
+export function LanguageProvider({ children, initialQuizId = null }: LanguageProviderProps) {
+  const [language, setLanguage] = useState<Language>('en');
+  const [quizId, setQuizId] = useState<string | null>(initialQuizId);
+  const [dbTranslations, setDbTranslations] = useState<Record<string, Record<string, string>>>({});
+  const [dbTranslationsLoaded, setDbTranslationsLoaded] = useState(false);
+
+  // Fetch DB translations when quizId changes
+  useEffect(() => {
+    if (!quizId) {
+      setDbTranslations({});
+      setDbTranslationsLoaded(true);
+      return;
+    }
+
+    const fetchDbTranslations = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('ui_translations')
+          .select('translation_key, translations')
+          .eq('quiz_id', quizId);
+
+        if (error) {
+          console.error('Error fetching UI translations:', error);
+          setDbTranslationsLoaded(true);
+          return;
+        }
+
+        // Build a map: { translationKey: { lang: value, ... } }
+        const translationMap: Record<string, Record<string, string>> = {};
+        (data || []).forEach((item: { translation_key: string; translations: Record<string, string> }) => {
+          translationMap[item.translation_key] = item.translations || {};
+        });
+
+        setDbTranslations(translationMap);
+        setDbTranslationsLoaded(true);
+      } catch (err) {
+        console.error('Error fetching UI translations:', err);
+        setDbTranslationsLoaded(true);
+      }
+    };
+
+    setDbTranslationsLoaded(false);
+    fetchDbTranslations();
+  }, [quizId]);
+
+  const t = useCallback((key: TranslationKey): string => {
+    // Priority: DB translation for current language > DB translation for English > 
+    // Hardcoded translation for current language > Hardcoded English > key
+    const dbValue = dbTranslations[key]?.[language] || dbTranslations[key]?.['en'];
+    if (dbValue) return dbValue;
+    
+    return translations[language]?.[key] || translations.en?.[key] || key;
+  }, [language, dbTranslations]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ 
+      language, 
+      setLanguage, 
+      t, 
+      quizId, 
+      setQuizId,
+      dbTranslationsLoaded 
+    }}>
       {children}
     </LanguageContext.Provider>
   );
