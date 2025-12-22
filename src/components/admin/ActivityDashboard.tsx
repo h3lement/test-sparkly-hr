@@ -690,7 +690,7 @@ export function ActivityDashboard() {
                 {paginatedActivities.map((activity, index) => (
                   <div
                     key={activity.id}
-                    className={`flex items-start gap-4 p-4 transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.1)] ${index % 2 === 0 ? 'bg-card' : 'bg-secondary/20'}`}
+                    className={`flex items-start gap-4 p-4 list-row-interactive ${index % 2 === 0 ? 'list-row-even' : 'list-row-odd'}`}
                   >
                     {activity.user_email ? (
                       <Avatar className="h-9 w-9 bg-secondary shrink-0">
