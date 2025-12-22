@@ -21,6 +21,8 @@ import {
   Mail,
   Loader2,
   ExternalLink,
+  XCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { ApiKeyManagementCard } from "./ApiKeyManagementCard";
 
@@ -29,6 +31,20 @@ interface ConnectionStatus {
   lastChecked: Date | null;
   message: string;
   apiKeyConfigured: boolean;
+}
+
+interface EmailError {
+  type: "connection" | "send";
+  timestamp: Date;
+  message: string;
+  details?: string;
+  code?: string;
+}
+
+interface EmailSuccess {
+  type: "connection" | "send";
+  timestamp: Date;
+  message: string;
 }
 
 type EmailType = "simple" | "quiz_result" | "notification";
@@ -44,11 +60,27 @@ export function EmailSettings() {
   const [emailType, setEmailType] = useState<EmailType>("simple");
   const [isSending, setIsSending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [errors, setErrors] = useState<EmailError[]>([]);
+  const [lastSuccess, setLastSuccess] = useState<EmailSuccess | null>(null);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 5000;
   const { toast } = useToast();
+
+  const addError = (error: Omit<EmailError, "timestamp">) => {
+    setErrors((prev) => [{ ...error, timestamp: new Date() }, ...prev].slice(0, 5));
+    setLastSuccess(null);
+  };
+
+  const clearErrors = () => {
+    setErrors([]);
+  };
+
+  const setSuccess = (success: Omit<EmailSuccess, "timestamp">) => {
+    setLastSuccess({ ...success, timestamp: new Date() });
+    clearErrors();
+  };
 
   // Pre-fill test email with current admin user's email
   useEffect(() => {
@@ -88,22 +120,40 @@ export function EmailSettings() {
           message: "Resend API connection active",
           apiKeyConfigured: true,
         });
+        setSuccess({
+          type: "connection",
+          message: "Successfully connected to Resend API",
+        });
       } else {
+        const errorMessage = data?.error || "API key not configured or invalid";
         setConnectionStatus({
           status: "error",
           lastChecked: new Date(),
-          message: data?.error || "API key not configured or invalid",
+          message: errorMessage,
           apiKeyConfigured: false,
+        });
+        addError({
+          type: "connection",
+          message: "Connection failed",
+          details: errorMessage,
+          code: data?.code,
         });
         scheduleReconnect();
       }
     } catch (error: any) {
       console.error("Connection check failed:", error);
+      const errorMessage = error.message || "Failed to check connection";
       setConnectionStatus({
         status: "error",
         lastChecked: new Date(),
-        message: error.message || "Failed to check connection",
+        message: errorMessage,
         apiKeyConfigured: false,
+      });
+      addError({
+        type: "connection",
+        message: "Connection check failed",
+        details: errorMessage,
+        code: error.code,
       });
       scheduleReconnect();
     } finally {
@@ -178,13 +228,31 @@ export function EmailSettings() {
           title: "Test email sent",
           description: `${typeLabel} email sent to ${testEmail}`,
         });
+        setSuccess({
+          type: "send",
+          message: `${typeLabel} email successfully sent to ${testEmail}`,
+        });
         // Refresh connection status after successful test
         checkConnection(true);
       } else {
-        throw new Error(data?.error || "Failed to send test email");
+        const errorMessage = data?.error || "Failed to send test email";
+        addError({
+          type: "send",
+          message: "Failed to send test email",
+          details: errorMessage,
+          code: data?.code,
+        });
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error("Test email failed:", error);
+      if (!errors.some(e => e.details === error.message)) {
+        addError({
+          type: "send",
+          message: "Test email failed",
+          details: error.message || "An unexpected error occurred",
+        });
+      }
       toast({
         title: "Failed to send test email",
         description: error.message || "An error occurred",
@@ -200,6 +268,7 @@ export function EmailSettings() {
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
     }
+    clearErrors();
     checkConnection();
   };
 
@@ -234,6 +303,10 @@ export function EmailSettings() {
           </Badge>
         );
     }
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
   return (
@@ -287,7 +360,76 @@ export function EmailSettings() {
               <RefreshCw className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} />
             </Button>
           </div>
-          {connectionStatus.status !== "connected" && (
+
+          {/* Success Message */}
+          {lastSuccess && (
+            <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-green-700">
+                      {lastSuccess.type === "connection" ? "Connection Successful" : "Email Sent"}
+                    </p>
+                    <span className="text-xs text-green-600/70">{formatTime(lastSuccess.timestamp)}</span>
+                  </div>
+                  <p className="text-xs text-green-600 mt-0.5">{lastSuccess.message}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error Messages */}
+          {errors.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-destructive">
+                  Recent Errors ({errors.length})
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={clearErrors}
+                >
+                  Clear
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {errors.map((error, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg bg-destructive/5 border border-destructive/20"
+                  >
+                    <div className="flex items-start gap-2">
+                      <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-destructive">
+                            {error.type === "connection" ? "Connection Error" : "Send Error"}
+                          </p>
+                          <span className="text-xs text-destructive/70">{formatTime(error.timestamp)}</span>
+                        </div>
+                        <p className="text-xs text-destructive/80 mt-0.5">{error.message}</p>
+                        {error.details && (
+                          <p className="text-xs text-muted-foreground mt-1 break-words">
+                            {error.details}
+                          </p>
+                        )}
+                        {error.code && (
+                          <Badge variant="outline" className="mt-1.5 text-xs px-1.5 py-0">
+                            Code: {error.code}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {connectionStatus.status !== "connected" && !errors.length && (
             <p className="text-xs text-muted-foreground">
               {connectionStatus.message}
             </p>
