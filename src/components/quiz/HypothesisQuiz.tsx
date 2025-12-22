@@ -27,7 +27,7 @@ function HypothesisQuizContent() {
     setQuestions,
     setOpenMindednessQuestion,
   } = useHypothesisQuiz();
-  const { setQuizId } = useLanguage();
+  const { setQuizId, dbTranslationsLoaded } = useLanguage();
 
   // Load quiz data into context and set quizId for translations
   useEffect(() => {
@@ -40,11 +40,12 @@ function HypothesisQuizContent() {
     if (openMindednessQuestion) setOpenMindednessQuestion(openMindednessQuestion);
   }, [quiz, pages, questions, openMindednessQuestion, setQuizData, setPages, setQuestions, setOpenMindednessQuestion, setQuizId]);
 
-  if (loading) {
+  // Show loading while data or translations are loading
+  if (loading || !dbTranslationsLoaded) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4" />
-        <p className="text-muted-foreground">Loading quiz...</p>
+        <p className="text-muted-foreground">{loading ? 'Loading quiz...' : 'Loading translations...'}</p>
       </div>
     );
   }

@@ -61,6 +61,7 @@ interface Quiz {
   respondents_count?: number;
   updated_by_email?: string;
   display_order?: number;
+  ai_cost_eur?: number;
 }
 
 // Sortable Row Component
@@ -157,6 +158,15 @@ function SortableQuizRow({
         >
           /{quiz.slug.replace(/^\/+/, "")}
         </a>
+      </TableCell>
+      <TableCell className={`text-right ${cellPadding}`}>
+        {quiz.ai_cost_eur && quiz.ai_cost_eur > 0 ? (
+          <span className="text-xs text-muted-foreground font-mono">
+            €{quiz.ai_cost_eur.toFixed(4)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </TableCell>
       <TableCell className={`text-center ${cellPadding}`}>
         {quiz.questions_count}
@@ -349,12 +359,29 @@ export function QuizManager() {
             .order("created_at", { ascending: false })
             .limit(1);
           
+          // Get AI costs from quiz_result_versions and email_templates
+          const [{ data: versionCosts }, { data: templateCosts }] = await Promise.all([
+            supabase
+              .from("quiz_result_versions")
+              .select("estimated_cost_eur")
+              .eq("quiz_id", quiz.id),
+            supabase
+              .from("email_templates")
+              .select("estimated_cost_eur")
+              .eq("quiz_id", quiz.id),
+          ]);
+          
+          const totalAiCost = 
+            (versionCosts || []).reduce((sum, v) => sum + (Number(v.estimated_cost_eur) || 0), 0) +
+            (templateCosts || []).reduce((sum, t) => sum + (Number(t.estimated_cost_eur) || 0), 0);
+          
           return { 
             ...quiz, 
             questions_count: questionsCount,
             pages_count: pagesCount,
             respondents_count: respondentsCount || 0,
             updated_by_email: lastActivity?.[0]?.user_email || null,
+            ai_cost_eur: totalAiCost,
           };
         })
       );
@@ -606,6 +633,8 @@ export function QuizManager() {
           return multiplier * getLocalizedText(a.title).localeCompare(getLocalizedText(b.title));
         case "slug":
           return multiplier * a.slug.localeCompare(b.slug);
+        case "ai_cost":
+          return multiplier * ((a.ai_cost_eur || 0) - (b.ai_cost_eur || 0));
         case "questions":
           return multiplier * ((a.questions_count || 0) - (b.questions_count || 0));
         case "pages":
@@ -767,6 +796,12 @@ export function QuizManager() {
                     onClick={() => handleSort("slug")}
                   >
                     <span className="flex items-center">Slug <SortIcon column="slug" /></span>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-right cursor-pointer hover:bg-secondary/80 select-none"
+                    onClick={() => handleSort("ai_cost")}
+                  >
+                    <span className="flex items-center justify-end">AI € <SortIcon column="ai_cost" /></span>
                   </TableHead>
                   <TableHead 
                     className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
