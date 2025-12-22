@@ -9,6 +9,16 @@ import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface EmailTemplate {
   id: string;
@@ -106,6 +116,7 @@ export function TemplateVersionsPage() {
   const [liveStatus, setLiveStatus] = useState<QuizLiveStatus[]>([]);
   const [showMissingDetails, setShowMissingDetails] = useState(false);
   const [webRefreshKey, setWebRefreshKey] = useState(0);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   const [bulkProgress, setBulkProgress] = useState<BulkGenerationProgress>({
     isGenerating: false,
@@ -571,7 +582,7 @@ export function TemplateVersionsPage() {
                   </Button>
                 )}
                 <Button
-                  onClick={handleRegenerateAllWeb}
+                  onClick={() => setShowRegenerateConfirm(true)}
                   size="sm"
                   variant="outline"
                   className="gap-2"
@@ -582,6 +593,34 @@ export function TemplateVersionsPage() {
               </div>
             </div>
           )}
+
+          {/* Regenerate Confirmation Dialog */}
+          <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Regenerate All Templates?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will generate new web result templates for all {quizzes.length} quizzes and set them as live. 
+                  Existing live templates will be replaced with the newly generated versions.
+                  <br /><br />
+                  <strong>This action cannot be undone.</strong> Previous versions will still be available in the version history.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => {
+                    setShowRegenerateConfirm(false);
+                    handleRegenerateAllWeb();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Regenerate All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Expanded details */}
           {showMissingDetails && !allComplete && (
