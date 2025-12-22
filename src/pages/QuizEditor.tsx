@@ -258,6 +258,9 @@ export default function QuizEditor() {
   const [respondentsCount, setRespondentsCount] = useState(0);
   const [activityLogsCount, setActivityLogsCount] = useState(0);
   const [webConversionRate, setWebConversionRate] = useState(0);
+  
+  // Hypothesis quiz question count (for score range calculation)
+  const [hypothesisQuestionCount, setHypothesisQuestionCount] = useState(0);
 
   // Check admin role
   const [isAdmin, setIsAdmin] = useState(false);
@@ -843,6 +846,27 @@ export default function QuizEditor() {
         .select("*", { count: "exact", head: true })
         .eq("quiz_id", id);
       setRespondentsCount(leadsCount || 0);
+
+      // Load hypothesis question count if hypothesis quiz (for score range calculation)
+      if ((quiz as any).quiz_type === "hypothesis") {
+        const { data: pagesData } = await supabase
+          .from("hypothesis_pages")
+          .select("id")
+          .eq("quiz_id", id);
+        
+        if (pagesData && pagesData.length > 0) {
+          const pageIds = pagesData.map(p => p.id);
+          const { count: questionsCount } = await supabase
+            .from("hypothesis_questions")
+            .select("*", { count: "exact", head: true })
+            .in("page_id", pageIds);
+          setHypothesisQuestionCount(questionsCount || 0);
+        } else {
+          setHypothesisQuestionCount(0);
+        }
+      } else {
+        setHypothesisQuestionCount(0);
+      }
 
       // Load activity logs count
       const { count: logsCount } = await supabase
@@ -1720,14 +1744,22 @@ export default function QuizEditor() {
       return { isValid: false, message: "No result levels", gaps: [], overlaps: [] };
     }
 
-    // Calculate max possible score from questions
+    // Calculate min/max possible score based on quiz type
     let maxPossibleScore = 0;
     let minPossibleScore = 0;
-    for (const q of questions.filter(q => q.question_type !== "open_mindedness")) {
-      if (q.answers.length > 0) {
-        const scores = q.answers.map(a => a.score_value);
-        maxPossibleScore += Math.max(...scores);
-        minPossibleScore += Math.min(...scores);
+    
+    if (quizType === "hypothesis") {
+      // For hypothesis quizzes: score range is 0 to total questions
+      minPossibleScore = 0;
+      maxPossibleScore = hypothesisQuestionCount;
+    } else {
+      // For standard quizzes: calculate from question answers
+      for (const q of questions.filter(q => q.question_type !== "open_mindedness")) {
+        if (q.answers.length > 0) {
+          const scores = q.answers.map(a => a.score_value);
+          maxPossibleScore += Math.max(...scores);
+          minPossibleScore += Math.min(...scores);
+        }
       }
     }
 
