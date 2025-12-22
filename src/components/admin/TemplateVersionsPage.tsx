@@ -270,12 +270,20 @@ export function TemplateVersionsPage() {
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const generateWithRetry = async (quiz: Quiz, quizName: string): Promise<boolean> => {
+      // Fetch the actual number of result levels for this quiz
+      const { count: levelCount } = await supabase
+        .from("quiz_result_levels")
+        .select("*", { count: "exact", head: true })
+        .eq("quiz_id", quiz.id);
+
+      const numberOfLevels = levelCount && levelCount > 0 ? levelCount : 5;
+
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
           const { data, error } = await supabase.functions.invoke("generate-results", {
             body: {
               quizId: quiz.id,
-              numberOfLevels: 5,
+              numberOfLevels,
               toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
               higherScoreMeaning: "positive" as const,
               language: quiz.primary_language || "en",
@@ -400,12 +408,20 @@ export function TemplateVersionsPage() {
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const generateWithRetry = async (quiz: Quiz, quizName: string): Promise<boolean> => {
+      // Fetch the actual number of result levels for this quiz
+      const { count: levelCount } = await supabase
+        .from("quiz_result_levels")
+        .select("*", { count: "exact", head: true })
+        .eq("quiz_id", quiz.id);
+
+      const numberOfLevels = levelCount && levelCount > 0 ? levelCount : 5;
+
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
           const { data, error } = await supabase.functions.invoke("generate-results", {
             body: {
               quizId: quiz.id,
-              numberOfLevels: 5,
+              numberOfLevels,
               toneOfVoice: quiz.tone_of_voice || "Professional and encouraging",
               higherScoreMeaning: "positive" as const,
               language: quiz.primary_language || "en",
