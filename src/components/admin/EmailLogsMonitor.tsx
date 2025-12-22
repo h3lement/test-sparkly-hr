@@ -507,15 +507,16 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                 </tr>
               </thead>
               <tbody>
-                {paginatedLogs.map((log) => {
+                {paginatedLogs.map((log, index) => {
                   const typeInfo = getEmailTypeLabel(log.email_type);
                   const TypeIcon = typeInfo.icon;
                   const totalAttempts = 1 + (log.resend_attempts || 0);
                   const isResend = !!log.original_log_id;
                   const quizTitle = getQuizTitle(log);
+                  const isEvenRow = index % 2 === 0;
 
                   return (
-                    <tr key={log.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/20">
+                    <tr key={log.id} className={`border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors ${isEvenRow ? "bg-card" : "bg-secondary/20"}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <Badge variant="outline" className={`${typeInfo.color} gap-1`}>

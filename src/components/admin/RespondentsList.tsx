@@ -593,7 +593,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                 <AdminTableCell header align="right">&nbsp;</AdminTableCell>
               </AdminTableHeader>
               <AdminTableBody>
-                {paginatedLeads.map((lead) => {
+                {paginatedLeads.map((lead, index) => {
                   const isExpanded = expandedRow === lead.id;
                   // Find quiz by id, or fallback to first quiz if quiz_id is null (for legacy data)
                   const quiz = lead.quiz_id 
@@ -609,6 +609,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       <AdminTableRow 
                         key={lead.id}
                         id={`lead-row-${lead.id}`}
+                        index={index}
                         className={cn(
                           hasAnswers && 'cursor-pointer',
                           highlightedLeadId === lead.id && 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse'
