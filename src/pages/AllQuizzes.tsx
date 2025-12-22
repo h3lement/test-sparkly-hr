@@ -89,7 +89,7 @@ export default function AllQuizzes() {
     switch (type) {
       case "hypothesis":
         return {
-          label: "Bias Test Yourself To Learn 50+ Peoples' Behaviour",
+          label: "Bias Yourself To Learn 50+ Peoples' Behaviour",
           icon: Lightbulb,
           badge: "bg-purple-600/20 text-purple-700 dark:text-purple-300 border-purple-600/30 font-medium",
           card: "hover:border-purple-600/60 hover:shadow-purple-600/15",
@@ -105,7 +105,7 @@ export default function AllQuizzes() {
         };
       default:
         return {
-          label: "Quiz",
+          label: "5 minute Anonymous Quiz",
           icon: ClipboardList,
           badge: "bg-primary/20 text-primary border-primary/30 font-medium",
           card: "hover:border-primary/60 hover:shadow-primary/15",
