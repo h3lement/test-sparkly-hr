@@ -5,10 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, Loader2, Languages, Globe } from "lucide-react";
+import { Save, Loader2, Languages, Globe, Eye, Sparkles } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import { CTAPreviewDialog } from "./CTAPreviewDialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 interface Quiz {
   id: string;
   title: Record<string, string>;
@@ -59,6 +66,16 @@ export function CTATemplateManager() {
   const [ctaDescription, setCtaDescription] = useState("");
   const [ctaButtonText, setCtaButtonText] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
+  
+  // Preview dialog state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  
+  // Translation state
+  const [translating, setTranslating] = useState(false);
+
+  // Cost estimation
+  const COST_PER_1K_INPUT_TOKENS = 0.000075;
+  const COST_PER_1K_OUTPUT_TOKENS = 0.0003;
 
   useEffect(() => {
     fetchQuizzes();
@@ -150,6 +167,88 @@ export function CTATemplateManager() {
     }
     setSaving(false);
   };
+
+  const handleTranslate = async () => {
+    if (!selectedQuiz) return;
+    
+    setTranslating(true);
+    
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/translate-cta`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          quizId: selectedQuiz.id,
+          sourceLanguage: selectedQuiz.primary_language || "en",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Translation failed");
+      }
+
+      toast.success(`Translated CTA to ${data.translatedCount} languages (€${data.costEur?.toFixed(4) || "0.0000"})`);
+      
+      // Update local state with new translations
+      setQuizzes(prev => prev.map(q => 
+        q.id === selectedQuiz.id 
+          ? { 
+              ...q, 
+              cta_title: data.updatedCtaTitle || q.cta_title, 
+              cta_description: data.updatedCtaDescription || q.cta_description, 
+              cta_text: data.updatedCtaText || q.cta_text,
+            } 
+          : q
+      ));
+    } catch (error: any) {
+      console.error("Translation error:", error);
+      toast.error(error.message || "Failed to translate CTA content");
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  // Estimate translation cost
+  const estimateTranslationCost = () => {
+    if (!selectedQuiz) return 0;
+    
+    // Count available languages
+    const availableLanguages = new Set<string>();
+    Object.keys(selectedQuiz.cta_title || {}).forEach(lang => {
+      if (selectedQuiz.cta_title[lang]?.trim()) availableLanguages.add(lang);
+    });
+    
+    const missingCount = LANGUAGES.length - availableLanguages.size;
+    if (missingCount <= 0) return 0;
+    
+    const avgTitleLength = 50;
+    const avgDescLength = 200;
+    const avgButtonLength = 30;
+    const totalContent = avgTitleLength + avgDescLength + avgButtonLength;
+    
+    const promptBase = 500;
+    const languageList = missingCount * 15;
+    const inputChars = promptBase + languageList + totalContent;
+    const outputChars = missingCount * totalContent * 1.2;
+    
+    const inputTokens = Math.ceil(inputChars / 4);
+    const outputTokens = Math.ceil(outputChars / 4);
+    
+    const costUsd = (inputTokens / 1000 * COST_PER_1K_INPUT_TOKENS) + 
+                    (outputTokens / 1000 * COST_PER_1K_OUTPUT_TOKENS);
+    return costUsd * 0.92;
+  };
+
+  const translationCostEur = estimateTranslationCost();
+  const hasMissingTranslations = translationCostEur > 0;
 
   const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
 
@@ -279,7 +378,57 @@ export function CTATemplateManager() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t">
+            <div className="flex justify-between items-center pt-4 border-t gap-4">
+              <div className="flex gap-2">
+                {/* Preview Button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setPreviewOpen(true)}
+                        className="gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Preview
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Preview CTA in all languages</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {/* AI Translate Button */}
+                {hasMissingTranslations && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleTranslate}
+                          disabled={translating}
+                          className="gap-2"
+                        >
+                          {translating ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                          AI Translate
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-mono">
+                            ~€{translationCostEur.toFixed(4)}
+                          </Badge>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Translate CTA to all 24 languages</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+
               <Button onClick={handleSave} disabled={saving} className="gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Save CTA Content
@@ -288,6 +437,16 @@ export function CTATemplateManager() {
           </CardContent>
         </Card>
       )}
+
+      {/* Preview Dialog */}
+      <CTAPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        quiz={selectedQuiz || null}
+        onTranslateComplete={() => {
+          fetchQuizzes();
+        }}
+      />
     </div>
   );
 }
