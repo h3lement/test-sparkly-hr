@@ -37,6 +37,7 @@ import {
   Send,
   Clock,
   ExternalLink,
+  Link2Off,
   GripVertical,
   ArrowUp,
   ArrowDown,
@@ -583,6 +584,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       case "quiz_result_admin":
       case "hypothesis_admin": // legacy
         return { label: "Admin Notif", icon: Shield, color: "bg-purple-500/10 text-purple-600 border-purple-500/20" };
+      case "domain_reputation_alert":
+        return { label: "Domain Alert", icon: AlertCircle, color: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
       default:
         return { label: type, icon: Mail, color: "bg-secondary text-secondary-foreground" };
     }
@@ -1122,6 +1125,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
             <SelectItem value="test">Test</SelectItem>
             <SelectItem value="quiz_result_user">Quiz Taker</SelectItem>
             <SelectItem value="quiz_result_admin">Admin Notification</SelectItem>
+            <SelectItem value="domain_reputation_alert">Domain Alert</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -1280,6 +1284,13 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   const isEvenRow = index % 2 === 0;
                   const rowNumber = startIndex + index + 1;
 
+                  const expectsQuizLeadLink =
+                    !log.isQueueItem &&
+                    (log.email_type === "quiz_result_user" ||
+                      log.email_type === "quiz_results" ||
+                      log.email_type === "hypothesis_results");
+                  const missingQuizLeadLink = expectsQuizLeadLink && !log.quiz_lead_id;
+
                   return (
                     <tr key={log.id} className={`border-b border-border last:border-b-0 list-row-interactive ${isEvenRow ? "list-row-even" : "list-row-odd"}`}>
                       <td style={{ width: columnWidths.row }} className="px-2 py-3 text-center">
@@ -1392,11 +1403,27 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                       <td style={{ width: columnWidths.sent }} className="px-4 py-3">
                         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3 shrink-0 mt-0.5" />
-                          <span className="whitespace-normal break-words leading-tight">{formatDate(log.created_at)}</span>
+                          <span
+                            className="whitespace-normal break-words leading-tight"
+                            title={formatFullTimestamp(log.created_at)}
+                          >
+                            {formatFullTimestamp(log.created_at)}
+                          </span>
                         </div>
                       </td>
                       <td style={{ width: columnWidths.actions }} className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          {missingQuizLeadLink && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground"
+                              disabled
+                              title="Quiz lead link missing (lead was deleted or not recorded)"
+                            >
+                              <Link2Off className="w-4 h-4" />
+                            </Button>
+                          )}
                           {log.quiz_lead_id && onViewQuizLead && (
                             <Button
                               variant="ghost"
