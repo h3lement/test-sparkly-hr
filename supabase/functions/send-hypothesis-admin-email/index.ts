@@ -175,7 +175,7 @@ const handler = async (req: Request): Promise<Response> => {
       sender_name: `${emailConfig.senderName} Quiz`,
       subject: adminEmailSubject,
       html_body: adminEmailHtml,
-      email_type: "hypothesis_admin",
+      email_type: "quiz_result_admin",
       quiz_lead_id: leadId || null,
       quiz_id: quizId || null,
       language: language,

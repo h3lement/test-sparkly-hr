@@ -577,11 +577,12 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       case "test":
         return { label: "Test", icon: TestTube, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
       case "quiz_result_user":
+      case "quiz_results": // legacy
+      case "hypothesis_results": // legacy
         return { label: "Quiz Taker", icon: User, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
       case "quiz_result_admin":
+      case "hypothesis_admin": // legacy
         return { label: "Admin Notif", icon: Shield, color: "bg-purple-500/10 text-purple-600 border-purple-500/20" };
-      case "domain_reputation_alert":
-        return { label: "Domain Alert", icon: AlertCircle, color: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
       default:
         return { label: type, icon: Mail, color: "bg-secondary text-secondary-foreground" };
     }
@@ -748,9 +749,15 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       );
     }
 
-    // Type filter
+    // Type filter - group legacy types with current types
     if (filterType !== "all") {
-      result = result.filter((log) => log.email_type === filterType);
+      if (filterType === "quiz_result_user") {
+        result = result.filter((log) => log.email_type === "quiz_result_user" || log.email_type === "quiz_results" || log.email_type === "hypothesis_results");
+      } else if (filterType === "quiz_result_admin") {
+        result = result.filter((log) => log.email_type === "quiz_result_admin" || log.email_type === "hypothesis_admin");
+      } else {
+        result = result.filter((log) => log.email_type === filterType);
+      }
     }
 
     // Status filter - include queue statuses
@@ -861,9 +868,9 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       failed: base.filter((l) => l.status === "failed" && !l.isQueueItem).length,
       pending: base.filter((l) => l.isQueueItem).length,
       todaySent: base.filter((l) => l.status === "sent" && new Date(l.created_at) >= today).length,
-      // Count quiz_result_user AND legacy quiz_results type
-      quizUsers: base.filter((l) => l.email_type === "quiz_result_user" || l.email_type === "quiz_results").length,
-      adminNotifs: base.filter((l) => l.email_type === "quiz_result_admin").length,
+      // Count quiz_result_user AND legacy types
+      quizUsers: base.filter((l) => l.email_type === "quiz_result_user" || l.email_type === "quiz_results" || l.email_type === "hypothesis_results").length,
+      adminNotifs: base.filter((l) => l.email_type === "quiz_result_admin" || l.email_type === "hypothesis_admin").length,
       testEmails: base.filter((l) => l.email_type === "test").length,
     };
   }, [filteredLogs]);
@@ -1112,10 +1119,9 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="test">Tests</SelectItem>
-            <SelectItem value="quiz_result_user">Quiz Takers</SelectItem>
-            <SelectItem value="quiz_result_admin">Admin Notifs</SelectItem>
-            <SelectItem value="domain_reputation_alert">Domain Alerts</SelectItem>
+            <SelectItem value="test">Test</SelectItem>
+            <SelectItem value="quiz_result_user">Quiz Taker</SelectItem>
+            <SelectItem value="quiz_result_admin">Admin Notification</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>

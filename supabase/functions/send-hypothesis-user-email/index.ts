@@ -417,7 +417,7 @@ const handler = async (req: Request): Promise<Response> => {
       sender_name: emailConfig.senderName,
       subject: subject,
       html_body: htmlBody,
-      email_type: "hypothesis_results",
+      email_type: "quiz_result_user",
       quiz_lead_id: leadId || null,
       quiz_id: quizId || null,
       language: language,
