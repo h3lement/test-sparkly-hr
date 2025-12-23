@@ -498,6 +498,7 @@ export type Database = {
           feedback_new_learnings: string | null
           id: string
           language: string | null
+          openness_score: number | null
           quiz_id: string
           score: number
           session_id: string
@@ -510,6 +511,7 @@ export type Database = {
           feedback_new_learnings?: string | null
           id?: string
           language?: string | null
+          openness_score?: number | null
           quiz_id: string
           score: number
           session_id: string
@@ -522,6 +524,7 @@ export type Database = {
           feedback_new_learnings?: string | null
           id?: string
           language?: string | null
+          openness_score?: number | null
           quiz_id?: string
           score?: number
           session_id?: string
