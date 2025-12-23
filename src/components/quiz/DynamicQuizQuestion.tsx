@@ -34,7 +34,7 @@ export function DynamicQuizQuestion() {
     getOpenMindednessQuestion,
     getTotalQuestionCount
   } = useDynamicQuiz();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   
   const regularQuestions = getRegularQuestions();
   const hasOpenMindedness = !!getOpenMindednessQuestion();
@@ -173,8 +173,8 @@ export function DynamicQuizQuestion() {
       {/* Progress bar */}
       <div className="mb-8" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
         <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>Question {currentQuestion + 1} of {totalQuestions}</span>
-          <span>{Math.round(progress)}% complete</span>
+          <span>{t('questionOf').replace('{current}', String(currentQuestion + 1)).replace('{total}', String(totalQuestions))}</span>
+          <span>{t('complete').replace('{percent}', String(Math.round(progress)))}</span>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div 
@@ -248,14 +248,14 @@ export function DynamicQuizQuestion() {
           disabled={currentQuestion === 0}
           className="px-6"
         >
-          Back
+          {t('back')}
         </Button>
         <Button
           onClick={handleNext}
           disabled={selectedAnswer === null}
           className="gradient-primary text-primary-foreground px-8 hover:scale-105 transition-transform"
         >
-          {isLastRegularQuestion ? (hasOpenMindedness ? 'Next' : 'See Results') : 'Next'}
+          {isLastRegularQuestion ? (hasOpenMindedness ? t('next') : t('seeResults')) : t('next')}
         </Button>
       </nav>
     </main>

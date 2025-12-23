@@ -20,7 +20,7 @@ export function DynamicEmailCapture() {
     openMindednessResultLevels,
     quizData
   } = useDynamicQuiz();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -35,7 +35,7 @@ export function DynamicEmailCapture() {
     const validation = emailSchema.safeParse(email);
     if (!validation.success) {
       toast({
-        title: 'Invalid email',
+        title: t('invalidEmail'),
         description: validation.error.errors[0]?.message || 'Please enter a valid email address.',
         variant: 'destructive',
       });
@@ -84,8 +84,8 @@ export function DynamicEmailCapture() {
       if (error) {
         console.error('Error sending results:', error);
         toast({
-          title: 'Error',
-          description: 'Failed to send results. Please try again.',
+          title: t('emailError'),
+          description: t('somethingWrong'),
           variant: 'destructive',
         });
         setIsSubmitting(false);
@@ -93,16 +93,16 @@ export function DynamicEmailCapture() {
       }
 
       toast({
-        title: 'Success!',
-        description: 'Your results have been sent to your email.',
+        title: t('emailSuccess'),
+        description: t('emailSuccessDesc'),
       });
 
       setCurrentStep('results');
     } catch (err) {
       console.error('Error:', err);
       toast({
-        title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        title: t('emailError'),
+        description: t('somethingWrong'),
         variant: 'destructive',
       });
     } finally {
@@ -114,12 +114,12 @@ export function DynamicEmailCapture() {
     <main className="animate-fade-in text-center max-w-xl mx-auto" role="main" aria-labelledby="email-heading">
       
       <h1 id="email-heading" className="font-heading text-3xl md:text-4xl font-bold mb-4">
-        Your Results Are{' '}
-        <span className="gradient-text">Ready!</span>
+        {t('resultsReady')}{' '}
+        <span className="gradient-text">{t('resultsReadyHighlight')}</span>
       </h1>
       
       <p className="text-lg text-muted-foreground mb-8" id="email-description">
-        Enter your email to unlock your personalized performance assessment and get actionable insights delivered to your inbox.
+        {t('emailDescription')}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,7 +128,7 @@ export function DynamicEmailCapture() {
           <Input
             id="email-input"
             type="email"
-            placeholder="your@email.com"
+            placeholder={t('emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="text-center text-lg h-14 rounded-xl border-2 focus:border-primary"
@@ -143,12 +143,12 @@ export function DynamicEmailCapture() {
           disabled={isSubmitting}
           className="w-full gradient-primary text-primary-foreground py-6 text-lg font-semibold rounded-full glow-primary hover:scale-105 transition-transform"
         >
-          {isSubmitting ? 'Sending...' : 'Get My Results'}
+          {isSubmitting ? t('sending') : t('getResults')}
         </Button>
       </form>
 
       <p className="text-sm text-muted-foreground mt-6">
-        🔒 We respect your privacy. No spam, ever.
+        {t('privacyNotice')}
       </p>
     </main>
   );
