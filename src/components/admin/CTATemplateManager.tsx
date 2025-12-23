@@ -19,7 +19,9 @@ import {
   Link as LinkIcon,
   History,
   Download,
-  Plus
+  Plus,
+  Copy,
+  Trash2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
@@ -133,6 +135,10 @@ export function CTATemplateManager() {
   const [loadingFromQuiz, setLoadingFromQuiz] = useState(false);
   const [showLoadFromQuizDialog, setShowLoadFromQuizDialog] = useState(false);
   const [dialogQuizId, setDialogQuizId] = useState<string>("");
+  const [cloning, setCloning] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<CTATemplate | null>(null);
 
   const { toast } = useToast();
 
@@ -479,6 +485,90 @@ export function CTATemplateManager() {
     }
   };
 
+  // Clone CTA template
+  const handleCloneCta = async (template: CTATemplate) => {
+    setCloning(template.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Get next version number for this quiz
+      const quizTemplates = templates.filter(t => t.quiz_id === template.quiz_id);
+      const maxVersion = quizTemplates.length > 0 
+        ? Math.max(...quizTemplates.map(t => t.version_number)) 
+        : 0;
+
+      const { error } = await supabase
+        .from("cta_templates")
+        .insert({
+          quiz_id: template.quiz_id,
+          version_number: maxVersion + 1,
+          name: `${template.name || "Untitled CTA"} (copy)`,
+          cta_title: template.cta_title,
+          cta_description: template.cta_description,
+          cta_text: template.cta_text,
+          cta_url: template.cta_url,
+          created_by: user?.id,
+          created_by_email: user?.email,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "CTA Cloned",
+        description: `Created v${maxVersion + 1} from "${template.name || "Untitled CTA"}"`,
+      });
+
+      fetchData();
+    } catch (error: any) {
+      console.error("Error cloning CTA:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clone CTA template",
+        variant: "destructive",
+      });
+    } finally {
+      setCloning(null);
+    }
+  };
+
+  // Delete CTA template
+  const handleDeleteCta = async () => {
+    if (!templateToDelete) return;
+    
+    setDeleting(templateToDelete.id);
+    try {
+      const { error } = await supabase
+        .from("cta_templates")
+        .delete()
+        .eq("id", templateToDelete.id);
+
+      if (error) throw error;
+
+      setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
+
+      toast({
+        title: "CTA Deleted",
+        description: `"${templateToDelete.name || "Untitled CTA"}" has been deleted`,
+      });
+    } catch (error: any) {
+      console.error("Error deleting CTA:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete CTA template",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(null);
+      setDeleteConfirmOpen(false);
+      setTemplateToDelete(null);
+    }
+  };
+
+  const openDeleteConfirm = (template: CTATemplate) => {
+    setTemplateToDelete(template);
+    setDeleteConfirmOpen(true);
+  };
+
   // Filtered templates for table view
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
@@ -601,7 +691,7 @@ export function CTATemplateManager() {
                 <div className="flex-1 px-3 py-2">Button Text</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
                 <div className="w-[60px] px-3 py-2 text-center">Lang</div>
-                <div className="w-[80px] px-3 py-2 text-center">Actions</div>
+                <div className="w-[120px] px-3 py-2 text-center">Actions</div>
               </div>
               {filteredTemplates.map(template => {
                 const quiz = quizzes.find(q => q.id === template.quiz_id);
@@ -665,7 +755,7 @@ export function CTATemplateManager() {
                         {getTranslationCount(template)}
                       </Badge>
                     </div>
-                    <div className="w-[80px] px-3 py-2">
+                    <div className="w-[120px] px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
                         <Button
                           variant="ghost"
@@ -678,6 +768,34 @@ export function CTATemplateManager() {
                           title="Preview"
                         >
                           <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCloneCta(template)}
+                          disabled={cloning === template.id}
+                          className="h-7 w-7 p-0"
+                          title="Clone"
+                        >
+                          {cloning === template.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDeleteConfirm(template)}
+                          disabled={deleting === template.id}
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          title="Delete"
+                        >
+                          {deleting === template.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -1077,6 +1195,27 @@ export function CTATemplateManager() {
               disabled={!dialogQuizId}
             >
               Load from Quiz
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete CTA Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{templateToDelete?.name || "Untitled CTA"}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteCta}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
