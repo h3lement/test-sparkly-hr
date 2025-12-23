@@ -129,6 +129,17 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Encode subject line for UTF-8 support (RFC 2047)
+function encodeSubject(subject: string): string {
+  // Check if subject contains non-ASCII characters
+  if (!/^[\x00-\x7F]*$/.test(subject)) {
+    // Use Base64 encoding for UTF-8 subject
+    const encoded = btoa(unescape(encodeURIComponent(subject)));
+    return `=?UTF-8?B?${encoded}?=`;
+  }
+  return subject;
+}
+
 async function sendEmailWithRetry(
   config: EmailConfigSettings,
   emailParams: SendEmailParams
@@ -144,12 +155,19 @@ async function sendEmailWithRetry(
         return { success: false, error: "SMTP not configured", attempts: attempt };
       }
 
+      // Encode subject for UTF-8 support
+      const encodedSubject = encodeSubject(emailParams.subject);
+
       await client.send({
         from: emailParams.from,
         to: emailParams.to,
-        subject: emailParams.subject,
+        subject: encodedSubject,
         content: emailParams.html,
         html: emailParams.html,
+        headers: {
+          "Content-Type": "text/html; charset=UTF-8",
+          "Content-Transfer-Encoding": "quoted-printable",
+        },
         ...(emailParams.replyTo ? { replyTo: emailParams.replyTo } : {}),
       });
 
