@@ -76,6 +76,17 @@ function utf8ToBase64(str: string): string {
   return btoa(binary);
 }
 
+// Safe base64 encoding for SMTP AUTH (RFC 4954)
+function encodeCredential(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 // Encode subject line for UTF-8 support (RFC 2047)
 function encodeSubject(subject: string): string {
   if (!/^[\x00-\x7F]*$/.test(subject)) {
@@ -171,8 +182,8 @@ class RawSMTPClient {
 
     await this.command(`EHLO localhost`, [250]);
     await this.command("AUTH LOGIN", [334]);
-    await this.command(utf8ToBase64(this.config.smtpUsername), [334]);
-    await this.command(utf8ToBase64(this.config.smtpPassword), [235]);
+    await this.command(encodeCredential(this.config.smtpUsername), [334]);
+    await this.command(encodeCredential(this.config.smtpPassword), [235]);
   }
 
   async send(from: string, to: string[], subject: string, html: string, replyTo?: string): Promise<void> {
