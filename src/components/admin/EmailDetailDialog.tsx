@@ -354,102 +354,112 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Email Details
-          </DialogTitle>
-        </DialogHeader>
-        
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="space-y-6 px-6 py-4">
-            {/* Status Banner */}
-            <div className={`p-4 rounded-lg ${statusInfo.bgColor} border`}>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${statusInfo.bgColor}`}>
-                  <StatusIcon className={`h-5 w-5 ${statusInfo.color} ${statusInfo.animate ? "animate-spin" : ""}`} />
-                </div>
-                <div>
-                  <p className={`font-semibold ${statusInfo.color}`}>{statusInfo.label}</p>
-                  <p className="text-sm text-muted-foreground">{formatRelativeTime(log.created_at)}</p>
-                </div>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+        {/* Header with status */}
+        <div className={`px-6 pt-6 pb-4 ${statusInfo.bgColor} border-b`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl bg-background/80 shadow-sm`}>
+                <StatusIcon className={`h-5 w-5 ${statusInfo.color} ${statusInfo.animate ? "animate-spin" : ""}`} />
+              </div>
+              <div>
+                <h2 className={`text-lg font-semibold ${statusInfo.color}`}>{statusInfo.label}</h2>
+                <p className="text-sm text-muted-foreground">{formatRelativeTime(log.created_at)}</p>
               </div>
             </div>
-
-            {/* Basic Info */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Email Information</h3>
-              <div className="grid gap-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground w-24 shrink-0">Type:</span>
-                  <Badge variant="outline" className={`${typeInfo.color} gap-1`}>
-                    <TypeIcon className="h-3 w-3" />
-                    {typeInfo.label}
-                  </Badge>
+            <Badge variant="outline" className={`${typeInfo.color} gap-1.5 shrink-0`}>
+              <TypeIcon className="h-3.5 w-3.5" />
+              {typeInfo.label}
+            </Badge>
+          </div>
+        </div>
+        
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-6 space-y-5">
+            {/* Email Info Card */}
+            <div className="bg-muted/30 rounded-xl border p-4 space-y-3">
+              <div className="grid gap-2.5 text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0 text-xs uppercase tracking-wide">From</span>
+                  <span className="font-medium">{log.sender_name} <span className="text-muted-foreground font-normal">&lt;{log.sender_email}&gt;</span></span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground w-24 shrink-0">From:</span>
-                  <span>{log.sender_name} &lt;{log.sender_email}&gt;</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground w-24 shrink-0">To:</span>
+                <Separator className="my-1" />
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0 text-xs uppercase tracking-wide">To</span>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{log.recipient_email}</span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-6 w-6 hover:bg-background"
                       onClick={() => copyToClipboard(log.recipient_email)}
                     >
-                      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
                     </Button>
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground w-24 shrink-0">Subject:</span>
+                <Separator className="my-1" />
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0 text-xs uppercase tracking-wide">Subject</span>
                   <span className="font-medium">{log.subject}</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground w-24 shrink-0">Language:</span>
-                  <Badge variant="secondary" className="uppercase text-xs">{log.language || "en"}</Badge>
+                <Separator className="my-1" />
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground w-20 shrink-0 text-xs uppercase tracking-wide">Sent</span>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{formatTimestamp(log.created_at)}</span>
+                  </div>
                 </div>
                 {quizTitle && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-muted-foreground w-24 shrink-0">Quiz:</span>
-                    <span>{quizTitle}</span>
-                  </div>
+                  <>
+                    <Separator className="my-1" />
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground w-20 shrink-0 text-xs uppercase tracking-wide">Quiz</span>
+                      <span>{quizTitle}</span>
+                    </div>
+                  </>
                 )}
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground w-24 shrink-0">Created:</span>
-                  <span>{formatTimestamp(log.created_at)}</span>
-                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <Badge variant="secondary" className="uppercase text-xs">{log.language || "en"}</Badge>
+                {log.resend_attempts > 0 && (
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/20">
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    {log.resend_attempts} resend(s)
+                  </Badge>
+                )}
               </div>
             </div>
 
-            <Separator />
-
             {/* Timeline */}
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Timeline</h3>
-              <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5" />
+                Timeline
+              </h3>
+              <div className="relative pl-6 space-y-0">
                 {timeline.map((event, index) => {
                   const Icon = event.icon;
+                  const isLast = index === timeline.length - 1;
                   return (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="relative">
-                        <div className={`p-1.5 rounded-full bg-muted ${event.color}`}>
-                          <Icon className="h-3.5 w-3.5" />
-                        </div>
-                        {index < timeline.length - 1 && (
-                          <div className="absolute left-1/2 top-full w-0.5 h-6 bg-border -translate-x-1/2" />
-                        )}
+                    <div key={index} className="relative pb-4 last:pb-0">
+                      {/* Connecting line */}
+                      {!isLast && (
+                        <div className="absolute left-[-18px] top-6 w-0.5 h-[calc(100%-8px)] bg-border" />
+                      )}
+                      {/* Icon */}
+                      <div className={`absolute left-[-24px] top-0.5 p-1.5 rounded-full bg-background border-2 border-border ${event.color}`}>
+                        <Icon className="h-3 w-3" />
                       </div>
-                      <div className="flex-1 pt-0.5">
+                      {/* Content */}
+                      <div className="ml-2">
                         <p className={`text-sm font-medium ${event.color}`}>{event.label}</p>
                         <p className="text-xs text-muted-foreground">{formatTimestamp(event.time)}</p>
                         {event.detail && (
-                          <p className="text-xs text-red-600 mt-1 bg-red-50 dark:bg-red-950/30 p-2 rounded">{event.detail}</p>
+                          <div className="mt-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/30 p-2.5 rounded-lg border border-red-200 dark:border-red-900">
+                            {event.detail}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -460,127 +470,124 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
 
             {/* Related Emails (Resends) */}
             {!log.isQueueItem && (relatedLogs.length > 0 || log.original_log_id || loading) && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Related Emails</h3>
-                  {loading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading related emails...
-                    </div>
-                  ) : relatedLogs.length > 0 ? (
-                    <div className="space-y-2">
-                      {log.original_log_id && (
-                        <p className="text-xs text-muted-foreground mb-2">
-                          This is a resend of an earlier email
-                        </p>
-                      )}
-                      {relatedLogs.map((related) => (
-                        <div key={related.id} className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded">
-                          {related.id === log.original_log_id ? (
-                            <Badge variant="outline" className="text-xs">Original</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600">Resend</Badge>
-                          )}
-                          <span className={related.status === "sent" ? "text-green-600" : "text-red-600"}>
-                            {related.status === "sent" ? "Sent" : "Failed"}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Related Emails
+                </h3>
+                {loading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading related emails...
+                  </div>
+                ) : relatedLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {log.original_log_id && (
+                      <p className="text-xs text-muted-foreground">
+                        This is a resend of an earlier email
+                      </p>
+                    )}
+                    {relatedLogs.map((related) => (
+                      <div key={related.id} className="flex items-center gap-2 text-sm p-3 bg-muted/30 rounded-lg border">
+                        {related.id === log.original_log_id ? (
+                          <Badge variant="outline" className="text-xs">Original</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600 border-orange-500/20">Resend</Badge>
+                        )}
+                        <Badge variant="outline" className={related.status === "sent" ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}>
+                          {related.status === "sent" ? "Sent" : "Failed"}
+                        </Badge>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground text-xs">{formatRelativeTime(related.created_at)}</span>
+                        {related.error_message && (
+                          <span className="text-red-600 text-xs truncate max-w-[150px]" title={related.error_message}>
+                            {related.error_message}
                           </span>
-                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{formatRelativeTime(related.created_at)}</span>
-                          {related.error_message && (
-                            <span className="text-red-600 text-xs truncate max-w-[150px]" title={related.error_message}>
-                              {related.error_message}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No resends found</p>
-                  )}
-                </div>
-              </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">No resends found</p>
+                )}
+              </div>
             )}
 
             {/* Error Details */}
             {log.error_message && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-red-600 uppercase tracking-wider flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Error Details
-                  </h3>
-                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-3">
-                    <p className="text-sm text-red-700 dark:text-red-400 font-mono break-all">{log.error_message}</p>
-                  </div>
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wider flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Error Details
+                </h3>
+                <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl p-4">
+                  <p className="text-sm text-red-700 dark:text-red-400 font-mono break-all leading-relaxed">{log.error_message}</p>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Troubleshooting Tips */}
             {tips.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4 text-amber-500" />
-                    How to Fix
-                  </h3>
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wider flex items-center gap-2">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  How to Fix
+                </h3>
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4">
                   <ul className="space-y-2">
                     {tips.map((tip, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <span className="text-primary mt-0.5">•</span>
+                      <li key={index} className="flex items-start gap-2.5 text-sm text-amber-900 dark:text-amber-200">
+                        <span className="text-amber-500 mt-0.5 font-bold">→</span>
                         <span>{tip}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-              </>
+              </div>
             )}
 
-            {/* Technical Details */}
-            <Separator />
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Technical Details</h3>
-              <div className="grid gap-1 text-xs font-mono bg-muted/50 p-3 rounded-lg">
+            {/* Technical Details - Collapsible style */}
+            <details className="group">
+              <summary className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 cursor-pointer list-none">
+                <Mail className="h-3.5 w-3.5" />
+                Technical Details
+                <span className="ml-auto text-[10px] text-muted-foreground/60 group-open:hidden">Click to expand</span>
+              </summary>
+              <div className="mt-3 grid gap-1.5 text-xs font-mono bg-muted/50 p-4 rounded-xl border">
                 <div className="flex gap-2">
-                  <span className="text-muted-foreground">ID:</span>
-                  <span className="truncate">{log.id}</span>
+                  <span className="text-muted-foreground w-24">ID:</span>
+                  <span className="truncate text-foreground/80">{log.id}</span>
                 </div>
                 {log.resend_id && (
                   <div className="flex gap-2">
-                    <span className="text-muted-foreground">Provider ID:</span>
-                    <span className="truncate">{log.resend_id}</span>
+                    <span className="text-muted-foreground w-24">Provider ID:</span>
+                    <span className="truncate text-foreground/80">{log.resend_id}</span>
                   </div>
                 )}
                 {log.quiz_id && (
                   <div className="flex gap-2">
-                    <span className="text-muted-foreground">Quiz ID:</span>
-                    <span className="truncate">{log.quiz_id}</span>
+                    <span className="text-muted-foreground w-24">Quiz ID:</span>
+                    <span className="truncate text-foreground/80">{log.quiz_id}</span>
                   </div>
                 )}
                 {log.quiz_lead_id && (
                   <div className="flex gap-2">
-                    <span className="text-muted-foreground">Lead ID:</span>
-                    <span className="truncate">{log.quiz_lead_id}</span>
+                    <span className="text-muted-foreground w-24">Lead ID:</span>
+                    <span className="truncate text-foreground/80">{log.quiz_lead_id}</span>
                   </div>
                 )}
                 {log.original_log_id && (
                   <div className="flex gap-2">
-                    <span className="text-muted-foreground">Original Log:</span>
-                    <span className="truncate">{log.original_log_id}</span>
+                    <span className="text-muted-foreground w-24">Original Log:</span>
+                    <span className="truncate text-foreground/80">{log.original_log_id}</span>
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <span className="text-muted-foreground">Attempts:</span>
-                  <span>{1 + (log.resend_attempts || 0)}</span>
+                  <span className="text-muted-foreground w-24">Attempts:</span>
+                  <span className="text-foreground/80">{1 + (log.resend_attempts || 0)}</span>
                 </div>
               </div>
-            </div>
-            {/* Bottom padding for scroll area */}
-            <div className="h-4" />
+            </details>
           </div>
         </ScrollArea>
       </DialogContent>
