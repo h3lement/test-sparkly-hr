@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.resend-webhook]
 verify_jwt = false
+
+[functions.send-quiz-results]
+verify_jwt = false
