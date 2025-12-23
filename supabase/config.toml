@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.process-pending-emails]
 verify_jwt = false
+
+[functions.render-email-preview]
+verify_jwt = true
