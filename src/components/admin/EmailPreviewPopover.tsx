@@ -113,24 +113,41 @@ export function EmailPreviewPopover({
     }
   };
 
+  // Whether we have instant content (no need to generate)
+  const hasInstantContent = canShowSentHtml || hasStoredEmail;
+
   return (
     <>
-      <button
-        type="button"
-        onPointerDownCapture={(e) => e.stopPropagation()}
-        onClickCapture={(e) => {
-          e.stopPropagation();
-          setOpen(true);
-        }}
-        className={cn(
-          "inline-flex items-center justify-center p-1.5 rounded-md hover:bg-secondary/80 transition-colors",
-          emailStatusColor
+      <div className="inline-flex items-center gap-1">
+        <button
+          type="button"
+          onPointerDownCapture={(e) => e.stopPropagation()}
+          onClickCapture={(e) => {
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          className={cn(
+            "inline-flex items-center justify-center p-1.5 rounded-md hover:bg-secondary/80 transition-colors",
+            emailStatusColor
+          )}
+          title={emailStatusLabel}
+          aria-label={`Email preview: ${emailStatusLabel}`}
+        >
+          <EmailIcon className="w-4 h-4" />
+        </button>
+        {hasInstantContent && !canShowSentHtml && (
+          <Badge 
+            variant="outline" 
+            className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/20 cursor-pointer hover:bg-green-500/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(true);
+            }}
+          >
+            Ready
+          </Badge>
         )}
-        title={emailStatusLabel}
-        aria-label={`Email preview: ${emailStatusLabel}`}
-      >
-        <EmailIcon className="w-4 h-4" />
-      </button>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
@@ -191,7 +208,7 @@ export function EmailPreviewPopover({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             {hasContent ? (
               <EmailHtmlViewer 
                 html={displayHtml!} 
@@ -202,7 +219,7 @@ export function EmailPreviewPopover({
             ) : regenerating ? (
               <div className="p-8 flex flex-col items-center justify-center gap-2 text-muted-foreground h-64">
                 <Loader2 className="w-8 h-8 animate-spin" />
-                <span className="text-sm">Regenerating preview...</span>
+                <span className="text-sm">Generating preview...</span>
               </div>
             ) : regenerateError ? (
               <div className="p-8 text-center">
