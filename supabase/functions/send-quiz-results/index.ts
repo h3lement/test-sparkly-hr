@@ -1581,6 +1581,19 @@ const handler = async (req: Request): Promise<Response> => {
       } else {
         quizLeadId = insertedLead?.id || null;
         console.log("Lead stored successfully with ID:", quizLeadId);
+        
+        // Trigger background email preview pre-generation (fire and forget)
+        // This ensures email_html is always available for instant preview
+        if (quizLeadId) {
+          fetch(`${supabaseUrl}/functions/v1/pregenerate-email-preview`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({ leadId: quizLeadId, leadType: 'quiz' }),
+          }).catch(err => console.warn('Email preview pregeneration trigger error:', err));
+        }
       }
     }
 

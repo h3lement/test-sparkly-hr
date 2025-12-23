@@ -237,6 +237,65 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     fetchData();
   }, []);
 
+  // Subscribe to realtime updates for email_html changes on lead tables
+  useEffect(() => {
+    // Subscribe to quiz_leads updates
+    const quizLeadsChannel = supabase
+      .channel('quiz_leads_email_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quiz_leads',
+        },
+        (payload) => {
+          const updated = payload.new as { id: string; email_html: string | null; email_subject: string | null };
+          // Only update if email_html was set (wasn't null before or is now populated)
+          if (updated.email_html) {
+            setLeads((prevLeads) =>
+              prevLeads.map((lead) =>
+                lead.id === updated.id
+                  ? { ...lead, email_html: updated.email_html, email_subject: updated.email_subject }
+                  : lead
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to hypothesis_leads updates
+    const hypothesisLeadsChannel = supabase
+      .channel('hypothesis_leads_email_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'hypothesis_leads',
+        },
+        (payload) => {
+          const updated = payload.new as { id: string; email_html: string | null; email_subject: string | null };
+          if (updated.email_html) {
+            setLeads((prevLeads) =>
+              prevLeads.map((lead) =>
+                lead.id === updated.id
+                  ? { ...lead, email_html: updated.email_html, email_subject: updated.email_subject }
+                  : lead
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(quizLeadsChannel);
+      supabase.removeChannel(hypothesisLeadsChannel);
+    };
+  }, []);
+
 
   // Handle highlighted lead from Email History
   useEffect(() => {
@@ -923,18 +982,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         </Badge>
                       </AdminTableCell>
                       <AdminTableCell className="w-10 text-center">
-                        <EmailPreviewPopover
-                          leadId={lead.id}
-                          leadCreatedAt={lead.created_at}
-                          leadType={lead.leadType}
-                          emailLog={emailLogs.get(lead.id)}
-                          emailStatusLabel={emailStatus.label}
-                          emailStatusColor={emailStatus.color}
-                          EmailIcon={Eye}
-                          storedEmailHtml={lead.email_html}
-                          storedEmailSubject={lead.email_subject}
-                          iconOnly
-                        />
+                        {lead.email_html ? (
+                          <EmailPreviewPopover
+                            leadId={lead.id}
+                            leadCreatedAt={lead.created_at}
+                            leadType={lead.leadType}
+                            emailLog={emailLogs.get(lead.id)}
+                            emailStatusLabel={emailStatus.label}
+                            emailStatusColor={emailStatus.color}
+                            EmailIcon={Eye}
+                            storedEmailHtml={lead.email_html}
+                            storedEmailSubject={lead.email_subject}
+                            iconOnly
+                          />
+                        ) : null}
                       </AdminTableCell>
                       <AdminTableCell style={{ width: Math.max(columnWidths.emailStatus, 110), minWidth: Math.max(columnWidths.emailStatus, 110) }} align="center">
                         <EmailPreviewPopover

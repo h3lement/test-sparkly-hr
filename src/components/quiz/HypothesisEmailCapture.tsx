@@ -77,7 +77,12 @@ export function HypothesisEmailCapture() {
         return;
       }
 
-      // Send emails (fire and forget)
+      // Trigger background email preview pre-generation (fire and forget)
+      if (insertedLead?.id) {
+        supabase.functions.invoke('pregenerate-email-preview', {
+          body: { leadId: insertedLead.id, leadType: 'hypothesis' }
+        }).catch(err => console.warn('Email preview pregeneration error:', err));
+      }
       const quizTitle = typeof quizData?.title === 'object' && quizData.title !== null 
         ? (quizData.title as Record<string, string>)[language] || (quizData.title as Record<string, string>)['en'] || 'Quiz'
         : String(quizData?.title || 'Quiz');
