@@ -3023,6 +3023,7 @@ export default function QuizEditor() {
         quizTitle={getLocalizedValue(title, "en") || slug}
         quizType={quizType}
         questionCount={quizType === "hypothesis" ? hypothesisQuestionCount : questions.length}
+        includeOpenMindedness={includeOpenMindedness}
       />
     </div>
   );
