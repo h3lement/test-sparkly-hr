@@ -182,6 +182,40 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     fetchData();
   }, []);
 
+  // Realtime subscription for email_queue to update "To Send" counts live
+  useEffect(() => {
+    const fetchPendingCounts = async () => {
+      const { data, error } = await supabase
+        .from("email_queue")
+        .select("recipient_email")
+        .in("status", ["pending", "processing"]);
+
+      if (!error && data) {
+        const counts: Record<string, number> = {};
+        data.forEach((item) => {
+          const email = item.recipient_email.toLowerCase();
+          counts[email] = (counts[email] || 0) + 1;
+        });
+        setPendingEmailCounts(counts);
+      }
+    };
+
+    const channel = supabase
+      .channel("respondents-email-queue")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "email_queue" },
+        () => {
+          fetchPendingCounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Handle highlighted lead from Email History
   useEffect(() => {
     if (highlightedLeadId && leads.length > 0) {
