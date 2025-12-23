@@ -46,6 +46,7 @@ interface TranslateRequest {
     cta_title: string;
     cta_description: string;
     cta_text: string;
+    cta_retry_text: string;
   };
 }
 
@@ -70,7 +71,7 @@ serve(async (req) => {
     // Fetch quiz CTA data (for existing translations and to update)
     const { data: quiz, error: quizError } = await supabase
       .from("quizzes")
-      .select("id, cta_title, cta_description, cta_text")
+      .select("id, cta_title, cta_description, cta_text, cta_retry_text")
       .eq("id", quizId)
       .single();
 
@@ -82,18 +83,21 @@ serve(async (req) => {
     let sourceTitle: string;
     let sourceDescription: string;
     let sourceButtonText: string;
+    let sourceRetryText: string;
 
-    if (sourceContent && (sourceContent.cta_title || sourceContent.cta_description || sourceContent.cta_text)) {
+    if (sourceContent && (sourceContent.cta_title || sourceContent.cta_description || sourceContent.cta_text || sourceContent.cta_retry_text)) {
       // Use the content from the form (what user is currently editing)
       sourceTitle = sourceContent.cta_title || "";
       sourceDescription = sourceContent.cta_description || "";
       sourceButtonText = sourceContent.cta_text || "";
+      sourceRetryText = sourceContent.cta_retry_text || "";
       console.log("Using provided source content from form");
     } else {
       // Fall back to database content
       sourceTitle = quiz.cta_title?.[sourceLanguage] || "";
       sourceDescription = quiz.cta_description?.[sourceLanguage] || "";
       sourceButtonText = quiz.cta_text?.[sourceLanguage] || "";
+      sourceRetryText = quiz.cta_retry_text?.[sourceLanguage] || "";
       console.log("Using source content from database");
     }
 
@@ -116,7 +120,8 @@ serve(async (req) => {
         const hasTitle = quiz.cta_title?.[l.code]?.trim();
         const hasDesc = quiz.cta_description?.[l.code]?.trim();
         const hasButton = quiz.cta_text?.[l.code]?.trim();
-        return !hasTitle || !hasDesc || !hasButton;
+        const hasRetry = quiz.cta_retry_text?.[l.code]?.trim();
+        return !hasTitle || !hasDesc || !hasButton || !hasRetry;
       });
       
       if (targetLanguages.length === 0) {
@@ -135,6 +140,7 @@ serve(async (req) => {
       cta_title: sourceTitle,
       cta_description: sourceDescription,
       cta_text: sourceButtonText,
+      cta_retry_text: sourceRetryText,
     };
 
     console.log(`Translating CTA to ${targetLanguages.length} languages (regenerate: ${regenerate})...`);
@@ -150,7 +156,8 @@ Return ONLY a valid JSON object with this structure:
   "lang_code": {
     "cta_title": "translated title",
     "cta_description": "translated description",
-    "cta_text": "translated button text"
+    "cta_text": "translated button text",
+    "cta_retry_text": "translated retry button text"
   },
   ...
 }
@@ -161,6 +168,7 @@ ${JSON.stringify(contentToTranslate, null, 2)}
 Important:
 - Keep translations natural and professional
 - Button text should be concise and action-oriented
+- Retry button text should be short and encourage re-taking the quiz
 - Maintain the same tone and meaning
 - Use proper capitalization for each language`;
 
@@ -198,7 +206,7 @@ Important:
     // Clean up markdown code blocks if present
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-    let translations: Record<string, { cta_title: string; cta_description: string; cta_text: string }>;
+    let translations: Record<string, { cta_title: string; cta_description: string; cta_text: string; cta_retry_text: string }>;
     try {
       translations = JSON.parse(content);
     } catch (parseError) {
@@ -211,12 +219,14 @@ Important:
     const updatedCtaTitle = { ...quiz.cta_title, [sourceLanguage]: sourceTitle };
     const updatedCtaDescription = { ...quiz.cta_description, [sourceLanguage]: sourceDescription };
     const updatedCtaText = { ...quiz.cta_text, [sourceLanguage]: sourceButtonText };
+    const updatedCtaRetryText = { ...quiz.cta_retry_text, [sourceLanguage]: sourceRetryText };
 
     let translatedCount = 0;
     for (const [langCode, translation] of Object.entries(translations)) {
       if (translation.cta_title) updatedCtaTitle[langCode] = translation.cta_title;
       if (translation.cta_description) updatedCtaDescription[langCode] = translation.cta_description;
       if (translation.cta_text) updatedCtaText[langCode] = translation.cta_text;
+      if (translation.cta_retry_text) updatedCtaRetryText[langCode] = translation.cta_retry_text;
       translatedCount++;
     }
 
@@ -229,6 +239,7 @@ Important:
         cta_title: updatedCtaTitle,
         cta_description: updatedCtaDescription,
         cta_text: updatedCtaText,
+        cta_retry_text: updatedCtaRetryText,
       })
       .eq("id", quizId);
 
@@ -249,6 +260,7 @@ Important:
       updatedCtaTitle,
       updatedCtaDescription,
       updatedCtaText,
+      updatedCtaRetryText,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

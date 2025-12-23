@@ -71,6 +71,7 @@ interface CTATemplate {
   cta_title: Record<string, string>;
   cta_description: Record<string, string>;
   cta_text: Record<string, string>;
+  cta_retry_text: Record<string, string>;
   cta_url: string;
   created_at: string;
   created_by_email: string | null;
@@ -116,6 +117,7 @@ export function CTATemplateManager() {
   const [ctaTitle, setCtaTitle] = useState<Record<string, string>>({});
   const [ctaDescription, setCtaDescription] = useState<Record<string, string>>({});
   const [ctaButtonText, setCtaButtonText] = useState<Record<string, string>>({});
+  const [ctaRetryText, setCtaRetryText] = useState<Record<string, string>>({});
   const [ctaUrl, setCtaUrl] = useState("");
   
   // Filter state
@@ -165,6 +167,7 @@ export function CTATemplateManager() {
         cta_title: ctaTitle,
         cta_description: ctaDescription,
         cta_text: ctaButtonText,
+        cta_retry_text: ctaRetryText,
         cta_url: ctaUrl.trim() || "https://sparkly.hr",
       })
       .eq("id", editingTemplate.id);
@@ -179,10 +182,11 @@ export function CTATemplateManager() {
         cta_title: ctaTitle,
         cta_description: ctaDescription,
         cta_text: ctaButtonText,
+        cta_retry_text: ctaRetryText,
         cta_url: ctaUrl.trim() || "https://sparkly.hr",
       } : t
     ));
-  }, [selectedQuizId, editingTemplate, ctaTitle, ctaDescription, ctaButtonText, ctaUrl, quizzes]);
+  }, [selectedQuizId, editingTemplate, ctaTitle, ctaDescription, ctaButtonText, ctaRetryText, ctaUrl, quizzes]);
   
   const { status: autoSaveStatus, triggerSave } = useAutoSave({
     onSave: handleAutoSave,
@@ -195,7 +199,7 @@ export function CTATemplateManager() {
   useEffect(() => {
     if (!autoSaveEnabled) return;
     
-    const currentValues = JSON.stringify({ ctaTitle, ctaDescription, ctaButtonText, ctaUrl });
+    const currentValues = JSON.stringify({ ctaTitle, ctaDescription, ctaButtonText, ctaRetryText, ctaUrl });
     if (prevValuesRef.current && prevValuesRef.current !== currentValues) {
       triggerSave();
     }
@@ -208,6 +212,7 @@ export function CTATemplateManager() {
     setCtaTitle({});
     setCtaDescription({});
     setCtaButtonText({});
+    setCtaRetryText({});
     setCtaUrl("https://sparkly.hr");
     setSelectedLanguage("en");
     // Use first quiz if none selected
@@ -222,6 +227,7 @@ export function CTATemplateManager() {
     setCtaTitle(template.cta_title);
     setCtaDescription(template.cta_description);
     setCtaButtonText(template.cta_text);
+    setCtaRetryText(template.cta_retry_text || {});
     setCtaUrl(template.cta_url || "https://sparkly.hr");
     setSelectedQuizId(template.quiz_id);
     setSelectedLanguage("en");
@@ -271,6 +277,7 @@ export function CTATemplateManager() {
         cta_title: (t.cta_title || {}) as Record<string, string>,
         cta_description: (t.cta_description || {}) as Record<string, string>,
         cta_text: (t.cta_text || {}) as Record<string, string>,
+        cta_retry_text: (t.cta_retry_text || {}) as Record<string, string>,
       }));
       setTemplates(typedTemplates);
     } catch (error: any) {
@@ -302,6 +309,7 @@ export function CTATemplateManager() {
       setCtaTitle(latestTemplate.cta_title);
       setCtaDescription(latestTemplate.cta_description);
       setCtaButtonText(latestTemplate.cta_text);
+      setCtaRetryText(latestTemplate.cta_retry_text || {});
       setCtaUrl(latestTemplate.cta_url || "https://sparkly.hr");
     } else {
       // Fall back to quiz table data if no template exists
@@ -310,11 +318,13 @@ export function CTATemplateManager() {
         setCtaTitle(quiz.cta_title || {});
         setCtaDescription(quiz.cta_description || {});
         setCtaButtonText(quiz.cta_text || {});
+        setCtaRetryText({});
         setCtaUrl(quiz.cta_url || "https://sparkly.hr");
       } else {
         setCtaTitle({});
         setCtaDescription({});
         setCtaButtonText({});
+        setCtaRetryText({});
         setCtaUrl("https://sparkly.hr");
       }
     }
@@ -351,6 +361,7 @@ export function CTATemplateManager() {
           cta_title: ctaTitle,
           cta_description: ctaDescription,
           cta_text: ctaButtonText,
+          cta_retry_text: ctaRetryText,
           cta_url: ctaUrl.trim() || "https://sparkly.hr",
           is_live: true, // Always set to live since each quiz has only one CTA
           created_by: user?.id,
@@ -407,6 +418,7 @@ export function CTATemplateManager() {
             cta_title: ctaTitle[selectedLanguage] || "",
             cta_description: ctaDescription[selectedLanguage] || "",
             cta_text: ctaButtonText[selectedLanguage] || "",
+            cta_retry_text: ctaRetryText[selectedLanguage] || "",
           },
         },
       });
@@ -423,6 +435,7 @@ export function CTATemplateManager() {
       if (data.updatedCtaTitle) setCtaTitle(data.updatedCtaTitle);
       if (data.updatedCtaDescription) setCtaDescription(data.updatedCtaDescription);
       if (data.updatedCtaText) setCtaButtonText(data.updatedCtaText);
+      if (data.updatedCtaRetryText) setCtaRetryText(data.updatedCtaRetryText);
     } catch (error: any) {
       console.error("Translation error:", error);
       toast({
@@ -546,6 +559,7 @@ export function CTATemplateManager() {
           cta_title: template.cta_title,
           cta_description: template.cta_description,
           cta_text: template.cta_text,
+          cta_retry_text: template.cta_retry_text,
           cta_url: template.cta_url,
           is_live: false, // Not live until attached to a quiz
           created_by: user?.id,
@@ -977,7 +991,7 @@ export function CTATemplateManager() {
                   {ctaButtonText[selectedLanguage] || "Continue to Sparkly.hr"}
                 </Button>
                 <Button size="sm" variant="outline">
-                  Take Quiz Again
+                  {ctaRetryText[selectedLanguage] || "Take Quiz Again"}
                 </Button>
               </div>
             </div>
@@ -1017,15 +1031,25 @@ export function CTATemplateManager() {
                 </div>
 
                 <div>
-                  <Label htmlFor="cta-url">Button URL (shared)</Label>
+                  <Label htmlFor="cta-retry">Retry Button Text ({selectedLanguage.toUpperCase()})</Label>
                   <Input
-                    id="cta-url"
-                    value={ctaUrl}
-                    onChange={(e) => setCtaUrl(e.target.value)}
-                    placeholder="https://sparkly.hr"
-                    type="url"
+                    id="cta-retry"
+                    value={ctaRetryText[selectedLanguage] || ""}
+                    onChange={(e) => setCtaRetryText({ ...ctaRetryText, [selectedLanguage]: e.target.value })}
+                    placeholder="Take Quiz Again"
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="cta-url">Button URL (shared)</Label>
+                <Input
+                  id="cta-url"
+                  value={ctaUrl}
+                  onChange={(e) => setCtaUrl(e.target.value)}
+                  placeholder="https://sparkly.hr"
+                  type="url"
+                />
               </div>
             </div>
 
