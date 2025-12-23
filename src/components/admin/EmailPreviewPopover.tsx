@@ -37,6 +37,8 @@ interface EmailPreviewPopoverProps {
   // Pre-stored email content from lead record (instant access)
   storedEmailHtml?: string | null;
   storedEmailSubject?: string | null;
+  // When true, show only the icon without the "Prepared" badge
+  iconOnly?: boolean;
 }
 
 export function EmailPreviewPopover({
@@ -49,6 +51,7 @@ export function EmailPreviewPopover({
   EmailIcon,
   storedEmailHtml,
   storedEmailSubject,
+  iconOnly = false,
 }: EmailPreviewPopoverProps) {
   const [open, setOpen] = useState(false);
   const [regeneratedHtml, setRegeneratedHtml] = useState<string | null>(null);
@@ -135,7 +138,7 @@ export function EmailPreviewPopover({
         >
           <EmailIcon className="w-4 h-4" />
         </button>
-        {hasStoredEmail && !canShowSentHtml && (
+        {hasStoredEmail && !canShowSentHtml && !iconOnly && (
           <Badge
             variant="outline"
             className="text-[10px] px-1 py-0 h-4 bg-primary/10 text-primary border-primary/20 cursor-pointer hover:bg-primary/20"

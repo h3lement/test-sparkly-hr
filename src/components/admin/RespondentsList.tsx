@@ -19,7 +19,8 @@ import {
   MailX,
   MailWarning,
   Clock,
-  RotateCcw
+  RotateCcw,
+  Eye
 } from "lucide-react";
 import {
   Tooltip,
@@ -801,6 +802,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                   <ResizableTableHead columnKey="lang" width={columnWidths.lang} onResizeStart={handleMouseDown}>
                     Lang
                   </ResizableTableHead>
+                  <th className="w-10 text-center px-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Eye className="w-4 h-4 mx-auto text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>Preview email body</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </th>
                   <ResizableTableHead columnKey="emailStatus" width={Math.max(columnWidths.emailStatus, 110)} onResizeStart={handleMouseDown} className="text-center">
                     <div className="inline-flex items-center gap-2">
                       <Mail className="w-4 h-4" />
@@ -910,6 +921,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         <Badge variant="secondary" className="uppercase text-xs">
                           {lead.language || 'en'}
                         </Badge>
+                      </AdminTableCell>
+                      <AdminTableCell className="w-10 text-center">
+                        <EmailPreviewPopover
+                          leadId={lead.id}
+                          leadCreatedAt={lead.created_at}
+                          leadType={lead.leadType}
+                          emailLog={emailLogs.get(lead.id)}
+                          emailStatusLabel={emailStatus.label}
+                          emailStatusColor={emailStatus.color}
+                          EmailIcon={Eye}
+                          storedEmailHtml={lead.email_html}
+                          storedEmailSubject={lead.email_subject}
+                          iconOnly
+                        />
                       </AdminTableCell>
                       <AdminTableCell style={{ width: Math.max(columnWidths.emailStatus, 110), minWidth: Math.max(columnWidths.emailStatus, 110) }} align="center">
                         <EmailPreviewPopover
