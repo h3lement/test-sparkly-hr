@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,56 +74,28 @@ async function getEmailConfig(supabase: any): Promise<EmailConfig> {
   return defaults;
 }
 
+// UTF-8 safe base64 encoding (handles any Unicode string)
+function utf8ToBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 // Encode subject line for UTF-8 support (RFC 2047)
 function encodeSubject(subject: string): string {
   if (!/^[\x00-\x7F]*$/.test(subject)) {
-    const encoded = btoa(unescape(encodeURIComponent(subject)));
+    const encoded = utf8ToBase64(subject);
     return `=?UTF-8?B?${encoded}?=`;
   }
   return subject;
 }
 
-function isLatin1(str: string): boolean {
-  return /^[\x00-\xFF]*$/.test(str);
-}
-
-function hasResendConfigured(): boolean {
-  return !!Deno.env.get("RESEND_API_KEY");
-}
-
 function hasSmtpConfigured(config: EmailConfig): boolean {
   return !!(config.smtpHost && config.smtpUsername && config.smtpPassword);
-}
-
-async function sendEmailViaResend(
-  item: EmailQueueItem
-): Promise<{ success: boolean; error: string | null; messageId?: string }> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) {
-    return { success: false, error: "RESEND_API_KEY not configured" };
-  }
-
-  try {
-    const resend = new Resend(apiKey);
-    const from = `${item.sender_name} <${item.sender_email}>`;
-
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [item.recipient_email],
-      subject: item.subject,
-      html: item.html_body,
-      ...(item.reply_to_email ? { reply_to: item.reply_to_email } : {}),
-    });
-
-    if (error) {
-      return { success: false, error: (error as any).message ?? String(error) };
-    }
-
-    return { success: true, error: null, messageId: (data as any)?.id };
-  } catch (error: any) {
-    console.error("Resend send error:", error);
-    return { success: false, error: error?.message || "Resend send failed" };
-  }
 }
 
 async function sendEmailViaSMTP(
@@ -133,14 +104,6 @@ async function sendEmailViaSMTP(
 ): Promise<{ success: boolean; error: string | null; messageId?: string }> {
   if (!hasSmtpConfigured(config)) {
     return { success: false, error: "SMTP not configured - missing host, username, or password" };
-  }
-
-  // Check for Latin1 compatibility
-  if (!isLatin1(config.smtpUsername) || !isLatin1(config.smtpPassword)) {
-    return {
-      success: false,
-      error: "SMTP credentials contain non-Latin1 characters. Configure Resend API or use ASCII-only SMTP credentials.",
-    };
   }
 
   try {
@@ -180,21 +143,6 @@ async function sendEmailViaSMTP(
     console.error("SMTP send error:", error);
     return { success: false, error: error?.message || "SMTP send failed" };
   }
-}
-
-async function sendEmail(
-  config: EmailConfig,
-  item: EmailQueueItem
-): Promise<{ success: boolean; error: string | null; messageId?: string }> {
-  // Prefer Resend API if configured (avoids SMTP Latin1 issues)
-  if (hasResendConfigured()) {
-    console.log(`Sending via Resend to: ${item.recipient_email}`);
-    return await sendEmailViaResend(item);
-  }
-
-  // Fall back to SMTP
-  console.log(`Sending via SMTP to: ${item.recipient_email}`);
-  return await sendEmailViaSMTP(config, item);
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -273,7 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const email of pendingEmails as EmailQueueItem[]) {
       console.log(`Sending email to: ${email.recipient_email}, type: ${email.email_type}`);
       
-      const result = await sendEmail(emailConfig, email);
+      const result = await sendEmailViaSMTP(emailConfig, email);
 
       if (result.success) {
         // Update queue item as sent

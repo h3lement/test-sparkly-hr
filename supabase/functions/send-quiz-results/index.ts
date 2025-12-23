@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,60 +129,28 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function isLatin1(str: string): boolean {
-  return /^[\x00-\xFF]*$/.test(str);
-}
-
-function hasResendConfigured(): boolean {
-  return !!Deno.env.get("RESEND_API_KEY");
+// UTF-8 safe base64 encoding
+function utf8ToBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 function hasSmtpConfigured(config: EmailConfigSettings): boolean {
   return !!(config.smtpHost && config.smtpUsername && config.smtpPassword);
 }
 
-function isEmailServiceConfigured(config: EmailConfigSettings): boolean {
-  return hasResendConfigured() || hasSmtpConfigured(config);
-}
-
-// Encode subject line for UTF-8 support (RFC 2047) - only used for SMTP fallback
+// Encode subject line for UTF-8 support (RFC 2047)
 function encodeSubject(subject: string): string {
   if (!/^[\x00-\x7F]*$/.test(subject)) {
-    const encoded = btoa(unescape(encodeURIComponent(subject)));
+    const encoded = utf8ToBase64(subject);
     return `=?UTF-8?B?${encoded}?=`;
   }
   return subject;
-}
-
-async function sendEmailViaResend(
-  config: EmailConfigSettings,
-  emailParams: SendEmailParams
-): Promise<{ success: boolean; error: string | null; messageId?: string }> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) {
-    return { success: false, error: "RESEND_API_KEY not configured" };
-  }
-
-  try {
-    const resend = new Resend(apiKey);
-
-    const { data, error } = await resend.emails.send({
-      from: emailParams.from,
-      to: emailParams.to,
-      subject: emailParams.subject,
-      html: emailParams.html,
-      ...(emailParams.replyTo ? { reply_to: emailParams.replyTo } : {}),
-    });
-
-    if (error) {
-      return { success: false, error: (error as any).message ?? String(error) };
-    }
-
-    return { success: true, error: null, messageId: (data as any)?.id };
-  } catch (error: any) {
-    console.error("Resend send error:", error);
-    return { success: false, error: error?.message || "Resend send failed" };
-  }
 }
 
 async function sendEmailWithRetry(
@@ -193,33 +160,9 @@ async function sendEmailWithRetry(
   let lastError: string | null = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    console.log(
-      `Email send attempt ${attempt}/${MAX_RETRIES} (${hasResendConfigured() ? "resend" : "smtp"}) to: ${emailParams.to.join(", ")}`
-    );
+    console.log(`Email send attempt ${attempt}/${MAX_RETRIES} (smtp) to: ${emailParams.to.join(", ")}`);
 
     try {
-      // Prefer Resend API if configured (avoids SMTP btoa/Latin1 issues)
-      if (hasResendConfigured()) {
-        const res = await sendEmailViaResend(config, emailParams);
-        if (res.success) {
-          console.log(`Email sent successfully on attempt ${attempt}`);
-          return { success: true, error: null, attempts: attempt, messageId: res.messageId };
-        }
-
-        lastError = res.error || "Unknown Resend error";
-        throw new Error(lastError);
-      }
-
-      // SMTP fallback
-      if (!isLatin1(config.smtpUsername) || !isLatin1(config.smtpPassword)) {
-        return {
-          success: false,
-          error:
-            "SMTP credentials contain non-Latin1 characters. Configure Resend sending or use ASCII-only SMTP credentials.",
-          attempts: attempt,
-        };
-      }
-
       const client = await createSmtpClient(config);
       if (!client) {
         return { success: false, error: "SMTP not configured", attempts: attempt };
