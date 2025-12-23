@@ -1751,28 +1751,50 @@ const handler = async (req: Request): Promise<Response> => {
           dynamicContent
         });
 
-        // Queue user email
+        // Check for duplicate user email before queuing
+        const { data: existingUserEmail } = await supabase
+          .from("email_queue")
+          .select("id")
+          .eq("quiz_lead_id", quizLeadId)
+          .eq("email_type", "quiz_result_user")
+          .in("status", ["pending", "processing", "sent"])
+          .limit(1)
+          .maybeSingle();
+
+        const { data: existingUserLog } = await supabase
+          .from("email_logs")
+          .select("id")
+          .eq("quiz_lead_id", quizLeadId)
+          .eq("email_type", "quiz_result_user")
+          .limit(1)
+          .maybeSingle();
+
+        // Queue user email only if not already sent/queued
         const finalResultTitle = dynamicContent?.resultTitle || resultTitle;
         const userEmailSubject = `${emailSubject}: ${escapeHtml(finalResultTitle)}`;
         
-        console.log("Background task: Queuing user email to:", email);
-        const { error: userQueueError } = await supabase.from("email_queue").insert({
-          recipient_email: email,
-          sender_email: senderEmail,
-          sender_name: senderName,
-          subject: userEmailSubject,
-          html_body: emailHtml,
-          email_type: "quiz_result_user",
-          quiz_lead_id: quizLeadId,
-          quiz_id: quizId || null,
-          language: language,
-          reply_to_email: emailConfig.replyToEmail || null,
-        });
+        if (!existingUserEmail && !existingUserLog) {
+          console.log("Background task: Queuing user email to:", email);
+          const { error: userQueueError } = await supabase.from("email_queue").insert({
+            recipient_email: email,
+            sender_email: senderEmail,
+            sender_name: senderName,
+            subject: userEmailSubject,
+            html_body: emailHtml,
+            email_type: "quiz_result_user",
+            quiz_lead_id: quizLeadId,
+            quiz_id: quizId || null,
+            language: language,
+            reply_to_email: emailConfig.replyToEmail || null,
+          });
 
-        if (userQueueError) {
-          console.error("Background task: Error queuing user email:", userQueueError);
+          if (userQueueError) {
+            console.error("Background task: Error queuing user email:", userQueueError);
+          } else {
+            console.log("Background task: User email queued successfully");
+          }
         } else {
-          console.log("Background task: User email queued successfully");
+          console.log("Background task: User email already queued/sent for lead:", quizLeadId);
         }
 
         // Queue admin notification email
@@ -1822,26 +1844,48 @@ const handler = async (req: Request): Promise<Response> => {
           </html>
         `;
 
+        // Check for duplicate admin email before queuing
+        const { data: existingAdminEmail } = await supabase
+          .from("email_queue")
+          .select("id")
+          .eq("quiz_lead_id", quizLeadId)
+          .eq("email_type", "quiz_result_admin")
+          .in("status", ["pending", "processing", "sent"])
+          .limit(1)
+          .maybeSingle();
+
+        const { data: existingAdminLog } = await supabase
+          .from("email_logs")
+          .select("id")
+          .eq("quiz_lead_id", quizLeadId)
+          .eq("email_type", "quiz_result_admin")
+          .limit(1)
+          .maybeSingle();
+
         const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitleAdmin}`;
         
-        console.log("Background task: Queuing admin email to: mikk@sparkly.hr");
-        const { error: adminQueueError } = await supabase.from("email_queue").insert({
-          recipient_email: "mikk@sparkly.hr",
-          sender_email: senderEmail,
-          sender_name: `${senderName} Quiz`,
-          subject: adminEmailSubject,
-          html_body: adminEmailHtml,
-          email_type: "quiz_result_admin",
-          quiz_lead_id: quizLeadId,
-          quiz_id: quizId || null,
-          language: language,
-          reply_to_email: emailConfig.replyToEmail || null,
-        });
+        if (!existingAdminEmail && !existingAdminLog) {
+          console.log("Background task: Queuing admin email to: mikk@sparkly.hr");
+          const { error: adminQueueError } = await supabase.from("email_queue").insert({
+            recipient_email: "mikk@sparkly.hr",
+            sender_email: senderEmail,
+            sender_name: `${senderName} Quiz`,
+            subject: adminEmailSubject,
+            html_body: adminEmailHtml,
+            email_type: "quiz_result_admin",
+            quiz_lead_id: quizLeadId,
+            quiz_id: quizId || null,
+            language: language,
+            reply_to_email: emailConfig.replyToEmail || null,
+          });
 
-        if (adminQueueError) {
-          console.error("Background task: Error queuing admin email:", adminQueueError);
+          if (adminQueueError) {
+            console.error("Background task: Error queuing admin email:", adminQueueError);
+          } else {
+            console.log("Background task: Admin email queued successfully");
+          }
         } else {
-          console.log("Background task: Admin email queued successfully");
+          console.log("Background task: Admin email already queued/sent for lead:", quizLeadId);
         }
 
         console.log("Background task: Email queuing complete");

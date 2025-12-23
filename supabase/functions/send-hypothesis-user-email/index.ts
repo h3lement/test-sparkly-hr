@@ -354,6 +354,43 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check for duplicate - skip if user email already sent/queued for this lead
+    if (leadId) {
+      const { data: existingEmail } = await supabase
+        .from("email_queue")
+        .select("id")
+        .eq("hypothesis_lead_id", leadId)
+        .eq("email_type", "quiz_result_user")
+        .in("status", ["pending", "processing", "sent"])
+        .limit(1)
+        .maybeSingle();
+
+      if (existingEmail) {
+        console.log("User email already queued/sent for lead:", leadId);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: "duplicate" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Also check email_logs
+      const { data: existingLog } = await supabase
+        .from("email_logs")
+        .select("id")
+        .eq("hypothesis_lead_id", leadId)
+        .eq("email_type", "quiz_result_user")
+        .limit(1)
+        .maybeSingle();
+
+      if (existingLog) {
+        console.log("User email already logged for lead:", leadId);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: "duplicate" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+
     const emailConfig = await getEmailConfig(supabase);
     const trans = emailTranslations[language] || emailTranslations['en'];
 
