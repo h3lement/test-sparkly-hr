@@ -20,7 +20,9 @@ import {
   MailOpen,
   MailX,
   MailWarning,
-  Clock
+  Clock,
+  Loader2,
+  Eye
 } from "lucide-react";
 import {
   Tooltip,
@@ -28,12 +30,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -51,6 +47,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { RespondentsGrowthChart, type DateRangeOption } from "./RespondentsGrowthChart";
+import { EmailPreviewPopover } from "./EmailPreviewPopover";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import type { Json } from "@/integrations/supabase/types";
@@ -791,99 +788,15 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           </Badge>
                         </AdminTableCell>
                         <AdminTableCell align="center">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className={cn(
-                                  "inline-flex items-center justify-center p-1.5 rounded-md hover:bg-secondary/80 transition-colors",
-                                  emailStatus.color
-                                )}
-                                title={emailStatus.label}
-                                aria-label={`Email preview: ${emailStatus.label}`}
-                              >
-                                <EmailIcon className="w-4 h-4" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-[420px] max-w-[80vw] p-0"
-                              align="end"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(() => {
-                                const log = emailLogs.get(lead.id);
-
-                                // No email for this respondent
-                                if (!log) {
-                                  return (
-                                    <div className="p-4 space-y-2">
-                                      <div className="flex items-center justify-between">
-                                        <Badge variant="secondary" className="text-xs">{emailStatus.label}</Badge>
-                                        <span className="text-xs text-muted-foreground">
-                                          Submitted: {formatTimestamp(lead.created_at)}
-                                        </span>
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        No email log found for this respondent.
-                                      </p>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div className="flex flex-col">
-                                    <div className="p-3 border-b border-border space-y-1.5">
-                                      <div className="flex items-center justify-between">
-                                        <Badge className={cn(
-                                          "text-xs",
-                                          log.bounced_at ? "bg-destructive/10 text-destructive" :
-                                          log.clicked_at ? "bg-green-500/10 text-green-600" :
-                                          log.opened_at ? "bg-blue-500/10 text-blue-500" :
-                                          log.delivery_status === "delivered" ? "bg-green-500/10 text-green-500" :
-                                          "bg-primary/10 text-primary"
-                                        )}>
-                                          {emailStatus.label}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground">
-                                          {formatTimestamp(log.created_at)}
-                                        </span>
-                                      </div>
-                                      <p className="text-sm font-medium truncate" title={log.subject}>
-                                        {log.subject}
-                                      </p>
-                                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                        {log.delivered_at && (
-                                          <span>Delivered: {formatTimestamp(log.delivered_at)}</span>
-                                        )}
-                                        {log.opened_at && (
-                                          <span>Opened: {formatTimestamp(log.opened_at)}</span>
-                                        )}
-                                        {log.clicked_at && (
-                                          <span>Clicked: {formatTimestamp(log.clicked_at)}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {log.html_body ? (
-                                      <ScrollArea className="h-[320px]">
-                                        <iframe
-                                          srcDoc={log.html_body}
-                                          className="w-full border-0 bg-white"
-                                          style={{ height: "320px" }}
-                                          title="Email Preview"
-                                          sandbox="allow-same-origin"
-                                        />
-                                      </ScrollArea>
-                                    ) : (
-                                      <div className="p-4 text-center text-sm text-muted-foreground">
-                                        No email preview available
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </PopoverContent>
-                          </Popover>
+                          <EmailPreviewPopover
+                            leadId={lead.id}
+                            leadCreatedAt={lead.created_at}
+                            hasAnswers={lead.answers !== null}
+                            emailLog={emailLogs.get(lead.id)}
+                            emailStatusLabel={emailStatus.label}
+                            emailStatusColor={emailStatus.color}
+                            EmailIcon={EmailIcon}
+                          />
                         </AdminTableCell>
                         <AdminTableCell>
                           <span className="text-sm text-muted-foreground">{formatTimestamp(lead.created_at)}</span>
