@@ -151,7 +151,7 @@ export function QuizQuestion() {
 
       {/* Keyboard hint */}
       <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
-        Press 1-4 to select, ↑↓ to navigate, Enter to confirm
+        {t('keyboardHintArrows')}
       </p>
 
       {/* Answers */}
