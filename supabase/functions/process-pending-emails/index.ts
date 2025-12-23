@@ -190,11 +190,11 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Now get pending notifications that are either:
     // 1. Status 'pending' and created more than 30 seconds ago (give frontend time to send)
-    // 2. Status 'failed' with attempts < max_attempts
+    // 2. Status 'failed' with attempts < max_attempts (default max is 3)
     const { data: pendingItems, error: fetchError } = await supabase
       .from("pending_email_notifications")
       .select("*")
-      .or(`and(status.eq.pending,created_at.lt.${thirtySecondsAgo}),and(status.eq.failed,attempts.lt.max_attempts)`)
+      .or(`and(status.eq.pending,created_at.lt.${thirtySecondsAgo}),and(status.eq.failed,attempts.lt.3)`)
       .order("created_at", { ascending: true })
       .limit(10);
     
