@@ -734,7 +734,7 @@ export function CTATemplateManager() {
                       onClick={() => handleOpenEditor(template)}
                       title="Click to edit"
                     >
-                      {template.name || "Untitled CTA"}
+                      {template.cta_title?.en || template.name || "Untitled CTA"}
                     </div>
                     <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
                       {template.cta_text?.en || template.cta_text?.et || "—"}
