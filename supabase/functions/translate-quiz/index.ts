@@ -48,7 +48,17 @@ const UI_TEXT_KEYS = [
   "openMindedness_psychology", "openMindedness_humanDesign", "openMindedness_hint",
   "keyboardHint", "finalQuestion", "leadershipOpenMindedness",
   "openMindednessHigh", "openMindednessMedium", "openMindednessLow", "openMindednessNone",
-  "allRightsReserved",
+  "allRightsReserved", "keyboardHintArrows",
+  // Emotional Results Screen
+  "yourEmotionalProfile", "averageScore", "levelLabel", "commonExperiences",
+  "commonExperiencesDesc", "pathForward", "pathForwardDesc", "sedonaScaleTitle",
+  "emotionalCtaTitle", "emotionalCtaDesc", "takeAssessmentAgain",
+  // Sedona Scale levels
+  "sedonaApathy", "sedonaApathyDesc", "sedonaGrief", "sedonaGriefDesc",
+  "sedonaFear", "sedonaFearDesc", "sedonaLust", "sedonaLustDesc",
+  "sedonaAnger", "sedonaAngerDesc", "sedonaPride", "sedonaPrideDesc",
+  "sedonaCourage", "sedonaCourageDesc", "sedonaAcceptance", "sedonaAcceptanceDesc",
+  "sedonaPeace", "sedonaPeaceDesc",
 ];
 
 // Default English UI texts
@@ -96,6 +106,7 @@ const DEFAULT_UI_TEXTS: Record<string, string> = {
   openMindedness_humanDesign: "Human Design methodology",
   openMindedness_hint: "Select all methods you are open to exploring. Your choices help us understand your leadership style.",
   keyboardHint: "Use Tab to navigate, Space to toggle",
+  keyboardHintArrows: "Use ↑↓ to navigate, Enter to confirm",
   finalQuestion: "Question {current} of {total}, final question",
   leadershipOpenMindedness: "Open-Minded Leadership",
   openMindednessHigh: "Highly open-minded - You embrace diverse approaches",
@@ -103,6 +114,37 @@ const DEFAULT_UI_TEXTS: Record<string, string> = {
   openMindednessLow: "Somewhat rigid - You prefer traditional approaches",
   openMindednessNone: "Very rigid - You rely solely on conventional methods",
   allRightsReserved: "All rights reserved.",
+  // Emotional Results Screen
+  yourEmotionalProfile: "Your Emotional Profile",
+  averageScore: "Average Score (1-9 scale)",
+  levelLabel: "Level",
+  commonExperiences: "Common Experiences",
+  commonExperiencesDesc: "People in this emotional state often experience:",
+  pathForward: "Path Forward",
+  pathForwardDesc: "Steps to support your emotional growth:",
+  sedonaScaleTitle: "The Sedona Emotional Scale",
+  emotionalCtaTitle: "Ready for Deeper Self-Understanding?",
+  emotionalCtaDesc: "This assessment provides insights into your current emotional state. For personalized guidance and support, continue to our resources.",
+  takeAssessmentAgain: "Take Assessment Again",
+  // Sedona Scale levels
+  sedonaApathy: "Apathy",
+  sedonaApathyDesc: "I can't, it's no use",
+  sedonaGrief: "Grief",
+  sedonaGriefDesc: "Pain about loss",
+  sedonaFear: "Fear",
+  sedonaFearDesc: "Anticipated danger",
+  sedonaLust: "Lust",
+  sedonaLustDesc: "Intense wanting",
+  sedonaAnger: "Anger",
+  sedonaAngerDesc: "Wanting to change",
+  sedonaPride: "Pride",
+  sedonaPrideDesc: "I'm right / better",
+  sedonaCourage: "Courage",
+  sedonaCourageDesc: "Willingness to act",
+  sedonaAcceptance: "Acceptance",
+  sedonaAcceptanceDesc: "Allowing what is",
+  sedonaPeace: "Peace",
+  sedonaPeaceDesc: "Inner stillness",
 };
 
 // Cost per 1K tokens (approximate for gemini-2.5-flash)
