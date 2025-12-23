@@ -42,7 +42,9 @@ import {
   ArrowDown,
   ArrowUpDown,
   Settings,
-  History
+  History,
+  Loader2,
+  Inbox
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
@@ -85,6 +87,13 @@ interface EmailLogsMonitorProps {
   onEmailFilterCleared?: () => void;
 }
 
+interface QueueStats {
+  pending: number;
+  processing: number;
+  failed: number;
+  lastProcessed: string | null;
+}
+
 export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFilterCleared }: EmailLogsMonitorProps = {}) {
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -98,6 +107,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
+  const [queueStats, setQueueStats] = useState<QueueStats>({ pending: 0, processing: 0, failed: 0, lastProcessed: null });
+  const [queueLoading, setQueueLoading] = useState(false);
   const [sortColumns, setSortColumns] = useState<Array<{ column: string; direction: "asc" | "desc" }>>(() => {
     try {
       const stored = localStorage.getItem("email-logs-sort-preferences");
@@ -160,9 +171,46 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     }
   }, [toast]);
 
+  const fetchQueueStats = useCallback(async () => {
+    setQueueLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("email_queue")
+        .select("status, sent_at")
+        .in("status", ["pending", "processing", "failed"]);
+
+      if (error) throw error;
+
+      const pending = data?.filter((d) => d.status === "pending").length || 0;
+      const processing = data?.filter((d) => d.status === "processing").length || 0;
+      const failed = data?.filter((d) => d.status === "failed").length || 0;
+
+      // Get last processed time
+      const { data: lastSent } = await supabase
+        .from("email_queue")
+        .select("sent_at")
+        .eq("status", "sent")
+        .order("sent_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setQueueStats({
+        pending,
+        processing,
+        failed,
+        lastProcessed: lastSent?.sent_at || null,
+      });
+    } catch (error) {
+      console.error("Error fetching queue stats:", error);
+    } finally {
+      setQueueLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLogs();
-  }, [fetchLogs]);
+    fetchQueueStats();
+  }, [fetchLogs, fetchQueueStats]);
 
   // Handle initial email filter changes
   useEffect(() => {
@@ -172,9 +220,9 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     }
   }, [initialEmailFilter]);
 
-  // Realtime subscription
+  // Realtime subscription for both email_logs and email_queue
   useEffect(() => {
-    const channel = supabase
+    const logsChannel = supabase
       .channel("email-logs-realtime")
       .on(
         "postgres_changes",
@@ -185,10 +233,22 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       )
       .subscribe();
 
+    const queueChannel = supabase
+      .channel("email-queue-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "email_queue" },
+        () => {
+          fetchQueueStats();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(queueChannel);
     };
-  }, [fetchLogs]);
+  }, [fetchLogs, fetchQueueStats]);
 
   const resendEmail = async (logId: string) => {
     setResendingId(logId);
@@ -471,11 +531,43 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
         <div className="flex items-center gap-3">
           {activeTab === "history" && (
             <>
+              {/* Queue Status Block */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border">
+                <Inbox className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Queue:</span>
+                {queueLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                ) : (
+                  <div className="flex items-center gap-2 text-sm">
+                    {queueStats.pending > 0 && (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <Clock className="h-3 w-3" />
+                        {queueStats.pending}
+                      </span>
+                    )}
+                    {queueStats.processing > 0 && (
+                      <span className="flex items-center gap-1 text-blue-600">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        {queueStats.processing}
+                      </span>
+                    )}
+                    {queueStats.failed > 0 && (
+                      <span className="flex items-center gap-1 text-red-600">
+                        <AlertCircle className="h-3 w-3" />
+                        {queueStats.failed}
+                      </span>
+                    )}
+                    {queueStats.pending === 0 && queueStats.processing === 0 && queueStats.failed === 0 && (
+                      <span className="text-muted-foreground">Empty</span>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-1.5 text-sm text-green-600">
                 <Wifi className="h-4 w-4" />
                 <span>Live</span>
               </div>
-              <Button onClick={fetchLogs} variant="outline" size="sm" disabled={loading}>
+              <Button onClick={() => { fetchLogs(); fetchQueueStats(); }} variant="outline" size="sm" disabled={loading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>

@@ -1450,16 +1450,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Email sending will happen in background
     console.log("Returning success to user, starting background email task...");
 
-    // Define the background email task
-    const sendEmailsInBackground = async () => {
-      console.log("Background task: Starting email sending...");
+    // Define the background email task - now queues emails instead of sending directly
+    const queueEmailsInBackground = async () => {
+      console.log("Background task: Queuing emails...");
       
       try {
-        if (!isEmailServiceConfigured(emailConfig)) {
-          console.error("Background task: Email service not configured");
-          return;
-        }
-
         // Fetch email template configuration
         let templateData = null;
         if (quizId) {
@@ -1512,38 +1507,31 @@ const handler = async (req: Request): Promise<Response> => {
           dynamicContent
         });
 
-        // Send user email
-        console.log("Background task: Sending user email to:", email);
+        // Queue user email
         const finalResultTitle = dynamicContent?.resultTitle || resultTitle;
         const userEmailSubject = `${emailSubject}: ${escapeHtml(finalResultTitle)}`;
-        const userEmailResponse = await sendEmailWithRetry(emailConfig, {
-          from: `${senderName} <${senderEmail}>`,
-          to: [email],
-          subject: userEmailSubject,
-          html: emailHtml,
-          replyTo: emailConfig.replyToEmail || undefined,
-        });
-
-        console.log("Background task: User email response:", JSON.stringify(userEmailResponse));
         
-        // Log user email
-        await supabase.from("email_logs").insert({
-          email_type: "quiz_result_user",
+        console.log("Background task: Queuing user email to:", email);
+        const { error: userQueueError } = await supabase.from("email_queue").insert({
           recipient_email: email,
           sender_email: senderEmail,
           sender_name: senderName,
           subject: userEmailSubject,
-          status: userEmailResponse.success ? "sent" : "failed",
-          resend_id: userEmailResponse.messageId || null,
-          error_message: userEmailResponse.error || null,
-          language: language,
-          quiz_lead_id: quizLeadId,
-          resend_attempts: userEmailResponse.attempts - 1,
-          last_attempt_at: new Date().toISOString(),
           html_body: emailHtml,
+          email_type: "quiz_result_user",
+          quiz_lead_id: quizLeadId,
+          quiz_id: quizId || null,
+          language: language,
+          reply_to_email: emailConfig.replyToEmail || null,
         });
 
-        // Send admin notification email
+        if (userQueueError) {
+          console.error("Background task: Error queuing user email:", userQueueError);
+        } else {
+          console.log("Background task: User email queued successfully");
+        }
+
+        // Queue admin notification email
         const adminTrans = emailTranslations.en;
         const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
         const safeEmail = escapeHtml(email);
@@ -1587,49 +1575,43 @@ const handler = async (req: Request): Promise<Response> => {
           </html>
         `;
 
-        console.log("Background task: Sending admin email to: mikk@sparkly.hr");
         const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
-        const adminEmailResponse = await sendEmailWithRetry(emailConfig, {
-          from: `${senderName} Quiz <${senderEmail}>`,
-          to: ["mikk@sparkly.hr"],
-          subject: adminEmailSubject,
-          html: adminEmailHtml,
-          replyTo: emailConfig.replyToEmail || undefined,
-        });
-
-        console.log("Background task: Admin email response:", JSON.stringify(adminEmailResponse));
-
-        await supabase.from("email_logs").insert({
-          email_type: "quiz_result_admin",
+        
+        console.log("Background task: Queuing admin email to: mikk@sparkly.hr");
+        const { error: adminQueueError } = await supabase.from("email_queue").insert({
           recipient_email: "mikk@sparkly.hr",
           sender_email: senderEmail,
-          sender_name: senderName,
+          sender_name: `${senderName} Quiz`,
           subject: adminEmailSubject,
-          status: adminEmailResponse.success ? "sent" : "failed",
-          resend_id: adminEmailResponse.messageId || null,
-          error_message: adminEmailResponse.error || null,
-          language: language,
-          quiz_lead_id: quizLeadId,
-          resend_attempts: adminEmailResponse.attempts - 1,
-          last_attempt_at: new Date().toISOString(),
           html_body: adminEmailHtml,
+          email_type: "quiz_result_admin",
+          quiz_lead_id: quizLeadId,
+          quiz_id: quizId || null,
+          language: language,
+          reply_to_email: emailConfig.replyToEmail || null,
         });
 
-        console.log("Background task: Email sending complete");
+        if (adminQueueError) {
+          console.error("Background task: Error queuing admin email:", adminQueueError);
+        } else {
+          console.log("Background task: Admin email queued successfully");
+        }
+
+        console.log("Background task: Email queuing complete");
       } catch (bgError) {
-        console.error("Background task: Error sending emails:", bgError);
+        console.error("Background task: Error queuing emails:", bgError);
       }
     };
 
     // Start the background task using EdgeRuntime.waitUntil
-    // This allows the function to return immediately while emails are sent in background
+    // This allows the function to return immediately while emails are queued in background
     // @ts-ignore - EdgeRuntime is available in Deno Deploy
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(sendEmailsInBackground());
+      EdgeRuntime.waitUntil(queueEmailsInBackground());
     } else {
       // Fallback: run in background without waiting (fire and forget)
-      sendEmailsInBackground();
+      queueEmailsInBackground();
     }
 
     // Return success immediately - lead is already stored
