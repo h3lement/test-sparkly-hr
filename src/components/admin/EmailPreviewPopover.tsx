@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,41 @@ interface EmailPreviewPopoverProps {
   prefetchLoading?: boolean;
 }
 
+type RenderEmailPreviewBody = { leadId: string; leadType: "quiz" | "hypothesis" };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function invokeRenderEmailPreview(
+  body: RenderEmailPreviewBody,
+  opts?: { retries?: number }
+): Promise<any> {
+  const retries = opts?.retries ?? 1;
+  let lastErr: any = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const { data, error } = await supabase.functions.invoke("render-email-preview", {
+      body,
+    });
+
+    if (!error) return data;
+
+    lastErr = error;
+    const status = (error as any)?.status;
+    const msg = String((error as any)?.message ?? "");
+    const isBootError =
+      status === 503 || msg.includes("BOOT_ERROR") || msg.toLowerCase().includes("failed to start");
+
+    if (isBootError && attempt < retries) {
+      await sleep(1200 * (attempt + 1));
+      continue;
+    }
+
+    throw error;
+  }
+
+  throw lastErr ?? new Error("Failed to render email preview");
+}
+
 export function EmailPreviewPopover({
   leadId,
   leadCreatedAt,
@@ -69,11 +105,10 @@ export function EmailPreviewPopover({
     if ((!force && previewHtml) || localLoading) return;
     setLocalLoading(true);
     setPreviewError(null);
+
     try {
-      const { data, error } = await supabase.functions.invoke("render-email-preview", {
-        body: { leadId, leadType },
-      });
-      if (error) throw error;
+      const data = await invokeRenderEmailPreview({ leadId, leadType }, { retries: 1 });
+
       setLocalHtml(data?.html ?? null);
       setLocalSubject(data?.subject ?? null);
       if (!data?.html) {
@@ -81,7 +116,7 @@ export function EmailPreviewPopover({
       }
     } catch (err: any) {
       console.error("Failed to fetch email preview:", err);
-      setPreviewError(err.message || "Failed to load preview");
+      setPreviewError(err?.message || `Failed to load preview (${leadType}: ${leadId})`);
     } finally {
       setLocalLoading(false);
     }
@@ -207,17 +242,17 @@ export async function prefetchEmailPreviews(
   leads: { id: string; leadType: "quiz" | "hypothesis" }[]
 ): Promise<Map<string, { html: string; subject: string }>> {
   const results = new Map<string, { html: string; subject: string }>();
-  
-  // Process in batches of 5 to avoid overwhelming the edge function
+
+  // Process in batches to avoid overwhelming the backend function
   const batchSize = 5;
   for (let i = 0; i < leads.length; i += batchSize) {
     const batch = leads.slice(i, i + batchSize);
     const promises = batch.map(async (lead) => {
       try {
-        const { data, error } = await supabase.functions.invoke("render-email-preview", {
-          body: { leadId: lead.id, leadType: lead.leadType },
-        });
-        if (error) throw error;
+        const data = await invokeRenderEmailPreview(
+          { leadId: lead.id, leadType: lead.leadType },
+          { retries: 1 }
+        );
         if (data?.html) {
           results.set(lead.id, { html: data.html, subject: data.subject || "" });
         }
@@ -227,6 +262,6 @@ export async function prefetchEmailPreviews(
     });
     await Promise.all(promises);
   }
-  
+
   return results;
 }

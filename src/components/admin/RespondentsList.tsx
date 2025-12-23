@@ -542,7 +542,11 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+
+  const paginatedLeads = useMemo(
+    () => filteredLeads.slice(startIndex, endIndex),
+    [filteredLeads, startIndex, endIndex]
+  );
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -554,22 +558,33 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [prefetching, setPrefetching] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Clear previous page cache immediately to avoid showing mismatched previews
+    setPrefetchedPreviews(new Map());
+
     // Prefetch email previews for leads that don't have sent email logs
     const leadsWithoutSentEmail = paginatedLeads.filter((lead) => !emailLogs.has(lead.id));
     if (leadsWithoutSentEmail.length === 0) {
-      setPrefetchedPreviews(new Map());
-      return;
+      setPrefetching(false);
+      return () => {
+        cancelled = true;
+      };
     }
 
     // Prefetch in background
     setPrefetching(true);
     prefetchEmailPreviews(leadsWithoutSentEmail)
       .then((results) => {
-        setPrefetchedPreviews(results);
+        if (!cancelled) setPrefetchedPreviews(results);
       })
       .finally(() => {
-        setPrefetching(false);
+        if (!cancelled) setPrefetching(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [paginatedLeads, emailLogs]);
 
   const handlePageChange = (page: number) => {

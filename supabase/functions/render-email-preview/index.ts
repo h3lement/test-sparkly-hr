@@ -401,45 +401,47 @@ const handler = async (req: Request): Promise<Response> => {
     let opennessScore: number | undefined;
     let language = 'en';
 
-    if (leadType === 'quiz') {
+    const fetchLead = async (type: 'quiz' | 'hypothesis') => {
+      const table = type === 'quiz' ? 'quiz_leads' : 'hypothesis_leads';
       const { data, error } = await supabase
-        .from('quiz_leads')
+        .from(table)
         .select('*')
         .eq('id', leadId)
-        .single();
-      
-      if (error || !data) {
+        .maybeSingle();
+
+      if (error) {
+        console.warn(`Error fetching lead from ${table}: ${error.message}`);
+        return { type, data: null as any };
+      }
+
+      return { type, data };
+    };
+
+    let leadTypeUsed: 'quiz' | 'hypothesis' = leadType;
+    let leadResult = await fetchLead(leadType);
+
+    // Fallback: if the requested leadType is wrong, try the other table before failing.
+    if (!leadResult.data) {
+      const fallbackType: 'quiz' | 'hypothesis' = leadType === 'quiz' ? 'hypothesis' : 'quiz';
+      console.log(`Lead ${leadId} not found in ${leadType}, trying ${fallbackType}`);
+      leadResult = await fetchLead(fallbackType);
+
+      if (!leadResult.data) {
         return new Response(
-          JSON.stringify({ error: "Quiz lead not found" }),
+          JSON.stringify({ error: "Lead not found", leadId, leadTypeRequested: leadType }),
           { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-      lead = data;
-      quizId = data.quiz_id;
-      score = data.score;
-      totalQuestions = data.total_questions;
-      opennessScore = data.openness_score ?? undefined;
-      language = data.language || 'en';
-    } else {
-      const { data, error } = await supabase
-        .from('hypothesis_leads')
-        .select('*')
-        .eq('id', leadId)
-        .single();
-      
-      if (error || !data) {
-        return new Response(
-          JSON.stringify({ error: "Hypothesis lead not found" }),
-          { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-      lead = data;
-      quizId = data.quiz_id;
-      score = data.score;
-      totalQuestions = data.total_questions;
-      opennessScore = data.openness_score ?? undefined;
-      language = data.language || 'en';
+
+      leadTypeUsed = fallbackType;
     }
+
+    lead = leadResult.data;
+    quizId = lead.quiz_id;
+    score = lead.score;
+    totalQuestions = lead.total_questions;
+    opennessScore = lead.openness_score ?? undefined;
+    language = lead.language || 'en';
 
     if (!quizId) {
       return new Response(
@@ -488,7 +490,7 @@ const handler = async (req: Request): Promise<Response> => {
       ? `${dynamicContent.emoji} ${dynamicContent.resultTitle}` 
       : trans.subject;
 
-    console.log(`Email preview rendered for ${leadType} lead ${leadId}`);
+    console.log(`Email preview rendered for ${leadTypeUsed} lead ${leadId}`);
 
     return new Response(
       JSON.stringify({ 
