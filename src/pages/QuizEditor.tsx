@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useDirtyTracking, useQuestionsDirtyTracking } from "@/hooks/useDirtyTracking";
-import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle, FileQuestion } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle, FileQuestion, MonitorPlay } from "lucide-react";
+import { QuizPreviewDialog } from "@/components/admin/QuizPreviewDialog";
 import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
 import { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
 import { RegenerationDialog, type RegenerationType } from "@/components/admin/RegenerationDialog";
@@ -253,6 +254,9 @@ export default function QuizEditor() {
   // Error checking state
   const [errorCheckResult, setErrorCheckResult] = useState<CheckErrorsResult | null>(null);
   const [isCheckingErrors, setIsCheckingErrors] = useState(false);
+  
+  // Quiz preview dialog
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
 
   // Tab counts for Respondents, Log, and Web
   const [respondentsCount, setRespondentsCount] = useState(0);
@@ -2080,15 +2084,25 @@ export default function QuizEditor() {
                 )}
                 
                 {!isCreating && slug && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(`/${slug}`, '_blank')}
-                    className="gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Open Quiz
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPreviewDialog(true)}
+                      className="gap-2"
+                    >
+                      <MonitorPlay className="w-4 h-4" />
+                      Preview
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(`/${slug}`, '_blank')}
+                      title="Open quiz in new tab"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </>
                 )}
                 {/* Manual save only for new quizzes */}
                 {isCreating && (
@@ -2999,6 +3013,16 @@ export default function QuizEditor() {
         onTranslate={handleTranslate}
         primaryLanguage={primaryLanguage}
         translating={translating}
+      />
+
+      {/* Quiz Preview Dialog */}
+      <QuizPreviewDialog
+        open={showPreviewDialog}
+        onOpenChange={setShowPreviewDialog}
+        quizSlug={slug}
+        quizTitle={getLocalizedValue(title, "en") || slug}
+        quizType={quizType}
+        questionCount={quizType === "hypothesis" ? hypothesisQuestionCount : questions.length}
       />
     </div>
   );
