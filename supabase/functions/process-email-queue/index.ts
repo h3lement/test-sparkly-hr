@@ -347,9 +347,30 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("status", "processing")
       .lt("processing_started_at", timeoutThreshold)
       .select("id");
-    
+
     if (stuckItems && stuckItems.length > 0) {
       console.log(`Reset ${stuckItems.length} stuck processing items`);
+    }
+
+    // Auto-retry legacy failures caused by non-Latin1 credential encoding.
+    // These failures can become sendable after a code/config fix, but they were previously marked as final "failed".
+    const { data: revivedItems } = await supabase
+      .from("email_queue")
+      .update({
+        status: "pending",
+        retry_count: 0,
+        error_message: null,
+        processing_started_at: null,
+        scheduled_for: new Date().toISOString(),
+      })
+      .eq("status", "failed")
+      .or(
+        "error_message.ilike.%non-Latin1%,error_message.ilike.%outside of the Latin1 range%"
+      )
+      .select("id");
+
+    if (revivedItems && revivedItems.length > 0) {
+      console.log(`Revived ${revivedItems.length} legacy failed emails back to pending for retry`);
     }
 
     // Fetch pending emails ready to be sent
