@@ -66,6 +66,17 @@ async function getEmailConfig(supabase: any): Promise<EmailConfigSettings> {
   return defaults;
 }
 
+// Encode subject line for UTF-8 support (RFC 2047)
+function encodeSubject(subject: string): string {
+  // Check if subject contains non-ASCII characters
+  if (!/^[\x00-\x7F]*$/.test(subject)) {
+    // Use Base64 encoding for UTF-8 subject
+    const encoded = btoa(unescape(encodeURIComponent(subject)));
+    return `=?UTF-8?B?${encoded}?=`;
+  }
+  return subject;
+}
+
 async function sendEmailViaSMTP(
   config: EmailConfigSettings,
   to: string,
@@ -89,12 +100,19 @@ async function sendEmailViaSMTP(
       },
     });
 
+    // Encode subject for UTF-8 support
+    const encodedSubject = encodeSubject(subject);
+
     await client.send({
       from: `${config.senderName} <${config.senderEmail}>`,
       to: [to],
-      subject: subject,
+      subject: encodedSubject,
       content: html,
       html: html,
+      headers: {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Content-Transfer-Encoding": "quoted-printable",
+      },
       ...(config.replyToEmail ? { replyTo: config.replyToEmail } : {}),
     });
 
