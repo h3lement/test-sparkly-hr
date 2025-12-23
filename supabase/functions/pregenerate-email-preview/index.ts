@@ -226,6 +226,9 @@ function buildEmailHtml(
   const finalCtaUrl = dynamicContent?.ctaUrl || 'https://sparkly.hr';
   const resultEmoji = dynamicContent?.emoji || '🎯';
   
+  // Use the result title as header if dynamic content is available, otherwise fall back to generic translation
+  const headerTitle = dynamicContent?.resultTitle ? `${resultEmoji} ${dynamicContent.resultTitle}` : trans.yourResults;
+  
   const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
   const safeResultTitle = escapeHtml(finalResultTitle);
   const safeResultDescription = escapeHtml(finalResultDescription);
@@ -300,7 +303,7 @@ function buildEmailHtml(
                   <a href="https://sparkly.hr" target="_blank">
                     <img src="${logoUrl}" alt="Sparkly.hr" style="height: 44px; margin-bottom: 24px;" />
                   </a>
-                  <h1 style="color: white; font-size: 26px; margin: 0; font-weight: 700;">${escapeHtml(trans.yourResults)}</h1>
+                  <h1 style="color: white; font-size: 26px; margin: 0; font-weight: 700;">${escapeHtml(headerTitle)}</h1>
                 </td>
               </tr>
               
