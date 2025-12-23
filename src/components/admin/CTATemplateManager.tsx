@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import {
   Eye, 
   Sparkles, 
   RefreshCw,
-  Check,
+  
   Link as LinkIcon,
   History,
   Download,
@@ -133,14 +133,17 @@ export function CTATemplateManager() {
   const [ctaButtonText, setCtaButtonText] = useState<Record<string, string>>({});
   const [ctaUrl, setCtaUrl] = useState("");
   
-  // Version history dialog
-  const [historyOpen, setHistoryOpen] = useState(false);
+  // Filter state
   const [filterQuiz, setFilterQuiz] = useState<string>("all");
   
   // Preview dialog state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<CTATemplate | null>(null);
   const [previewLang, setPreviewLang] = useState("en");
+  
+  // Editor dialog state
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<CTATemplate | null>(null);
   
   // Translation state
   const [translating, setTranslating] = useState(false);
@@ -149,23 +152,34 @@ export function CTATemplateManager() {
   const [showLoadFromQuizDialog, setShowLoadFromQuizDialog] = useState(false);
   const [dialogQuizId, setDialogQuizId] = useState<string>("");
 
-  const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const scrollToEditor = () => {
-    editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   const handleAddCta = () => {
-    // Clear form for new CTA
+    // Clear form for new CTA and open editor
+    setEditingTemplate(null);
     setCtaName("");
     setCtaTitle({});
     setCtaDescription({});
     setCtaButtonText({});
     setCtaUrl("https://sparkly.hr");
     setSelectedLanguage("en");
-    // Scroll to editor
-    setTimeout(() => scrollToEditor(), 100);
+    // Use first quiz if none selected
+    if (!selectedQuizId && quizzes.length > 0) {
+      setSelectedQuizId(quizzes[0].id);
+    }
+    setEditorOpen(true);
+  };
+
+  const handleOpenEditor = (template: CTATemplate) => {
+    setEditingTemplate(template);
+    setCtaName(template.name || "");
+    setCtaTitle(template.cta_title);
+    setCtaDescription(template.cta_description);
+    setCtaButtonText(template.cta_text);
+    setCtaUrl(template.cta_url || "https://sparkly.hr");
+    setSelectedQuizId(template.quiz_id);
+    setSelectedLanguage("en");
+    setEditorOpen(true);
   };
 
   // Cost estimation
@@ -420,17 +434,7 @@ export function CTATemplateManager() {
   };
 
   const loadVersionToEdit = (template: CTATemplate) => {
-    setCtaName(template.name || "");
-    setCtaTitle(template.cta_title);
-    setCtaDescription(template.cta_description);
-    setCtaButtonText(template.cta_text);
-    setCtaUrl(template.cta_url || "https://sparkly.hr");
-    setSelectedQuizId(template.quiz_id);
-    setHistoryOpen(false);
-    toast({
-      title: "Version loaded",
-      description: "You can now edit and save as a new version",
-    });
+    handleOpenEditor(template);
   };
 
   // Load original CTA data from quiz table
@@ -649,7 +653,11 @@ export function CTATemplateManager() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </div>
-                    <div className="w-[150px] px-3 py-2 truncate text-muted-foreground">
+                    <div 
+                      className="w-[150px] px-3 py-2 truncate text-primary hover:underline cursor-pointer"
+                      onClick={() => handleOpenEditor(template)}
+                      title="Click to edit"
+                    >
                       {template.name || "Untitled CTA"}
                     </div>
                     <div className="w-[100px] px-3 py-2 text-center">
@@ -727,14 +735,6 @@ export function CTATemplateManager() {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => loadVersionToEdit(template)}
-                          className="h-7 px-2 text-xs"
-                        >
-                          Edit
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -745,50 +745,52 @@ export function CTATemplateManager() {
         </CardContent>
       </Card>
 
-      {/* Quiz and Language Selection */}
-      <div ref={editorRef} className="flex flex-wrap gap-4 items-end">
-        <div className="flex-1 min-w-[200px]">
-          <Label className="mb-2 block">Select Quiz</Label>
-          <Select value={selectedQuizId} onValueChange={setSelectedQuizId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a quiz" />
-            </SelectTrigger>
-            <SelectContent>
-              {quizzes.map(quiz => (
-                <SelectItem key={quiz.id} value={quiz.id}>
-                  {getQuizTitle(quiz)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="w-[180px]">
-          <Label className="mb-2 block">Language</Label>
-          <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-            <SelectTrigger>
-              <Globe className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              {LANGUAGES.map(lang => (
-                <SelectItem key={lang.code} value={lang.code}>
-                  {lang.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {selectedQuiz && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <CardTitle className="flex items-center gap-2">
-                <LinkIcon className="w-5 h-5" />
-                CTA Block Editor
-              </CardTitle>
+      {/* CTA Editor Dialog */}
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4" />
+              {editingTemplate ? `Edit CTA - v${editingTemplate.version_number}` : "New CTA Template"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Quiz and Language Selection */}
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex-1 min-w-[200px]">
+                <Label className="mb-2 block">Select Quiz</Label>
+                <Select value={selectedQuizId} onValueChange={setSelectedQuizId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a quiz" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50">
+                    {quizzes.map(quiz => (
+                      <SelectItem key={quiz.id} value={quiz.id}>
+                        {getQuizTitle(quiz)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-[180px]">
+                <Label className="mb-2 block">Language</Label>
+                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                  <SelectTrigger>
+                    <Globe className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] bg-popover z-50">
+                    {LANGUAGES.map(lang => (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -804,8 +806,7 @@ export function CTATemplateManager() {
                 Load from Quiz
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
+
             {/* Preview */}
             <div className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-6">
               <h3 className="text-lg font-semibold mb-2 text-foreground">
@@ -943,14 +944,21 @@ export function CTATemplateManager() {
                 )}
               </div>
 
-              <Button onClick={handleSaveNewVersion} disabled={saving} className="gap-2">
+              <Button 
+                onClick={async () => {
+                  await handleSaveNewVersion();
+                  setEditorOpen(false);
+                }} 
+                disabled={saving} 
+                className="gap-2"
+              >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Save as New Version
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen && !!previewTemplate} onOpenChange={setPreviewOpen}>
