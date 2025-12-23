@@ -48,6 +48,7 @@ const UI_TEXT_KEYS = [
   "openMindedness_psychology", "openMindedness_humanDesign", "openMindedness_hint",
   "keyboardHint", "finalQuestion", "leadershipOpenMindedness",
   "openMindednessHigh", "openMindednessMedium", "openMindednessLow", "openMindednessNone",
+  "allRightsReserved",
 ];
 
 // Default English UI texts
@@ -101,6 +102,7 @@ const DEFAULT_UI_TEXTS: Record<string, string> = {
   openMindednessMedium: "Moderately open-minded - You consider alternative methods",
   openMindednessLow: "Somewhat rigid - You prefer traditional approaches",
   openMindednessNone: "Very rigid - You rely solely on conventional methods",
+  allRightsReserved: "All rights reserved.",
 };
 
 // Cost per 1K tokens (approximate for gemini-2.5-flash)

@@ -1,4 +1,8 @@
+import { useLanguage } from './LanguageContext';
+
 export function Footer() {
+  const { t } = useLanguage();
+  
   return (
     <footer className="mt-12 pt-6 border-t border-border/50 text-center" role="contentinfo">
       <p className="text-sm text-muted-foreground">
@@ -12,7 +16,7 @@ export function Footer() {
         >
           Sparkly.hr
         </a>
-        . All rights reserved.
+        . {t('allRightsReserved')}
       </p>
     </footer>
   );
