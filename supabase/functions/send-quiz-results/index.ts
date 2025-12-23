@@ -434,7 +434,7 @@ function getLocalizedValue(
   return jsonObj[language] || jsonObj[primaryLanguage] || jsonObj['en'] || fallback;
 }
 
-// Fetch dynamic content from quiz_result_levels and cta_templates for a specific quiz
+// Fetch dynamic content from quiz_result_levels and cta_templates for ALL quizzes
 async function fetchDynamicEmailContent(
   supabase: any,
   quizId: string,
@@ -457,15 +457,10 @@ async function fetchDynamicEmailContent(
       return null;
     }
     
-    // Only use dynamic content for 50plus quiz (pilot)
-    if (quiz.slug !== '50plus') {
-      console.log(`Quiz ${quiz.slug} is not 50plus, skipping dynamic content`);
-      return null;
-    }
-    
     const primaryLang = quiz.primary_language || 'en';
+    console.log(`Quiz ${quiz.slug} - primary language: ${primaryLang}, requested: ${language}`);
     
-    // Fetch result level for this score
+    // Fetch result level for this score (works for ALL quizzes)
     const { data: resultLevel, error: levelError } = await supabase
       .from('quiz_result_levels')
       .select('title, description, insights, emoji')
@@ -522,13 +517,28 @@ async function fetchDynamicEmailContent(
     // Use CTA from cta_templates if available, fallback to quizzes table
     const ctaSource = ctaTemplate || quiz;
     
+    // Process insights - they can be array of localized objects {en: "...", et: "..."} 
+    let processedInsights: string[] = [];
+    if (Array.isArray(resultLevel.insights)) {
+      processedInsights = resultLevel.insights.map((insight: any) => {
+        if (typeof insight === 'string') {
+          return insight;
+        }
+        if (typeof insight === 'object' && insight !== null) {
+          // Localized insight object
+          return insight[language] || insight[primaryLang] || insight['en'] || '';
+        }
+        return '';
+      }).filter((i: string) => i.trim() !== '');
+    }
+    
     // Build dynamic content with fallback chain
     const dynamicContent: DynamicEmailContent = {
       resultTitle: getLocalizedValue(resultLevel.title, language, primaryLang, 'Your Result'),
       resultDescription: getLocalizedValue(resultLevel.description, language, primaryLang, ''),
-      insights: Array.isArray(resultLevel.insights) ? resultLevel.insights : [],
-      ctaTitle: getLocalizedValue(ctaSource.cta_title, language, primaryLang, 'Ready for Precise Employee Assessment?'),
-      ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, 'Continue with professional testing for accurate analysis.'),
+      insights: processedInsights,
+      ctaTitle: getLocalizedValue(ctaSource.cta_title, language, primaryLang, ''),
+      ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, ''),
       ctaButtonText: getLocalizedValue(ctaSource.cta_text, language, primaryLang, 'Continue to Sparkly.hr'),
       ctaUrl: ctaSource.cta_url || 'https://sparkly.hr',
       emoji: resultLevel.emoji || '🌟',
@@ -537,13 +547,46 @@ async function fetchDynamicEmailContent(
     console.log('Dynamic content fetched successfully:', {
       resultTitle: dynamicContent.resultTitle,
       hasInsights: dynamicContent.insights.length,
-      ctaTitle: dynamicContent.ctaTitle,
+      ctaTitle: dynamicContent.ctaTitle || '(none)',
       ctaSource: ctaTemplate ? 'cta_templates' : 'quizzes',
     });
     
     return dynamicContent;
   } catch (error: any) {
     console.error('Error in fetchDynamicEmailContent:', error.message);
+    return null;
+  }
+}
+
+// Fetch open-mindedness result level based on score
+async function fetchOpenMindednessResult(
+  supabase: any,
+  quizId: string,
+  score: number,
+  language: string,
+  primaryLang: string
+): Promise<{ title: string; description: string } | null> {
+  try {
+    const { data: omLevel, error } = await supabase
+      .from('open_mindedness_result_levels')
+      .select('title, description')
+      .eq('quiz_id', quizId)
+      .lte('min_score', score)
+      .gte('max_score', score)
+      .limit(1)
+      .maybeSingle();
+    
+    if (error || !omLevel) {
+      console.log('No OM result level found for score:', score);
+      return null;
+    }
+    
+    return {
+      title: getLocalizedValue(omLevel.title, language, primaryLang, ''),
+      description: getLocalizedValue(omLevel.description, language, primaryLang, ''),
+    };
+  } catch (e) {
+    console.error('Error fetching OM result:', e);
     return null;
   }
 }
@@ -577,7 +620,7 @@ function buildEmailHtmlDynamic(
           opennessScore, opennessMaxScore, opennessTitle, opennessDescription, email,
           dynamicContent } = data;
   
-  // Use dynamic content if available (for 50plus quiz), otherwise use passed-in values
+  // Use dynamic content from quiz_result_levels if available
   const finalResultTitle = dynamicContent?.resultTitle || resultTitle;
   const finalResultDescription = dynamicContent?.resultDescription || resultDescription;
   const finalInsights = dynamicContent?.insights?.length ? dynamicContent.insights : insights;
@@ -590,101 +633,136 @@ function buildEmailHtmlDynamic(
   const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
   const safeResultTitle = escapeHtml(finalResultTitle);
   const safeResultDescription = escapeHtml(finalResultDescription);
-  const safeEmail = escapeHtml(email);
   const safeInsights = finalInsights.map(insight => escapeHtml(String(insight)));
-  const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
   const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
   const safeOpennessDescription = opennessDescription ? escapeHtml(opennessDescription) : '';
   const safeCtaTitle = escapeHtml(finalCtaTitle);
   const safeCtaDescription = escapeHtml(finalCtaDescription);
   const safeCtaButtonText = escapeHtml(finalCtaButtonText);
   
+  // Build insights list with styled bullets
+  const insightsHtml = safeInsights.length > 0 ? safeInsights.map(insight => `
+    <tr>
+      <td style="padding: 8px 0; vertical-align: top;">
+        <span style="display: inline-block; width: 8px; height: 8px; background: linear-gradient(135deg, #6d28d9, #a855f7); border-radius: 50%; margin-right: 12px; margin-top: 6px;"></span>
+      </td>
+      <td style="padding: 8px 0; color: #4b5563; font-size: 15px; line-height: 1.6;">${insight}</td>
+    </tr>
+  `).join('') : '';
+
+  // Open-mindedness section (only if score is provided)
   const opennessSection = opennessScore !== undefined && opennessScore !== null ? `
-    <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 12px; padding: 24px; margin-bottom: 24px; color: white;">
-      <h3 style="font-size: 18px; margin: 0 0 12px 0; font-weight: 600;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-        <span style="font-size: 32px; font-weight: bold;">${opennessScore}</span>
-        <span style="opacity: 0.9;">/ ${opennessMaxScore}</span>
-      </div>
-      ${safeOpennessTitle ? `<p style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">${safeOpennessTitle}</p>` : ''}
-      ${safeOpennessDescription ? `<p style="font-size: 14px; margin: 0; opacity: 0.95; line-height: 1.5;">${safeOpennessDescription}</p>` : ''}
+    <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: 16px; padding: 28px; margin: 28px 0; color: white;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+          <td>
+            <h3 style="font-size: 18px; margin: 0 0 16px 0; font-weight: 600; color: white;">🧠 ${escapeHtml(trans.leadershipOpenMindedness)}</h3>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 16px;">
+            <span style="font-size: 42px; font-weight: bold; color: white;">${opennessScore}</span>
+            <span style="font-size: 18px; opacity: 0.9; margin-left: 4px; color: rgba(255,255,255,0.9);">/ ${opennessMaxScore}</span>
+          </td>
+        </tr>
+        ${safeOpennessTitle ? `<tr><td><p style="font-size: 18px; font-weight: 600; margin: 0 0 8px 0; color: white;">${safeOpennessTitle}</p></td></tr>` : ''}
+        ${safeOpennessDescription ? `<tr><td><p style="font-size: 14px; margin: 0; color: rgba(255,255,255,0.9); line-height: 1.6;">${safeOpennessDescription}</p></td></tr>` : ''}
+      </table>
     </div>
   ` : '';
 
-  // Check if template has custom body_content (only for non-dynamic quizzes)
-  // For dynamic content quizzes (50plus), we skip custom templates and use the standard structure
-  const templateBodyContent = !dynamicContent ? (templateData?.body_content as Record<string, string> | null) : null;
-  const customBody = templateBodyContent?.[language] || templateBodyContent?.en;
-  
-  if (customBody && customBody.trim()) {
-    // Use custom template with placeholder replacement (legacy behavior for non-50plus quizzes)
-    return customBody
-      .replace(/\{\{score\}\}/g, String(totalScore))
-      .replace(/\{\{maxScore\}\}/g, String(maxScore))
-      .replace(/\{\{resultTitle\}\}/g, safeResultTitle)
-      .replace(/\{\{resultDescription\}\}/g, safeResultDescription)
-      .replace(/\{\{insightsList\}\}/g, insightsList)
-      .replace(/\{\{opennessSection\}\}/g, opennessSection)
-      .replace(/\{\{opennessScore\}\}/g, String(opennessScore ?? ''))
-      .replace(/\{\{opennessTitle\}\}/g, safeOpennessTitle)
-      .replace(/\{\{opennessDescription\}\}/g, safeOpennessDescription)
-      .replace(/\{\{yourResultsTitle\}\}/g, escapeHtml(trans.yourResults))
-      .replace(/\{\{outOf\}\}/g, trans.outOf)
-      .replace(/\{\{points\}\}/g, trans.points)
-      .replace(/\{\{keyInsightsTitle\}\}/g, escapeHtml(trans.keyInsights))
-      .replace(/\{\{ctaTitle\}\}/g, safeCtaTitle)
-      .replace(/\{\{ctaDescription\}\}/g, safeCtaDescription)
-      .replace(/\{\{ctaButtonText\}\}/g, safeCtaButtonText)
-      .replace(/\{\{ctaUrl\}\}/g, finalCtaUrl)
-      .replace(/\{\{logoUrl\}\}/g, logoUrl)
-      .replace(/\{\{userEmail\}\}/g, safeEmail);
-  }
-  
-  // Use default template structure with dynamic content
+  // CTA section (only if there's a title or description)
+  const ctaSection = (finalCtaTitle || finalCtaDescription) ? `
+    <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 32px; margin-top: 28px; text-align: center; border: 1px solid #e9d5ff;">
+      ${safeCtaTitle ? `<h3 style="color: #6d28d9; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${safeCtaTitle}</h3>` : ''}
+      ${safeCtaDescription ? `<p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${safeCtaDescription}</p>` : ''}
+      <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+    </div>
+  ` : `
+    <div style="text-align: center; margin-top: 28px;">
+      <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+    </div>
+  `;
+
+  // Main email template with modern design
   return `
     <!DOCTYPE html>
-    <html>
+    <html lang="${language}">
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>${safeResultTitle}</title>
     </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf7f5; margin: 0; padding: 40px 20px;">
-      <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <a href="https://sparkly.hr" target="_blank">
-            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 48px; margin-bottom: 20px;" />
-          </a>
-          <h1 style="color: #6d28d9; font-size: 28px; margin: 0;">${escapeHtml(trans.yourResults)}</h1>
-        </div>
-        
-        <div style="text-align: center; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <div style="font-size: 48px; font-weight: bold; margin-bottom: 8px;">${totalScore}</div>
-          <div style="opacity: 0.9;">${trans.outOf} ${maxScore} ${trans.points}</div>
-        </div>
-        
-        <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">${resultEmoji} ${safeResultTitle}</h2>
-        <p style="color: #6b7280; line-height: 1.6; margin-bottom: 24px;">${safeResultDescription}</p>
-        
-        ${opennessSection}
-        
-        <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">${escapeHtml(trans.keyInsights)}:</h3>
-        <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 30px;">
-          ${insightsList}
-        </ul>
-        
-        <div style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border-radius: 16px; padding: 32px; margin-top: 30px; text-align: center;">
-          <h3 style="color: white; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${safeCtaTitle}</h3>
-          <p style="color: rgba(255,255,255,0.9); font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${safeCtaDescription}</p>
-          <a href="${finalCtaUrl}" style="display: inline-block; background: white; color: #6d28d9; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          <a href="https://sparkly.hr" target="_blank">
-            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
-          </a>
-          <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
-        </div>
-      </div>
+    <body style="margin: 0; padding: 0; background-color: #f8f4f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8f4f0; padding: 40px 20px;">
+        <tr>
+          <td align="center">
+            <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden;">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #6d28d9, #a855f7); padding: 40px 40px 32px 40px; text-align: center;">
+                  <a href="https://sparkly.hr" target="_blank">
+                    <img src="${logoUrl}" alt="Sparkly.hr" style="height: 44px; margin-bottom: 24px;" />
+                  </a>
+                  <h1 style="color: white; font-size: 26px; margin: 0; font-weight: 700;">${escapeHtml(trans.yourResults)}</h1>
+                </td>
+              </tr>
+              
+              <!-- Score -->
+              <tr>
+                <td style="padding: 0 40px;">
+                  <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 16px; padding: 32px; margin-top: -20px; text-align: center; border: 2px solid #e9d5ff;">
+                    <div style="font-size: 56px; font-weight: 800; background: linear-gradient(135deg, #6d28d9, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${totalScore}</div>
+                    <div style="color: #7c3aed; font-size: 16px; font-weight: 500;">${trans.outOf} ${maxScore} ${trans.points}</div>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Result Title & Description -->
+              <tr>
+                <td style="padding: 32px 40px 0 40px;">
+                  <h2 style="color: #1f2937; font-size: 24px; margin: 0 0 16px 0; font-weight: 700;">
+                    <span style="margin-right: 8px;">${resultEmoji}</span>${safeResultTitle}
+                  </h2>
+                  <p style="color: #4b5563; font-size: 16px; line-height: 1.7; margin: 0;">${safeResultDescription}</p>
+                </td>
+              </tr>
+              
+              ${opennessSection ? `<tr><td style="padding: 0 40px;">${opennessSection}</td></tr>` : ''}
+              
+              <!-- Insights -->
+              ${insightsHtml ? `
+              <tr>
+                <td style="padding: 28px 40px 0 40px;">
+                  <h3 style="color: #1f2937; font-size: 18px; margin: 0 0 16px 0; font-weight: 600;">${escapeHtml(trans.keyInsights)}</h3>
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    ${insightsHtml}
+                  </table>
+                </td>
+              </tr>
+              ` : ''}
+              
+              <!-- CTA -->
+              <tr>
+                <td style="padding: 0 40px 40px 40px;">
+                  ${ctaSection}
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background: #faf5ff; padding: 24px 40px; text-align: center; border-top: 1px solid #e9d5ff;">
+                  <a href="https://sparkly.hr" target="_blank">
+                    <img src="${logoUrl}" alt="Sparkly.hr" style="height: 28px; margin-bottom: 8px; opacity: 0.8;" />
+                  </a>
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;
@@ -1494,7 +1572,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("Background task: Using email config:", { senderName, senderEmail, subject: emailSubject });
 
-        // Fetch dynamic content for 50plus quiz (pass CTA template ID from email template)
+        // Fetch dynamic content for all quizzes (pass CTA template ID from email template)
         const ctaTemplateId = templateData?.cta_template_id as string | null;
         let dynamicContent: DynamicEmailContent | null = null;
         if (quizId) {
@@ -1535,10 +1613,13 @@ const handler = async (req: Request): Promise<Response> => {
         const adminTrans = emailTranslations.en;
         const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
         const safeEmail = escapeHtml(email);
-        const safeResultTitle = escapeHtml(resultTitle);
+        // Use dynamic result title/insights for admin email too
+        const adminResultTitle = dynamicContent?.resultTitle || resultTitle;
+        const adminInsights = dynamicContent?.insights?.length ? dynamicContent.insights : insights;
+        const safeResultTitleAdmin = escapeHtml(adminResultTitle);
         const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
-        const safeInsights = insights.map(insight => escapeHtml(insight));
-        const insightsList = safeInsights.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
+        const safeInsightsAdmin = adminInsights.map(insight => escapeHtml(String(insight)));
+        const insightsList = safeInsightsAdmin.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
         const adminEmailHtml = `
           <!DOCTYPE html>
@@ -1557,7 +1638,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
                 <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
                 <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
-                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitle}</p>
+                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitleAdmin}</p>
                 <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / ${opennessMaxScore}` : 'N/A'}${safeOpennessTitle ? ` - ${safeOpennessTitle}` : ''}</p>
                 <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
               </div>
@@ -1575,7 +1656,7 @@ const handler = async (req: Request): Promise<Response> => {
           </html>
         `;
 
-        const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitle}`;
+        const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitleAdmin}`;
         
         console.log("Background task: Queuing admin email to: mikk@sparkly.hr");
         const { error: adminQueueError } = await supabase.from("email_queue").insert({
