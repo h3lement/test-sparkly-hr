@@ -316,6 +316,18 @@ async function sendEmailViaSMTP(
   }
 }
 
+async function getSafeQuizLeadId(supabase: any, quizLeadId: string | null): Promise<string | null> {
+  if (!quizLeadId) return null;
+  const { data, error } = await supabase
+    .from("quiz_leads")
+    .select("id")
+    .eq("id", quizLeadId)
+    .maybeSingle();
+
+  if (error || !data?.id) return null;
+  return data.id;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -426,6 +438,8 @@ const handler = async (req: Request): Promise<Response> => {
           })
           .eq("id", email.id);
 
+        const safeQuizLeadId = await getSafeQuizLeadId(supabase, email.quiz_lead_id);
+
         // Log to email_logs
         await supabase.from("email_logs").insert({
           email_type: email.email_type,
@@ -436,7 +450,7 @@ const handler = async (req: Request): Promise<Response> => {
           status: "sent",
           resend_id: result.messageId || null,
           language: email.language,
-          quiz_lead_id: email.quiz_lead_id,
+          quiz_lead_id: safeQuizLeadId,
           quiz_id: email.quiz_id,
           html_body: email.html_body,
           delivery_status: "sent",
@@ -464,6 +478,8 @@ const handler = async (req: Request): Promise<Response> => {
           .eq("id", email.id);
 
         if (isFinalFailure) {
+          const safeQuizLeadId = await getSafeQuizLeadId(supabase, email.quiz_lead_id);
+
           // Log final failure to email_logs
           await supabase.from("email_logs").insert({
             email_type: email.email_type,
@@ -474,7 +490,7 @@ const handler = async (req: Request): Promise<Response> => {
             status: "failed",
             error_message: result.error,
             language: email.language,
-            quiz_lead_id: email.quiz_lead_id,
+            quiz_lead_id: safeQuizLeadId,
             quiz_id: email.quiz_id,
             html_body: email.html_body,
             resend_attempts: newRetryCount,
