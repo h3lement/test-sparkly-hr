@@ -73,6 +73,7 @@ const UI_TEXT_KEYS = [
   'ctaAdvice',
   'visitSparkly',
   'takeQuizAgain',
+  'hypothesisTakeAgain',
   'keyboardHint',
   'finalQuestion',
   'openMindedness_hint',

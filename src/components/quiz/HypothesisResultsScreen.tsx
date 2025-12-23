@@ -4,6 +4,7 @@ import { useLanguage } from './LanguageContext';
 import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useUiTranslations } from '@/hooks/useUiTranslations';
 
 // Translations for the results screen
 const translations = {
@@ -68,6 +69,12 @@ export function HypothesisResultsScreen() {
   } = useHypothesisQuiz();
   const { language } = useLanguage();
   const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({});
+  
+  // Use UI translations from database
+  const { getTranslation } = useUiTranslations({ 
+    quizId: quizData?.id || null, 
+    language 
+  });
 
   const t = translations[language as keyof typeof translations] || translations.en;
 
@@ -354,7 +361,7 @@ export function HypothesisResultsScreen() {
             className="h-14 px-8 text-lg font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all"
           >
             <RotateCcw className="w-5 h-5 mr-2" />
-            {t.takeAgain}
+            {getTranslation('hypothesisTakeAgain', t.takeAgain)}
           </Button>
         </div>
       </section>
