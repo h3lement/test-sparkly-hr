@@ -339,7 +339,7 @@ serve(async (req) => {
     console.log(`Smart translation: ${totalTextsToTranslate} texts need translation across ${Object.keys(translationPlan).length} languages`);
     console.log(`Skipped: ${(allTexts.length * targetLanguages.length) - totalTextsToTranslate} texts already translated`);
 
-    if (totalTextsToTranslate === 0) {
+    if (totalTextsToTranslate === 0 && !shouldIncludeUiText) {
       return new Response(JSON.stringify({ 
         success: true, 
         message: "All translations are up to date",
@@ -561,16 +561,41 @@ ${JSON.stringify(textsToTranslate.map(t => ({ path: t.path, text: t.text })), nu
     let uiTextsTranslated = 0;
     if (shouldIncludeUiText) {
       console.log("Translating UI text...");
-      
-      for (const langCode of Object.keys(translations)) {
-        // Prepare UI text for translation
-        const uiTextsToTranslate = UI_TEXT_KEYS.map(key => ({
+
+      // Fetch existing UI translations once so we can backfill newly-added UI keys
+      const { data: existingUiRows, error: uiFetchError } = await supabase
+        .from("ui_translations")
+        .select("id, translation_key, translations")
+        .eq("quiz_id", quizId)
+        .in("translation_key", UI_TEXT_KEYS);
+
+      if (uiFetchError) {
+        console.error("Failed to fetch existing UI translations:", uiFetchError);
+      }
+
+      const uiExistingByKey: Record<string, { id: string; translations: Record<string, string> }> = {};
+      (existingUiRows || []).forEach((row: any) => {
+        uiExistingByKey[row.translation_key] = {
+          id: row.id,
+          translations: row.translations || {},
+        };
+      });
+
+      // IMPORTANT: translate UI text for *requested target languages*, even if no quiz text needed translation.
+      for (const lang of targetLanguages) {
+        const langCode = lang.code;
+
+        const missingKeys = UI_TEXT_KEYS.filter((key) => {
+          const existing = uiExistingByKey[key]?.translations;
+          return !existing?.[langCode];
+        });
+
+        if (missingKeys.length === 0) continue;
+
+        const uiTextsToTranslate = missingKeys.map((key) => ({
           path: `ui.${key}`,
           text: DEFAULT_UI_TEXTS[key] || key,
         }));
-
-        const lang = targetLanguages.find(l => l.code === langCode);
-        if (!lang) continue;
 
         const uiPrompt = `You are a professional translator. Translate the following UI texts from English to ${lang.name}.
 These are button labels, form fields, and UI messages for a quiz/assessment website.
@@ -596,58 +621,71 @@ ${JSON.stringify(uiTextsToTranslate, null, 2)}`;
               model: selectedModel,
               messages: [
                 { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
-                { role: "user", content: uiPrompt }
+                { role: "user", content: uiPrompt },
               ],
             }),
           });
 
           if (!uiResponse.ok) {
-            console.error(`UI translation API error for ${langCode}`);
+            const errorText = await uiResponse.text();
+            console.error(`UI translation API error for ${langCode}:`, errorText);
             continue;
           }
 
           const uiData = await uiResponse.json();
           let uiContent = uiData.choices?.[0]?.message?.content || "";
           totalOutputTokens += Math.ceil(uiContent.length / 4);
-          
+
           uiContent = uiContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-          
           const uiParsed = JSON.parse(uiContent);
-          
-          // Upsert UI translations to database
-          for (const key of UI_TEXT_KEYS) {
+
+          // Upsert only missing keys (keeps costs down and avoids unnecessary overwrites)
+          for (const key of missingKeys) {
             const translatedText = uiParsed[`ui.${key}`];
-            if (translatedText) {
-              // Fetch existing translation or create new one
-              const { data: existing } = await supabase
+            if (!translatedText) continue;
+
+            const existing = uiExistingByKey[key];
+            const currentTranslations: Record<string, string> = {
+              en: DEFAULT_UI_TEXTS[key] || key,
+              ...(existing?.translations || {}),
+            };
+            currentTranslations[langCode] = translatedText;
+
+            if (existing?.id) {
+              const { error: updateError } = await supabase
                 .from("ui_translations")
-                .select("*")
-                .eq("quiz_id", quizId)
-                .eq("translation_key", key)
-                .maybeSingle();
+                .update({ translations: currentTranslations })
+                .eq("id", existing.id);
 
-              const currentTranslations = existing?.translations || { en: DEFAULT_UI_TEXTS[key] };
-              currentTranslations[langCode] = translatedText;
-
-              if (existing) {
-                await supabase
-                  .from("ui_translations")
-                  .update({ translations: currentTranslations })
-                  .eq("id", existing.id);
-              } else {
-                await supabase
-                  .from("ui_translations")
-                  .insert({
-                    quiz_id: quizId,
-                    translation_key: key,
-                    translations: currentTranslations,
-                  });
+              if (updateError) {
+                console.error(`Failed to update ui_translations for ${key}:`, updateError);
+                continue;
               }
-              uiTextsTranslated++;
+
+              uiExistingByKey[key] = { id: existing.id, translations: currentTranslations };
+            } else {
+              const { data: inserted, error: insertError } = await supabase
+                .from("ui_translations")
+                .insert({
+                  quiz_id: quizId,
+                  translation_key: key,
+                  translations: currentTranslations,
+                })
+                .select("id")
+                .single();
+
+              if (insertError) {
+                console.error(`Failed to insert ui_translations for ${key}:`, insertError);
+                continue;
+              }
+
+              uiExistingByKey[key] = { id: inserted.id, translations: currentTranslations };
             }
+
+            uiTextsTranslated++;
           }
-          
-          console.log(`UI text translated to ${langCode}`);
+
+          console.log(`UI text backfill completed for ${langCode}: ${missingKeys.length} keys checked`);
         } catch (uiError) {
           console.error(`Failed to translate UI text for ${langCode}:`, uiError);
         }
