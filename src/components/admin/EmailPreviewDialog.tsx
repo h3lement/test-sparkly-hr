@@ -140,6 +140,7 @@ export function EmailPreviewDialog({
   // Global sender config from Email Settings
   const [globalSenderName, setGlobalSenderName] = useState("Sparkly");
   const [globalSenderEmail, setGlobalSenderEmail] = useState("noreply@sparkly.hr");
+  const [allowedTestEmails, setAllowedTestEmails] = useState<string[]>([]);
 
   const [dialogSize, setDialogSize] = useState(getSavedDialogSize);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -172,6 +173,56 @@ export function EmailPreviewDialog({
     }
   };
 
+  // Fetch allowed test email addresses (sender email + admin emails)
+  const fetchAllowedTestEmails = async () => {
+    try {
+      const emails = new Set<string>();
+
+      // Add sender email
+      const { data: senderSetting } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "email_sender_email")
+        .maybeSingle();
+
+      if (senderSetting?.setting_value) {
+        emails.add(senderSetting.setting_value.toLowerCase().trim());
+      }
+
+      // Fetch admin emails
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminRoles && adminRoles.length > 0) {
+        const adminUserIds = adminRoles.map((r) => r.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("email")
+          .in("user_id", adminUserIds);
+
+        if (profiles) {
+          profiles.forEach((p) => {
+            if (p.email) {
+              emails.add(p.email.toLowerCase().trim());
+            }
+          });
+        }
+      }
+
+      setAllowedTestEmails(Array.from(emails));
+    } catch (err) {
+      console.error("Failed to fetch allowed test emails:", err);
+    }
+  };
+
+  // Check if current test email is allowed
+  const isTestEmailAllowed = () => {
+    if (!testEmail.trim()) return true; // Empty is OK (will be caught by other validation)
+    return allowedTestEmails.includes(testEmail.toLowerCase().trim());
+  };
+
   const fetchLatestTemplate = async () => {
     if (!activeTemplate?.id) return;
     const { data, error } = await supabase
@@ -198,6 +249,7 @@ export function EmailPreviewDialog({
       setTemplateData(template);
       void fetchLatestTemplate();
       void fetchGlobalSenderConfig();
+      void fetchAllowedTestEmails();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialLanguage, template?.id]);
@@ -479,6 +531,15 @@ export function EmailPreviewDialog({
       return;
     }
 
+    if (!isTestEmailAllowed()) {
+      toast({
+        title: "Restricted",
+        description: `Test emails can only be sent to admin accounts or the sender email (${globalSenderEmail})`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!activeTemplate) {
       toast({
         title: "Error",
@@ -744,12 +805,17 @@ export function EmailPreviewDialog({
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
                 placeholder="Enter email address"
-                className="bg-background"
+                className={`bg-background ${testEmail && !isTestEmailAllowed() ? "border-destructive focus-visible:ring-destructive" : ""}`}
               />
+              {testEmail && !isTestEmailAllowed() && (
+                <p className="text-xs text-destructive mt-1">
+                  Test emails restricted to admin accounts or {globalSenderEmail}
+                </p>
+              )}
             </div>
             <Button 
               onClick={sendTestEmail} 
-              disabled={sendingTest || !activeTemplate}
+              disabled={sendingTest || !activeTemplate || (testEmail.trim() !== "" && !isTestEmailAllowed())}
               className="gap-2"
             >
               <Send className="w-4 h-4" />
