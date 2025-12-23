@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { AutoSaveIndicator } from "./AutoSaveIndicator";
 import { 
   Save, 
   Loader2, 
@@ -141,6 +143,68 @@ export function CTATemplateManager() {
   const [templateToDelete, setTemplateToDelete] = useState<CTATemplate | null>(null);
 
   const { toast } = useToast();
+  
+  // Track if auto-save should be enabled (only when editing existing template with quiz)
+  const autoSaveEnabled = editorOpen && !!editingTemplate && !!selectedQuizId;
+  
+  // Auto-save callback
+  const handleAutoSave = useCallback(async () => {
+    if (!selectedQuizId || !editingTemplate) return;
+    
+    const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
+    const primaryLanguage = selectedQuiz?.primary_language || "en";
+    
+    // Skip if button text is empty (required field)
+    if (!ctaButtonText[primaryLanguage]?.trim()) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { error } = await supabase
+      .from("cta_templates")
+      .upsert({
+        quiz_id: selectedQuizId,
+        name: ctaName.trim() || "Untitled CTA",
+        cta_title: ctaTitle,
+        cta_description: ctaDescription,
+        cta_text: ctaButtonText,
+        cta_url: ctaUrl.trim() || "https://sparkly.hr",
+        is_live: true,
+        created_by: user?.id,
+        created_by_email: user?.email,
+      }, { onConflict: 'quiz_id' });
+    
+    if (error) throw error;
+    
+    // Update local templates state
+    setTemplates(prev => prev.map(t => 
+      t.quiz_id === selectedQuizId ? {
+        ...t,
+        name: ctaName.trim() || "Untitled CTA",
+        cta_title: ctaTitle,
+        cta_description: ctaDescription,
+        cta_text: ctaButtonText,
+        cta_url: ctaUrl.trim() || "https://sparkly.hr",
+      } : t
+    ));
+  }, [selectedQuizId, editingTemplate, ctaName, ctaTitle, ctaDescription, ctaButtonText, ctaUrl, quizzes]);
+  
+  const { status: autoSaveStatus, triggerSave } = useAutoSave({
+    onSave: handleAutoSave,
+    debounceMs: 1500,
+    enabled: autoSaveEnabled,
+  });
+  
+  // Trigger auto-save when form fields change
+  const prevValuesRef = useRef<string>("");
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+    
+    const currentValues = JSON.stringify({ ctaName, ctaTitle, ctaDescription, ctaButtonText, ctaUrl });
+    if (prevValuesRef.current && prevValuesRef.current !== currentValues) {
+      triggerSave();
+    }
+    prevValuesRef.current = currentValues;
+  }, [ctaName, ctaTitle, ctaDescription, ctaButtonText, ctaUrl, autoSaveEnabled, triggerSave]);
 
   const handleAddCta = () => {
     // Clear form for new CTA and open editor
@@ -847,11 +911,12 @@ export function CTATemplateManager() {
       {/* CTA Editor Dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between gap-4">
             <DialogTitle className="flex items-center gap-2">
               <LinkIcon className="w-4 h-4" />
               {editingTemplate ? "Edit CTA" : "New CTA Template"}
             </DialogTitle>
+            {autoSaveEnabled && <AutoSaveIndicator status={autoSaveStatus} />}
           </DialogHeader>
           
           <div className="space-y-6">
@@ -1043,17 +1108,27 @@ export function CTATemplateManager() {
                 )}
               </div>
 
-              <Button 
-                onClick={async () => {
-                  await handleSaveNewVersion();
-                  setEditorOpen(false);
-                }} 
-                disabled={saving} 
-                className="gap-2"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save as New Version
-              </Button>
+              {editingTemplate ? (
+                <Button 
+                  variant="outline"
+                  onClick={() => setEditorOpen(false)} 
+                  className="gap-2"
+                >
+                  Close
+                </Button>
+              ) : (
+                <Button 
+                  onClick={async () => {
+                    await handleSaveNewVersion();
+                    setEditorOpen(false);
+                  }} 
+                  disabled={saving} 
+                  className="gap-2"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save CTA
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
