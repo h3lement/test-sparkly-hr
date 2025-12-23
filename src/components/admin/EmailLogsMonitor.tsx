@@ -626,6 +626,21 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return [...queueAsLogs, ...logs];
   }, [logs, queueItems]);
 
+  // Keep the "Info" dialog data fresh by updating the selected item from the latest fetched lists.
+  useEffect(() => {
+    if (!detailDialogLog) return;
+
+    const updated = combinedLogs.find(
+      (l) =>
+        l.id === detailDialogLog.id &&
+        (!!l.isQueueItem === !!detailDialogLog.isQueueItem)
+    );
+
+    if (updated && updated !== detailDialogLog) {
+      setDetailDialogLog(updated);
+    }
+  }, [combinedLogs, detailDialogLog]);
+
   // Filter and search
   const filteredLogs = useMemo(() => {
     let result = combinedLogs;
