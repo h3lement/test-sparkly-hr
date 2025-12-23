@@ -759,6 +759,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_email_notifications: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string
+          lead_type: string
+          max_attempts: number
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          lead_type: string
+          max_attempts?: number
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          lead_type?: string
+          max_attempts?: number
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
