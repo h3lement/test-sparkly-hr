@@ -93,6 +93,7 @@ interface Quiz {
   slug: string;
   description: Json;
   is_active: boolean;
+  quiz_type: string;
   headline?: Json;
   headline_highlight?: Json;
   badge_text?: Json;
@@ -964,7 +965,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.result, minWidth: columnWidths.result }}>
                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 truncate max-w-full">
-                          {lead.leadType === "hypothesis" ? `${lead.score}/${lead.total_questions}` : lead.result_category}
+                          {lead.leadType === "hypothesis" || quiz?.quiz_type === "emotional" 
+                            ? `${lead.score}/${lead.total_questions}` 
+                            : lead.result_category}
                         </Badge>
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.openness, minWidth: columnWidths.openness }}>
