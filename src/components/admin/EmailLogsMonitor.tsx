@@ -1389,10 +1389,10 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                           </span>
                         </div>
                       </td>
-                      <td style={{ width: columnWidths.sent }} className="px-4 py-3 overflow-hidden">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{formatDate(log.created_at)}</span>
+                      <td style={{ width: columnWidths.sent }} className="px-4 py-3">
+                        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 shrink-0 mt-0.5" />
+                          <span className="whitespace-normal break-words leading-tight">{formatDate(log.created_at)}</span>
                         </div>
                       </td>
                       <td style={{ width: columnWidths.actions }} className="px-4 py-3">
