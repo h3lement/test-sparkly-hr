@@ -54,8 +54,17 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
     setOpenMindednessResultLevels,
     quizData: existingQuizData
   } = useDynamicQuiz();
-  const { setQuizId, dbTranslationsLoaded } = useLanguage();
+  const { setQuizId, setLanguage, dbTranslationsLoaded } = useLanguage();
   const [initialStepApplied, setInitialStepApplied] = useState(false);
+  
+  // Read language from URL parameter and apply it
+  useEffect(() => {
+    const langParam = searchParams.get('lang');
+    if (langParam) {
+      // Cast to Language type - the context will handle validation
+      setLanguage(langParam as any);
+    }
+  }, [searchParams, setLanguage]);
 
   // Load quiz data into context and set quizId for translations
   // Only set data if not already loaded (prevent reset during quiz)
