@@ -63,7 +63,6 @@ interface Quiz {
 interface CTATemplate {
   id: string;
   quiz_id: string | null;
-  version_number: number;
   is_live: boolean;
   name: string | null;
   cta_title: Record<string, string>;
@@ -242,7 +241,7 @@ export function CTATemplateManager() {
 
     const quizTemplates = templates.filter(t => t.quiz_id === selectedQuizId);
     const latestTemplate = quizTemplates.length > 0 
-      ? quizTemplates.reduce((a, b) => a.version_number > b.version_number ? a : b)
+      ? quizTemplates[0]
       : null;
     
     if (latestTemplate) {
@@ -287,21 +286,14 @@ export function CTATemplateManager() {
     
     setSaving(true);
     try {
-      // Get next version number
-      const quizTemplates = templates.filter(t => t.quiz_id === selectedQuizId);
-      const maxVersion = quizTemplates.length > 0 
-        ? Math.max(...quizTemplates.map(t => t.version_number)) 
-        : 0;
-
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Insert new version
+      // Upsert the CTA (insert or update based on quiz_id)
       const { error } = await supabase
         .from("cta_templates")
-        .insert({
+        .upsert({
           quiz_id: selectedQuizId,
-          version_number: maxVersion + 1,
           name: ctaName.trim() || "Untitled CTA",
           cta_title: ctaTitle,
           cta_description: ctaDescription,
@@ -309,16 +301,17 @@ export function CTATemplateManager() {
           cta_url: ctaUrl.trim() || "https://sparkly.hr",
           created_by: user?.id,
           created_by_email: user?.email,
-        });
+        }, { onConflict: 'quiz_id' });
 
       if (error) throw error;
 
       toast({
         title: "CTA Template Saved",
-        description: `Version ${maxVersion + 1} is now live`,
+        description: "CTA has been saved successfully",
       });
 
       fetchData();
+      setEditorOpen(false);
     } catch (error: any) {
       console.error("Error saving template:", error);
       toast({
@@ -491,17 +484,10 @@ export function CTATemplateManager() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Get next version number for this quiz
-      const quizTemplates = templates.filter(t => t.quiz_id === template.quiz_id);
-      const maxVersion = quizTemplates.length > 0 
-        ? Math.max(...quizTemplates.map(t => t.version_number)) 
-        : 0;
-
       const { error } = await supabase
         .from("cta_templates")
         .insert({
-          quiz_id: template.quiz_id,
-          version_number: maxVersion + 1,
+          quiz_id: null, // Clone without quiz attachment
           name: `${template.name || "Untitled CTA"} (copy)`,
           cta_title: template.cta_title,
           cta_description: template.cta_description,
@@ -515,7 +501,7 @@ export function CTATemplateManager() {
 
       toast({
         title: "CTA Cloned",
-        description: `Created v${maxVersion + 1} from "${template.name || "Untitled CTA"}"`,
+        description: `Created copy of "${template.name || "Untitled CTA"}"`,
       });
 
       fetchData();
@@ -685,9 +671,8 @@ export function CTATemplateManager() {
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
-                <div className="w-[80px] px-3 py-2">Version</div>
                 <div className="w-[150px] px-3 py-2">Attached Quiz</div>
-                <div className="w-[150px] px-3 py-2">Name</div>
+                <div className="w-[180px] px-3 py-2">Name</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
                 <div className="w-[60px] px-3 py-2 text-center">Lang</div>
@@ -701,9 +686,6 @@ export function CTATemplateManager() {
                     key={template.id}
                     className="flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm"
                   >
-                    <div className="w-[80px] px-3 py-2">
-                      <span className="font-mono">v{template.version_number}</span>
-                    </div>
                     <div className="w-[150px] px-3 py-2">
                       <Select 
                         value={template.quiz_id || "none"} 
@@ -730,7 +712,7 @@ export function CTATemplateManager() {
                       </Select>
                     </div>
                     <div 
-                      className="w-[150px] px-3 py-2 truncate text-primary hover:underline cursor-pointer"
+                      className="w-[180px] px-3 py-2 truncate text-primary hover:underline cursor-pointer"
                       onClick={() => handleOpenEditor(template)}
                       title="Click to edit"
                     >
@@ -813,7 +795,7 @@ export function CTATemplateManager() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <LinkIcon className="w-4 h-4" />
-              {editingTemplate ? `Edit CTA - v${editingTemplate.version_number}` : "New CTA Template"}
+              {editingTemplate ? "Edit CTA" : "New CTA Template"}
             </DialogTitle>
           </DialogHeader>
           
@@ -1028,7 +1010,7 @@ export function CTATemplateManager() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4" />
-              CTA Preview - v{previewTemplate?.version_number}
+              CTA Preview
             </DialogTitle>
           </DialogHeader>
           {previewTemplate && (
