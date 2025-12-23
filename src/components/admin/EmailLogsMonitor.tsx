@@ -50,8 +50,12 @@ import {
   MailX,
   MousePointer,
   EyeIcon,
-  Database
+  Database,
+  Power,
+  PowerOff,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { logActivity } from "@/hooks/useActivityLog";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { EmailDetailDialog } from "./EmailDetailDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
@@ -158,6 +162,9 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
   const [processingQueue, setProcessingQueue] = useState(false);
   const [backfillingLogs, setBackfillingLogs] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [emailSendingEnabled, setEmailSendingEnabled] = useState(true);
+  const [emailSendingLoading, setEmailSendingLoading] = useState(true);
+  const [togglingEmailSending, setTogglingEmailSending] = useState(false);
   const [sortColumns, setSortColumns] = useState<Array<{ column: string; direction: "asc" | "desc" }>>(() => {
     try {
       const stored = localStorage.getItem("email-logs-sort-preferences");
@@ -170,6 +177,84 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
     return [{ column: "created_at", direction: "desc" }];
   });
   const { toast } = useToast();
+
+  // Fetch email sending enabled state from app_settings
+  const fetchEmailSendingState = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "email_sending_enabled")
+        .maybeSingle();
+
+      if (error) throw error;
+
+      // Default to enabled if not set
+      setEmailSendingEnabled(data?.setting_value !== "false");
+    } catch (err) {
+      console.error("Error fetching email sending state:", err);
+    } finally {
+      setEmailSendingLoading(false);
+    }
+  }, []);
+
+  // Toggle email sending state
+  const toggleEmailSending = async (enabled: boolean) => {
+    setTogglingEmailSending(true);
+    const previousValue = emailSendingEnabled;
+    
+    try {
+      // Optimistic update
+      setEmailSendingEnabled(enabled);
+
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({
+          setting_key: "email_sending_enabled",
+          setting_value: enabled ? "true" : "false",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "setting_key" });
+
+      if (error) throw error;
+
+      // Log to activity_logs
+      await logActivity({
+        actionType: "UPDATE",
+        tableName: "app_settings",
+        recordId: "email_sending_enabled",
+        fieldName: "email_sending_enabled",
+        oldValue: previousValue ? "true" : "false",
+        newValue: enabled ? "true" : "false",
+        description: enabled 
+          ? "Email sending enabled" 
+          : "Email sending disabled",
+      });
+
+      toast({
+        title: enabled ? "Email sending enabled" : "Email sending disabled",
+        description: enabled 
+          ? "Emails will now be sent normally" 
+          : "All email sending is paused",
+        variant: enabled ? "default" : "destructive",
+      });
+    } catch (err: any) {
+      // Revert on error
+      setEmailSendingEnabled(previousValue);
+      console.error("Error toggling email sending:", err);
+      toast({
+        title: "Error",
+        description: "Failed to update email sending status",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingEmailSending(false);
+    }
+  };
+
+  // Load email sending state on mount
+  useEffect(() => {
+    fetchEmailSendingState();
+  }, [fetchEmailSendingState]);
 
   // Default column widths
   const defaultColumnWidths = {
@@ -957,6 +1042,25 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
                 )}
                 <span className="ml-1">Backfill</span>
               </Button>
+              {/* Email Sending Toggle */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${emailSendingEnabled ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800"}`}>
+                {emailSendingLoading || togglingEmailSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : emailSendingEnabled ? (
+                  <Power className="h-4 w-4 text-green-600" />
+                ) : (
+                  <PowerOff className="h-4 w-4 text-red-600" />
+                )}
+                <span className={`text-sm font-medium ${emailSendingEnabled ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                  Sending
+                </span>
+                <Switch
+                  checked={emailSendingEnabled}
+                  onCheckedChange={toggleEmailSending}
+                  disabled={emailSendingLoading || togglingEmailSending}
+                  className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
+                />
+              </div>
               <div className={`flex items-center gap-1.5 text-sm ${isOnline ? "text-green-600" : "text-red-600"}`}>
                 <Wifi className={`h-4 w-4 ${!isOnline ? "opacity-50" : ""}`} />
                 <span>{isOnline ? "Live" : "Offline"}</span>

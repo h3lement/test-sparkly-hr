@@ -107,6 +107,21 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if email sending is enabled globally
+    const { data: emailEnabledSetting } = await supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "email_sending_enabled")
+      .maybeSingle();
+
+    if (emailEnabledSetting?.setting_value === "false") {
+      console.log("Email sending is disabled globally, skipping");
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "email_sending_disabled" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     // Check for duplicate - skip if admin email already sent/queued for this lead
     if (leadId) {
       const { data: existingEmail } = await supabase
