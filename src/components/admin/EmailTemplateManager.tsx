@@ -28,7 +28,6 @@ interface EmailTemplate {
 interface CTATemplate {
   id: string;
   quiz_id: string | null;
-  version_number: number;
   is_live: boolean;
   name: string | null;
   cta_title: Record<string, string>;
@@ -407,7 +406,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
     try {
       const { data, error } = await supabase
         .from("cta_templates")
-        .select("id, quiz_id, version_number, is_live, name, cta_title, cta_text, created_at")
+        .select("id, quiz_id, is_live, name, cta_title, cta_text, created_at")
         .or(`quiz_id.eq.${quizIdToUse},quiz_id.is.null`)
         .order("created_at", { ascending: false });
 

@@ -93,7 +93,6 @@ export type Database = {
           is_live: boolean
           name: string | null
           quiz_id: string | null
-          version_number: number
         }
         Insert: {
           created_at?: string
@@ -107,7 +106,6 @@ export type Database = {
           is_live?: boolean
           name?: string | null
           quiz_id?: string | null
-          version_number?: number
         }
         Update: {
           created_at?: string
@@ -121,13 +119,12 @@ export type Database = {
           is_live?: boolean
           name?: string | null
           quiz_id?: string | null
-          version_number?: number
         }
         Relationships: [
           {
             foreignKeyName: "cta_templates_quiz_id_fkey"
             columns: ["quiz_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "quizzes"
             referencedColumns: ["id"]
           },
