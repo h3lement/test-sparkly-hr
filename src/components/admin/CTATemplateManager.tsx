@@ -146,9 +146,9 @@ export function CTATemplateManager() {
   // Track if auto-save should be enabled (only when editing existing template with quiz)
   const autoSaveEnabled = editorOpen && !!editingTemplate && !!selectedQuizId;
   
-  // Auto-save callback
+  // Auto-save callback - use update() instead of upsert() to avoid "cannot affect row a second time" error
   const handleAutoSave = useCallback(async () => {
-    if (!selectedQuizId || !editingTemplate) return;
+    if (!selectedQuizId || !editingTemplate?.id) return;
     
     const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
     const primaryLanguage = selectedQuiz?.primary_language || "en";
@@ -157,27 +157,23 @@ export function CTATemplateManager() {
     // Skip if button text is empty (required field)
     if (!ctaButtonText[primaryLanguage]?.trim()) return;
     
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    // Use update() with the template ID instead of upsert() to avoid conflicts
     const { error } = await supabase
       .from("cta_templates")
-      .upsert({
-        quiz_id: selectedQuizId,
+      .update({
         name: autoName,
         cta_title: ctaTitle,
         cta_description: ctaDescription,
         cta_text: ctaButtonText,
         cta_url: ctaUrl.trim() || "https://sparkly.hr",
-        is_live: true,
-        created_by: user?.id,
-        created_by_email: user?.email,
-      }, { onConflict: 'quiz_id' });
+      })
+      .eq("id", editingTemplate.id);
     
     if (error) throw error;
     
     // Update local templates state
     setTemplates(prev => prev.map(t => 
-      t.quiz_id === selectedQuizId ? {
+      t.id === editingTemplate.id ? {
         ...t,
         name: autoName,
         cta_title: ctaTitle,
