@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -73,6 +73,8 @@ interface EmailLog {
 interface QuizData {
   cta_text: Json;
   cta_url: string | null;
+  cta_title: Json;
+  cta_description: Json;
 }
 
 interface RespondentDetailDialogProps {
@@ -96,6 +98,12 @@ export function RespondentDetailDialog({
   const [emailLog, setEmailLog] = useState<EmailLog | null>(null);
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [activeTab, setActiveTab] = useState("results");
+  const [uiTranslations, setUiTranslations] = useState<Record<string, string>>({});
+
+  // Helper to get UI translation
+  const t = useCallback((key: string, fallback: string): string => {
+    return uiTranslations[key] || fallback;
+  }, [uiTranslations]);
 
   useEffect(() => {
     if (open && lead) {
@@ -147,12 +155,30 @@ export function RespondentDetailDialog({
       if (lead.quiz_id) {
         const { data: quiz } = await supabase
           .from("quizzes")
-          .select("cta_text, cta_url")
+          .select("cta_text, cta_url, cta_title, cta_description")
           .eq("id", lead.quiz_id)
           .single();
 
         if (quiz) {
           setQuizData(quiz);
+        }
+
+        // Fetch UI translations for this quiz in respondent's language
+        const { data: translations } = await supabase
+          .from("ui_translations")
+          .select("translation_key, translations")
+          .eq("quiz_id", lead.quiz_id);
+
+        if (translations) {
+          const translationMap: Record<string, string> = {};
+          translations.forEach((item) => {
+            const translationsObj = item.translations as Record<string, string>;
+            const translatedValue = translationsObj?.[respondentLang] || translationsObj?.["en"];
+            if (translatedValue) {
+              translationMap[item.translation_key] = translatedValue;
+            }
+          });
+          setUiTranslations(translationMap);
         }
       }
 
@@ -271,7 +297,7 @@ export function RespondentDetailDialog({
                   <div className="space-y-4 p-1">
                     {/* Header - exact match to DynamicResultsScreen */}
                     <header className="text-center mb-4">
-                      <p className="text-sm text-muted-foreground mb-1">Results for {lead.email}</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t("resultsFor", "Results for")} {lead.email}</p>
                       {resultLevel && (
                         <h2 className="font-heading text-2xl md:text-3xl font-bold mb-1">
                           <span>{resultLevel.emoji}</span> {getLocalizedText(resultLevel.title, respondentLang)}
@@ -285,7 +311,7 @@ export function RespondentDetailDialog({
                         <div className="text-5xl font-bold gradient-text mb-1">
                           {lead.score}
                         </div>
-                        <p className="text-muted-foreground text-sm">out of {maxScore} points</p>
+                        <p className="text-muted-foreground text-sm">{t("outOf", "out of")} {maxScore} {t("points", "points")}</p>
                       </div>
                       
                       <div 
@@ -305,8 +331,8 @@ export function RespondentDetailDialog({
                       </div>
                       
                       <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Best</span>
-                        <span>Needs Work</span>
+                        <span>{t("best", "Best")}</span>
+                        <span>{t("needsWork", "Needs Work")}</span>
                       </div>
                     </section>
 
@@ -314,7 +340,7 @@ export function RespondentDetailDialog({
                     {lead.openness_score !== null && (
                       <section className="glass rounded-2xl p-6">
                         <h3 className="font-heading text-xl font-semibold mb-3">
-                          <span>{openMindednessLevel?.emoji || "🧠"}</span> {openMindednessLevel ? getLocalizedText(openMindednessLevel.title, respondentLang) : "Leadership Open-Mindedness"}
+                          <span>{openMindednessLevel?.emoji || "🧠"}</span> {openMindednessLevel ? getLocalizedText(openMindednessLevel.title, respondentLang) : t("leadershipOpenMindedness", "Leadership Open-Mindedness")}
                         </h3>
                         <div className="flex items-center gap-4 mb-3">
                           <div className="text-4xl font-bold gradient-text">
@@ -349,14 +375,14 @@ export function RespondentDetailDialog({
                     {/* Result description - exact match to DynamicResultsScreen "What This Means" */}
                     {resultLevel && (
                       <section className="glass rounded-2xl p-6">
-                        <h3 className="font-heading text-xl font-semibold mb-3">What This Means</h3>
+                        <h3 className="font-heading text-xl font-semibold mb-3">{t("whatThisMeans", "What This Means")}</h3>
                         <p className="text-muted-foreground leading-relaxed mb-5">
                           {getLocalizedText(resultLevel.description, respondentLang)}
                         </p>
                         
                         {resultLevel.insights && getInsights(resultLevel.insights, respondentLang).length > 0 && (
                           <>
-                            <h4 className="font-semibold mb-3">Key Insights:</h4>
+                            <h4 className="font-semibold mb-3">{t("keyInsights", "Key Insights:")}</h4>
                             <ol className="space-y-3" role="list">
                               {getInsights(resultLevel.insights, respondentLang).map((insight, i) => (
                                 <li key={i} className="flex items-start gap-3">
@@ -375,10 +401,10 @@ export function RespondentDetailDialog({
                     {/* CTA section - exact match to DynamicResultsScreen */}
                     <section className="glass rounded-2xl p-6 text-center">
                       <h3 className="font-heading text-xl font-semibold mb-2">
-                        Ready for Precise Employee Assessment?
+                        {quizData?.cta_title ? getLocalizedText(quizData.cta_title, respondentLang) : t("wantToImprove", "Ready for Precise Employee Assessment?")}
                       </h3>
                       <p className="text-muted-foreground mb-4">
-                        This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.
+                        {quizData?.cta_description ? getLocalizedText(quizData.cta_description, respondentLang) : t("wantToImproveDesc", "This quiz provides a general overview. For accurate, in-depth analysis of your team's performance and actionable improvement strategies, continue with professional testing.")}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <a 
@@ -387,7 +413,7 @@ export function RespondentDetailDialog({
                           rel="noopener noreferrer"
                           className="inline-flex items-center justify-center gap-2 gradient-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity"
                         >
-                          {quizData?.cta_text ? getLocalizedText(quizData.cta_text, respondentLang) : "Continue to Sparkly.hr"}
+                          {quizData?.cta_text ? getLocalizedText(quizData.cta_text, respondentLang) : t("visitSparkly", "Continue to Sparkly.hr")}
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       </div>
