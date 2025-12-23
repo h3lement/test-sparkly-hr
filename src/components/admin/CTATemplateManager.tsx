@@ -23,7 +23,8 @@ import {
   Download,
   Plus,
   Copy,
-  Trash2
+  Trash2,
+  RotateCcw
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -1213,13 +1214,25 @@ export function CTATemplateManager() {
                 <p className="text-muted-foreground mb-4 leading-relaxed">
                   {previewTemplate.cta_description?.[previewLang] || previewTemplate.cta_description?.en || "CTA description..."}
                 </p>
-                <Button className="w-full">
-                  {previewTemplate.cta_text?.[previewLang] || previewTemplate.cta_text?.en || "Button"}
-                </Button>
-                <p className="text-xs text-muted-foreground mt-3 text-center flex items-center justify-center gap-1">
-                  <LinkIcon className="w-3 h-3" />
-                  {previewTemplate.cta_url}
-                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button className="flex-1">
+                    {previewTemplate.cta_text?.[previewLang] || previewTemplate.cta_text?.en || "Button"}
+                  </Button>
+                  <Button variant="outline" className="flex-1">
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    {previewTemplate.cta_retry_text?.[previewLang] || previewTemplate.cta_retry_text?.en || "Take Again"}
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+                    <LinkIcon className="w-3 h-3" />
+                    Main: {previewTemplate.cta_url || "https://sparkly.hr"}
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+                    <RotateCcw className="w-3 h-3" />
+                    Retry: {previewTemplate.cta_retry_url || "(reloads page)"}
+                  </p>
+                </div>
               </div>
 
               {/* Full Content Details */}
@@ -1250,9 +1263,25 @@ export function CTATemplateManager() {
                     </div>
                     
                     <div className="bg-muted/30 rounded-lg p-3">
-                      <Label className="text-xs text-muted-foreground">URL</Label>
+                      <Label className="text-xs text-muted-foreground">Retry Button Text</Label>
+                      <p className="text-sm mt-1 font-medium">
+                        {previewTemplate.cta_retry_text?.[previewLang] || <span className="text-muted-foreground italic">Not translated</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <Label className="text-xs text-muted-foreground">Main URL</Label>
                       <p className="text-sm mt-1 text-blue-500 truncate">
-                        {previewTemplate.cta_url}
+                        {previewTemplate.cta_url || "https://sparkly.hr"}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-muted/30 rounded-lg p-3">
+                      <Label className="text-xs text-muted-foreground">Retry URL</Label>
+                      <p className="text-sm mt-1 text-blue-500 truncate">
+                        {previewTemplate.cta_retry_url || <span className="text-muted-foreground italic">Reloads page</span>}
                       </p>
                     </div>
                   </div>
