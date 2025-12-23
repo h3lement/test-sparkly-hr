@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,53 +66,24 @@ async function getEmailConfig(supabase: any): Promise<EmailConfigSettings> {
   return defaults;
 }
 
-function isLatin1(str: string): boolean {
-  return /^[\x00-\xFF]*$/.test(str);
+// UTF-8 safe base64 encoding (handles any Unicode string)
+function utf8ToBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
-// Encode subject line for UTF-8 support (RFC 2047) - only used for SMTP fallback
+// Encode subject line for UTF-8 support (RFC 2047)
 function encodeSubject(subject: string): string {
-  // Check if subject contains non-ASCII characters
   if (!/^[\x00-\x7F]*$/.test(subject)) {
-    // Use Base64 encoding for UTF-8 subject
-    const encoded = btoa(unescape(encodeURIComponent(subject)));
+    const encoded = utf8ToBase64(subject);
     return `=?UTF-8?B?${encoded}?=`;
   }
   return subject;
-}
-
-async function sendEmailViaResend(
-  config: EmailConfigSettings,
-  to: string,
-  subject: string,
-  html: string
-): Promise<{ success: boolean; error: string | null; messageId?: string }> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) {
-    return { success: false, error: "RESEND_API_KEY not configured" };
-  }
-
-  try {
-    const resend = new Resend(apiKey);
-    const from = `${config.senderName} <${config.senderEmail}>`;
-
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [to],
-      subject,
-      html,
-      ...(config.replyToEmail ? { reply_to: config.replyToEmail } : {}),
-    });
-
-    if (error) {
-      return { success: false, error: (error as any).message ?? String(error) };
-    }
-
-    return { success: true, error: null, messageId: (data as any)?.id };
-  } catch (error: any) {
-    console.error("Resend send error:", error);
-    return { success: false, error: error?.message || "Resend send failed" };
-  }
 }
 
 async function sendEmailViaSMTP(
@@ -124,15 +94,6 @@ async function sendEmailViaSMTP(
 ): Promise<{ success: boolean; error: string | null; messageId?: string }> {
   if (!config.smtpHost || !config.smtpUsername || !config.smtpPassword) {
     return { success: false, error: "SMTP not configured" };
-  }
-
-  // denomailer uses btoa() for SMTP AUTH, which only supports Latin1.
-  // If credentials contain Unicode, the connection will always fail.
-  if (!isLatin1(config.smtpUsername) || !isLatin1(config.smtpPassword)) {
-    return {
-      success: false,
-      error: "SMTP credentials contain non-Latin1 characters. Use Resend sending or ASCII-only SMTP credentials.",
-    };
   }
 
   try {
@@ -148,7 +109,6 @@ async function sendEmailViaSMTP(
       },
     });
 
-    // Encode subject for UTF-8 support
     const encodedSubject = encodeSubject(subject);
 
     await client.send({
@@ -174,7 +134,6 @@ async function sendEmailViaSMTP(
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -250,15 +209,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Get email config
     const emailConfig = await getEmailConfig(supabase);
 
-    // Fetch live email template for fallback sender info
-    const { data: templateData } = await supabase
-      .from("email_templates")
-      .select("*")
-      .eq("template_type", "quiz_results")
-      .eq("is_live", true)
-      .limit(1)
-      .maybeSingle();
-
     // Global email config from app_settings takes priority for sender identity
     const senderName = emailConfig.senderName;
     const senderEmail = emailConfig.senderEmail;
@@ -295,21 +245,12 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const hasResend = !!Deno.env.get("RESEND_API_KEY");
-
-    const emailResponse = hasResend
-      ? await sendEmailViaResend(
-          { ...emailConfig, senderName, senderEmail },
-          emailLog.recipient_email,
-          emailLog.subject,
-          emailHtml
-        )
-      : await sendEmailViaSMTP(
-          { ...emailConfig, senderName, senderEmail },
-          emailLog.recipient_email,
-          emailLog.subject,
-          emailHtml
-        );
+    const emailResponse = await sendEmailViaSMTP(
+      { ...emailConfig, senderName, senderEmail },
+      emailLog.recipient_email,
+      emailLog.subject,
+      emailHtml
+    );
 
     console.log("SMTP response:", JSON.stringify(emailResponse));
 

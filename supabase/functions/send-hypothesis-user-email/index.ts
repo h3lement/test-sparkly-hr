@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -411,7 +410,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const subject = `${trans.subject} - ${score}/${totalQuestions}`;
 
-    // Queue the email
+    // Queue the email (will be sent by process-email-queue)
     const { error: queueError } = await supabase.from("email_queue").insert({
       recipient_email: email,
       sender_email: emailConfig.senderEmail,
@@ -426,26 +425,12 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (queueError) {
-      console.error("Error queuing user email:", queueError);
+      console.error("Error queuing email:", queueError);
       return new Response(JSON.stringify({ error: "Failed to queue email" }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-
-    // Also log the email
-    await supabase.from("email_logs").insert({
-      recipient_email: email,
-      sender_email: emailConfig.senderEmail,
-      sender_name: emailConfig.senderName,
-      subject: subject,
-      html_body: htmlBody,
-      email_type: "hypothesis_results",
-      quiz_lead_id: leadId || null,
-      quiz_id: quizId || null,
-      language: language,
-      status: "queued",
-    });
 
     console.log("Hypothesis user email queued successfully");
 
