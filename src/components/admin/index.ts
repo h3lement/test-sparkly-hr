@@ -10,6 +10,7 @@ export { QuizErrorChecker, QuizErrorDisplay, CheckErrorsButton, getFirstErrorTab
 export { EmailSettings } from "./EmailSettings";
 export { EmailTemplateEditor } from "./EmailTemplateEditor";
 export { TemplateVersionsPage } from "./TemplateVersionsPage";
+export { QuizPreviewDialog } from "./QuizPreviewDialog";
 
 // Connection & Data Handling
 export { ConnectionStatus } from "./ConnectionStatus";
