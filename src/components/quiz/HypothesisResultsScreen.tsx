@@ -6,55 +6,9 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useUiTranslations } from '@/hooks/useUiTranslations';
 
-// Translations for the results screen
-const translations = {
-  en: {
-    resultsTitle: 'Assumptions vs Reality - 50+ Employees',
-    biasChampion: 'Bias Champion',
-    biasChampionDesc: 'Excellent awareness! You see through most common biases about 50+ employees.',
-    awareRecruiter: 'Aware Recruiter',
-    awareRecruiterDesc: 'Good progress! You recognize many biases but have room to grow.',
-    learningMindset: 'Learning Mindset',
-    learningMindsetDesc: "You're on your way. This test revealed some blind spots to work on.",
-    freshStart: 'Fresh Start',
-    freshStartDesc: "Great that you took this test! Now you know where to focus your learning.",
-    yourReflections: 'Your Reflections',
-    keyInsight: 'Key Insight',
-    actionPlan: 'Action Plan',
-    truthBehind: 'The Truth Behind Each Belief',
-    correct: 'correct',
-    of: 'of',
-    takeAgain: 'Take Again',
-    columnHypothesis: 'Assumption',
-    columnWoman: 'Woman assumption',
-    columnMan: 'Man assumption',
-    columnReality: 'Reality for 50+',
-    columnInterview: 'Interview Question',
-  },
-  et: {
-    resultsTitle: '50+ töötajatega seotud eeldused vs tegelikkus',
-    biasChampion: 'Eelarvamuste meister',
-    biasChampionDesc: 'Suurepärane teadlikkus! Näed läbi enamiku levinud eelarvamuste 50+ töötajate kohta.',
-    awareRecruiter: 'Teadlik värbaja',
-    awareRecruiterDesc: 'Hea edasiminek! Tunned ära paljud eelarvamused, kuid on veel arenguruumi.',
-    learningMindset: 'Õppiv mõtteviis',
-    learningMindsetDesc: 'Oled teel. See test paljastas mõned pimealad, millega tegeleda.',
-    freshStart: 'Uus algus',
-    freshStartDesc: 'Tore, et testi tegid! Nüüd tead, kuhu oma õppimist suunata.',
-    yourReflections: 'Sinu mõtted',
-    keyInsight: 'Põhiline õppetund',
-    actionPlan: 'Tegevusplaan',
-    truthBehind: 'Tõde iga eelduse taga',
-    correct: 'õiget',
-    of: '/',
-    takeAgain: 'Tee uuesti',
-    columnHypothesis: 'Eeldus',
-    columnWoman: 'Eeldus (naised)',
-    columnMan: 'Eeldus (mehed)',
-    columnReality: 'Kuidas tegelikult on',
-    columnInterview: 'Intervjuuküsimus',
-  },
-};
+// UI text keys are stored in the backend UI translations table.
+// This component intentionally avoids hardcoded per-language dictionaries so all languages work consistently.
+
 
 export function HypothesisResultsScreen() {
   const { 
@@ -71,12 +25,16 @@ export function HypothesisResultsScreen() {
   const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({});
   
   // Use UI translations from database
-  const { getTranslation } = useUiTranslations({ 
-    quizId: quizData?.id || null, 
-    language 
+  const { getTranslation } = useUiTranslations({
+    quizId: quizData?.id || null,
+    language,
   });
 
-  const t = translations[language as keyof typeof translations] || translations.en;
+  const t = (key: string, fallback: string) => getTranslation(key, fallback);
+
+  const labelCorrect = language === 'fi' ? 'Oikein' : 'Correct';
+  const labelIncorrect = language === 'fi' ? 'Väärin' : 'Incorrect';
+
 
   const { correct, total } = calculateScore();
   const percentage = Math.round((correct / total) * 100);
@@ -88,10 +46,10 @@ export function HypothesisResultsScreen() {
 
   // Get result level based on score
   const getResultLevel = () => {
-    if (percentage >= 80) return { title: t.biasChampion, emoji: '🏆', color: 'text-green-500', bgColor: 'bg-green-500/10', description: t.biasChampionDesc };
-    if (percentage >= 60) return { title: t.awareRecruiter, emoji: '👁️', color: 'text-blue-500', bgColor: 'bg-blue-500/10', description: t.awareRecruiterDesc };
-    if (percentage >= 40) return { title: t.learningMindset, emoji: '📚', color: 'text-amber-500', bgColor: 'bg-amber-500/10', description: t.learningMindsetDesc };
-    return { title: t.freshStart, emoji: '🌱', color: 'text-orange-500', bgColor: 'bg-orange-500/10', description: t.freshStartDesc };
+    if (percentage >= 80) return { title: t('biasChampion', 'Bias Champion'), emoji: '🏆', color: 'text-green-500', bgColor: 'bg-green-500/10', description: t('biasChampionDesc', 'Excellent awareness! You see through most common biases about 50+ employees.') };
+    if (percentage >= 60) return { title: t('awareRecruiter', 'Aware Recruiter'), emoji: '👁️', color: 'text-blue-500', bgColor: 'bg-blue-500/10', description: t('awareRecruiterDesc', 'Good progress! You recognize many biases but have room to grow.') };
+    if (percentage >= 40) return { title: t('learningMindset', 'Learning Mindset'), emoji: '📚', color: 'text-amber-500', bgColor: 'bg-amber-500/10', description: t('learningMindsetDesc', "You're on your way. This test revealed some blind spots to work on.") };
+    return { title: t('freshStart', 'Fresh Start'), emoji: '🌱', color: 'text-orange-500', bgColor: 'bg-orange-500/10', description: t('freshStartDesc', 'Great that you took this test! Now you know where to focus your learning.') };
   };
 
   const resultLevel = getResultLevel();

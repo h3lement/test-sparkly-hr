@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
+import { useUiTranslations } from '@/hooks/useUiTranslations';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowRight, ArrowLeft, Loader2, ThumbsUp, ThumbsDown, ArrowUp, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,10 @@ export function HypothesisQuestionScreen() {
   const currentPage = getCurrentPage();
   const progress = getProgress();
   const sortedPages = [...pages].sort((a, b) => a.page_number - b.page_number);
+
+  const { getTranslation } = useUiTranslations({ quizId: quizData?.id || null, language });
+  const t = (key: string, fallback: string, fiFallback?: string) =>
+    getTranslation(key, language === 'fi' ? (fiFallback ?? fallback) : fallback);
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
@@ -219,7 +224,7 @@ export function HypothesisQuestionScreen() {
           />
         </div>
         <p className="text-xs text-muted-foreground mt-2 text-right font-medium">
-          {progress.current} of {progress.total} hypotheses completed
+          {t('progressCompleted', `${progress.current} of ${progress.total} hypotheses completed`, `${progress.current}/${progress.total} hypoteesia tehty`)}
         </p>
       </div>
 
@@ -228,7 +233,7 @@ export function HypothesisQuestionScreen() {
         <div className="flex justify-between items-center mb-3">
           <h1 className="font-heading text-2xl md:text-3xl font-semibold text-foreground">{getText(currentPage.title)}</h1>
           <span className="text-sm text-muted-foreground bg-sparkly-blush px-3 py-1.5 rounded-full font-medium">
-            Page {currentPageIndex + 1} of {sortedPages.length}
+            {t('pageOf', `Page ${currentPageIndex + 1} of ${sortedPages.length}`, `Sivu ${currentPageIndex + 1}/${sortedPages.length}`)}
           </span>
         </div>
         <p className="text-muted-foreground">{getText(currentPage.description)}</p>
@@ -240,15 +245,15 @@ export function HypothesisQuestionScreen() {
         <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-4 bg-sparkly-blush border-b border-border/50 text-center">
           <div className="flex items-center justify-center gap-2">
             <span className="text-xl">👩</span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Women 50+</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">{t('women', 'Women', 'Naiset')} 50+</span>
           </div>
           <div className="flex items-center justify-center gap-2">
             <span className="text-xl">👨</span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Men 50+</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">{t('men', 'Men', 'Miehet')} 50+</span>
           </div>
           <div className="text-center">
             <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
-              Answer
+              {t('answerLabel', 'Answer', 'Vastaus')}
             </span>
           </div>
         </div>
@@ -256,7 +261,7 @@ export function HypothesisQuestionScreen() {
         {/* Mobile Header */}
         <div className="md:hidden px-4 py-3 bg-sparkly-blush border-b border-border/50">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">Hypotheses</span>
+            <span className="text-sm font-semibold text-foreground">{t('hypothesesLabel', 'Hypotheses', 'Hypoteesit')}</span>
             <span className="text-xs text-muted-foreground">
               {answeredCount}/{pageQuestions.length} answered
             </span>
@@ -267,10 +272,10 @@ export function HypothesisQuestionScreen() {
         <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
           <div className="col-span-2 flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              This page: <span className="font-semibold text-foreground">{answeredCount}</span> of {pageQuestions.length} answered
+              {t('thisPageAnswered', 'This page:', 'Tällä sivulla:')} <span className="font-semibold text-foreground">{answeredCount}</span> {t('of', 'of', '/')} {pageQuestions.length} {t('answered', 'answered', 'vastattu')}
             </span>
             {allQuestionsAnswered && (
-              <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ Ready to submit!</span>
+              <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ {t('readyToSubmit', 'Ready to submit!', 'Valmis lähetettäväksi!')}</span>
             )}
           </div>
           
@@ -286,7 +291,7 @@ export function HypothesisQuestionScreen() {
                 setPageAnswers(newAnswers);
               }}
             >
-              All True
+              {t('allTrue', 'All True', 'Kaikki tosi')}
             </Button>
             <Button
               size="sm"
@@ -298,7 +303,7 @@ export function HypothesisQuestionScreen() {
                 setPageAnswers(newAnswers);
               }}
             >
-              All False
+              {t('allFalse', 'All False', 'Kaikki epätosi')}
             </Button>
           </div>
         </div>
@@ -358,7 +363,7 @@ export function HypothesisQuestionScreen() {
                         )}
                         onClick={() => handleAnswer(question.id, true)}
                       >
-                        True
+                        {t('trueLabel', 'True', 'Tosi')}
                       </Button>
                       <Button
                         size="sm"
@@ -369,7 +374,7 @@ export function HypothesisQuestionScreen() {
                         )}
                         onClick={() => handleAnswer(question.id, false)}
                       >
-                        False
+                        {t('falseLabel', 'False', 'Epätosi')}
                       </Button>
                       {answer !== null && (
                         isCorrect ? (
