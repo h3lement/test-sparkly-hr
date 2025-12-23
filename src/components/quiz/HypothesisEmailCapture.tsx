@@ -19,6 +19,7 @@ export function HypothesisEmailCapture() {
     setCurrentStep, 
     calculateScore,
     calculateOpenMindednessScore,
+    openMindednessQuestion,
     quizData,
     sessionId,
     feedbackNewLearnings,
@@ -47,7 +48,9 @@ export function HypothesisEmailCapture() {
     setIsSubmitting(true);
 
     const { correct, total } = calculateScore();
-    const opennessScore = quizData?.include_open_mindedness ? calculateOpenMindednessScore() : null;
+    // Use OM question presence as a fallback in case quizData isn't hydrated yet
+    const shouldIncludeOm = !!(quizData?.include_open_mindedness || openMindednessQuestion);
+    const opennessScore = shouldIncludeOm ? calculateOpenMindednessScore() : null;
 
     try {
       // Save lead to database

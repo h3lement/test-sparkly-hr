@@ -106,7 +106,10 @@ export function RespondentDetailDialog({
   const fetchData = async () => {
     if (!lead) return;
     setLoading(true);
-    
+
+    // Use respondent's stored language for fetching + display
+    const respondentLang = lead.language || displayLanguage || "en";
+
     try {
       // Fetch all result levels for this quiz
       const { data: allLevels } = await supabase
@@ -147,21 +150,21 @@ export function RespondentDetailDialog({
           .select("cta_text, cta_url")
           .eq("id", lead.quiz_id)
           .single();
-        
+
         if (quiz) {
           setQuizData(quiz);
         }
       }
 
-      // Fetch email log for this lead - try by quiz_lead_id first, then by email + date
+      // Fetch email log for this lead in the respondent's language
       let emailLogData = null;
-      
-      // First try to find by quiz_lead_id (newer records)
+
       const { data: emailByLeadId } = await supabase
         .from("email_logs")
         .select("*")
         .eq("quiz_lead_id", lead.id)
         .eq("email_type", "quiz_result_user")
+        .eq("language", respondentLang)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -173,18 +176,19 @@ export function RespondentDetailDialog({
         const leadDate = new Date(lead.created_at);
         const minDate = new Date(leadDate.getTime() - 60000).toISOString(); // 1 min before
         const maxDate = new Date(leadDate.getTime() + 60000).toISOString(); // 1 min after
-        
+
         const { data: emailByMatch } = await supabase
           .from("email_logs")
           .select("*")
           .eq("recipient_email", lead.email)
           .eq("email_type", "quiz_result_user")
+          .eq("language", respondentLang)
           .gte("created_at", minDate)
           .lte("created_at", maxDate)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        
+
         emailLogData = emailByMatch;
       }
 
@@ -506,7 +510,7 @@ export function RespondentDetailDialog({
                         <iframe
                           srcDoc={emailLog.html_body}
                           className="w-full border-0 bg-white"
-                          style={{ height: "450px" }}
+                          style={{ height: "60vh" }}
                           title="Email Preview"
                           sandbox="allow-same-origin"
                         />
