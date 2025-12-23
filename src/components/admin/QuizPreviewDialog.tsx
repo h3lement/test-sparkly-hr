@@ -138,12 +138,12 @@ export function QuizPreviewDialog({
   const canGoPrev = currentPageIndex > 0;
   const canGoNext = currentPageIndex < quizPages.length - 1;
 
-  // Build iframe URL - correct format: /:quizSlug/:step?lang=xx
+  // Build iframe URL - correct format: /:quizSlug/:step?lang=xx&preview=1
   const iframeUrl = useMemo(() => {
     const page = quizPages.find(p => p.id === currentPage);
     const step = page?.step || "welcome";
-    // Format: /quiz-slug/step?lang=en
-    return `/${quizSlug}/${step}?lang=${selectedLanguage}`;
+    // Format: /quiz-slug/step?lang=en&preview=1 (preview mode allows direct page access)
+    return `/${quizSlug}/${step}?lang=${selectedLanguage}&preview=1`;
   }, [quizSlug, currentPage, selectedLanguage, quizPages]);
 
   // Reset to welcome on open
@@ -292,39 +292,20 @@ export function QuizPreviewDialog({
           </div>
         </DialogHeader>
 
-        {/* Language Tabs + Page Navigation combined */}
-        <div className="px-3 py-2 border-b bg-muted/30 flex-shrink-0">
-          <div className="flex items-center justify-between gap-4">
-            {/* Language selector - show ALL 24 languages in a scrollable row */}
-            <div className="flex items-center gap-0.5 overflow-x-auto flex-1 pb-1">
-              {ALL_LANGUAGES.map(lang => (
-                <button
-                  key={lang.code}
-                  onClick={() => handleLanguageChange(lang.code)}
-                  className={cn(
-                    "px-2 py-1 text-xs font-medium rounded transition-colors flex-shrink-0",
-                    selectedLanguage === lang.code
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  {lang.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Page Navigation */}
-            <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Page Navigation - Primary row for testing */}
+        <div className="px-3 py-2 border-b bg-muted/50 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handlePrevPage}
                 disabled={!canGoPrev}
-                className="h-7 w-7"
+                className="h-8 w-8"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-1 bg-background rounded-md p-1 border">
                 {quizPages.map(page => {
                   const Icon = page.icon;
                   return (
@@ -333,13 +314,14 @@ export function QuizPreviewDialog({
                       onClick={() => handlePageChange(page.id)}
                       title={page.label}
                       className={cn(
-                        "inline-flex items-center justify-center w-7 h-7 text-xs font-medium rounded transition-colors",
+                        "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors",
                         currentPage === page.id
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-primary text-primary-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
                       <Icon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{page.label}</span>
                     </button>
                   );
                 })}
@@ -349,14 +331,34 @@ export function QuizPreviewDialog({
                 size="icon"
                 onClick={handleNextPage}
                 disabled={!canGoNext}
-                className="h-7 w-7"
+                className="h-8 w-8"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
-              <span className="text-xs text-muted-foreground ml-2 tabular-nums">
-                {currentPageIndex + 1}/{quizPages.length}
-              </span>
             </div>
+            <span className="text-sm font-medium text-muted-foreground tabular-nums">
+              {currentPageIndex + 1} / {quizPages.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Language selector row */}
+        <div className="px-3 py-1.5 border-b bg-muted/20 flex-shrink-0">
+          <div className="flex items-center gap-0.5 overflow-x-auto">
+            {ALL_LANGUAGES.map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={cn(
+                  "px-2 py-1 text-xs font-medium rounded transition-colors flex-shrink-0",
+                  selectedLanguage === lang.code
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                {lang.label}
+              </button>
+            ))}
           </div>
         </div>
 
