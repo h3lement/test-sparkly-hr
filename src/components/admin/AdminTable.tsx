@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 interface AdminTableProps {
@@ -19,11 +19,12 @@ interface AdminTableRowProps {
   index?: number; // For zebra striping
 }
 
-interface AdminTableCellProps {
+export interface AdminTableCellProps {
   children: ReactNode;
   header?: boolean;
   align?: "left" | "center" | "right";
   className?: string;
+  style?: CSSProperties;
 }
 
 export function AdminTable({ children, className }: AdminTableProps) {
@@ -62,7 +63,7 @@ export function AdminTableRow({ children, inactive, onClick, className, id, inde
   );
 }
 
-export function AdminTableCell({ children, header, align = "left", className }: AdminTableCellProps) {
+export function AdminTableCell({ children, header, align = "left", className, style }: AdminTableCellProps) {
   const alignClass = {
     left: "text-left",
     center: "text-center",
@@ -70,8 +71,8 @@ export function AdminTableCell({ children, header, align = "left", className }: 
   }[align];
 
   if (header) {
-    return <th className={cn("admin-table-th", alignClass, className)}>{children}</th>;
+    return <th className={cn("admin-table-th", alignClass, className)} style={style}>{children}</th>;
   }
 
-  return <td className={cn("admin-table-td", alignClass, className)}>{children}</td>;
+  return <td className={cn("admin-table-td", alignClass, className)} style={style}>{children}</td>;
 }

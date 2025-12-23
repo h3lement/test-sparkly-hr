@@ -21,8 +21,7 @@ import {
   MailX,
   MailWarning,
   Clock,
-  Loader2,
-  Eye
+  RotateCcw
 } from "lucide-react";
 import {
   Tooltip,
@@ -30,6 +29,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useResizableColumns } from "@/hooks/useResizableColumns";
+import { ResizableTableHead } from "@/components/ui/resizable-table-head";
 import {
   Select,
   SelectContent,
@@ -165,6 +166,26 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       showUniqueEmails: false,
       showUniqueEmailQuiz: false,
     },
+  });
+
+  // Column widths default values
+  const defaultColumnWidths = useMemo(() => ({
+    email: 220,
+    quiz: 180,
+    score: 80,
+    result: 140,
+    openness: 90,
+    lang: 60,
+    emailStatus: 80,
+    submitted: 140,
+    actions: 50,
+  }), []);
+
+  // Resizable columns
+  const { columnWidths, handleMouseDown, resetWidths, loaded: columnsLoaded } = useResizableColumns({
+    defaultWidths: defaultColumnWidths,
+    storageKey: "respondents_column_widths",
+    minWidth: 50,
   });
 
   const itemsPerPage = preferences.itemsPerPage ?? 25;
@@ -550,6 +571,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         description="View quiz submissions"
         actions={
           <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={resetWidths} variant="ghost" size="sm">
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Reset column widths</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Refresh
@@ -661,23 +692,41 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       ) : (
         <AdminCard>
           <AdminCardContent noPadding>
-            <AdminTable>
-              <AdminTableHeader>
-                <AdminTableCell header>Email</AdminTableCell>
-                <AdminTableCell header>Quiz</AdminTableCell>
-                <AdminTableCell header>Score</AdminTableCell>
-                <AdminTableCell header>Result</AdminTableCell>
-                <AdminTableCell header>Openness</AdminTableCell>
-                <AdminTableCell header>Lang</AdminTableCell>
-                <AdminTableCell header align="center">
-                  <div className="inline-flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    <span>Email</span>
-                  </div>
-                </AdminTableCell>
-                <AdminTableCell header>Submitted</AdminTableCell>
-                <AdminTableCell header align="right">&nbsp;</AdminTableCell>
-              </AdminTableHeader>
+            <AdminTable className="table-fixed">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <ResizableTableHead columnKey="email" width={columnWidths.email} onResizeStart={handleMouseDown}>
+                    Email
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="quiz" width={columnWidths.quiz} onResizeStart={handleMouseDown}>
+                    Quiz
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="score" width={columnWidths.score} onResizeStart={handleMouseDown}>
+                    Score
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="result" width={columnWidths.result} onResizeStart={handleMouseDown}>
+                    Result
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="openness" width={columnWidths.openness} onResizeStart={handleMouseDown}>
+                    Openness
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="lang" width={columnWidths.lang} onResizeStart={handleMouseDown}>
+                    Lang
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="emailStatus" width={columnWidths.emailStatus} onResizeStart={handleMouseDown} className="text-center">
+                    <div className="inline-flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      <span>Email</span>
+                    </div>
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="submitted" width={columnWidths.submitted} onResizeStart={handleMouseDown}>
+                    Submitted
+                  </ResizableTableHead>
+                  <ResizableTableHead columnKey="actions" width={columnWidths.actions} onResizeStart={handleMouseDown} resizable={false} className="text-right">
+                    &nbsp;
+                  </ResizableTableHead>
+                </tr>
+              </thead>
               <AdminTableBody>
                 {paginatedLeads.map((lead, index) => {
                   const isExpanded = expandedRow === lead.id;
@@ -703,26 +752,26 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         )}
                         onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
                       >
-                        <AdminTableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9 bg-secondary">
+                        <AdminTableCell style={{ width: columnWidths.email, minWidth: columnWidths.email }}>
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <Avatar className="h-9 w-9 bg-secondary flex-shrink-0">
                               <AvatarFallback className="text-xs bg-secondary text-foreground">
                                 {lead.email.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedEmail(lead.email);
                                 }}
-                                className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                                className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left truncate"
                               >
                                 {lead.email}
                               </button>
                               <Badge 
                                 variant="secondary" 
-                                className="text-xs cursor-pointer hover:bg-primary/20"
+                                className="text-xs cursor-pointer hover:bg-primary/20 flex-shrink-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedEmail(lead.email);
@@ -732,21 +781,21 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                               </Badge>
                               {hasAnswers && (
                                 isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                                  <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                 )
                               )}
                             </div>
                           </div>
                         </AdminTableCell>
-                        <AdminTableCell>
+                        <AdminTableCell style={{ width: columnWidths.quiz, minWidth: columnWidths.quiz }}>
                           {quiz ? (
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col gap-0.5 overflow-hidden">
                               <button
                                 type="button"
                                 onClick={(e) => handleQuizClick(effectiveQuizId, e)}
-                                className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left"
+                                className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left truncate"
                                 title="Click to edit quiz"
                               >
                                 {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
@@ -756,7 +805,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+                                className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors truncate"
                               >
                                 /{quiz.slug.replace(/^\/+/, "")}
                               </a>
@@ -765,15 +814,15 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                             <span className="text-sm text-muted-foreground">Unknown</span>
                           )}
                         </AdminTableCell>
-                        <AdminTableCell>
+                        <AdminTableCell style={{ width: columnWidths.score, minWidth: columnWidths.score }}>
                           <span className="text-sm text-foreground">{lead.score}/{lead.total_questions}</span>
                         </AdminTableCell>
-                        <AdminTableCell>
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                        <AdminTableCell style={{ width: columnWidths.result, minWidth: columnWidths.result }}>
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 truncate max-w-full">
                             {lead.result_category}
                           </Badge>
                         </AdminTableCell>
-                        <AdminTableCell>
+                        <AdminTableCell style={{ width: columnWidths.openness, minWidth: columnWidths.openness }}>
                           {lead.openness_score !== null ? (
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                               {lead.openness_score}/4
@@ -782,12 +831,12 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
                         </AdminTableCell>
-                        <AdminTableCell>
+                        <AdminTableCell style={{ width: columnWidths.lang, minWidth: columnWidths.lang }}>
                           <Badge variant="secondary" className="uppercase text-xs">
                             {lead.language || 'en'}
                           </Badge>
                         </AdminTableCell>
-                        <AdminTableCell align="center">
+                        <AdminTableCell style={{ width: columnWidths.emailStatus, minWidth: columnWidths.emailStatus }} align="center">
                           <EmailPreviewPopover
                             leadId={lead.id}
                             leadCreatedAt={lead.created_at}
@@ -798,10 +847,10 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                             EmailIcon={EmailIcon}
                           />
                         </AdminTableCell>
-                        <AdminTableCell>
+                        <AdminTableCell style={{ width: columnWidths.submitted, minWidth: columnWidths.submitted }}>
                           <span className="text-sm text-muted-foreground">{formatTimestamp(lead.created_at)}</span>
                         </AdminTableCell>
-                        <AdminTableCell align="right">
+                        <AdminTableCell style={{ width: columnWidths.actions, minWidth: columnWidths.actions }} align="right">
                           <Button
                             variant="ghost"
                             size="icon"
