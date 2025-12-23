@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw, Languages, Loader2 } from "lucide-react";
+import { withRetry } from "@/hooks/useSupabaseConnection";
+import { DataFetchWrapper } from "@/components/admin/DataFetchWrapper";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -284,6 +286,8 @@ export function QuizManager() {
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activityLogQuiz, setActivityLogQuiz] = useState<Quiz | null>(null);
   const [sortColumn, setSortColumn] = useState<string>("display_order");

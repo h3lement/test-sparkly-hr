@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Trash2, Clock, Search, LogOut } from "lucide-react";
 import { logActivity } from "@/hooks/useActivityLog";
+import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
@@ -20,6 +21,7 @@ import { QuizAnalytics } from "@/components/admin/QuizAnalytics";
 import { RespondentsList } from "@/components/admin/RespondentsList";
 import { ActivityDashboard } from "@/components/admin/ActivityDashboard";
 import { AppearanceSettings } from "@/components/admin/AppearanceSettings";
+import { ConnectionStatus } from "@/components/admin/ConnectionStatus";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 
@@ -53,8 +55,14 @@ const Admin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
   const [emailHistoryFilter, setEmailHistoryFilter] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Connection status with auto-refresh on reconnect
+  const handleConnectionRestored = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   // Sync tab with URL param
   useEffect(() => {
@@ -421,18 +429,25 @@ const Admin = () => {
       />
 
       <main className="flex-1 flex flex-col min-h-0 bg-card">
+        {/* Connection Status Banner */}
+        <ConnectionStatus 
+          onConnectionRestored={handleConnectionRestored}
+          className="mx-4 mt-4"
+        />
+        
         <div className="flex-1 density-padding-lg overflow-y-auto min-h-0">
           {/* Breadcrumb Navigation */}
           <AdminBreadcrumb items={[{ label: getTabLabel(activeTab) }]} />
 
           {/* Activity Dashboard Tab */}
           {activeTab === "activity" && (
-            <ActivityDashboard />
+            <ActivityDashboard key={`activity-${refreshKey}`} />
           )}
 
           {/* Respondents Tab */}
           {activeTab === "leads" && (
             <RespondentsList 
+              key={`leads-${refreshKey}`}
               highlightedLeadId={highlightedLeadId} 
               onHighlightCleared={() => setHighlightedLeadId(null)}
               onViewEmailHistory={handleViewEmailHistory}
@@ -441,12 +456,12 @@ const Admin = () => {
 
           {/* Quizzes Tab */}
           {activeTab === "quizzes" && (
-            <QuizManager />
+            <QuizManager key={`quizzes-${refreshKey}`} />
           )}
 
           {/* Analytics Tab */}
           {activeTab === "analytics" && (
-            <QuizAnalytics />
+            <QuizAnalytics key={`analytics-${refreshKey}`} />
           )}
 
           {/* Admins Tab */}
