@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw, Languages, Loader2 } from "lucide-react";
+import { formatTimestamp } from "@/lib/utils";
 import { withRetry } from "@/hooks/useSupabaseConnection";
 import { DataFetchWrapper } from "@/components/admin/DataFetchWrapper";
 import { Badge } from "@/components/ui/badge";
@@ -635,14 +636,7 @@ export function QuizManager() {
   };
 
   const formatDateTime = (dateString: string, userEmail?: string | null) => {
-    const date = new Date(dateString);
-    const formatted = date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const formatted = formatTimestamp(dateString);
     
     if (userEmail) {
       // Extract name from email (before @)

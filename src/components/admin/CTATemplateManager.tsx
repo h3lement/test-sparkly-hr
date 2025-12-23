@@ -51,7 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { formatTimestamp } from "@/lib/utils";
 
 interface Quiz {
   id: string;
@@ -509,7 +509,7 @@ export function CTATemplateManager() {
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd MMM yyyy HH:mm");
+    return formatTimestamp(dateString);
   };
 
   const getQuizTitle = (quiz: Quiz) => quiz.title?.en || quiz.title?.et || quiz.slug;
