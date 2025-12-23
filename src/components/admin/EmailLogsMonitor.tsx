@@ -48,7 +48,8 @@ import {
   MailCheck,
   MailX,
   MousePointer,
-  EyeIcon
+  EyeIcon,
+  Database
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { EmailDetailDialog } from "./EmailDetailDialog";
@@ -150,6 +151,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [queueStats, setQueueStats] = useState<QueueStats>({ pending: 0, processing: 0, failed: 0, lastProcessed: null });
   const [queueLoading, setQueueLoading] = useState(false);
   const [processingQueue, setProcessingQueue] = useState(false);
+  const [backfillingLogs, setBackfillingLogs] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [sortColumns, setSortColumns] = useState<Array<{ column: string; direction: "asc" | "desc" }>>(() => {
     try {
@@ -242,59 +244,60 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
         fetchQueueStats();
         fetchLogs();
 
-        if (sendNow) {
-          // Give realtime a moment to deliver updates
-          setTimeout(() => {
-            processQueue(true);
-          }, 300);
-        }
-      } catch (error: any) {
-        console.error("Error re-queuing email:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to re-queue email",
-          variant: "destructive",
-        });
+      if (sendNow) {
+        // Give realtime a moment to deliver updates
+        setTimeout(() => {
+          processQueue(true);
+        }, 300);
       }
-    },
-    [processQueue, toast]
-  );
-
-  const requeueAllFailed = useCallback(async () => {
-    try {
-      const { error } = await supabase
-        .from("email_queue")
-        .update({
-          status: "pending",
-          retry_count: 0,
-          error_message: null,
-          processing_started_at: null,
-          scheduled_for: new Date().toISOString(),
-        })
-        .eq("status", "failed");
-
-      if (error) throw error;
-
-      toast({
-        title: "Failed emails re-queued",
-        description: "Retrying failed emails now.",
-      });
-
-      fetchQueueStats();
-      fetchLogs();
-
-      setTimeout(() => {
-        processQueue(false);
-      }, 300);
     } catch (error: any) {
-      console.error("Error re-queuing failed emails:", error);
+      console.error("Error re-queuing email:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to re-queue failed emails",
-         variant: "destructive",
-       });
-     }
-   }, [processQueue, toast]);
+        description: error.message || "Failed to re-queue email",
+        variant: "destructive",
+      });
+    }
+  },
+  [processQueue, toast]
+);
+
+const requeueAllFailed = useCallback(async () => {
+  try {
+    const { error } = await supabase
+      .from("email_queue")
+      .update({
+        status: "pending",
+        retry_count: 0,
+        error_message: null,
+        processing_started_at: null,
+        scheduled_for: new Date().toISOString(),
+      })
+      .eq("status", "failed");
+
+    if (error) throw error;
+
+    toast({
+      title: "Failed emails re-queued",
+      description: "Retrying failed emails now.",
+    });
+
+    fetchQueueStats();
+    fetchLogs();
+
+    setTimeout(() => {
+      processQueue(false);
+    }, 300);
+  } catch (error: any) {
+    console.error("Error re-queuing failed emails:", error);
+    toast({
+      title: "Error",
+      description: error.message || "Failed to re-queue failed emails",
+      variant: "destructive",
+    });
+  }
+}, [processQueue, toast]);
+
 
   // Auto-process queue when connection is re-established
   useEffect(() => {
@@ -402,6 +405,41 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     }
   }, []);
 
+  const backfillMissingLogs = useCallback(async () => {
+    if (backfillingLogs) return;
+
+    setBackfillingLogs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-email-logs", {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      if (data.backfilled > 0) {
+        toast({
+          title: "Backfill complete",
+          description: `Created ${data.backfilled} missing email log entries`,
+        });
+        fetchLogs();
+      } else {
+        toast({
+          title: "No missing logs",
+          description: "All sent queue items already have log entries",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error backfilling logs:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to backfill missing logs",
+        variant: "destructive",
+      });
+    } finally {
+      setBackfillingLogs(false);
+    }
+  }, [backfillingLogs, toast, fetchLogs]);
+
   useEffect(() => {
     fetchLogs();
     fetchQueueStats();
@@ -456,18 +494,45 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       if (error) throw error;
 
       if (data.success) {
+        // Update the log entry in state without refetching
+        setLogs((prevLogs) =>
+          prevLogs.map((log) =>
+            log.id === logId
+              ? {
+                  ...log,
+                  status: "sent",
+                  resend_attempts: data.attempts,
+                  last_attempt_at: new Date().toISOString(),
+                  error_message: null,
+                }
+              : log
+          )
+        );
+
         toast({
           title: "Email resent",
           description: `Email successfully resent (attempt #${data.attempts})`,
         });
-        fetchLogs();
       } else {
+        // Update the log entry with failure info
+        setLogs((prevLogs) =>
+          prevLogs.map((log) =>
+            log.id === logId
+              ? {
+                  ...log,
+                  resend_attempts: data.attempts || (log.resend_attempts || 0) + 1,
+                  last_attempt_at: new Date().toISOString(),
+                  error_message: data.error || "Resend failed",
+                }
+              : log
+          )
+        );
+
         toast({
           title: "Resend failed",
           description: data.error || "Failed to resend email",
           variant: "destructive",
         });
-        fetchLogs();
       }
     } catch (error: any) {
       console.error("Error resending email:", error);
@@ -857,6 +922,21 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   </div>
                 )}
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={backfillMissingLogs}
+                disabled={backfillingLogs}
+                title="Create missing email_logs entries for sent queue items"
+              >
+                {backfillingLogs ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Database className="h-3 w-3" />
+                )}
+                <span className="ml-1">Backfill</span>
+              </Button>
               <div className={`flex items-center gap-1.5 text-sm ${isOnline ? "text-green-600" : "text-red-600"}`}>
                 <Wifi className={`h-4 w-4 ${!isOnline ? "opacity-50" : ""}`} />
                 <span>{isOnline ? "Live" : "Offline"}</span>
