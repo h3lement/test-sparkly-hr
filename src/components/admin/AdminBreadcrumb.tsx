@@ -15,7 +15,7 @@ const TAB_LABELS: Record<string, string> = {
   leads: "Respondents",
   quizzes: "Quizzes",
   admins: "Admin Users",
-  versions: "Versions",
+  versions: "CTAs",
   "email-logs": "Email History",
   appearance: "Appearance",
   analytics: "Analytics",
