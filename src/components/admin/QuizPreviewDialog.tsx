@@ -185,6 +185,7 @@ export function QuizPreviewDialog({
       const { data, error } = await supabase.functions.invoke("translate-quiz", {
         body: {
           quizId,
+          sourceLanguage: primaryLanguage,
           targetLanguages: options.targetLanguages,
           includeUiText: options.includeUiText,
         },
