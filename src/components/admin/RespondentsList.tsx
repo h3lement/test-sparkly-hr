@@ -79,6 +79,7 @@ interface QuizLead {
   language: string | null;
   quiz_id: string | null;
   answers: Json | null;
+  leadType: "quiz" | "hypothesis"; // Track source table
 }
 
 interface Quiz {
@@ -326,13 +327,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         language: hl.language,
         quiz_id: hl.quiz_id,
         answers: null,
+        leadType: "hypothesis" as const,
+      }));
+
+      // Convert quiz leads with leadType
+      const quizLeadsConverted: QuizLead[] = (leadsRes.data || []).map((ql) => ({
+        ...ql,
+        leadType: "quiz" as const,
       }));
 
       // Get active quiz IDs
       const activeQuizIds = new Set((quizzesRes.data || []).map(q => q.id));
 
       // Merge and sort by created_at, filtering to only active quizzes
-      const allLeads = [...(leadsRes.data || []), ...hypothesisLeadsConverted]
+      const allLeads = [...quizLeadsConverted, ...hypothesisLeadsConverted]
         .filter(lead => lead.quiz_id && activeQuizIds.has(lead.quiz_id))
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -846,7 +854,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         <EmailPreviewPopover
                           leadId={lead.id}
                           leadCreatedAt={lead.created_at}
-                          hasAnswers={lead.answers !== null}
+                          leadType={lead.leadType}
                           emailLog={emailLogs.get(lead.id)}
                           emailStatusLabel={emailStatus.label}
                           emailStatusColor={emailStatus.color}
