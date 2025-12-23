@@ -354,16 +354,16 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="pb-2">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Email Details
           </DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-6 px-6 py-4">
             {/* Status Banner */}
             <div className={`p-4 rounded-lg ${statusInfo.bgColor} border`}>
               <div className="flex items-center gap-3">
@@ -579,6 +579,8 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
                 </div>
               </div>
             </div>
+            {/* Bottom padding for scroll area */}
+            <div className="h-4" />
           </div>
         </ScrollArea>
       </DialogContent>
