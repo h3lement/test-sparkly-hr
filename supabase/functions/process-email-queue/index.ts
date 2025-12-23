@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,34 +26,107 @@ interface EmailQueueItem {
   reply_to_email: string | null;
 }
 
+interface EmailConfig {
+  smtpHost: string;
+  smtpPort: string;
+  smtpUsername: string;
+  smtpPassword: string;
+  smtpTls: boolean;
+}
+
+async function getEmailConfig(supabase: any): Promise<EmailConfig> {
+  const defaults: EmailConfig = {
+    smtpHost: "",
+    smtpPort: "587",
+    smtpUsername: "",
+    smtpPassword: "",
+    smtpTls: true,
+  };
+
+  try {
+    const settingKeys = ["smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls"];
+    
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", settingKeys);
+    
+    if (!error && data && data.length > 0) {
+      data.forEach((setting: { setting_key: string; setting_value: string }) => {
+        switch (setting.setting_key) {
+          case "smtp_host": defaults.smtpHost = setting.setting_value; break;
+          case "smtp_port": defaults.smtpPort = setting.setting_value || defaults.smtpPort; break;
+          case "smtp_username": defaults.smtpUsername = setting.setting_value; break;
+          case "smtp_password": defaults.smtpPassword = setting.setting_value; break;
+          case "smtp_tls": defaults.smtpTls = setting.setting_value === "true"; break;
+        }
+      });
+      console.log("Loaded SMTP config:", {
+        smtpHost: defaults.smtpHost,
+        smtpPort: defaults.smtpPort,
+        smtpTls: defaults.smtpTls,
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching email config:", error);
+  }
+  
+  return defaults;
+}
+
+// Encode subject line for UTF-8 support (RFC 2047)
+function encodeSubject(subject: string): string {
+  if (!/^[\x00-\x7F]*$/.test(subject)) {
+    const encoded = btoa(unescape(encodeURIComponent(subject)));
+    return `=?UTF-8?B?${encoded}?=`;
+  }
+  return subject;
+}
+
 async function sendEmail(
+  config: EmailConfig,
   item: EmailQueueItem
 ): Promise<{ success: boolean; error: string | null; messageId?: string }> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) {
-    return { success: false, error: "RESEND_API_KEY not configured" };
+  if (!config.smtpHost || !config.smtpUsername || !config.smtpPassword) {
+    return { success: false, error: "SMTP not configured - missing host, username, or password" };
   }
 
   try {
-    const resend = new Resend(apiKey);
-    const from = `${item.sender_name} <${item.sender_email}>`;
-
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [item.recipient_email],
-      subject: item.subject,
-      html: item.html_body,
-      ...(item.reply_to_email ? { reply_to: item.reply_to_email } : {}),
+    const client = new SMTPClient({
+      connection: {
+        hostname: config.smtpHost,
+        port: parseInt(config.smtpPort, 10) || 587,
+        tls: config.smtpTls,
+        auth: {
+          username: config.smtpUsername,
+          password: config.smtpPassword,
+        },
+      },
     });
 
-    if (error) {
-      return { success: false, error: (error as any).message ?? String(error) };
-    }
+    const from = `${item.sender_name} <${item.sender_email}>`;
+    const encodedSubject = encodeSubject(item.subject);
 
-    return { success: true, error: null, messageId: (data as any)?.id };
+    await client.send({
+      from,
+      to: [item.recipient_email],
+      subject: encodedSubject,
+      content: item.html_body,
+      html: item.html_body,
+      headers: {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Content-Transfer-Encoding": "quoted-printable",
+      },
+      ...(item.reply_to_email ? { replyTo: item.reply_to_email } : {}),
+    });
+
+    await client.close();
+
+    const messageId = `smtp-${Date.now()}-${item.id.slice(0, 8)}`;
+    return { success: true, error: null, messageId };
   } catch (error: any) {
-    console.error("Resend send error:", error);
-    return { success: false, error: error?.message || "Resend send failed" };
+    console.error("SMTP send error:", error);
+    return { success: false, error: error?.message || "SMTP send failed" };
   }
 }
 
@@ -68,6 +141,17 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get SMTP config from database
+    const emailConfig = await getEmailConfig(supabase);
+
+    if (!emailConfig.smtpHost) {
+      console.error("SMTP not configured");
+      return new Response(
+        JSON.stringify({ error: "SMTP not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // Reset stuck processing items (older than timeout)
     const timeoutThreshold = new Date(Date.now() - PROCESSING_TIMEOUT_MINUTES * 60 * 1000).toISOString();
@@ -122,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const email of pendingEmails as EmailQueueItem[]) {
       console.log(`Sending email to: ${email.recipient_email}, type: ${email.email_type}`);
       
-      const result = await sendEmail(email);
+      const result = await sendEmail(emailConfig, email);
 
       if (result.success) {
         // Update queue item as sent
@@ -148,6 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
           quiz_lead_id: email.quiz_lead_id,
           quiz_id: email.quiz_id,
           html_body: email.html_body,
+          delivery_status: "sent",
         });
 
         sent++;
@@ -186,6 +271,7 @@ const handler = async (req: Request): Promise<Response> => {
             quiz_id: email.quiz_id,
             html_body: email.html_body,
             resend_attempts: newRetryCount,
+            delivery_status: "failed",
           });
         }
 
