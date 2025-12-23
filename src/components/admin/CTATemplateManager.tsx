@@ -200,26 +200,21 @@ export function CTATemplateManager() {
         setSelectedQuizId(typedQuizzes[0].id);
       }
 
-      // Fetch CTA templates
-      const activeQuizIds = typedQuizzes.map(q => q.id);
-      if (activeQuizIds.length > 0) {
-        const { data: templatesData, error: templatesError } = await supabase
-          .from("cta_templates")
-          .select("*")
-          .in("quiz_id", activeQuizIds)
-          .order("created_at", { ascending: false });
+      // Fetch all CTA templates (not filtered by quiz or is_live)
+      const { data: templatesData, error: templatesError } = await supabase
+        .from("cta_templates")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-        if (templatesError) throw templatesError;
+      if (templatesError) throw templatesError;
 
-        const typedTemplates = (templatesData || []).map(t => ({
-          ...t,
-          cta_title: (t.cta_title || {}) as Record<string, string>,
-          cta_description: (t.cta_description || {}) as Record<string, string>,
-          cta_text: (t.cta_text || {}) as Record<string, string>,
-        }));
-        setTemplates(typedTemplates);
-
-      }
+      const typedTemplates = (templatesData || []).map(t => ({
+        ...t,
+        cta_title: (t.cta_title || {}) as Record<string, string>,
+        cta_description: (t.cta_description || {}) as Record<string, string>,
+        cta_text: (t.cta_text || {}) as Record<string, string>,
+      }));
+      setTemplates(typedTemplates);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
