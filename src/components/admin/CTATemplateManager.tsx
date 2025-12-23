@@ -20,7 +20,8 @@ import {
   Link as LinkIcon,
   History,
   Download,
-  Plus
+  Plus,
+  Mail
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
@@ -584,90 +585,121 @@ export function CTATemplateManager() {
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
                 <div className="w-[80px] px-3 py-2">Version</div>
+                <div className="w-[130px] px-3 py-2">Quiz</div>
                 <div className="w-[150px] px-3 py-2">Name</div>
+                <div className="w-[80px] px-3 py-2 text-center">Source</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
                 <div className="w-[140px] px-3 py-2">Email Templates</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
                 <div className="w-[60px] px-3 py-2 text-center">Lang</div>
                 <div className="w-[120px] px-3 py-2 text-center">Actions</div>
               </div>
-              {filteredTemplates.map(template => (
-                <div
-                  key={template.id}
-                  className="flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm"
-                >
-                  <div className="w-[80px] px-3 py-2">
-                    <span className="font-mono">v{template.version_number}</span>
-                  </div>
-                  <div className="w-[150px] px-3 py-2 truncate text-muted-foreground">
-                    {template.name || "Untitled CTA"}
-                  </div>
-                  <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
-                    {template.cta_text?.en || template.cta_text?.et || "—"}
-                  </div>
-                  <div className="w-[140px] px-3 py-2">
-                    {(() => {
-                      const linkedEmails = getLinkedEmailTemplates(template.id);
-                      if (linkedEmails.length === 0) {
-                        return <span className="text-xs text-muted-foreground">—</span>;
-                      }
-                      return (
-                        <div className="flex flex-wrap gap-1">
-                          {linkedEmails.map(email => (
-                            <Badge 
-                              key={email.id} 
-                              variant={email.is_live ? "default" : "outline"}
-                              className={`text-[10px] px-1.5 py-0 ${email.is_live ? "bg-green-600" : ""}`}
-                            >
-                              v{email.version_number}
-                            </Badge>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <div className="w-[130px] px-3 py-2">
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(template.created_at)}
+              {filteredTemplates.map(template => {
+                const quiz = quizzes.find(q => q.id === template.quiz_id);
+                const isExtractedFromEmail = !template.name || template.name === "Untitled CTA";
+                return (
+                  <div
+                    key={template.id}
+                    className="flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm"
+                  >
+                    <div className="w-[80px] px-3 py-2">
+                      <span className="font-mono">v{template.version_number}</span>
                     </div>
-                    {template.created_by_email && (
-                      <div className="text-[10px] text-muted-foreground/70 truncate">
-                        {template.created_by_email.split("@")[0]}
+                    <div className="w-[130px] px-3 py-2">
+                      {quiz ? (
+                        <a
+                          href={`/admin/quiz/${quiz.slug}`}
+                          className="text-primary hover:underline truncate block"
+                          title={getQuizTitle(quiz)}
+                        >
+                          {quiz.slug}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                    <div className="w-[150px] px-3 py-2 truncate text-muted-foreground">
+                      {template.name || "Untitled CTA"}
+                    </div>
+                    <div className="w-[80px] px-3 py-2 text-center">
+                      {isExtractedFromEmail ? (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1">
+                          <Mail className="w-2.5 h-2.5" />
+                          Email
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          Manual
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
+                      {template.cta_text?.en || template.cta_text?.et || "—"}
+                    </div>
+                    <div className="w-[140px] px-3 py-2">
+                      {(() => {
+                        const linkedEmails = getLinkedEmailTemplates(template.id);
+                        if (linkedEmails.length === 0) {
+                          return <span className="text-xs text-muted-foreground">—</span>;
+                        }
+                        return (
+                          <div className="flex flex-wrap gap-1">
+                            {linkedEmails.map(email => (
+                              <Badge 
+                                key={email.id} 
+                                variant={email.is_live ? "default" : "outline"}
+                                className={`text-[10px] px-1.5 py-0 ${email.is_live ? "bg-green-600" : ""}`}
+                              >
+                                v{email.version_number}
+                              </Badge>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div className="w-[130px] px-3 py-2">
+                      <div className="text-xs text-muted-foreground">
+                        {formatDate(template.created_at)}
                       </div>
-                    )}
-                  </div>
-                  <div className="w-[60px] px-3 py-2 text-center">
-                    <Badge variant="outline" className="text-[10px] gap-0.5">
-                      <Languages className="w-2.5 h-2.5" />
-                      {getTranslationCount(template)}
-                    </Badge>
-                  </div>
-                  <div className="w-[120px] px-3 py-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setPreviewTemplate(template);
-                          setPreviewOpen(true);
-                        }}
-                        className="h-7 w-7 p-0"
-                        title="Preview"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => loadVersionToEdit(template)}
-                        className="h-7 px-2 text-xs"
-                      >
-                        Edit
-                      </Button>
+                      {template.created_by_email && (
+                        <div className="text-[10px] text-muted-foreground/70 truncate">
+                          {template.created_by_email.split("@")[0]}
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-[60px] px-3 py-2 text-center">
+                      <Badge variant="outline" className="text-[10px] gap-0.5">
+                        <Languages className="w-2.5 h-2.5" />
+                        {getTranslationCount(template)}
+                      </Badge>
+                    </div>
+                    <div className="w-[120px] px-3 py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setPreviewTemplate(template);
+                            setPreviewOpen(true);
+                          }}
+                          className="h-7 w-7 p-0"
+                          title="Preview"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => loadVersionToEdit(template)}
+                          className="h-7 px-2 text-xs"
+                        >
+                          Edit
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
