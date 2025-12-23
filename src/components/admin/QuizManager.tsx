@@ -7,6 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw, Languages, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -993,7 +998,14 @@ export function QuizManager() {
                     className="font-semibold text-center cursor-pointer hover:bg-secondary/80 select-none"
                     onClick={() => handleSort("respondents")}
                   >
-                    <span className="flex items-center justify-center">Respondents <SortIcon column="respondents" /></span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center justify-center cursor-help">Respondents <SortIcon column="respondents" /></span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Unique / Total</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </ResizableTableHead>
                   <ResizableTableHead 
                     columnKey="status"
