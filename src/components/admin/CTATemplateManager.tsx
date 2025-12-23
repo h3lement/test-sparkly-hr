@@ -16,12 +16,10 @@ import {
   Eye, 
   Sparkles, 
   RefreshCw,
-  
   Link as LinkIcon,
   History,
   Download,
-  Plus,
-  Mail
+  Plus
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
@@ -62,7 +60,7 @@ interface Quiz {
 
 interface CTATemplate {
   id: string;
-  quiz_id: string;
+  quiz_id: string | null;
   version_number: number;
   is_live: boolean;
   name: string | null;
@@ -72,21 +70,6 @@ interface CTATemplate {
   cta_url: string;
   created_at: string;
   created_by_email: string | null;
-  source_email_template_id: string | null;
-}
-
-interface SourceEmailTemplate {
-  id: string;
-  version_number: number;
-  template_type: string;
-}
-
-interface EmailTemplateLink {
-  id: string;
-  version_number: number;
-  template_type: string;
-  is_live: boolean;
-  cta_template_id: string;
 }
 
 const LANGUAGES = [
@@ -119,8 +102,7 @@ const LANGUAGES = [
 export function CTATemplateManager() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [templates, setTemplates] = useState<CTATemplate[]>([]);
-  const [emailTemplateLinks, setEmailTemplateLinks] = useState<EmailTemplateLink[]>([]);
-  const [sourceEmailTemplates, setSourceEmailTemplates] = useState<Record<string, SourceEmailTemplate>>({});
+  const [updatingQuiz, setUpdatingQuiz] = useState<string | null>(null);
   const [selectedQuizId, setSelectedQuizId] = useState<string>("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
   const [loading, setLoading] = useState(true);
@@ -231,38 +213,6 @@ export function CTATemplateManager() {
         }));
         setTemplates(typedTemplates);
 
-        // Fetch email templates that link to CTAs (used by CTAs)
-        const ctaIds = typedTemplates.map(t => t.id);
-        if (ctaIds.length > 0) {
-          const { data: emailData, error: emailError } = await supabase
-            .from("email_templates")
-            .select("id, version_number, template_type, is_live, cta_template_id")
-            .in("cta_template_id", ctaIds);
-
-          if (!emailError && emailData) {
-            setEmailTemplateLinks(emailData as EmailTemplateLink[]);
-          }
-        }
-
-        // Fetch source email templates (CTAs extracted from these)
-        const sourceEmailIds = typedTemplates
-          .map(t => t.source_email_template_id)
-          .filter((id): id is string => !!id);
-        
-        if (sourceEmailIds.length > 0) {
-          const { data: sourceData, error: sourceError } = await supabase
-            .from("email_templates")
-            .select("id, version_number, template_type")
-            .in("id", sourceEmailIds);
-
-          if (!sourceError && sourceData) {
-            const sourceMap: Record<string, SourceEmailTemplate> = {};
-            sourceData.forEach(s => {
-              sourceMap[s.id] = s as SourceEmailTemplate;
-            });
-            setSourceEmailTemplates(sourceMap);
-          }
-        }
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -496,8 +446,37 @@ export function CTATemplateManager() {
     return Math.max(titleLangs.length, textLangs.length);
   };
 
-  const getLinkedEmailTemplates = (ctaId: string): EmailTemplateLink[] => {
-    return emailTemplateLinks.filter(e => e.cta_template_id === ctaId);
+  // Update CTA quiz attachment
+  const handleUpdateQuizAttachment = async (ctaId: string, newQuizId: string | null) => {
+    setUpdatingQuiz(ctaId);
+    try {
+      const { error } = await supabase
+        .from("cta_templates")
+        .update({ quiz_id: newQuizId })
+        .eq("id", ctaId);
+
+      if (error) throw error;
+
+      setTemplates(prev => prev.map(t => 
+        t.id === ctaId ? { ...t, quiz_id: newQuizId } : t
+      ));
+
+      toast({
+        title: "Updated",
+        description: newQuizId 
+          ? `CTA attached to ${quizzes.find(q => q.id === newQuizId)?.slug || "quiz"}`
+          : "CTA detached from quiz",
+      });
+    } catch (error: any) {
+      console.error("Error updating quiz attachment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update quiz attachment",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingQuiz(null);
+    }
   };
 
   // Filtered templates for table view
@@ -617,21 +596,16 @@ export function CTATemplateManager() {
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
                 <div className="w-[80px] px-3 py-2">Version</div>
-                <div className="w-[130px] px-3 py-2">Quiz</div>
+                <div className="w-[150px] px-3 py-2">Attached Quiz</div>
                 <div className="w-[150px] px-3 py-2">Name</div>
-                <div className="w-[100px] px-3 py-2 text-center">Source</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
-                <div className="w-[140px] px-3 py-2">Email Templates</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
                 <div className="w-[60px] px-3 py-2 text-center">Lang</div>
-                <div className="w-[120px] px-3 py-2 text-center">Actions</div>
+                <div className="w-[80px] px-3 py-2 text-center">Actions</div>
               </div>
               {filteredTemplates.map(template => {
                 const quiz = quizzes.find(q => q.id === template.quiz_id);
-                const sourceEmail = template.source_email_template_id 
-                  ? sourceEmailTemplates[template.source_email_template_id] 
-                  : null;
-                const isExtractedFromEmail = !!template.source_email_template_id;
+                const isUpdating = updatingQuiz === template.id;
                 return (
                   <div
                     key={template.id}
@@ -640,18 +614,30 @@ export function CTATemplateManager() {
                     <div className="w-[80px] px-3 py-2">
                       <span className="font-mono">v{template.version_number}</span>
                     </div>
-                    <div className="w-[130px] px-3 py-2">
-                      {quiz ? (
-                        <a
-                          href={`/admin/quiz/${quiz.slug}`}
-                          className="text-primary hover:underline truncate block"
-                          title={getQuizTitle(quiz)}
-                        >
-                          {quiz.slug}
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                    <div className="w-[150px] px-3 py-2">
+                      <Select 
+                        value={template.quiz_id || "none"} 
+                        onValueChange={(val) => handleUpdateQuizAttachment(template.id, val === "none" ? null : val)}
+                        disabled={isUpdating}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          {isUpdating ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <SelectValue placeholder="Select quiz" />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          <SelectItem value="none">
+                            <span className="text-muted-foreground">Not attached</span>
+                          </SelectItem>
+                          {quizzes.map(q => (
+                            <SelectItem key={q.id} value={q.id}>
+                              {q.slug}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div 
                       className="w-[150px] px-3 py-2 truncate text-primary hover:underline cursor-pointer"
@@ -660,50 +646,8 @@ export function CTATemplateManager() {
                     >
                       {template.name || "Untitled CTA"}
                     </div>
-                    <div className="w-[100px] px-3 py-2 text-center">
-                      {isExtractedFromEmail ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 cursor-help">
-                                <Mail className="w-2.5 h-2.5" />
-                                Email v{sourceEmail?.version_number || "?"}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Extracted from Email Template v{sourceEmail?.version_number || "?"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          Manual
-                        </Badge>
-                      )}
-                    </div>
                     <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
                       {template.cta_text?.en || template.cta_text?.et || "—"}
-                    </div>
-                    <div className="w-[140px] px-3 py-2">
-                      {(() => {
-                        const linkedEmails = getLinkedEmailTemplates(template.id);
-                        if (linkedEmails.length === 0) {
-                          return <span className="text-xs text-muted-foreground">—</span>;
-                        }
-                        return (
-                          <div className="flex flex-wrap gap-1">
-                            {linkedEmails.map(email => (
-                              <Badge 
-                                key={email.id} 
-                                variant={email.is_live ? "default" : "outline"}
-                                className={`text-[10px] px-1.5 py-0 ${email.is_live ? "bg-green-600" : ""}`}
-                              >
-                                v{email.version_number}
-                              </Badge>
-                            ))}
-                          </div>
-                        );
-                      })()}
                     </div>
                     <div className="w-[130px] px-3 py-2">
                       <div className="text-xs text-muted-foreground">
@@ -721,7 +665,7 @@ export function CTATemplateManager() {
                         {getTranslationCount(template)}
                       </Badge>
                     </div>
-                    <div className="w-[120px] px-3 py-2">
+                    <div className="w-[80px] px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
                         <Button
                           variant="ghost"
