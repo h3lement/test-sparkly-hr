@@ -184,157 +184,6 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     minWidth: 60,
   });
 
-  // Process email queue function
-  const processQueue = useCallback(
-    async (silent = false) => {
-      if (processingQueue) return;
-
-      setProcessingQueue(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("process-email-queue", {
-          body: {},
-        });
-
-        if (error) throw error;
-
-        if (!silent && data?.processed > 0) {
-          toast({
-            title: "Queue processed",
-            description: `Processed ${data.processed} email(s)`,
-          });
-        }
-
-        // Refresh data after processing (background to avoid UI "page refresh" feel)
-        fetchQueueStats();
-        fetchLogs(true);
-      } catch (error: any) {
-        console.error("Error processing queue:", error);
-        if (!silent) {
-          toast({
-            title: "Error",
-            description: "Failed to process email queue",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        setProcessingQueue(false);
-      }
-    },
-    [processingQueue, toast, fetchLogs, fetchQueueStats]
-  );
-
-  const requeueQueueItem = useCallback(
-    async (queueId: string, sendNow = false) => {
-      try {
-        const { error } = await supabase
-          .from("email_queue")
-          .update({
-            status: "pending",
-            retry_count: 0,
-            error_message: null,
-            processing_started_at: null,
-            scheduled_for: new Date().toISOString(),
-          })
-          .eq("id", queueId);
-
-        if (error) throw error;
-
-        toast({
-          title: "Re-queued",
-          description: sendNow ? "Email re-queued and will be sent now." : "Email moved back to pending queue.",
-        });
-
-        fetchQueueStats();
-        fetchLogs();
-
-      if (sendNow) {
-        // Give realtime a moment to deliver updates
-        setTimeout(() => {
-          processQueue(true);
-        }, 300);
-      }
-    } catch (error: any) {
-      console.error("Error re-queuing email:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to re-queue email",
-        variant: "destructive",
-      });
-    }
-  },
-  [processQueue, toast]
-);
-
-const requeueAllFailed = useCallback(async () => {
-  try {
-    const { error } = await supabase
-      .from("email_queue")
-      .update({
-        status: "pending",
-        retry_count: 0,
-        error_message: null,
-        processing_started_at: null,
-        scheduled_for: new Date().toISOString(),
-      })
-      .eq("status", "failed");
-
-    if (error) throw error;
-
-    toast({
-      title: "Failed emails re-queued",
-      description: "Retrying failed emails now.",
-    });
-
-    fetchQueueStats();
-    fetchLogs();
-
-    setTimeout(() => {
-      processQueue(false);
-    }, 300);
-  } catch (error: any) {
-    console.error("Error re-queuing failed emails:", error);
-    toast({
-      title: "Error",
-      description: error.message || "Failed to re-queue failed emails",
-      variant: "destructive",
-    });
-  }
-}, [processQueue, toast]);
-
-
-  // Auto-process queue when connection is re-established
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      console.log("Connection re-established, processing pending emails...");
-      toast({
-        title: "Connection restored",
-        description: "Processing pending emails...",
-      });
-      // Small delay to ensure connection is stable
-      setTimeout(() => {
-        processQueue(false);
-      }, 1000);
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast({
-        title: "Connection lost",
-        description: "Emails will be queued and sent when connection is restored",
-        variant: "destructive",
-      });
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, [processQueue, toast]);
-
   const fetchLogs = useCallback(
     async (background = false) => {
       if (!background) setLoading(true);
@@ -408,6 +257,156 @@ const requeueAllFailed = useCallback(async () => {
       setQueueLoading(false);
     }
   }, []);
+
+  // Process email queue function
+  const processQueue = useCallback(
+    async (silent = false) => {
+      if (processingQueue) return;
+
+      setProcessingQueue(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("process-email-queue", {
+          body: {},
+        });
+
+        if (error) throw error;
+
+        if (!silent && data?.processed > 0) {
+          toast({
+            title: "Queue processed",
+            description: `Processed ${data.processed} email(s)`,
+          });
+        }
+
+        // Refresh data after processing (background to avoid UI "page refresh" feel)
+        fetchQueueStats();
+        fetchLogs(true);
+      } catch (error: any) {
+        console.error("Error processing queue:", error);
+        if (!silent) {
+          toast({
+            title: "Error",
+            description: "Failed to process email queue",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setProcessingQueue(false);
+      }
+    },
+    [processingQueue, toast, fetchLogs, fetchQueueStats]
+  );
+
+  const requeueQueueItem = useCallback(
+    async (queueId: string, sendNow = false) => {
+      try {
+        const { error } = await supabase
+          .from("email_queue")
+          .update({
+            status: "pending",
+            retry_count: 0,
+            error_message: null,
+            processing_started_at: null,
+            scheduled_for: new Date().toISOString(),
+          })
+          .eq("id", queueId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Re-queued",
+          description: sendNow ? "Email re-queued and will be sent now." : "Email moved back to pending queue.",
+        });
+
+        fetchQueueStats();
+        fetchLogs(true);
+
+        if (sendNow) {
+          // Give realtime a moment to deliver updates
+          setTimeout(() => {
+            processQueue(true);
+          }, 300);
+        }
+      } catch (error: any) {
+        console.error("Error re-queuing email:", error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to re-queue email",
+          variant: "destructive",
+        });
+      }
+    },
+    [processQueue, toast, fetchLogs, fetchQueueStats]
+  );
+
+  const requeueAllFailed = useCallback(async () => {
+    try {
+      const { error } = await supabase
+        .from("email_queue")
+        .update({
+          status: "pending",
+          retry_count: 0,
+          error_message: null,
+          processing_started_at: null,
+          scheduled_for: new Date().toISOString(),
+        })
+        .eq("status", "failed");
+
+      if (error) throw error;
+
+      toast({
+        title: "Failed emails re-queued",
+        description: "Retrying failed emails now.",
+      });
+
+      fetchQueueStats();
+      fetchLogs(true);
+
+      setTimeout(() => {
+        processQueue(false);
+      }, 300);
+    } catch (error: any) {
+      console.error("Error re-queuing failed emails:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to re-queue failed emails",
+        variant: "destructive",
+      });
+    }
+  }, [processQueue, toast, fetchLogs, fetchQueueStats]);
+
+  // Auto-process queue when connection is re-established
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log("Connection re-established, processing pending emails...");
+      toast({
+        title: "Connection restored",
+        description: "Processing pending emails...",
+      });
+      // Small delay to ensure connection is stable
+      setTimeout(() => {
+        processQueue(false);
+      }, 1000);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        title: "Connection lost",
+        description: "Emails will be queued and sent when connection is restored",
+        variant: "destructive",
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [processQueue, toast]);
 
   const backfillMissingLogs = useCallback(async () => {
     if (backfillingLogs) return;
