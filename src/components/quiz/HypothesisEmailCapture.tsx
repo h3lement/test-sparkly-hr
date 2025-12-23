@@ -71,11 +71,12 @@ export function HypothesisEmailCapture() {
         return;
       }
 
-      // Send admin notification email (fire and forget)
+      // Send emails (fire and forget)
       const quizTitle = typeof quizData?.title === 'object' && quizData.title !== null 
         ? (quizData.title as Record<string, string>)[language] || (quizData.title as Record<string, string>)['en'] || 'Quiz'
         : String(quizData?.title || 'Quiz');
       
+      // Send admin notification email
       supabase.functions.invoke('send-hypothesis-admin-email', {
         body: {
           email: validation.data,
@@ -89,6 +90,20 @@ export function HypothesisEmailCapture() {
           leadId: insertedLead?.id,
         }
       }).catch(err => console.error('Admin email notification error:', err));
+
+      // Send user results email with correct answers
+      supabase.functions.invoke('send-hypothesis-user-email', {
+        body: {
+          email: validation.data,
+          score: correct,
+          totalQuestions: total,
+          quizId: quizData?.id,
+          quizTitle,
+          language,
+          sessionId,
+          leadId: insertedLead?.id,
+        }
+      }).catch(err => console.error('User email notification error:', err));
 
       toast({
         title: 'Success!',

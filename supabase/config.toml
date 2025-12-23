@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.send-hypothesis-admin-email]
 verify_jwt = false
+
+[functions.send-hypothesis-user-email]
+verify_jwt = false
