@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn, formatTimestamp } from "@/lib/utils";
 import { Loader2, Eye, RotateCcw } from "lucide-react";
 import { EmailHtmlViewer } from "./EmailHtmlViewer";
@@ -32,6 +33,10 @@ interface EmailPreviewPopoverProps {
   emailStatusLabel: string;
   emailStatusColor: string;
   EmailIcon: React.ElementType;
+  // Prefetched preview data from parent
+  prefetchedHtml?: string | null;
+  prefetchedSubject?: string | null;
+  prefetchLoading?: boolean;
 }
 
 export function EmailPreviewPopover({
@@ -42,28 +47,36 @@ export function EmailPreviewPopover({
   emailStatusLabel,
   emailStatusColor,
   EmailIcon,
+  prefetchedHtml,
+  prefetchedSubject,
+  prefetchLoading: parentLoading = false,
 }: EmailPreviewPopoverProps) {
   const [open, setOpen] = useState(false);
 
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [localHtml, setLocalHtml] = useState<string | null>(null);
+  const [localLoading, setLocalLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
+  const [localSubject, setLocalSubject] = useState<string | null>(null);
+
+  // Use prefetched data if available, otherwise use local state
+  const previewHtml = prefetchedHtml ?? localHtml;
+  const previewSubject = prefetchedSubject ?? localSubject;
+  const previewLoading = parentLoading || localLoading;
 
   const leadType = useMemo(() => (hasAnswers ? "quiz" : "hypothesis"), [hasAnswers]);
   const canShowSentHtml = Boolean(emailLog?.html_body);
 
   const fetchPreview = async (force = false) => {
-    if ((!force && previewHtml) || previewLoading) return;
-    setPreviewLoading(true);
+    if ((!force && previewHtml) || localLoading) return;
+    setLocalLoading(true);
     setPreviewError(null);
     try {
       const { data, error } = await supabase.functions.invoke("render-email-preview", {
         body: { leadId, leadType },
       });
       if (error) throw error;
-      setPreviewHtml(data?.html ?? null);
-      setPreviewSubject(data?.subject ?? null);
+      setLocalHtml(data?.html ?? null);
+      setLocalSubject(data?.subject ?? null);
       if (!data?.html) {
         setPreviewError("No preview HTML was returned");
       }
@@ -71,88 +84,71 @@ export function EmailPreviewPopover({
       console.error("Failed to fetch email preview:", err);
       setPreviewError(err.message || "Failed to load preview");
     } finally {
-      setPreviewLoading(false);
+      setLocalLoading(false);
     }
   };
 
-  // Auto-generate preview as soon as popover opens (for ALL rows)
+  // Auto-fetch if dialog opens and no prefetched/sent data available
   useEffect(() => {
     if (!open) return;
-    // If we already have sent HTML, show it immediately; otherwise generate prepared preview.
-    if (!canShowSentHtml) {
+    if (!canShowSentHtml && !previewHtml && !previewLoading) {
       void fetchPreview(false);
     }
-  }, [open, canShowSentHtml]);
+  }, [open, canShowSentHtml, previewHtml, previewLoading]);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-      }}
-    >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          onPointerDownCapture={(e) => e.stopPropagation()}
-          onClickCapture={(e) => e.stopPropagation()}
-          className={cn(
-            "inline-flex items-center justify-center p-1.5 rounded-md hover:bg-secondary/80 transition-colors",
-            emailStatusColor
-          )}
-          title={emailStatusLabel}
-          aria-label={`Email preview: ${emailStatusLabel}`}
-        >
-          <EmailIcon className="w-4 h-4" />
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent
-        className="w-[420px] max-w-[80vw] p-0"
-        align="end"
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <button
+        type="button"
+        onPointerDownCapture={(e) => e.stopPropagation()}
+        onClickCapture={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        className={cn(
+          "inline-flex items-center justify-center p-1.5 rounded-md hover:bg-secondary/80 transition-colors",
+          emailStatusColor
+        )}
+        title={emailStatusLabel}
+        aria-label={`Email preview: ${emailStatusLabel}`}
       >
-        <div className="flex flex-col">
-          <div className="p-3 border-b border-border space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <Badge
-                className={cn(
-                  "text-xs",
-                  emailLog?.bounced_at
-                    ? "bg-destructive/10 text-destructive"
-                    : emailLog?.clicked_at
-                      ? "bg-green-500/10 text-green-600"
-                      : emailLog?.opened_at
-                        ? "bg-blue-500/10 text-blue-500"
-                        : emailLog?.delivery_status === "delivered"
-                          ? "bg-green-500/10 text-green-500"
-                          : "bg-primary/10 text-primary"
-                )}
-              >
-                {emailStatusLabel}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                Submitted: {formatTimestamp(leadCreatedAt)}
-              </span>
-            </div>
+        <EmailIcon className="w-4 h-4" />
+      </button>
 
-            {canShowSentHtml ? (
-              <p className="text-sm font-medium truncate" title={emailLog?.subject || undefined}>
-                {emailLog?.subject}
-              </p>
-            ) : previewSubject ? (
-              <p className="text-sm font-medium truncate" title={previewSubject}>
-                {previewSubject}
-              </p>
-            ) : null}
-
-            {!canShowSentHtml && (
-              <div className="flex gap-2 pt-1">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col p-0 gap-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader className="p-4 border-b border-border">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Badge
+                  className={cn(
+                    "text-xs",
+                    emailLog?.bounced_at
+                      ? "bg-destructive/10 text-destructive"
+                      : emailLog?.clicked_at
+                        ? "bg-green-500/10 text-green-600"
+                        : emailLog?.opened_at
+                          ? "bg-blue-500/10 text-blue-500"
+                          : emailLog?.delivery_status === "delivered"
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-primary/10 text-primary"
+                  )}
+                >
+                  {emailStatusLabel}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Submitted: {formatTimestamp(leadCreatedAt)}
+                </span>
+              </div>
+              {!canShowSentHtml && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => fetchPreview(true)}
-                  className="w-full"
+                  disabled={previewLoading}
                 >
                   {previewLoading ? (
                     <>
@@ -162,42 +158,77 @@ export function EmailPreviewPopover({
                   ) : previewHtml ? (
                     <>
                       <RotateCcw className="w-4 h-4 mr-2" />
-                      Regenerate preview
+                      Regenerate
                     </>
                   ) : (
                     <>
                       <Eye className="w-4 h-4 mr-2" />
-                      Generate preview
+                      Generate
                     </>
                   )}
                 </Button>
+              )}
+            </div>
+            <DialogTitle className="text-sm font-medium truncate mt-2">
+              {canShowSentHtml ? emailLog?.subject : previewSubject || "Email Preview"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden">
+            {canShowSentHtml ? (
+              <EmailHtmlViewer html={emailLog!.html_body!} heightClassName="h-[calc(90vh-120px)]" iframeHeight={800} title="Sent Email" />
+            ) : previewLoading && !previewHtml ? (
+              <div className="p-8 flex flex-col items-center justify-center gap-2 text-muted-foreground h-64">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="text-sm">Generating preview...</span>
+              </div>
+            ) : previewError ? (
+              <div className="p-8 text-center">
+                <p className="text-sm text-destructive">{previewError}</p>
+                <Button variant="ghost" size="sm" onClick={() => fetchPreview(true)} className="mt-2">
+                  Try again
+                </Button>
+              </div>
+            ) : previewHtml ? (
+              <EmailHtmlViewer html={previewHtml} heightClassName="h-[calc(90vh-120px)]" iframeHeight={800} title="Prepared Email Preview" />
+            ) : (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                Click &quot;Generate&quot; to preview the prepared email.
               </div>
             )}
           </div>
-
-          {canShowSentHtml ? (
-            <EmailHtmlViewer html={emailLog!.html_body!} title="Sent Email" />
-          ) : previewLoading && !previewHtml ? (
-            <div className="p-8 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span className="text-sm">Generating preview...</span>
-            </div>
-          ) : previewError ? (
-            <div className="p-4 text-center">
-              <p className="text-sm text-destructive">{previewError}</p>
-              <Button variant="ghost" size="sm" onClick={() => fetchPreview(true)} className="mt-2">
-                Try again
-              </Button>
-            </div>
-          ) : previewHtml ? (
-            <EmailHtmlViewer html={previewHtml} title="Prepared Email Preview" />
-          ) : (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Open to generate the prepared preview.
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </DialogContent>
+      </Dialog>
+    </>
   );
+}
+
+// Utility function to prefetch email previews for a list of leads
+export async function prefetchEmailPreviews(
+  leads: { id: string; answers: unknown }[]
+): Promise<Map<string, { html: string; subject: string }>> {
+  const results = new Map<string, { html: string; subject: string }>();
+  
+  // Process in batches of 5 to avoid overwhelming the edge function
+  const batchSize = 5;
+  for (let i = 0; i < leads.length; i += batchSize) {
+    const batch = leads.slice(i, i + batchSize);
+    const promises = batch.map(async (lead) => {
+      try {
+        const leadType = lead.answers !== null ? "quiz" : "hypothesis";
+        const { data, error } = await supabase.functions.invoke("render-email-preview", {
+          body: { leadId: lead.id, leadType },
+        });
+        if (error) throw error;
+        if (data?.html) {
+          results.set(lead.id, { html: data.html, subject: data.subject || "" });
+        }
+      } catch (err) {
+        console.warn(`Failed to prefetch preview for lead ${lead.id}:`, err);
+      }
+    });
+    await Promise.all(promises);
+  }
+  
+  return results;
 }

@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,6 @@ import {
   RefreshCw, 
   Download, 
   Trash2, 
-  ChevronDown, 
-  ChevronUp,
   Users,
   Calendar,
   Wifi,
@@ -48,7 +46,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { RespondentsGrowthChart, type DateRangeOption } from "./RespondentsGrowthChart";
-import { EmailPreviewPopover } from "./EmailPreviewPopover";
+import { EmailPreviewPopover, prefetchEmailPreviews } from "./EmailPreviewPopover";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import type { Json } from "@/integrations/supabase/types";
@@ -152,7 +150,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("365");
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [activityLogLead, setActivityLogLead] = useState<QuizLead | null>(null);
@@ -378,7 +375,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       });
 
       setLeads(leads.filter(lead => lead.id !== leadId));
-      if (expandedRow === leadId) setExpandedRow(null);
     } catch (error: any) {
       console.error("Error deleting lead:", error);
       toast({
@@ -545,9 +541,31 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     setCurrentPage(1);
   }, [searchQuery, selectedQuizFilter, showUniqueEmails, showUniqueEmailQuiz]);
 
+  // Prefetch email previews for the current page leads without sent emails
+  const [prefetchedPreviews, setPrefetchedPreviews] = useState<Map<string, { html: string; subject: string }>>(new Map());
+  const [prefetching, setPrefetching] = useState(false);
+
+  useEffect(() => {
+    // Prefetch email previews for leads that don't have sent email logs
+    const leadsWithoutSentEmail = paginatedLeads.filter((lead) => !emailLogs.has(lead.id));
+    if (leadsWithoutSentEmail.length === 0) {
+      setPrefetchedPreviews(new Map());
+      return;
+    }
+
+    // Prefetch in background
+    setPrefetching(true);
+    prefetchEmailPreviews(leadsWithoutSentEmail)
+      .then((results) => {
+        setPrefetchedPreviews(results);
+      })
+      .finally(() => {
+        setPrefetching(false);
+      });
+  }, [paginatedLeads, emailLogs]);
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    setExpandedRow(null);
   };
 
   const handleItemsPerPageChange = (value: number) => {
@@ -729,191 +747,132 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
               </thead>
               <AdminTableBody>
                 {paginatedLeads.map((lead, index) => {
-                  const isExpanded = expandedRow === lead.id;
                   // Find quiz by id, or fallback to first quiz if quiz_id is null (for legacy data)
                   const quiz = lead.quiz_id 
                     ? quizzes.find(q => q.id === lead.quiz_id)
                     : quizzes.length > 0 ? quizzes[0] : null;
                   const effectiveQuizId = quiz?.id || null;
-                  const quizQuestions = getQuestionsForQuiz(effectiveQuizId);
-                  const leadAnswers = parseLeadAnswers(lead.answers);
-                  const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
                   const emailStatus = getEmailStatusInfo(lead.id);
                   const EmailIcon = emailStatus.icon;
+                  const prefetched = prefetchedPreviews.get(lead.id);
 
                   return (
-                    <Fragment key={lead.id}>
-                      <AdminTableRow 
-                        id={`lead-row-${lead.id}`}
-                        index={index}
-                        className={cn(
-                          hasAnswers && 'cursor-pointer',
-                          highlightedLeadId === lead.id && 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse'
-                        )}
-                        onClick={() => hasAnswers && setExpandedRow(isExpanded ? null : lead.id)}
-                      >
-                        <AdminTableCell style={{ width: columnWidths.email, minWidth: columnWidths.email }}>
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <Avatar className="h-9 w-9 bg-secondary flex-shrink-0">
-                              <AvatarFallback className="text-xs bg-secondary text-foreground">
-                                {lead.email.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedEmail(lead.email);
-                                }}
-                                className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left truncate"
-                              >
-                                {lead.email}
-                              </button>
-                              <Badge 
-                                variant="secondary" 
-                                className="text-xs cursor-pointer hover:bg-primary/20 flex-shrink-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedEmail(lead.email);
-                                }}
-                              >
-                                {getEmailQuizCount(lead.email)}
-                              </Badge>
-                              {hasAnswers && (
-                                isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.quiz, minWidth: columnWidths.quiz }}>
-                          {quiz ? (
-                            <div className="flex flex-col gap-0.5 overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={(e) => handleQuizClick(effectiveQuizId, e)}
-                                className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left truncate"
-                                title="Click to edit quiz"
-                              >
-                                {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
-                              </button>
-                              <a
-                                href={`/${quiz.slug.replace(/^\/+/, "")}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors truncate"
-                              >
-                                /{quiz.slug.replace(/^\/+/, "")}
-                              </a>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Unknown</span>
-                          )}
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.score, minWidth: columnWidths.score }}>
-                          <span className="text-sm text-foreground">{lead.score}/{lead.total_questions}</span>
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.result, minWidth: columnWidths.result }}>
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 truncate max-w-full">
-                            {lead.result_category}
-                          </Badge>
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.openness, minWidth: columnWidths.openness }}>
-                          {lead.openness_score !== null ? (
-                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                              {lead.openness_score}/4
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.lang, minWidth: columnWidths.lang }}>
-                          <Badge variant="secondary" className="uppercase text-xs">
-                            {lead.language || 'en'}
-                          </Badge>
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.emailStatus, minWidth: columnWidths.emailStatus }} align="center">
-                          <EmailPreviewPopover
-                            leadId={lead.id}
-                            leadCreatedAt={lead.created_at}
-                            hasAnswers={lead.answers !== null}
-                            emailLog={emailLogs.get(lead.id)}
-                            emailStatusLabel={emailStatus.label}
-                            emailStatusColor={emailStatus.color}
-                            EmailIcon={EmailIcon}
-                          />
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.submitted, minWidth: columnWidths.submitted }}>
-                          <span className="text-sm text-muted-foreground">{formatTimestamp(lead.created_at)}</span>
-                        </AdminTableCell>
-                        <AdminTableCell style={{ width: columnWidths.actions, minWidth: columnWidths.actions }} align="right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteLead(lead.id, lead.email);
-                            }}
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AdminTableCell>
-                      </AdminTableRow>
-                      {isExpanded && hasAnswers && (
-                        <tr key={`${lead.id}-expanded`}>
-                          <td colSpan={10} className="density-px density-py bg-secondary/20">
-                            <div className="space-y-3">
-                              <p className="text-sm font-medium text-foreground">Quiz Answers</p>
-                              <div className="grid gap-2">
-                                {quizQuestions.map((question, qIdx) => {
-                                  const questionAnswers = getAnswersForQuestion(question.id);
-                                  const selectedAnswerId = leadAnswers[question.id];
-                                  const selectedAnswer = questionAnswers.find(a => a.id === selectedAnswerId);
-
-                                  return (
-                                    <div
-                                      key={question.id}
-                                      className="bg-card rounded-lg p-3 border border-border"
-                                    >
-                                      <p className="text-sm text-muted-foreground mb-1">
-                                        Q{qIdx + 1}: {getLocalizedText(question.question_text, lead.language || "en")}
-                                      </p>
-                                      {selectedAnswer ? (
-                                        <div className="flex items-center justify-between">
-                                          <p className="text-sm font-medium text-foreground">
-                                            {getLocalizedText(selectedAnswer.answer_text, lead.language || "en")}
-                                          </p>
-                                          <Badge 
-                                            variant="outline" 
-                                            className={cn(
-                                              "text-xs",
-                                              selectedAnswer.score_value >= 3 
-                                                ? "bg-green-500/10 text-green-600 border-green-500/20"
-                                                : selectedAnswer.score_value >= 2
-                                                ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                                                : "bg-red-500/10 text-red-600 border-red-500/20"
-                                            )}
-                                          >
-                                            {selectedAnswer.score_value} pt{selectedAnswer.score_value !== 1 ? "s" : ""}
-                                          </Badge>
-                                        </div>
-                                      ) : (
-                                        <p className="text-sm text-muted-foreground italic">No answer recorded</p>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                    <AdminTableRow 
+                      key={lead.id}
+                      id={`lead-row-${lead.id}`}
+                      index={index}
+                      className={cn(
+                        highlightedLeadId === lead.id && 'bg-primary/20 ring-2 ring-primary ring-inset animate-pulse'
                       )}
-                    </Fragment>
+                    >
+                      <AdminTableCell style={{ width: columnWidths.email, minWidth: columnWidths.email }}>
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <Avatar className="h-9 w-9 bg-secondary flex-shrink-0">
+                            <AvatarFallback className="text-xs bg-secondary text-foreground">
+                              {lead.email.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEmail(lead.email);
+                              }}
+                              className="text-sm text-foreground hover:text-primary hover:underline transition-colors text-left truncate"
+                            >
+                              {lead.email}
+                            </button>
+                            <Badge 
+                              variant="secondary" 
+                              className="text-xs cursor-pointer hover:bg-primary/20 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEmail(lead.email);
+                              }}
+                            >
+                              {getEmailQuizCount(lead.email)}
+                            </Badge>
+                          </div>
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.quiz, minWidth: columnWidths.quiz }}>
+                        {quiz ? (
+                          <div className="flex flex-col gap-0.5 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={(e) => handleQuizClick(effectiveQuizId, e)}
+                              className="text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors text-left truncate"
+                              title="Click to edit quiz"
+                            >
+                              {getLocalizedText(quiz.title, lead.language || "en") || quiz.slug}
+                            </button>
+                            <a
+                              href={`/${quiz.slug.replace(/^\/+/, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors truncate"
+                            >
+                              /{quiz.slug.replace(/^\/+/, "")}
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Unknown</span>
+                        )}
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.score, minWidth: columnWidths.score }}>
+                        <span className="text-sm text-foreground">{lead.score}/{lead.total_questions}</span>
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.result, minWidth: columnWidths.result }}>
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 truncate max-w-full">
+                          {lead.result_category}
+                        </Badge>
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.openness, minWidth: columnWidths.openness }}>
+                        {lead.openness_score !== null ? (
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                            {lead.openness_score}/4
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.lang, minWidth: columnWidths.lang }}>
+                        <Badge variant="secondary" className="uppercase text-xs">
+                          {lead.language || 'en'}
+                        </Badge>
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.emailStatus, minWidth: columnWidths.emailStatus }} align="center">
+                        <EmailPreviewPopover
+                          leadId={lead.id}
+                          leadCreatedAt={lead.created_at}
+                          hasAnswers={lead.answers !== null}
+                          emailLog={emailLogs.get(lead.id)}
+                          emailStatusLabel={emailStatus.label}
+                          emailStatusColor={emailStatus.color}
+                          EmailIcon={EmailIcon}
+                          prefetchedHtml={prefetched?.html}
+                          prefetchedSubject={prefetched?.subject}
+                          prefetchLoading={prefetching && !prefetched}
+                        />
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.submitted, minWidth: columnWidths.submitted }}>
+                        <span className="text-sm text-muted-foreground">{formatTimestamp(lead.created_at)}</span>
+                      </AdminTableCell>
+                      <AdminTableCell style={{ width: columnWidths.actions, minWidth: columnWidths.actions }} align="right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteLead(lead.id, lead.email);
+                          }}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AdminTableCell>
+                    </AdminTableRow>
                   );
                 })}
               </AdminTableBody>
