@@ -354,15 +354,33 @@ export function HypothesisResultsScreen() {
               <ExternalLink className="w-5 h-5 ml-2" />
             </a>
           </Button>
-          <Button
-            onClick={resetQuiz}
-            variant="outline"
-            size="lg"
-            className="h-14 px-8 text-lg font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all"
-          >
-            <RotateCcw className="w-5 h-5 mr-2" />
-            {getText(quizData?.cta_retry_text, getTranslation('hypothesisTakeAgain', t.takeAgain))}
-          </Button>
+          {quizData?.cta_retry_url ? (
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-14 px-8 text-lg font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all"
+            >
+              <a 
+                href={quizData.cta_retry_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <RotateCcw className="w-5 h-5 mr-2" />
+                {getText(quizData?.cta_retry_text, getTranslation('hypothesisTakeAgain', t.takeAgain))}
+              </a>
+            </Button>
+          ) : (
+            <Button
+              onClick={resetQuiz}
+              variant="outline"
+              size="lg"
+              className="h-14 px-8 text-lg font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all"
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              {getText(quizData?.cta_retry_text, getTranslation('hypothesisTakeAgain', t.takeAgain))}
+            </Button>
+          )}
         </div>
       </section>
     </main>
