@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,6 +85,150 @@ function encodeSubject(subject: string): string {
   return subject;
 }
 
+// Encode display name for UTF-8 support (RFC 2047)
+function encodeDisplayName(name: string): string {
+  if (!/^[\x00-\x7F]*$/.test(name)) {
+    const encoded = utf8ToBase64(name);
+    return `=?UTF-8?B?${encoded}?=`;
+  }
+  return name;
+}
+
+// Raw SMTP implementation with proper UTF-8 authentication support
+class RawSMTPClient {
+  private conn: Deno.Conn | null = null;
+  private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  private encoder = new TextEncoder();
+  private decoder = new TextDecoder();
+  private buffer = "";
+
+  constructor(private config: EmailConfigSettings) {}
+
+  private async readLine(): Promise<string> {
+    while (!this.buffer.includes("\r\n")) {
+      if (!this.reader) throw new Error("Connection not established");
+      const { value, done } = await this.reader.read();
+      if (done) throw new Error("Connection closed");
+      this.buffer += this.decoder.decode(value);
+    }
+    const lineEnd = this.buffer.indexOf("\r\n");
+    const line = this.buffer.slice(0, lineEnd);
+    this.buffer = this.buffer.slice(lineEnd + 2);
+    return line;
+  }
+
+  private async readResponse(): Promise<{ code: number; lines: string[] }> {
+    const lines: string[] = [];
+    let code = 0;
+    
+    while (true) {
+      const line = await this.readLine();
+      lines.push(line);
+      code = parseInt(line.slice(0, 3), 10);
+      if (line.length >= 4 && line[3] !== "-") break;
+    }
+    
+    return { code, lines };
+  }
+
+  private async writeLine(line: string): Promise<void> {
+    if (!this.writer) throw new Error("Connection not established");
+    await this.writer.write(this.encoder.encode(line + "\r\n"));
+  }
+
+  private async command(cmd: string, expectedCodes: number[]): Promise<{ code: number; lines: string[] }> {
+    await this.writeLine(cmd);
+    const response = await this.readResponse();
+    if (!expectedCodes.includes(response.code)) {
+      throw new Error(`SMTP error: expected ${expectedCodes.join(" or ")}, got ${response.code}: ${response.lines.join(" ")}`);
+    }
+    return response;
+  }
+
+  async connect(): Promise<void> {
+    const port = parseInt(this.config.smtpPort, 10) || 587;
+    
+    if (port === 465 || this.config.smtpTls) {
+      this.conn = await Deno.connectTls({
+        hostname: this.config.smtpHost,
+        port,
+      });
+    } else {
+      this.conn = await Deno.connect({
+        hostname: this.config.smtpHost,
+        port,
+      });
+    }
+
+    this.reader = this.conn.readable.getReader();
+    this.writer = this.conn.writable.getWriter();
+
+    const greeting = await this.readResponse();
+    if (greeting.code !== 220) {
+      throw new Error(`SMTP greeting error: ${greeting.lines.join(" ")}`);
+    }
+
+    await this.command(`EHLO localhost`, [250]);
+    await this.command("AUTH LOGIN", [334]);
+    await this.command(utf8ToBase64(this.config.smtpUsername), [334]);
+    await this.command(utf8ToBase64(this.config.smtpPassword), [235]);
+  }
+
+  async send(from: string, to: string[], subject: string, html: string, replyTo?: string): Promise<void> {
+    const fromEmail = from.match(/<(.+)>$/)?.[1] || from;
+    
+    await this.command(`MAIL FROM:<${fromEmail}>`, [250]);
+    
+    for (const recipient of to) {
+      await this.command(`RCPT TO:<${recipient}>`, [250]);
+    }
+    
+    await this.command("DATA", [354]);
+
+    const date = new Date().toUTCString();
+    const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${this.config.smtpHost}>`;
+    
+    const headers = [
+      `From: ${from}`,
+      `To: ${to.join(", ")}`,
+      `Subject: ${encodeSubject(subject)}`,
+      `Date: ${date}`,
+      `Message-ID: ${messageId}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+    ];
+    
+    if (replyTo) {
+      headers.push(`Reply-To: ${replyTo}`);
+    }
+
+    for (const header of headers) {
+      await this.writeLine(header);
+    }
+    
+    await this.writeLine("");
+    
+    const bodyBase64 = utf8ToBase64(html);
+    const lines = bodyBase64.match(/.{1,76}/g) || [];
+    for (const line of lines) {
+      await this.writeLine(line);
+    }
+    
+    await this.command(".", [250]);
+  }
+
+  async close(): Promise<void> {
+    try { await this.command("QUIT", [221]); } catch {}
+    try {
+      this.reader?.releaseLock();
+      this.writer?.releaseLock();
+      this.conn?.close();
+    } catch {}
+  }
+}
+
 async function sendEmailViaSMTP(
   config: EmailConfigSettings,
   to: string,
@@ -96,39 +239,22 @@ async function sendEmailViaSMTP(
     return { success: false, error: "SMTP not configured" };
   }
 
+  const client = new RawSMTPClient(config);
+  
   try {
-    const client = new SMTPClient({
-      connection: {
-        hostname: config.smtpHost,
-        port: parseInt(config.smtpPort, 10) || 587,
-        tls: config.smtpTls,
-        auth: {
-          username: config.smtpUsername,
-          password: config.smtpPassword,
-        },
-      },
-    });
+    await client.connect();
+    
+    const encodedSenderName = encodeDisplayName(config.senderName);
+    const from = `${encodedSenderName} <${config.senderEmail}>`;
 
-    const encodedSubject = encodeSubject(subject);
-
-    await client.send({
-      from: `${config.senderName} <${config.senderEmail}>`,
-      to: [to],
-      subject: encodedSubject,
-      content: html,
-      html: html,
-      headers: {
-        "Content-Type": "text/html; charset=UTF-8",
-        "Content-Transfer-Encoding": "quoted-printable",
-      },
-      ...(config.replyToEmail ? { replyTo: config.replyToEmail } : {}),
-    });
-
+    await client.send(from, [to], subject, html, config.replyToEmail || undefined);
     await client.close();
     
+    console.log(`Email sent successfully to ${to}`);
     return { success: true, error: null, messageId: `smtp-${Date.now()}` };
   } catch (error: any) {
     console.error("SMTP send error:", error);
+    try { await client.close(); } catch {}
     return { success: false, error: error.message || "SMTP send failed" };
   }
 }
