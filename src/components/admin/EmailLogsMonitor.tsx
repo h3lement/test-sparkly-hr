@@ -51,6 +51,7 @@ import {
   EyeIcon
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
+import { EmailDetailDialog } from "./EmailDetailDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
 import { EmailSettings } from "./EmailSettings";
 
@@ -144,6 +145,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
+  const [detailDialogLog, setDetailDialogLog] = useState<EmailLog | null>(null);
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
   const [queueStats, setQueueStats] = useState<QueueStats>({ pending: 0, processing: 0, failed: 0, lastProcessed: null });
   const [queueLoading, setQueueLoading] = useState(false);
@@ -1185,8 +1187,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => setActivityLogEmail(log)}
-                            title="Activity log"
+                            onClick={() => setDetailDialogLog(log)}
+                            title="Full email details & history"
                           >
                             <Info className="w-4 h-4" />
                           </Button>
@@ -1403,6 +1405,13 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
           )}
         </DialogContent>
       </Dialog>
+
+      <EmailDetailDialog
+        open={!!detailDialogLog}
+        onClose={() => setDetailDialogLog(null)}
+        log={detailDialogLog}
+        quizTitle={detailDialogLog ? getQuizTitle(detailDialogLog) : null}
+      />
 
       <ActivityLogDialog
         open={!!activityLogEmail}
