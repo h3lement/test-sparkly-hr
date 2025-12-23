@@ -185,7 +185,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   // Process email queue function
   const processQueue = useCallback(async (silent = false) => {
     if (processingQueue) return;
-    
+
     setProcessingQueue(true);
     try {
       const { data, error } = await supabase.functions.invoke("process-email-queue", {
@@ -200,7 +200,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
           description: `Processed ${data.processed} email(s)`,
         });
       }
-      
+
       // Refresh data after processing
       fetchQueueStats();
       fetchLogs();
@@ -217,6 +217,84 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       setProcessingQueue(false);
     }
   }, [processingQueue, toast]);
+
+  const requeueQueueItem = useCallback(
+    async (queueId: string, sendNow = false) => {
+      try {
+        const { error } = await supabase
+          .from("email_queue")
+          .update({
+            status: "pending",
+            retry_count: 0,
+            error_message: null,
+            processing_started_at: null,
+            scheduled_for: new Date().toISOString(),
+          })
+          .eq("id", queueId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Re-queued",
+          description: sendNow ? "Email re-queued and will be sent now." : "Email moved back to pending queue.",
+        });
+
+        fetchQueueStats();
+        fetchLogs();
+
+        if (sendNow) {
+          // Give realtime a moment to deliver updates
+          setTimeout(() => {
+            processQueue(true);
+          }, 300);
+        }
+      } catch (error: any) {
+        console.error("Error re-queuing email:", error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to re-queue email",
+          variant: "destructive",
+        });
+      }
+    },
+    [processQueue, toast]
+  );
+
+  const requeueAllFailed = useCallback(async () => {
+    try {
+      const { error } = await supabase
+        .from("email_queue")
+        .update({
+          status: "pending",
+          retry_count: 0,
+          error_message: null,
+          processing_started_at: null,
+          scheduled_for: new Date().toISOString(),
+        })
+        .eq("status", "failed");
+
+      if (error) throw error;
+
+      toast({
+        title: "Failed emails re-queued",
+        description: "Retrying failed emails now.",
+      });
+
+      fetchQueueStats();
+      fetchLogs();
+
+      setTimeout(() => {
+        processQueue(false);
+      }, 300);
+    } catch (error: any) {
+      console.error("Error re-queuing failed emails:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to re-queue failed emails",
+         variant: "destructive",
+       });
+     }
+   }, [processQueue, toast]);
 
   // Auto-process queue when connection is re-established
   useEffect(() => {
@@ -729,20 +807,39 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   </div>
                 )}
                 {(queueStats.pending > 0 || queueStats.failed > 0) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => processQueue(false)}
-                    disabled={processingQueue}
-                  >
-                    {processingQueue ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Send className="h-3 w-3" />
+                  <div className="flex items-center gap-1">
+                    {queueStats.failed > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={requeueAllFailed}
+                        disabled={processingQueue}
+                        title="Move failed emails back to pending and send again"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        <span className="ml-1">Retry failed</span>
+                      </Button>
                     )}
-                    <span className="ml-1">Process</span>
-                  </Button>
+
+                    {(queueStats.pending > 0 || queueStats.failed > 0) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => processQueue(false)}
+                        disabled={processingQueue}
+                        title="Process pending emails now"
+                      >
+                        {processingQueue ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Send className="h-3 w-3" />
+                        )}
+                        <span className="ml-1">Process</span>
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className={`flex items-center gap-1.5 text-sm ${isOnline ? "text-green-600" : "text-red-600"}`}>
@@ -1192,16 +1289,33 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                           >
                             <Info className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => resendEmail(log.id)}
-                            disabled={resendingId === log.id}
-                            className="gap-1"
-                          >
-                            <RotateCcw className={`w-3 h-3 ${resendingId === log.id ? "animate-spin" : ""}`} />
-                            {resendingId === log.id ? "..." : "Resend"}
-                          </Button>
+
+                          {log.isQueueItem ? (
+                            log.status === "failed" ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => requeueQueueItem(log.id, true)}
+                                disabled={processingQueue}
+                                className="gap-1"
+                                title="Move back to pending and send again"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Requeue
+                              </Button>
+                            ) : null
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => resendEmail(log.id)}
+                              disabled={resendingId === log.id}
+                              className="gap-1"
+                            >
+                              <RotateCcw className={`w-3 h-3 ${resendingId === log.id ? "animate-spin" : ""}`} />
+                              {resendingId === log.id ? "..." : "Resend"}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
