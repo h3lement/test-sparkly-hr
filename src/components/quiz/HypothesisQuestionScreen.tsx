@@ -26,6 +26,7 @@ export function HypothesisQuestionScreen() {
     sessionId,
     setCurrentStep,
     getProgress,
+    openMindednessQuestion,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
 
@@ -186,13 +187,13 @@ export function HypothesisQuestionScreen() {
       // Immediately proceed to next page or complete
       window.scrollTo({ top: 0, behavior: 'smooth' });
       
-      if (currentPageIndex < sortedPages.length - 1) {
-        setCurrentPageIndex(currentPageIndex + 1);
-      } else if (quizData?.include_open_mindedness) {
-        setCurrentStep('mindedness');
-      } else {
-        setCurrentStep('email');
-      }
+       if (currentPageIndex < sortedPages.length - 1) {
+         setCurrentPageIndex(currentPageIndex + 1);
+       } else if (quizData?.include_open_mindedness || !!openMindednessQuestion) {
+         setCurrentStep('mindedness');
+       } else {
+         setCurrentStep('email');
+       }
     } catch (error) {
       console.error('Error saving responses:', error);
     } finally {
