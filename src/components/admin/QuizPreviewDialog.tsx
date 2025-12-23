@@ -20,8 +20,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Brain,
-  Loader2
+  Loader2,
+  Languages
 } from "lucide-react";
+import { TranslationDialog, TranslationOptions } from "./TranslationDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Primary languages shown first
 const PRIMARY_LANGUAGES = [
@@ -63,20 +67,26 @@ interface QuizPreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   quizSlug: string;
+  quizId: string;
   quizTitle?: string;
   quizType?: "standard" | "hypothesis" | "emotional";
+  primaryLanguage?: string;
   questionCount?: number;
   includeOpenMindedness?: boolean;
+  onTranslationComplete?: () => void;
 }
 
 export function QuizPreviewDialog({
   open,
   onOpenChange,
   quizSlug,
+  quizId,
   quizTitle,
   quizType = "standard",
+  primaryLanguage = "en",
   questionCount = 6,
   includeOpenMindedness = true,
+  onTranslationComplete,
 }: QuizPreviewDialogProps) {
   // Initialize language from localStorage
   const [selectedLanguage, setSelectedLanguage] = useState(() => {
@@ -90,6 +100,8 @@ export function QuizPreviewDialog({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showTranslationDialog, setShowTranslationDialog] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   // Build quiz pages based on question count - memoized for performance
   const quizPages = useMemo(() => {
@@ -167,6 +179,31 @@ export function QuizPreviewDialog({
     }
   };
 
+  const handleTranslate = async (options: TranslationOptions) => {
+    setTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-quiz", {
+        body: {
+          quizId,
+          targetLanguages: options.targetLanguages,
+          includeUiText: options.includeUiText,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Quiz translated to ${options.targetLanguages.length} languages`);
+      setShowTranslationDialog(false);
+      onTranslationComplete?.();
+      handleRefresh();
+    } catch (err) {
+      console.error("Translation error:", err);
+      toast.error("Translation failed");
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handlePageChange = (pageId: string) => {
     if (pageId !== currentPage) {
       setCurrentPage(pageId);
@@ -223,6 +260,15 @@ export function QuizPreviewDialog({
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setShowTranslationDialog(true)}
+                title="AI Translate Quiz"
+                className="h-8 w-8"
+              >
+                <Languages className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 className="h-8 w-8"
@@ -249,14 +295,14 @@ export function QuizPreviewDialog({
         {/* Language Tabs + Page Navigation combined */}
         <div className="px-3 py-2 border-b bg-muted/30 flex-shrink-0">
           <div className="flex items-center justify-between gap-4">
-            {/* Language selector */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {ALL_LANGUAGES.slice(0, 8).map(lang => (
+            {/* Language selector - show ALL 24 languages in a scrollable row */}
+            <div className="flex items-center gap-0.5 overflow-x-auto flex-1 pb-1">
+              {ALL_LANGUAGES.map(lang => (
                 <button
                   key={lang.code}
                   onClick={() => handleLanguageChange(lang.code)}
                   className={cn(
-                    "px-2 py-1 text-xs font-medium rounded transition-colors",
+                    "px-2 py-1 text-xs font-medium rounded transition-colors flex-shrink-0",
                     selectedLanguage === lang.code
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -265,23 +311,10 @@ export function QuizPreviewDialog({
                   {lang.label}
                 </button>
               ))}
-              {ALL_LANGUAGES.length > 8 && (
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => handleLanguageChange(e.target.value)}
-                  className="px-2 py-1 text-xs font-medium rounded bg-muted border-0 text-muted-foreground"
-                >
-                  {ALL_LANGUAGES.map(lang => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-              )}
             </div>
 
             {/* Page Navigation */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -327,6 +360,7 @@ export function QuizPreviewDialog({
           </div>
         </div>
 
+
         {/* Quiz Preview Iframe */}
         <div className="flex-1 overflow-hidden bg-background relative">
           {/* Loading overlay */}
@@ -346,6 +380,15 @@ export function QuizPreviewDialog({
             onLoad={handleIframeLoad}
           />
         </div>
+
+        {/* Translation Dialog */}
+        <TranslationDialog
+          open={showTranslationDialog}
+          onOpenChange={setShowTranslationDialog}
+          onTranslate={handleTranslate}
+          primaryLanguage={primaryLanguage}
+          translating={translating}
+        />
       </DialogContent>
     </Dialog>
   );

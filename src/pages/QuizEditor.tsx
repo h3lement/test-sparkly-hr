@@ -3020,10 +3020,13 @@ export default function QuizEditor() {
         open={showPreviewDialog}
         onOpenChange={setShowPreviewDialog}
         quizSlug={slug}
+        quizId={quizId}
         quizTitle={getLocalizedValue(title, "en") || slug}
         quizType={quizType}
+        primaryLanguage={primaryLanguage}
         questionCount={quizType === "hypothesis" ? hypothesisQuestionCount : questions.length}
         includeOpenMindedness={includeOpenMindedness}
+        onTranslationComplete={() => loadQuizData(quizId)}
       />
     </div>
   );
