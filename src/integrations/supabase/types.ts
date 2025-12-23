@@ -86,6 +86,7 @@ export type Database = {
           created_by: string | null
           created_by_email: string | null
           cta_description: Json
+          cta_retry_text: Json
           cta_text: Json
           cta_title: Json
           cta_url: string | null
@@ -99,6 +100,7 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           cta_description?: Json
+          cta_retry_text?: Json
           cta_text?: Json
           cta_title?: Json
           cta_url?: string | null
@@ -112,6 +114,7 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           cta_description?: Json
+          cta_retry_text?: Json
           cta_text?: Json
           cta_title?: Json
           cta_url?: string | null
@@ -1052,6 +1055,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           cta_description: Json
+          cta_retry_text: Json
           cta_text: Json
           cta_title: Json
           cta_url: string | null
@@ -1086,6 +1090,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cta_description?: Json
+          cta_retry_text?: Json
           cta_text?: Json
           cta_title?: Json
           cta_url?: string | null
@@ -1120,6 +1125,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cta_description?: Json
+          cta_retry_text?: Json
           cta_text?: Json
           cta_title?: Json
           cta_url?: string | null

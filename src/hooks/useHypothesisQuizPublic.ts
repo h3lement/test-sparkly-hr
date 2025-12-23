@@ -50,6 +50,7 @@ export interface QuizData {
   cta_text: Record<string, string>;
   cta_title: Record<string, string>;
   cta_description: Record<string, string>;
+  cta_retry_text: Record<string, string>;
   cta_url: string | null;
   quiz_type: string;
   include_open_mindedness: boolean;
@@ -73,7 +74,7 @@ export function useHypothesisQuizPublic(slug: string) {
       // Fetch live CTA template for this quiz
       const { data: ctaTemplate } = await supabase
         .from('cta_templates')
-        .select('cta_title, cta_description, cta_text, cta_url')
+        .select('cta_title, cta_description, cta_text, cta_retry_text, cta_url')
         .eq('quiz_id', data.id)
         .eq('is_live', true)
         .maybeSingle();
@@ -82,6 +83,7 @@ export function useHypothesisQuizPublic(slug: string) {
       const ctaTitle = ctaTemplate?.cta_title as Record<string, string> || ((data as any).cta_title || {}) as Record<string, string>;
       const ctaDescription = ctaTemplate?.cta_description as Record<string, string> || ((data as any).cta_description || {}) as Record<string, string>;
       const ctaText = ctaTemplate?.cta_text as Record<string, string> || data.cta_text as Record<string, string>;
+      const ctaRetryText = ctaTemplate?.cta_retry_text as Record<string, string> || ((data as any).cta_retry_text || {}) as Record<string, string>;
       const ctaUrl = ctaTemplate?.cta_url || data.cta_url;
 
       return {
@@ -97,6 +99,7 @@ export function useHypothesisQuizPublic(slug: string) {
         cta_text: ctaText,
         cta_title: ctaTitle,
         cta_description: ctaDescription,
+        cta_retry_text: ctaRetryText,
         cta_url: ctaUrl,
         quiz_type: data.quiz_type,
         include_open_mindedness: data.include_open_mindedness ?? false,
