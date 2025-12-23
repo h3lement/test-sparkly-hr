@@ -78,7 +78,9 @@ export function HypothesisResultsScreen() {
         <div className="inline-flex items-center gap-3 bg-card/90 backdrop-blur rounded-full px-6 py-3 mb-4 shadow-sm">
           <span className="text-3xl font-bold text-primary">{percentage}%</span>
           <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground font-medium">{correct} {t.of} {total} {t.correct}</span>
+          <span className="text-muted-foreground font-medium">
+            {correct} {t('of', 'of')} {total} {t('correct', 'correct')}
+          </span>
         </div>
         <p className="text-foreground/80 max-w-lg mx-auto leading-relaxed">
           {resultLevel.description}
@@ -90,18 +92,22 @@ export function HypothesisResultsScreen() {
         <div className="bg-card border border-border/50 rounded-2xl p-6 mb-8 shadow-md">
           <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2 mb-4">
             <Award className="w-5 h-5 text-primary" />
-            {t.yourReflections}
+            {t('yourReflections', 'Your Reflections')}
           </h2>
           <div className="space-y-4">
             {feedbackNewLearnings && (
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.keyInsight}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  {t('keyInsight', 'Key Insight')}
+                </p>
                 <p className="text-foreground italic leading-relaxed">"{feedbackNewLearnings}"</p>
               </div>
             )}
             {feedbackActionPlan && (
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.actionPlan}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  {t('actionPlan', 'Action Plan')}
+                </p>
                 <p className="text-foreground italic leading-relaxed">"{feedbackActionPlan}"</p>
               </div>
             )}
@@ -113,7 +119,7 @@ export function HypothesisResultsScreen() {
       <div className="space-y-5 mb-8">
         <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2">
           <Lightbulb className="w-5 h-5 text-amber-500" />
-          {t.truthBehind}
+          {t('truthBehind', 'The Truth Behind Each Belief')}
         </h2>
 
         {sortedPages.map((page) => {
@@ -154,9 +160,9 @@ export function HypothesisResultsScreen() {
                 <div className="divide-y divide-border/50">
                   {/* Desktop Table Header - hidden on mobile */}
                   <div className="hidden md:grid grid-cols-[1fr_1fr_1fr] gap-3 px-5 py-3 bg-muted/30 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <div>{t.columnHypothesis}</div>
-                    <div>{t.columnReality}</div>
-                    <div>{t.columnInterview}</div>
+                    <div>{t('columnHypothesis', 'Assumption')}</div>
+                    <div>{t('columnReality', 'Reality for 50+')}</div>
+                    <div>{t('columnInterview', 'Interview Question')}</div>
                   </div>
 
                   {pageQuestions.map((question, idx) => {
@@ -226,42 +232,46 @@ export function HypothesisResultsScreen() {
                               ) : (
                                 <XCircle className="w-4 h-4 text-red-500" />
                               )}
-                              <span className="text-sm font-semibold text-foreground">Question #{idx + 1}</span>
+                              <span className="text-sm font-semibold text-foreground">
+                                {language === 'fi' ? 'Kysymys' : 'Question'} #{idx + 1}
+                              </span>
                             </div>
-                            <span className={cn(
-                              "text-xs font-medium px-2 py-0.5 rounded-full",
-                              isCorrect ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
-                            )}>
-                              {isCorrect ? "Correct" : "Incorrect"}
+                            <span
+                              className={cn(
+                                "text-xs font-medium px-2 py-0.5 rounded-full",
+                                isCorrect ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"
+                              )}
+                            >
+                              {isCorrect ? labelCorrect : labelIncorrect}
                             </span>
                           </div>
 
                           {/* Hypotheses */}
                           <div className="space-y-2">
-                            <div className="p-2.5 bg-pink-500/10 border border-pink-500/20 rounded-xl">
-                              <div className="flex items-center gap-1 mb-1">
-                                <span>👩</span>
-                                <span className="text-[10px] font-semibold text-pink-600 uppercase">Women</span>
+                              <div className="p-2.5 bg-pink-500/10 border border-pink-500/20 rounded-xl">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <span>👩</span>
+                                  <span className="text-[10px] font-semibold text-pink-600 uppercase">{t('women', 'Women')}</span>
+                                </div>
+                                <p className="text-xs text-pink-700 dark:text-pink-400 leading-relaxed">
+                                  {womanHypothesis}
+                                </p>
                               </div>
-                              <p className="text-xs text-pink-700 dark:text-pink-400 leading-relaxed">
-                                {womanHypothesis}
-                              </p>
-                            </div>
-                            <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                              <div className="flex items-center gap-1 mb-1">
-                                <span>👨</span>
-                                <span className="text-[10px] font-semibold text-blue-600 uppercase">Men</span>
+                              <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <span>👨</span>
+                                  <span className="text-[10px] font-semibold text-blue-600 uppercase">{t('men', 'Men')}</span>
+                                </div>
+                                <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+                                  {manHypothesis}
+                                </p>
                               </div>
-                              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
-                                {manHypothesis}
-                              </p>
-                            </div>
                           </div>
 
                           {/* Reality */}
                           <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                             <div className="text-[10px] font-semibold text-emerald-600 uppercase mb-1">
-                              {t.columnReality}
+                              {t('columnReality', 'Reality for 50+')}
                             </div>
                             <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
                               {truthExplanation}
@@ -271,7 +281,7 @@ export function HypothesisResultsScreen() {
                           {/* Interview Question */}
                           <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
                             <div className="text-[10px] font-semibold text-violet-600 uppercase mb-1">
-                              {t.columnInterview}
+                              {t('columnInterview', 'Interview Question')}
                             </div>
                             <p className="text-xs text-violet-700 dark:text-violet-400 italic leading-relaxed">
                               {interviewQuestion}
@@ -325,7 +335,7 @@ export function HypothesisResultsScreen() {
                 rel="noopener noreferrer"
               >
                 <RotateCcw className="w-5 h-5 mr-2" />
-                {getText(quizData?.cta_retry_text, getTranslation('hypothesisTakeAgain', t.takeAgain))}
+                {getText(quizData?.cta_retry_text, t('hypothesisTakeAgain', 'Take Again'))}
               </a>
             </Button>
           ) : (
@@ -336,7 +346,7 @@ export function HypothesisResultsScreen() {
               className="h-14 px-8 text-lg font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all"
             >
               <RotateCcw className="w-5 h-5 mr-2" />
-              {getText(quizData?.cta_retry_text, getTranslation('hypothesisTakeAgain', t.takeAgain))}
+              {getText(quizData?.cta_retry_text, t('hypothesisTakeAgain', 'Take Again'))}
             </Button>
           )}
         </div>
