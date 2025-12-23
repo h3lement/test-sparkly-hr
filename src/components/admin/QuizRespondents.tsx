@@ -53,6 +53,7 @@ import {
   AdminTableCell,
 } from "@/components/admin";
 import { RespondentDetailDialog } from "./RespondentDetailDialog";
+import { formatTimestamp, formatTimestampShort } from "@/lib/utils";
 import { logActivity } from "@/hooks/useActivityLog";
 import { format, parseISO, startOfDay, endOfDay } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
@@ -341,7 +342,7 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
       lead.result_category,
       lead.openness_score || "",
       lead.language || "",
-      format(new Date(lead.created_at), "dd MMM yyyy HH:mm"),
+      formatTimestampShort(lead.created_at),
     ]);
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
@@ -600,7 +601,7 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
                     </AdminTableCell>
                     <AdminTableCell align="right">
                       <span className="text-sm text-muted-foreground">
-                        {format(new Date(lead.created_at), "dd MMM HH:mm")}
+                        {formatTimestampShort(lead.created_at)}
                       </span>
                     </AdminTableCell>
                     <AdminTableCell align="right">

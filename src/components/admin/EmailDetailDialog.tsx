@@ -31,6 +31,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { formatTimestamp, formatDateOnly } from "@/lib/utils";
 
 interface EmailLog {
   id: string;
@@ -118,18 +119,6 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
     }
   };
 
-  const formatTimestamp = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
-
   const formatRelativeTime = (dateString: string) => {
     const now = new Date();
     const date = new Date(dateString);
@@ -142,7 +131,7 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return formatDateOnly(dateString);
   };
 
   const getEmailTypeInfo = (type: string) => {

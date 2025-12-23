@@ -17,6 +17,7 @@ import {
   ToggleLeft,
   RefreshCw
 } from "lucide-react";
+import { formatTimestamp } from "@/lib/utils";
 
 interface ActivityLog {
   id: string;
@@ -106,16 +107,6 @@ export function ActivityLogDialog({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
 
   const getTableDisplayName = (table: string) => {
     switch (table) {
@@ -212,7 +203,7 @@ export function ActivityLogDialog({
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(log.created_at)}
+                        {formatTimestamp(log.created_at)}
                       </p>
                       {log.user_email && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 justify-end">
