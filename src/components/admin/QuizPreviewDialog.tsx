@@ -275,24 +275,7 @@ export function QuizPreviewDialog({
       >
         {/* Header */}
         <DialogHeader className="px-4 py-2 border-b flex-shrink-0">
-          {/* AI Translation Progress Bar - shown at very top when translating */}
-          {translating && (
-            <div className="absolute top-0 left-0 right-0 z-50">
-              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 px-4 py-2 border-b">
-                <div className="flex items-center gap-3 mb-1.5">
-                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-                  <span className="text-sm font-medium text-primary">
-                    AI Translation in progress...
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-auto tabular-nums">
-                    {translationProgress}%
-                  </span>
-                </div>
-                <Progress value={translationProgress} className="h-1.5" />
-              </div>
-            </div>
-          )}
-          <div className={cn("flex items-center justify-between gap-4", translating && "mt-12")}>
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <DialogTitle className="text-sm font-semibold truncate">
                 {quizTitle || quizSlug}
@@ -421,6 +404,23 @@ export function QuizPreviewDialog({
 
         {/* Quiz Preview Iframe */}
         <div className="flex-1 overflow-hidden bg-background relative">
+          {/* AI Translation Progress Bar - shown at very top of preview when translating */}
+          {translating && (
+            <div className="absolute top-0 left-0 right-0 z-20">
+              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 px-4 py-2 border-b backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-1.5">
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                  <span className="text-sm font-medium text-primary">
+                    AI Translation in progress...
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+                    {translationProgress}%
+                  </span>
+                </div>
+                <Progress value={translationProgress} className="h-1.5" />
+              </div>
+            </div>
+          )}
           {/* Loading overlay */}
           {isLoading && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
