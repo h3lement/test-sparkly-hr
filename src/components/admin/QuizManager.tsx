@@ -81,6 +81,7 @@ interface Quiz {
   updated_by_email?: string;
   display_order?: number;
   ai_cost_eur?: number;
+  cta_template_id?: string | null;
   cta_template?: {
     id: string;
     name: string | null;
@@ -90,7 +91,6 @@ interface Quiz {
 
 interface CTATemplate {
   id: string;
-  quiz_id: string | null;
   name: string | null;
   is_live: boolean;
 }
@@ -240,7 +240,7 @@ function SortableQuizRow({
             </SelectItem>
             {ctaTemplates.map(cta => (
               <SelectItem key={cta.id} value={cta.id}>
-                <span className={cta.quiz_id === quiz.id ? "font-medium" : ""}>
+                <span className={quiz.cta_template_id === cta.id ? "font-medium" : ""}>
                   {cta.name || "Untitled"}
                 </span>
               </SelectItem>
@@ -393,10 +393,10 @@ export function QuizManager() {
   const fetchQuizzes = async () => {
     setLoading(true);
     try {
-      // Fetch all CTA templates first
+      // Fetch all CTA templates
       const { data: ctaData } = await supabase
         .from("cta_templates")
-        .select("id, quiz_id, name, is_live")
+        .select("id, name, is_live")
         .order("created_at", { ascending: false });
       
       setCtaTemplates(ctaData || []);
@@ -492,8 +492,10 @@ export function QuizManager() {
             (templateCosts || []).reduce((sum, t) => sum + (Number(t.estimated_cost_eur) || 0), 0) +
             translationCostEur;
           
-          // Find CTA template for this quiz
-          const quizCta = (ctaData || []).find(c => c.quiz_id === quiz.id);
+          // Find CTA template for this quiz using cta_template_id
+          const quizCta = quiz.cta_template_id 
+            ? (ctaData || []).find(c => c.id === quiz.cta_template_id)
+            : null;
           
           return { 
             ...quiz, 
@@ -562,60 +564,32 @@ export function QuizManager() {
   const handleCtaChange = async (quizId: string, ctaId: string | null) => {
     setUpdatingCta(quizId);
     try {
-      if (ctaId) {
-        // Attach CTA to quiz - update the cta_template's quiz_id
-        const { error } = await supabase
-          .from("cta_templates")
-          .update({ quiz_id: quizId, is_live: true })
-          .eq("id", ctaId);
+      // Update the quiz's cta_template_id
+      const { error } = await supabase
+        .from("quizzes")
+        .update({ cta_template_id: ctaId })
+        .eq("id", quizId);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Detach any other CTAs from this quiz
-        await supabase
-          .from("cta_templates")
-          .update({ quiz_id: null })
-          .eq("quiz_id", quizId)
-          .neq("id", ctaId);
+      // Update local state
+      const updatedCta = ctaId ? ctaTemplates.find(c => c.id === ctaId) : null;
+      setQuizzes(prev => prev.map(q => 
+        q.id === quizId 
+          ? { 
+              ...q, 
+              cta_template_id: ctaId,
+              cta_template: updatedCta ? { id: updatedCta.id, name: updatedCta.name, is_live: updatedCta.is_live } : null 
+            } 
+          : q
+      ));
 
-        // Update local state
-        const updatedCta = ctaTemplates.find(c => c.id === ctaId);
-        setQuizzes(prev => prev.map(q => 
-          q.id === quizId ? { ...q, cta_template: updatedCta ? { id: updatedCta.id, name: updatedCta.name, is_live: true } : null } : q
-        ));
-        setCtaTemplates(prev => prev.map(c => 
-          c.id === ctaId ? { ...c, quiz_id: quizId, is_live: true } : 
-          c.quiz_id === quizId ? { ...c, quiz_id: null } : c
-        ));
-
-        toast({
-          title: "CTA Connected",
-          description: `CTA "${updatedCta?.name || 'Template'}" attached to quiz`,
-        });
-      } else {
-        // Detach CTA from quiz
-        const currentCta = quizzes.find(q => q.id === quizId)?.cta_template;
-        if (currentCta) {
-          const { error } = await supabase
-            .from("cta_templates")
-            .update({ quiz_id: null })
-            .eq("id", currentCta.id);
-
-          if (error) throw error;
-        }
-
-        setQuizzes(prev => prev.map(q => 
-          q.id === quizId ? { ...q, cta_template: null } : q
-        ));
-        setCtaTemplates(prev => prev.map(c => 
-          c.quiz_id === quizId ? { ...c, quiz_id: null } : c
-        ));
-
-        toast({
-          title: "CTA Disconnected",
-          description: "CTA template detached from quiz",
-        });
-      }
+      toast({
+        title: ctaId ? "CTA Connected" : "CTA Disconnected",
+        description: ctaId 
+          ? `CTA "${updatedCta?.name || 'Template'}" attached to quiz`
+          : "CTA template detached from quiz",
+      });
     } catch (error: any) {
       console.error("Error updating CTA:", error);
       toast({

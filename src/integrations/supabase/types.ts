@@ -1060,6 +1060,7 @@ export type Database = {
           cta_description: Json
           cta_retry_text: Json
           cta_retry_url: string | null
+          cta_template_id: string | null
           cta_text: Json
           cta_title: Json
           cta_url: string | null
@@ -1096,6 +1097,7 @@ export type Database = {
           cta_description?: Json
           cta_retry_text?: Json
           cta_retry_url?: string | null
+          cta_template_id?: string | null
           cta_text?: Json
           cta_title?: Json
           cta_url?: string | null
@@ -1132,6 +1134,7 @@ export type Database = {
           cta_description?: Json
           cta_retry_text?: Json
           cta_retry_url?: string | null
+          cta_template_id?: string | null
           cta_text?: Json
           cta_title?: Json
           cta_url?: string | null
@@ -1160,7 +1163,15 @@ export type Database = {
           updated_at?: string
           use_tone_for_ai?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_cta_template_id_fkey"
+            columns: ["cta_template_id"]
+            isOneToOne: false
+            referencedRelation: "cta_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_emails: {
         Row: {
