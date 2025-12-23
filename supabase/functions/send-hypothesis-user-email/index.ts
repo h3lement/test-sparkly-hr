@@ -80,6 +80,8 @@ const emailTranslations: Record<string, {
   readyToLearnMore: string;
   ctaDescription: string;
   visitSparkly: string;
+  openMindedness: string;
+  openMindednessScore: string;
 }> = {
   en: {
     subject: 'Your 50+ Workforce Quiz Results',
@@ -98,6 +100,8 @@ const emailTranslations: Record<string, {
     readyToLearnMore: 'Want to Learn More?',
     ctaDescription: 'Discover more insights about managing and hiring 50+ employees effectively.',
     visitSparkly: 'Visit Sparkly.hr',
+    openMindedness: 'Open-Mindedness',
+    openMindednessScore: 'Your openness to diverse assessment methods',
   },
   et: {
     subject: 'Sinu 50+ tööjõu kviiside tulemused',
@@ -116,6 +120,8 @@ const emailTranslations: Record<string, {
     readyToLearnMore: 'Tahad rohkem teada saada?',
     ctaDescription: 'Avasta rohkem teadmisi 50+ töötajate tõhusa juhtimise ja värbamise kohta.',
     visitSparkly: 'Külasta Sparkly.hr',
+    openMindedness: 'Avatud mõtlemine',
+    openMindednessScore: 'Sinu avatus erinevatele hindamismeetoditele',
   },
   de: {
     subject: 'Ihre 50+ Arbeitskraft-Quiz-Ergebnisse',
@@ -134,6 +140,8 @@ const emailTranslations: Record<string, {
     readyToLearnMore: 'Möchten Sie mehr erfahren?',
     ctaDescription: 'Entdecken Sie mehr Einblicke in die effektive Führung und Einstellung von 50+ Mitarbeitern.',
     visitSparkly: 'Besuchen Sie Sparkly.hr',
+    openMindedness: 'Aufgeschlossenheit',
+    openMindednessScore: 'Ihre Offenheit für verschiedene Bewertungsmethoden',
   },
 };
 
@@ -166,6 +174,7 @@ interface HypothesisUserEmailRequest {
   language: string;
   sessionId: string;
   leadId?: string;
+  opennessScore?: number | null;
 }
 
 function buildEmailHtml(
@@ -175,7 +184,8 @@ function buildEmailHtml(
   totalQuestions: number,
   questions: QuestionData[],
   responses: ResponseData[],
-  ctaUrl: string
+  ctaUrl: string,
+  opennessScore?: number | null
 ): string {
   const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
   const percentage = Math.round((score / totalQuestions) * 100);
@@ -300,6 +310,20 @@ function buildEmailHtml(
                 </td>
               </tr>
               
+              ${opennessScore !== null && opennessScore !== undefined ? `
+              <!-- Open-Mindedness Score -->
+              <tr>
+                <td style="padding: 24px 40px 0 40px;">
+                  <div style="background: linear-gradient(135deg, #dbeafe, #ede9fe); border: 2px solid #93c5fd; border-radius: 16px; padding: 24px; text-align: center;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">🧠</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #1d4ed8; margin-bottom: 4px;">${escapeHtml(trans.openMindedness)}</div>
+                    <div style="font-size: 32px; font-weight: 800; color: #3b82f6;">${opennessScore}/4</div>
+                    <div style="font-size: 13px; color: #6b7280; margin-top: 8px;">${escapeHtml(trans.openMindednessScore)}</div>
+                  </div>
+                </td>
+              </tr>
+              ` : ''}
+              
               <!-- Questions & Answers Section -->
               <tr>
                 <td style="padding: 32px 40px 0 40px;">
@@ -346,7 +370,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const body: HypothesisUserEmailRequest = await req.json();
-    const { email, score, totalQuestions, quizId, quizTitle, language, sessionId, leadId } = body;
+    const { email, score, totalQuestions, quizId, quizTitle, language, sessionId, leadId, opennessScore } = body;
 
     console.log("Sending hypothesis user email to:", email);
 
@@ -360,7 +384,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from("email_queue")
         .select("id")
         .eq("hypothesis_lead_id", leadId)
-        .eq("email_type", "quiz_result_user")
+        .eq("email_type", "hypothesis_results")
         .in("status", ["pending", "processing", "sent"])
         .limit(1)
         .maybeSingle();
@@ -378,7 +402,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from("email_logs")
         .select("id")
         .eq("hypothesis_lead_id", leadId)
-        .eq("email_type", "quiz_result_user")
+        .eq("email_type", "hypothesis_results")
         .limit(1)
         .maybeSingle();
 
@@ -442,7 +466,8 @@ const handler = async (req: Request): Promise<Response> => {
       totalQuestions,
       questions || [],
       responses || [],
-      ctaUrl
+      ctaUrl,
+      opennessScore
     );
 
     const subject = `${trans.subject} - ${score}/${totalQuestions}`;
@@ -454,7 +479,7 @@ const handler = async (req: Request): Promise<Response> => {
       sender_name: emailConfig.senderName,
       subject: subject,
       html_body: htmlBody,
-      email_type: "quiz_result_user",
+      email_type: "hypothesis_results",
       hypothesis_lead_id: leadId || null,
       quiz_id: quizId || null,
       language: language,

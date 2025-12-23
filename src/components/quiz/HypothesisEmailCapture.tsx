@@ -105,6 +105,7 @@ export function HypothesisEmailCapture() {
           language,
           sessionId,
           leadId: insertedLead?.id,
+          opennessScore,
         }
       }).catch(err => console.error('User email notification error:', err));
 
