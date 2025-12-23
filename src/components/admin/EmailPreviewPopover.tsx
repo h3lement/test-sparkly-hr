@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ interface EmailLogStatus {
 interface EmailPreviewPopoverProps {
   leadId: string;
   leadCreatedAt: string;
-  hasAnswers: boolean;
+  leadType: "quiz" | "hypothesis";
   emailLog: EmailLogStatus | undefined;
   emailStatusLabel: string;
   emailStatusColor: string;
@@ -42,7 +42,7 @@ interface EmailPreviewPopoverProps {
 export function EmailPreviewPopover({
   leadId,
   leadCreatedAt,
-  hasAnswers,
+  leadType,
   emailLog,
   emailStatusLabel,
   emailStatusColor,
@@ -63,7 +63,6 @@ export function EmailPreviewPopover({
   const previewSubject = prefetchedSubject ?? localSubject;
   const previewLoading = parentLoading || localLoading;
 
-  const leadType = useMemo(() => (hasAnswers ? "quiz" : "hypothesis"), [hasAnswers]);
   const canShowSentHtml = Boolean(emailLog?.html_body);
 
   const fetchPreview = async (force = false) => {
@@ -205,7 +204,7 @@ export function EmailPreviewPopover({
 
 // Utility function to prefetch email previews for a list of leads
 export async function prefetchEmailPreviews(
-  leads: { id: string; answers: unknown }[]
+  leads: { id: string; leadType: "quiz" | "hypothesis" }[]
 ): Promise<Map<string, { html: string; subject: string }>> {
   const results = new Map<string, { html: string; subject: string }>();
   
@@ -215,9 +214,8 @@ export async function prefetchEmailPreviews(
     const batch = leads.slice(i, i + batchSize);
     const promises = batch.map(async (lead) => {
       try {
-        const leadType = lead.answers !== null ? "quiz" : "hypothesis";
         const { data, error } = await supabase.functions.invoke("render-email-preview", {
-          body: { leadId: lead.id, leadType },
+          body: { leadId: lead.id, leadType: lead.leadType },
         });
         if (error) throw error;
         if (data?.html) {
