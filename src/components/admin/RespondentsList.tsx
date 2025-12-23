@@ -154,6 +154,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [backfillingEmails, setBackfillingEmails] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("365");
@@ -395,6 +396,30 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     fetchData(true);
   }, []);
 
+  const handleBackfillPreparedEmails = useCallback(async () => {
+    setBackfillingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-lead-emails", {
+        body: { limit: 200 },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email previews prepared",
+        description: `Processed ${data?.processed ?? 0}, skipped ${data?.skipped ?? 0}, errors ${data?.errors ?? 0}`,
+      });
+
+      await fetchData(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to prepare email previews";
+      console.error("Backfill failed:", err);
+      toast({ title: "Backfill failed", description: message, variant: "destructive" });
+    } finally {
+      setBackfillingEmails(false);
+    }
+  }, [toast]);
+
   const deleteLead = async (leadId: string, email: string) => {
     try {
       // Log the activity before deletion
@@ -625,8 +650,19 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                 <TooltipContent>Reset column widths</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <Button
+              onClick={handleBackfillPreparedEmails}
+              variant="outline"
+              size="sm"
+              disabled={loading || retrying || backfillingEmails}
+            >
+              <Mail className={cn("w-4 h-4 mr-2", backfillingEmails && "animate-pulse")} />
+              {backfillingEmails ? "Preparing..." : "Prepare Emails"}
+            </Button>
+
             <Button onClick={() => fetchData()} variant="outline" size="sm" disabled={loading || retrying}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading || retrying ? "animate-spin" : ""}`} />
+              <RefreshCw className={cn("w-4 h-4 mr-2", (loading || retrying) && "animate-spin")} />
               {retrying ? "Retrying..." : "Refresh"}
             </Button>
             <Button onClick={downloadCSV} variant="default" size="sm">
@@ -765,7 +801,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                   <ResizableTableHead columnKey="lang" width={columnWidths.lang} onResizeStart={handleMouseDown}>
                     Lang
                   </ResizableTableHead>
-                  <ResizableTableHead columnKey="emailStatus" width={columnWidths.emailStatus} onResizeStart={handleMouseDown} className="text-center">
+                  <ResizableTableHead columnKey="emailStatus" width={Math.max(columnWidths.emailStatus, 110)} onResizeStart={handleMouseDown} className="text-center">
                     <div className="inline-flex items-center gap-2">
                       <Mail className="w-4 h-4" />
                       <span>Email</span>
@@ -875,7 +911,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           {lead.language || 'en'}
                         </Badge>
                       </AdminTableCell>
-                      <AdminTableCell style={{ width: columnWidths.emailStatus, minWidth: columnWidths.emailStatus }} align="center">
+                      <AdminTableCell style={{ width: Math.max(columnWidths.emailStatus, 110), minWidth: Math.max(columnWidths.emailStatus, 110) }} align="center">
                         <EmailPreviewPopover
                           leadId={lead.id}
                           leadCreatedAt={lead.created_at}

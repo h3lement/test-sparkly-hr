@@ -135,16 +135,16 @@ export function EmailPreviewPopover({
         >
           <EmailIcon className="w-4 h-4" />
         </button>
-        {hasInstantContent && !canShowSentHtml && (
-          <Badge 
-            variant="outline" 
-            className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/20 cursor-pointer hover:bg-green-500/20"
+        {hasStoredEmail && !canShowSentHtml && (
+          <Badge
+            variant="outline"
+            className="text-[10px] px-1 py-0 h-4 bg-primary/10 text-primary border-primary/20 cursor-pointer hover:bg-primary/20"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(true);
             }}
           >
-            Ready
+            Prepared
           </Badge>
         )}
       </div>
