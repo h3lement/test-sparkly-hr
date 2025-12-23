@@ -113,7 +113,6 @@ export function CTATemplateManager() {
   const [saving, setSaving] = useState(false);
   
   // Form state
-  const [ctaName, setCtaName] = useState<string>("");
   const [ctaTitle, setCtaTitle] = useState<Record<string, string>>({});
   const [ctaDescription, setCtaDescription] = useState<Record<string, string>>({});
   const [ctaButtonText, setCtaButtonText] = useState<Record<string, string>>({});
@@ -153,6 +152,7 @@ export function CTATemplateManager() {
     
     const selectedQuiz = quizzes.find(q => q.id === selectedQuizId);
     const primaryLanguage = selectedQuiz?.primary_language || "en";
+    const autoName = selectedQuiz?.slug ? `${selectedQuiz.slug} CTA` : "Untitled CTA";
     
     // Skip if button text is empty (required field)
     if (!ctaButtonText[primaryLanguage]?.trim()) return;
@@ -163,7 +163,7 @@ export function CTATemplateManager() {
       .from("cta_templates")
       .upsert({
         quiz_id: selectedQuizId,
-        name: ctaName.trim() || "Untitled CTA",
+        name: autoName,
         cta_title: ctaTitle,
         cta_description: ctaDescription,
         cta_text: ctaButtonText,
@@ -179,14 +179,14 @@ export function CTATemplateManager() {
     setTemplates(prev => prev.map(t => 
       t.quiz_id === selectedQuizId ? {
         ...t,
-        name: ctaName.trim() || "Untitled CTA",
+        name: autoName,
         cta_title: ctaTitle,
         cta_description: ctaDescription,
         cta_text: ctaButtonText,
         cta_url: ctaUrl.trim() || "https://sparkly.hr",
       } : t
     ));
-  }, [selectedQuizId, editingTemplate, ctaName, ctaTitle, ctaDescription, ctaButtonText, ctaUrl, quizzes]);
+  }, [selectedQuizId, editingTemplate, ctaTitle, ctaDescription, ctaButtonText, ctaUrl, quizzes]);
   
   const { status: autoSaveStatus, triggerSave } = useAutoSave({
     onSave: handleAutoSave,
@@ -199,17 +199,16 @@ export function CTATemplateManager() {
   useEffect(() => {
     if (!autoSaveEnabled) return;
     
-    const currentValues = JSON.stringify({ ctaName, ctaTitle, ctaDescription, ctaButtonText, ctaUrl });
+    const currentValues = JSON.stringify({ ctaTitle, ctaDescription, ctaButtonText, ctaUrl });
     if (prevValuesRef.current && prevValuesRef.current !== currentValues) {
       triggerSave();
     }
     prevValuesRef.current = currentValues;
-  }, [ctaName, ctaTitle, ctaDescription, ctaButtonText, ctaUrl, autoSaveEnabled, triggerSave]);
+  }, [ctaTitle, ctaDescription, ctaButtonText, ctaUrl, autoSaveEnabled, triggerSave]);
 
   const handleAddCta = () => {
     // Clear form for new CTA and open editor
     setEditingTemplate(null);
-    setCtaName("");
     setCtaTitle({});
     setCtaDescription({});
     setCtaButtonText({});
@@ -224,7 +223,6 @@ export function CTATemplateManager() {
 
   const handleOpenEditor = (template: CTATemplate) => {
     setEditingTemplate(template);
-    setCtaName(template.name || "");
     setCtaTitle(template.cta_title);
     setCtaDescription(template.cta_description);
     setCtaButtonText(template.cta_text);
@@ -305,7 +303,6 @@ export function CTATemplateManager() {
       : null;
     
     if (latestTemplate) {
-      setCtaName(latestTemplate.name || "");
       setCtaTitle(latestTemplate.cta_title);
       setCtaDescription(latestTemplate.cta_description);
       setCtaButtonText(latestTemplate.cta_text);
@@ -314,13 +311,11 @@ export function CTATemplateManager() {
       // Fall back to quiz table data if no template exists
       const quiz = quizzes.find(q => q.id === selectedQuizId);
       if (quiz) {
-        setCtaName("");
         setCtaTitle(quiz.cta_title || {});
         setCtaDescription(quiz.cta_description || {});
         setCtaButtonText(quiz.cta_text || {});
         setCtaUrl(quiz.cta_url || "https://sparkly.hr");
       } else {
-        setCtaName("");
         setCtaTitle({});
         setCtaDescription({});
         setCtaButtonText({});
@@ -349,12 +344,14 @@ export function CTATemplateManager() {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
+      const autoName = selectedQuiz?.slug ? `${selectedQuiz.slug} CTA` : "Untitled CTA";
+      
       // Upsert the CTA (insert or update based on quiz_id)
       const { error } = await supabase
         .from("cta_templates")
         .upsert({
           quiz_id: selectedQuizId,
-          name: ctaName.trim() || "Untitled CTA",
+          name: autoName,
           cta_title: ctaTitle,
           cta_description: ctaDescription,
           cta_text: ctaButtonText,
@@ -991,17 +988,6 @@ export function CTATemplateManager() {
 
             {/* Form Fields */}
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="cta-name">CTA Name (internal)</Label>
-                <Input
-                  id="cta-name"
-                  value={ctaName}
-                  onChange={(e) => setCtaName(e.target.value)}
-                  placeholder="e.g. Main CTA, Promo CTA, etc."
-                />
-                <p className="text-xs text-muted-foreground mt-1">For internal identification only, not shown to users</p>
-              </div>
-
               <div>
                 <Label htmlFor="cta-title">CTA Title ({selectedLanguage.toUpperCase()})</Label>
                 <Input
