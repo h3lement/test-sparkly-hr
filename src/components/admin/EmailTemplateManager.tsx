@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Save, Check, Eye, Mail, Server } from "lucide-react";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { EmailSettings } from "./EmailSettings";
+import { formatTimestamp } from "@/lib/utils";
 interface EmailTemplate {
   id: string;
   version_number: number;
@@ -661,13 +662,7 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatTimestamp(dateString);
   };
 
   const liveTemplate = templates.find(t => t.is_live);

@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Trash2, Clock, Search, LogOut } from "lucide-react";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
+import { formatTimestamp } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/quiz/Footer";
 import { CreateAdminDialog } from "@/components/admin/CreateAdminDialog";
@@ -363,13 +364,7 @@ const Admin = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatTimestamp(dateString);
   };
 
   const filteredAdmins = admins.filter(admin =>
