@@ -299,6 +299,7 @@ export function CTATemplateManager() {
           cta_description: ctaDescription,
           cta_text: ctaButtonText,
           cta_url: ctaUrl.trim() || "https://sparkly.hr",
+          is_live: true, // Always set to live since each quiz has only one CTA
           created_by: user?.id,
           created_by_email: user?.email,
         }, { onConflict: 'quiz_id' });
@@ -493,6 +494,7 @@ export function CTATemplateManager() {
           cta_description: template.cta_description,
           cta_text: template.cta_text,
           cta_url: template.cta_url,
+          is_live: false, // Not live until attached to a quiz
           created_by: user?.id,
           created_by_email: user?.email,
         });
