@@ -18,6 +18,7 @@ export function HypothesisEmailCapture() {
     setEmail, 
     setCurrentStep, 
     calculateScore,
+    calculateOpenMindednessScore,
     quizData,
     sessionId,
     feedbackNewLearnings,
@@ -25,6 +26,7 @@ export function HypothesisEmailCapture() {
     feedbackActionPlan,
     setFeedbackActionPlan,
     questions,
+    hasOpenMindedness,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,6 +48,7 @@ export function HypothesisEmailCapture() {
     setIsSubmitting(true);
 
     const { correct, total } = calculateScore();
+    const opennessScore = hasOpenMindedness ? calculateOpenMindednessScore() : null;
 
     try {
       // Save lead to database
@@ -58,6 +61,7 @@ export function HypothesisEmailCapture() {
         feedback_new_learnings: feedbackNewLearnings || null,
         feedback_action_plan: feedbackActionPlan || null,
         language,
+        openness_score: opennessScore,
       }).select('id').single();
 
       if (error) {
