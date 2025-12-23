@@ -26,7 +26,6 @@ export function HypothesisQuestionScreen() {
     sessionId,
     setCurrentStep,
     getProgress,
-    hasOpenMindedness,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
 
@@ -189,7 +188,7 @@ export function HypothesisQuestionScreen() {
       
       if (currentPageIndex < sortedPages.length - 1) {
         setCurrentPageIndex(currentPageIndex + 1);
-      } else if (hasOpenMindedness) {
+      } else if (quizData?.include_open_mindedness) {
         setCurrentStep('mindedness');
       } else {
         setCurrentStep('email');
