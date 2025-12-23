@@ -104,6 +104,7 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [uniqueCount, setUniqueCount] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -172,6 +173,16 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
       const { count, error: countError } = await countQuery;
       if (countError) throw countError;
       setTotalCount(count || 0);
+
+      // Get unique email count
+      const { data: uniqueData, error: uniqueError } = await supabase
+        .from(tableName)
+        .select("email")
+        .eq("quiz_id", quizId);
+      if (!uniqueError && uniqueData) {
+        const uniqueEmails = new Set(uniqueData.map((d: { email: string }) => d.email));
+        setUniqueCount(uniqueEmails.size);
+      }
 
       // Get paginated data
       const { data, error } = await dataQuery
@@ -366,11 +377,11 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
           <Tooltip>
             <TooltipTrigger asChild>
               <Badge variant="secondary" className="text-xs cursor-help">
-                {totalCount}
+                {uniqueCount} / {totalCount}
               </Badge>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Unique / Total</p>
+              <p>Unique emails / Total submissions</p>
             </TooltipContent>
           </Tooltip>
         </div>
