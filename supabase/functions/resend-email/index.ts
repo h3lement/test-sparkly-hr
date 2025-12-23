@@ -428,6 +428,17 @@ const handler = async (req: Request): Promise<Response> => {
       })
       .eq("id", logId);
 
+    // Ensure quiz_lead_id won't violate FK constraints (hypothesis leads are stored in a different table)
+    let safeQuizLeadId: string | null = null;
+    if (emailLog.quiz_lead_id) {
+      const { data: lead } = await supabase
+        .from("quiz_leads")
+        .select("id")
+        .eq("id", emailLog.quiz_lead_id)
+        .maybeSingle();
+      safeQuizLeadId = lead?.id ?? null;
+    }
+
     // Log the new resend as a separate entry with HTML body
     await supabase.from("email_logs").insert({
       email_type: emailLog.email_type,
@@ -438,7 +449,7 @@ const handler = async (req: Request): Promise<Response> => {
       status: "sent",
       resend_id: emailResponse.messageId || null,
       language: emailLog.language,
-      quiz_lead_id: emailLog.quiz_lead_id,
+      quiz_lead_id: safeQuizLeadId,
       original_log_id: logId,
       html_body: emailHtml,
     });
