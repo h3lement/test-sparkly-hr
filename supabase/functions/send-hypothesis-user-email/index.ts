@@ -511,6 +511,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Hypothesis user email queued successfully");
 
+    // Store email content on the lead record for instant preview access
+    if (leadId) {
+      const { error: updateLeadError } = await supabase
+        .from("hypothesis_leads")
+        .update({ email_html: htmlBody, email_subject: subject })
+        .eq("id", leadId);
+
+      if (updateLeadError) {
+        console.error("Error updating lead with email content:", updateLeadError);
+      } else {
+        console.log("Lead updated with email content for instant preview");
+      }
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },

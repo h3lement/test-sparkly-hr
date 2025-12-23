@@ -1823,6 +1823,20 @@ const handler = async (req: Request): Promise<Response> => {
           } else {
             console.log("Background task: User email queued successfully");
           }
+
+          // Store email content on the lead record for instant preview access
+          if (quizLeadId) {
+            const { error: updateLeadError } = await supabase
+              .from("quiz_leads")
+              .update({ email_html: emailHtml, email_subject: userEmailSubject })
+              .eq("id", quizLeadId);
+
+            if (updateLeadError) {
+              console.error("Background task: Error updating lead with email content:", updateLeadError);
+            } else {
+              console.log("Background task: Lead updated with email content");
+            }
+          }
         } else {
           console.log("Background task: User email already queued/sent for lead:", quizLeadId);
         }
