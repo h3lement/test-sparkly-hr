@@ -133,7 +133,7 @@ export function HypothesisEmailCapture() {
   };
 
   const { correct, total } = calculateScore();
-  const percentage = Math.round((correct / total) * 100);
+  const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
 
   // Get assessment category based on percentage
   const getAssessment = () => {
