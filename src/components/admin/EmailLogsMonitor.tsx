@@ -185,40 +185,43 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   });
 
   // Process email queue function
-  const processQueue = useCallback(async (silent = false) => {
-    if (processingQueue) return;
+  const processQueue = useCallback(
+    async (silent = false) => {
+      if (processingQueue) return;
 
-    setProcessingQueue(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("process-email-queue", {
-        body: {},
-      });
-
-      if (error) throw error;
-
-      if (!silent && data?.processed > 0) {
-        toast({
-          title: "Queue processed",
-          description: `Processed ${data.processed} email(s)`,
+      setProcessingQueue(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("process-email-queue", {
+          body: {},
         });
-      }
 
-      // Refresh data after processing
-      fetchQueueStats();
-      fetchLogs();
-    } catch (error: any) {
-      console.error("Error processing queue:", error);
-      if (!silent) {
-        toast({
-          title: "Error",
-          description: "Failed to process email queue",
-          variant: "destructive",
-        });
+        if (error) throw error;
+
+        if (!silent && data?.processed > 0) {
+          toast({
+            title: "Queue processed",
+            description: `Processed ${data.processed} email(s)`,
+          });
+        }
+
+        // Refresh data after processing (background to avoid UI "page refresh" feel)
+        fetchQueueStats();
+        fetchLogs(true);
+      } catch (error: any) {
+        console.error("Error processing queue:", error);
+        if (!silent) {
+          toast({
+            title: "Error",
+            description: "Failed to process email queue",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setProcessingQueue(false);
       }
-    } finally {
-      setProcessingQueue(false);
-    }
-  }, [processingQueue, toast]);
+    },
+    [processingQueue, toast, fetchLogs, fetchQueueStats]
+  );
 
   const requeueQueueItem = useCallback(
     async (queueId: string, sendNow = false) => {
@@ -332,42 +335,43 @@ const requeueAllFailed = useCallback(async () => {
     };
   }, [processQueue, toast]);
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [logsRes, queueRes, quizzesRes] = await Promise.all([
-        supabase
-          .from("email_logs")
-          .select("*, quiz_lead:quiz_leads(quiz_id)")
-          .order("created_at", { ascending: false })
-          .limit(1000),
-        supabase
-          .from("email_queue")
-          .select("*")
-          .in("status", ["pending", "processing", "failed"])
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("quizzes")
-          .select("id, title, slug"),
-      ]);
+  const fetchLogs = useCallback(
+    async (background = false) => {
+      if (!background) setLoading(true);
+      try {
+        const [logsRes, queueRes, quizzesRes] = await Promise.all([
+          supabase
+            .from("email_logs")
+            .select("*, quiz_lead:quiz_leads(quiz_id)")
+            .order("created_at", { ascending: false })
+            .limit(1000),
+          supabase
+            .from("email_queue")
+            .select("*")
+            .in("status", ["pending", "processing", "failed"])
+            .order("created_at", { ascending: false }),
+          supabase.from("quizzes").select("id, title, slug"),
+        ]);
 
-      if (logsRes.error) throw logsRes.error;
-      if (quizzesRes.error) throw quizzesRes.error;
-      
-      setLogs((logsRes.data as EmailLog[]) || []);
-      setQueueItems((queueRes.data as QueueItem[]) || []);
-      setQuizzes((quizzesRes.data as Quiz[]) || []);
-    } catch (error: any) {
-      console.error("Error fetching email logs:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch email logs",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+        if (logsRes.error) throw logsRes.error;
+        if (quizzesRes.error) throw quizzesRes.error;
+
+        setLogs((logsRes.data as EmailLog[]) || []);
+        setQueueItems((queueRes.data as QueueItem[]) || []);
+        setQuizzes((quizzesRes.data as Quiz[]) || []);
+      } catch (error: any) {
+        console.error("Error fetching email logs:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch email logs",
+          variant: "destructive",
+        });
+      } finally {
+        if (!background) setLoading(false);
+      }
+    },
+    [toast]
+  );
 
   const fetchQueueStats = useCallback(async () => {
     setQueueLoading(true);
@@ -421,7 +425,7 @@ const requeueAllFailed = useCallback(async () => {
           title: "Backfill complete",
           description: `Created ${data.backfilled} missing email log entries`,
         });
-        fetchLogs();
+        fetchLogs(true);
       } else {
         toast({
           title: "No missing logs",
@@ -461,7 +465,8 @@ const requeueAllFailed = useCallback(async () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "email_logs" },
         () => {
-          fetchLogs();
+          // Background refresh to avoid a full-screen loading flash
+          fetchLogs(true);
         }
       )
       .subscribe();
@@ -473,7 +478,7 @@ const requeueAllFailed = useCallback(async () => {
         { event: "*", schema: "public", table: "email_queue" },
         () => {
           fetchQueueStats();
-          fetchLogs();
+          fetchLogs(true);
         }
       )
       .subscribe();
@@ -493,10 +498,14 @@ const requeueAllFailed = useCallback(async () => {
 
       if (error) throw error;
 
+      const inserted = data?.inserted_log as { id?: string; created_at?: string; resend_id?: string | null } | undefined;
+
       if (data.success) {
-        // Update the log entry in state without refetching
-        setLogs((prevLogs) =>
-          prevLogs.map((log) =>
+        // Update the original log entry, and optimistically insert the new resend log into the list
+        setLogs((prevLogs) => {
+          const original = prevLogs.find((l) => l.id === logId);
+
+          const updated = prevLogs.map((log) =>
             log.id === logId
               ? {
                   ...log,
@@ -506,13 +515,31 @@ const requeueAllFailed = useCallback(async () => {
                   error_message: null,
                 }
               : log
-          )
-        );
+          );
+
+          if (inserted?.id && original && !updated.some((l) => l.id === inserted.id)) {
+            const newLog: EmailLog = {
+              ...original,
+              id: inserted.id,
+              created_at: inserted.created_at || new Date().toISOString(),
+              resend_id: inserted.resend_id ?? data.resendId ?? original.resend_id,
+              original_log_id: logId,
+              status: "sent",
+              error_message: null,
+            };
+            return [newLog, ...updated];
+          }
+
+          return updated;
+        });
 
         toast({
           title: "Email resent",
           description: `Email successfully resent (attempt #${data.attempts})`,
         });
+
+        // Background sync to ensure the list matches the backend (no loading flash)
+        fetchLogs(true);
       } else {
         // Update the log entry with failure info
         setLogs((prevLogs) =>
@@ -923,6 +950,7 @@ const requeueAllFailed = useCallback(async () => {
                 )}
               </div>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 className="h-6 px-2 text-xs"
@@ -941,7 +969,16 @@ const requeueAllFailed = useCallback(async () => {
                 <Wifi className={`h-4 w-4 ${!isOnline ? "opacity-50" : ""}`} />
                 <span>{isOnline ? "Live" : "Offline"}</span>
               </div>
-              <Button onClick={() => { fetchLogs(); fetchQueueStats(); }} variant="outline" size="sm" disabled={loading}>
+              <Button
+                type="button"
+                onClick={() => {
+                  fetchLogs(true);
+                  fetchQueueStats();
+                }}
+                variant="outline"
+                size="sm"
+                disabled={loading}
+              >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
@@ -1388,6 +1425,7 @@ const requeueAllFailed = useCallback(async () => {
                           {log.isQueueItem ? (
                             log.status === "failed" ? (
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={() => requeueQueueItem(log.id, true)}
@@ -1401,6 +1439,7 @@ const requeueAllFailed = useCallback(async () => {
                             ) : null
                           ) : (
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => resendEmail(log.id)}

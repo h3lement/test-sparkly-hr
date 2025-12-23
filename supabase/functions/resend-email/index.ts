@@ -440,27 +440,39 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Log the new resend as a separate entry with HTML body
-    await supabase.from("email_logs").insert({
-      email_type: emailLog.email_type,
-      recipient_email: emailLog.recipient_email,
-      sender_email: senderEmail,
-      sender_name: senderName,
-      subject: emailLog.subject,
-      status: "sent",
-      resend_id: emailResponse.messageId || null,
-      language: emailLog.language,
-      quiz_lead_id: safeQuizLeadId,
-      original_log_id: logId,
-      html_body: emailHtml,
-    });
+    const { data: insertedLogs, error: insertError } = await supabase
+      .from("email_logs")
+      .insert({
+        email_type: emailLog.email_type,
+        recipient_email: emailLog.recipient_email,
+        sender_email: senderEmail,
+        sender_name: senderName,
+        subject: emailLog.subject,
+        status: "sent",
+        resend_id: emailResponse.messageId || null,
+        language: emailLog.language,
+        quiz_lead_id: safeQuizLeadId,
+        original_log_id: logId,
+        html_body: emailHtml,
+      })
+      .select("id, created_at, resend_id")
+      .limit(1);
+
+    if (insertError) {
+      console.error("Failed to insert resend log:", insertError);
+      throw insertError;
+    }
+
+    const insertedLog = Array.isArray(insertedLogs) ? insertedLogs[0] : null;
 
     console.log("Email resent successfully via SMTP");
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         resendId: emailResponse.messageId,
-        attempts: newAttempts 
+        attempts: newAttempts,
+        inserted_log: insertedLog,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
