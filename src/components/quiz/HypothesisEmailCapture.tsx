@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useUiTranslations } from '@/hooks/useUiTranslations';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, Lightbulb, Target } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255);
@@ -23,11 +22,6 @@ export function HypothesisEmailCapture() {
     openMindednessQuestion,
     quizData,
     sessionId,
-    feedbackNewLearnings,
-    setFeedbackNewLearnings,
-    feedbackActionPlan,
-    setFeedbackActionPlan,
-    questions,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,8 +61,6 @@ export function HypothesisEmailCapture() {
         email: validation.data,
         score: correct,
         total_questions: total,
-        feedback_new_learnings: feedbackNewLearnings || null,
-        feedback_action_plan: feedbackActionPlan || null,
         language,
         openness_score: opennessScore,
       }).select('id').single();
@@ -103,8 +95,6 @@ export function HypothesisEmailCapture() {
           quizId: quizData?.id,
           quizTitle,
           language,
-          feedbackNewLearnings: feedbackNewLearnings || null,
-          feedbackActionPlan: feedbackActionPlan || null,
           leadId: insertedLead?.id,
         }
       }).catch(err => console.error('Admin email notification error:', err));
@@ -218,37 +208,6 @@ export function HypothesisEmailCapture() {
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Reflection Questions - Collapsible on mobile for quicker submission */}
-        <div className="bg-card border border-border/50 rounded-xl p-4 md:p-5 space-y-4 shadow-md animate-slide-up" style={{ animationDelay: '0.25s' }}>
-          <div>
-            <label htmlFor="new-learnings" className="flex items-center gap-2 text-sm font-medium mb-2">
-              <Lightbulb className="w-4 h-4 text-amber-500" />
-              {t('newInsightQuestion', 'What new insight surprised you most?', 'Mikä uusi oivallus yllätti eniten?')}
-            </label>
-            <Textarea
-              id="new-learnings"
-              placeholder={t('shareWhatYouLearned', 'Share what you learned...', 'Kerro mitä opit...')}
-              value={feedbackNewLearnings}
-              onChange={(e) => setFeedbackNewLearnings(e.target.value)}
-              className="min-h-[70px] md:min-h-[80px] resize-none text-sm"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="action-plan" className="flex items-center gap-2 text-sm font-medium mb-2">
-              <Target className="w-4 h-4 text-primary" />
-              {t('actionPlanQuestion', 'What will you do differently?', 'Mitä teet toisin?')}
-            </label>
-            <Textarea
-              id="action-plan"
-              placeholder={t('yourActionPlan', 'Your action plan...', 'Toimintasuunnitelmasi...')}
-              value={feedbackActionPlan}
-              onChange={(e) => setFeedbackActionPlan(e.target.value)}
-              className="min-h-[70px] md:min-h-[80px] resize-none text-sm"
-            />
-          </div>
-        </div>
-
         {/* Email Input - Prominent on mobile */}
         <div className="bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md animate-slide-up" style={{ animationDelay: '0.3s' }}>
           <label htmlFor="email-input" className="flex items-center gap-2 text-sm font-medium mb-3">
