@@ -51,6 +51,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { logActivity } from "@/hooks/useActivityLog";
@@ -74,6 +81,18 @@ interface Quiz {
   updated_by_email?: string;
   display_order?: number;
   ai_cost_eur?: number;
+  cta_template?: {
+    id: string;
+    name: string | null;
+    is_live: boolean;
+  } | null;
+}
+
+interface CTATemplate {
+  id: string;
+  quiz_id: string | null;
+  name: string | null;
+  is_live: boolean;
 }
 
 // Sortable Row Component
@@ -82,6 +101,8 @@ interface SortableQuizRowProps {
   index: number;
   isDragEnabled: boolean;
   compactView: boolean;
+  ctaTemplates: CTATemplate[];
+  updatingCta: string | null;
   getLocalizedText: (json: Json) => string;
   handleEditQuiz: (quiz: Quiz) => void;
   toggleQuizStatus: (quiz: Quiz) => void;
@@ -89,6 +110,7 @@ interface SortableQuizRowProps {
   deleteQuiz: (quiz: Quiz) => void;
   formatDateTime: (dateString: string, userEmail?: string) => { date: string; user: string | null };
   setActivityLogQuiz: (quiz: Quiz | null) => void;
+  handleCtaChange: (quizId: string, ctaId: string | null) => void;
 }
 
 function SortableQuizRow({
@@ -96,6 +118,8 @@ function SortableQuizRow({
   index,
   isDragEnabled,
   compactView,
+  ctaTemplates,
+  updatingCta,
   getLocalizedText,
   handleEditQuiz,
   toggleQuizStatus,
@@ -103,6 +127,7 @@ function SortableQuizRow({
   deleteQuiz,
   formatDateTime,
   setActivityLogQuiz,
+  handleCtaChange,
 }: SortableQuizRowProps) {
   const {
     attributes,
@@ -195,6 +220,39 @@ function SortableQuizRow({
           <span className="text-muted-foreground">—</span>
         )}
       </TableCell>
+      {/* CTA Column */}
+      <TableCell className={cellPadding}>
+        <Select 
+          value={quiz.cta_template?.id || "none"} 
+          onValueChange={(val) => handleCtaChange(quiz.id, val === "none" ? null : val)}
+          disabled={updatingCta === quiz.id}
+        >
+          <SelectTrigger className={`${compactView ? "h-7 text-xs" : "h-8 text-xs"}`}>
+            {updatingCta === quiz.id ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <SelectValue placeholder="No CTA" />
+            )}
+          </SelectTrigger>
+          <SelectContent className="bg-popover z-50">
+            <SelectItem value="none">
+              <span className="text-muted-foreground">No CTA</span>
+            </SelectItem>
+            {ctaTemplates.map(cta => (
+              <SelectItem 
+                key={cta.id} 
+                value={cta.id}
+                disabled={cta.quiz_id !== null && cta.quiz_id !== quiz.id}
+              >
+                <span className={cta.quiz_id === quiz.id ? "font-medium" : ""}>
+                  {cta.name || "Untitled"}
+                  {cta.quiz_id && cta.quiz_id !== quiz.id && " (in use)"}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
       <TableCell className={`text-center ${cellPadding}`}>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
           {quiz.unique_respondents_count}/{quiz.respondents_count}
@@ -286,6 +344,7 @@ function SortableQuizRow({
 export function QuizManager() {
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [ctaTemplates, setCtaTemplates] = useState<CTATemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -296,6 +355,7 @@ export function QuizManager() {
   const [compactView, setCompactView] = useState(false);
   const [translatingAll, setTranslatingAll] = useState(false);
   const [translationProgress, setTranslationProgress] = useState({ current: 0, total: 0, currentQuiz: "" });
+  const [updatingCta, setUpdatingCta] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Default column widths
@@ -305,6 +365,7 @@ export function QuizManager() {
     ai_cost: 80,
     questions: 90,
     pages: 70,
+    cta: 120,
     respondents: 110,
     status: 90,
     updated: 130,
@@ -337,6 +398,14 @@ export function QuizManager() {
   const fetchQuizzes = async () => {
     setLoading(true);
     try {
+      // Fetch all CTA templates first
+      const { data: ctaData } = await supabase
+        .from("cta_templates")
+        .select("id, quiz_id, name, is_live")
+        .order("created_at", { ascending: false });
+      
+      setCtaTemplates(ctaData || []);
+
       const { data: quizzesData, error: quizzesError } = await supabase
         .from("quizzes")
         .select("*")
@@ -428,6 +497,9 @@ export function QuizManager() {
             (templateCosts || []).reduce((sum, t) => sum + (Number(t.estimated_cost_eur) || 0), 0) +
             translationCostEur;
           
+          // Find CTA template for this quiz
+          const quizCta = (ctaData || []).find(c => c.quiz_id === quiz.id);
+          
           return { 
             ...quiz, 
             questions_count: questionsCount,
@@ -436,6 +508,7 @@ export function QuizManager() {
             unique_respondents_count: uniqueRespondentsCount,
             updated_by_email: lastActivity?.[0]?.user_email || null,
             ai_cost_eur: totalAiCost,
+            cta_template: quizCta ? { id: quizCta.id, name: quizCta.name, is_live: quizCta.is_live } : null,
           };
         })
       );
@@ -488,6 +561,75 @@ export function QuizManager() {
         description: "Failed to update quiz status",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleCtaChange = async (quizId: string, ctaId: string | null) => {
+    setUpdatingCta(quizId);
+    try {
+      if (ctaId) {
+        // Attach CTA to quiz - update the cta_template's quiz_id
+        const { error } = await supabase
+          .from("cta_templates")
+          .update({ quiz_id: quizId, is_live: true })
+          .eq("id", ctaId);
+
+        if (error) throw error;
+
+        // Detach any other CTAs from this quiz
+        await supabase
+          .from("cta_templates")
+          .update({ quiz_id: null })
+          .eq("quiz_id", quizId)
+          .neq("id", ctaId);
+
+        // Update local state
+        const updatedCta = ctaTemplates.find(c => c.id === ctaId);
+        setQuizzes(prev => prev.map(q => 
+          q.id === quizId ? { ...q, cta_template: updatedCta ? { id: updatedCta.id, name: updatedCta.name, is_live: true } : null } : q
+        ));
+        setCtaTemplates(prev => prev.map(c => 
+          c.id === ctaId ? { ...c, quiz_id: quizId, is_live: true } : 
+          c.quiz_id === quizId ? { ...c, quiz_id: null } : c
+        ));
+
+        toast({
+          title: "CTA Connected",
+          description: `CTA "${updatedCta?.name || 'Template'}" attached to quiz`,
+        });
+      } else {
+        // Detach CTA from quiz
+        const currentCta = quizzes.find(q => q.id === quizId)?.cta_template;
+        if (currentCta) {
+          const { error } = await supabase
+            .from("cta_templates")
+            .update({ quiz_id: null })
+            .eq("id", currentCta.id);
+
+          if (error) throw error;
+        }
+
+        setQuizzes(prev => prev.map(q => 
+          q.id === quizId ? { ...q, cta_template: null } : q
+        ));
+        setCtaTemplates(prev => prev.map(c => 
+          c.quiz_id === quizId ? { ...c, quiz_id: null } : c
+        ));
+
+        toast({
+          title: "CTA Disconnected",
+          description: "CTA template detached from quiz",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error updating CTA:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update CTA connection",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingCta(null);
     }
   };
 
@@ -991,6 +1133,14 @@ export function QuizManager() {
                     <span className="flex items-center justify-center">Pages <SortIcon column="pages" /></span>
                   </ResizableTableHead>
                   <ResizableTableHead 
+                    columnKey="cta"
+                    width={columnWidths.cta}
+                    onResizeStart={handleMouseDown}
+                    className="font-semibold cursor-pointer hover:bg-secondary/80 select-none"
+                  >
+                    <span className="flex items-center">CTA</span>
+                  </ResizableTableHead>
+                  <ResizableTableHead 
                     columnKey="respondents"
                     width={columnWidths.respondents}
                     onResizeStart={handleMouseDown}
@@ -1047,6 +1197,8 @@ export function QuizManager() {
                       index={index}
                       isDragEnabled={isDragEnabled}
                       compactView={compactView}
+                      ctaTemplates={ctaTemplates}
+                      updatingCta={updatingCta}
                       getLocalizedText={getLocalizedText}
                       handleEditQuiz={handleEditQuiz}
                       toggleQuizStatus={toggleQuizStatus}
@@ -1054,6 +1206,7 @@ export function QuizManager() {
                       deleteQuiz={deleteQuiz}
                       formatDateTime={formatDateTime}
                       setActivityLogQuiz={setActivityLogQuiz}
+                      handleCtaChange={handleCtaChange}
                     />
                   ))}
                 </TableBody>
