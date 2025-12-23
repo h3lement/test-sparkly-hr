@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -129,15 +130,60 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Encode subject line for UTF-8 support (RFC 2047)
+function isLatin1(str: string): boolean {
+  return /^[\x00-\xFF]*$/.test(str);
+}
+
+function hasResendConfigured(): boolean {
+  return !!Deno.env.get("RESEND_API_KEY");
+}
+
+function hasSmtpConfigured(config: EmailConfigSettings): boolean {
+  return !!(config.smtpHost && config.smtpUsername && config.smtpPassword);
+}
+
+function isEmailServiceConfigured(config: EmailConfigSettings): boolean {
+  return hasResendConfigured() || hasSmtpConfigured(config);
+}
+
+// Encode subject line for UTF-8 support (RFC 2047) - only used for SMTP fallback
 function encodeSubject(subject: string): string {
-  // Check if subject contains non-ASCII characters
   if (!/^[\x00-\x7F]*$/.test(subject)) {
-    // Use Base64 encoding for UTF-8 subject
     const encoded = btoa(unescape(encodeURIComponent(subject)));
     return `=?UTF-8?B?${encoded}?=`;
   }
   return subject;
+}
+
+async function sendEmailViaResend(
+  config: EmailConfigSettings,
+  emailParams: SendEmailParams
+): Promise<{ success: boolean; error: string | null; messageId?: string }> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+
+    const { data, error } = await resend.emails.send({
+      from: emailParams.from,
+      to: emailParams.to,
+      subject: emailParams.subject,
+      html: emailParams.html,
+      ...(emailParams.replyTo ? { reply_to: emailParams.replyTo } : {}),
+    });
+
+    if (error) {
+      return { success: false, error: (error as any).message ?? String(error) };
+    }
+
+    return { success: true, error: null, messageId: (data as any)?.id };
+  } catch (error: any) {
+    console.error("Resend send error:", error);
+    return { success: false, error: error?.message || "Resend send failed" };
+  }
 }
 
 async function sendEmailWithRetry(
@@ -145,17 +191,40 @@ async function sendEmailWithRetry(
   emailParams: SendEmailParams
 ): Promise<{ success: boolean; error: string | null; attempts: number; messageId?: string }> {
   let lastError: string | null = null;
-  
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    console.log(`Email send attempt ${attempt}/${MAX_RETRIES} to: ${emailParams.to.join(", ")}`);
-    
+    console.log(
+      `Email send attempt ${attempt}/${MAX_RETRIES} (${hasResendConfigured() ? "resend" : "smtp"}) to: ${emailParams.to.join(", ")}`
+    );
+
     try {
+      // Prefer Resend API if configured (avoids SMTP btoa/Latin1 issues)
+      if (hasResendConfigured()) {
+        const res = await sendEmailViaResend(config, emailParams);
+        if (res.success) {
+          console.log(`Email sent successfully on attempt ${attempt}`);
+          return { success: true, error: null, attempts: attempt, messageId: res.messageId };
+        }
+
+        lastError = res.error || "Unknown Resend error";
+        throw new Error(lastError);
+      }
+
+      // SMTP fallback
+      if (!isLatin1(config.smtpUsername) || !isLatin1(config.smtpPassword)) {
+        return {
+          success: false,
+          error:
+            "SMTP credentials contain non-Latin1 characters. Configure Resend sending or use ASCII-only SMTP credentials.",
+          attempts: attempt,
+        };
+      }
+
       const client = await createSmtpClient(config);
       if (!client) {
         return { success: false, error: "SMTP not configured", attempts: attempt };
       }
 
-      // Encode subject for UTF-8 support
       const encodedSubject = encodeSubject(emailParams.subject);
 
       await client.send({
@@ -172,13 +241,13 @@ async function sendEmailWithRetry(
       });
 
       await client.close();
-      
+
       console.log(`Email sent successfully on attempt ${attempt}`);
       return { success: true, error: null, attempts: attempt, messageId: `smtp-${Date.now()}` };
     } catch (error: any) {
-      lastError = error.message || "Unknown SMTP error";
+      lastError = error?.message || "Unknown email error";
       console.error(`Email send attempt ${attempt} failed:`, lastError);
-      
+
       if (attempt < MAX_RETRIES) {
         const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
         console.log(`Waiting ${delayMs}ms before retry...`);
@@ -186,7 +255,7 @@ async function sendEmailWithRetry(
       }
     }
   }
-  
+
   console.error(`All ${MAX_RETRIES} email attempts failed`);
   return { success: false, error: lastError, attempts: MAX_RETRIES };
 }
@@ -1304,8 +1373,8 @@ const handler = async (req: Request): Promise<Response> => {
     // For test emails, wait for the email to complete
     if (isTest) {
       // Original synchronous behavior for test emails
-      if (!emailConfig.smtpHost) {
-        console.error("SMTP not configured");
+      if (!isEmailServiceConfigured(emailConfig)) {
+        console.error("Email service not configured");
         return new Response(
           JSON.stringify({ error: "Email service not configured" }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -1386,8 +1455,8 @@ const handler = async (req: Request): Promise<Response> => {
       console.log("Background task: Starting email sending...");
       
       try {
-        if (!emailConfig.smtpHost) {
-          console.error("Background task: SMTP not configured");
+        if (!isEmailServiceConfigured(emailConfig)) {
+          console.error("Background task: Email service not configured");
           return;
         }
 

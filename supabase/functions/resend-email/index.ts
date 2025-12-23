@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,7 +67,11 @@ async function getEmailConfig(supabase: any): Promise<EmailConfigSettings> {
   return defaults;
 }
 
-// Encode subject line for UTF-8 support (RFC 2047)
+function isLatin1(str: string): boolean {
+  return /^[\x00-\xFF]*$/.test(str);
+}
+
+// Encode subject line for UTF-8 support (RFC 2047) - only used for SMTP fallback
 function encodeSubject(subject: string): string {
   // Check if subject contains non-ASCII characters
   if (!/^[\x00-\x7F]*$/.test(subject)) {
@@ -77,6 +82,40 @@ function encodeSubject(subject: string): string {
   return subject;
 }
 
+async function sendEmailViaResend(
+  config: EmailConfigSettings,
+  to: string,
+  subject: string,
+  html: string
+): Promise<{ success: boolean; error: string | null; messageId?: string }> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const from = `${config.senderName} <${config.senderEmail}>`;
+
+    const { data, error } = await resend.emails.send({
+      from,
+      to: [to],
+      subject,
+      html,
+      ...(config.replyToEmail ? { reply_to: config.replyToEmail } : {}),
+    });
+
+    if (error) {
+      return { success: false, error: (error as any).message ?? String(error) };
+    }
+
+    return { success: true, error: null, messageId: (data as any)?.id };
+  } catch (error: any) {
+    console.error("Resend send error:", error);
+    return { success: false, error: error?.message || "Resend send failed" };
+  }
+}
+
 async function sendEmailViaSMTP(
   config: EmailConfigSettings,
   to: string,
@@ -85,6 +124,15 @@ async function sendEmailViaSMTP(
 ): Promise<{ success: boolean; error: string | null; messageId?: string }> {
   if (!config.smtpHost || !config.smtpUsername || !config.smtpPassword) {
     return { success: false, error: "SMTP not configured" };
+  }
+
+  // denomailer uses btoa() for SMTP AUTH, which only supports Latin1.
+  // If credentials contain Unicode, the connection will always fail.
+  if (!isLatin1(config.smtpUsername) || !isLatin1(config.smtpPassword)) {
+    return {
+      success: false,
+      error: "SMTP credentials contain non-Latin1 characters. Use Resend sending or ASCII-only SMTP credentials.",
+    };
   }
 
   try {
@@ -131,7 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("resend-email function called (SMTP mode)");
+  console.log("resend-email function called");
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -247,13 +295,21 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send the email via SMTP
-    const emailResponse = await sendEmailViaSMTP(
-      { ...emailConfig, senderName, senderEmail },
-      emailLog.recipient_email,
-      emailLog.subject,
-      emailHtml
-    );
+    const hasResend = !!Deno.env.get("RESEND_API_KEY");
+
+    const emailResponse = hasResend
+      ? await sendEmailViaResend(
+          { ...emailConfig, senderName, senderEmail },
+          emailLog.recipient_email,
+          emailLog.subject,
+          emailHtml
+        )
+      : await sendEmailViaSMTP(
+          { ...emailConfig, senderName, senderEmail },
+          emailLog.recipient_email,
+          emailLog.subject,
+          emailHtml
+        );
 
     console.log("SMTP response:", JSON.stringify(emailResponse));
 
