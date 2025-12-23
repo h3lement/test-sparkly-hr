@@ -20,6 +20,7 @@ interface EmailQueueItem {
   retry_count: number;
   max_retries: number;
   quiz_lead_id: string | null;
+  hypothesis_lead_id: string | null;
   quiz_id: string | null;
   language: string | null;
   reply_to_email: string | null;
@@ -328,6 +329,18 @@ async function getSafeQuizLeadId(supabase: any, quizLeadId: string | null): Prom
   return data.id;
 }
 
+async function getSafeHypothesisLeadId(supabase: any, hypothesisLeadId: string | null): Promise<string | null> {
+  if (!hypothesisLeadId) return null;
+  const { data, error } = await supabase
+    .from("hypothesis_leads")
+    .select("id")
+    .eq("id", hypothesisLeadId)
+    .maybeSingle();
+
+  if (error || !data?.id) return null;
+  return data.id;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -439,6 +452,7 @@ const handler = async (req: Request): Promise<Response> => {
           .eq("id", email.id);
 
         const safeQuizLeadId = await getSafeQuizLeadId(supabase, email.quiz_lead_id);
+        const safeHypothesisLeadId = await getSafeHypothesisLeadId(supabase, email.hypothesis_lead_id);
 
         // Log to email_logs
         await supabase.from("email_logs").insert({
@@ -451,6 +465,7 @@ const handler = async (req: Request): Promise<Response> => {
           resend_id: result.messageId || null,
           language: email.language,
           quiz_lead_id: safeQuizLeadId,
+          hypothesis_lead_id: safeHypothesisLeadId,
           quiz_id: email.quiz_id,
           html_body: email.html_body,
           delivery_status: "sent",
@@ -479,6 +494,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (isFinalFailure) {
           const safeQuizLeadId = await getSafeQuizLeadId(supabase, email.quiz_lead_id);
+          const safeHypothesisLeadId = await getSafeHypothesisLeadId(supabase, email.hypothesis_lead_id);
 
           // Log final failure to email_logs
           await supabase.from("email_logs").insert({
@@ -491,6 +507,7 @@ const handler = async (req: Request): Promise<Response> => {
             error_message: result.error,
             language: email.language,
             quiz_lead_id: safeQuizLeadId,
+            hypothesis_lead_id: safeHypothesisLeadId,
             quiz_id: email.quiz_id,
             html_body: email.html_body,
             resend_attempts: newRetryCount,
