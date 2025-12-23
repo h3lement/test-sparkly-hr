@@ -35,6 +35,7 @@ import {
   Calendar
 } from "lucide-react";
 import { format, parseISO, startOfDay, endOfDay } from "date-fns";
+import { formatTimestamp } from "@/lib/utils";
 
 interface ActivityLog {
   id: string;
@@ -238,10 +239,6 @@ export function QuizActivityLog({ quizId }: QuizActivityLogProps) {
   const getInitial = (email: string | null) => {
     if (!email) return "S";
     return email.charAt(0).toUpperCase();
-  };
-
-  const formatTimestamp = (dateStr: string) => {
-    return format(new Date(dateStr), "dd MMM yyyy HH:mm");
   };
 
   const getShortEmail = (email: string | null) => {

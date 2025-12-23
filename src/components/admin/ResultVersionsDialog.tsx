@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, History, RotateCcw, Calendar, Euro, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatTimestampShort } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
 interface ResultLevel {
@@ -103,15 +104,6 @@ export function ResultVersionsDialog({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   const getParamsDescription = (params: Json) => {
     if (!params || typeof params !== "object" || Array.isArray(params)) return "";
@@ -181,7 +173,7 @@ export function ResultVersionsDialog({
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
                           <Calendar className="w-3 h-3" />
-                          {formatDate(version.created_at)}
+                          {formatTimestampShort(version.created_at)}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 truncate">
                           {getParamsDescription(version.generation_params)}

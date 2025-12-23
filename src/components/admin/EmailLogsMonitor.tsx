@@ -56,6 +56,7 @@ import { ActivityLogDialog } from "./ActivityLogDialog";
 import { EmailDetailDialog } from "./EmailDetailDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
 import { EmailSettings } from "./EmailSettings";
+import { formatTimestamp } from "@/lib/utils";
 
 interface EmailLog {
   id: string;
@@ -592,28 +593,6 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
       default:
         return { label: type, icon: Mail, color: "bg-secondary text-secondary-foreground" };
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatFullTimestamp = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZoneName: "short",
-    });
   };
 
   const getQuizTitle = (log: EmailLog) => {
@@ -1409,11 +1388,8 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
                       <td style={{ width: columnWidths.sent }} className="px-4 py-3">
                         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3 shrink-0 mt-0.5" />
-                          <span
-                            className="whitespace-normal break-words leading-tight"
-                            title={formatFullTimestamp(log.created_at)}
-                          >
-                            {formatFullTimestamp(log.created_at)}
+                          <span className="whitespace-normal break-words leading-tight">
+                            {formatTimestamp(log.created_at)}
                           </span>
                         </div>
                       </td>
@@ -1596,7 +1572,7 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
                 </div>
                 <div className="grid grid-cols-[100px_1fr] gap-2">
                   <span className="text-muted-foreground font-medium">Date:</span>
-                  <span>{formatFullTimestamp(selectedLog.created_at)}</span>
+                  <span>{formatTimestamp(selectedLog.created_at)}</span>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] gap-2">
                   <span className="text-muted-foreground font-medium">Language:</span>
@@ -1625,25 +1601,25 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
                 {selectedLog.delivered_at && (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-muted-foreground font-medium">Delivered:</span>
-                    <span className="text-emerald-600">{formatFullTimestamp(selectedLog.delivered_at)}</span>
+                    <span className="text-emerald-600">{formatTimestamp(selectedLog.delivered_at)}</span>
                   </div>
                 )}
                 {selectedLog.opened_at && (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-muted-foreground font-medium">First Open:</span>
-                    <span className="text-blue-600">{formatFullTimestamp(selectedLog.opened_at)} ({selectedLog.open_count || 1} opens)</span>
+                    <span className="text-blue-600">{formatTimestamp(selectedLog.opened_at)} ({selectedLog.open_count || 1} opens)</span>
                   </div>
                 )}
                 {selectedLog.clicked_at && (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-muted-foreground font-medium">First Click:</span>
-                    <span className="text-purple-600">{formatFullTimestamp(selectedLog.clicked_at)} ({selectedLog.click_count || 1} clicks)</span>
+                    <span className="text-purple-600">{formatTimestamp(selectedLog.clicked_at)} ({selectedLog.click_count || 1} clicks)</span>
                   </div>
                 )}
                 {selectedLog.bounced_at && (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-red-500 font-medium">Bounced:</span>
-                    <span className="text-red-600">{formatFullTimestamp(selectedLog.bounced_at)}</span>
+                    <span className="text-red-600">{formatTimestamp(selectedLog.bounced_at)}</span>
                   </div>
                 )}
                 {selectedLog.bounce_type && (
@@ -1661,7 +1637,7 @@ export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initial
                 {selectedLog.complained_at && (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-orange-500 font-medium">Complaint:</span>
-                    <span className="text-orange-600">{formatFullTimestamp(selectedLog.complained_at)} ({selectedLog.complaint_type || 'unknown'})</span>
+                    <span className="text-orange-600">{formatTimestamp(selectedLog.complained_at)} ({selectedLog.complaint_type || 'unknown'})</span>
                   </div>
                 )}
                 {selectedLog.resend_id && (

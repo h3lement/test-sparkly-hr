@@ -22,7 +22,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, formatTimestamp, formatTimestampShort } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuizLead {
@@ -237,7 +237,7 @@ export function RespondentDetailDialog({
             <User className="w-5 h-5" />
             <span className="truncate">{lead.email}</span>
             <Badge variant="outline" className="text-xs ml-auto">
-              {format(new Date(lead.created_at), "dd MMM yyyy HH:mm")}
+              {formatTimestampShort(lead.created_at)}
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -392,7 +392,7 @@ export function RespondentDetailDialog({
                     {/* Metadata */}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-3">
                       <Calendar className="w-3 h-3" />
-                      <span>Completed: {format(new Date(lead.created_at), "dd MMM yyyy 'at' HH:mm")}</span>
+                      <span>Completed: {formatTimestamp(lead.created_at)}</span>
                       {lead.language && (
                         <Badge variant="outline" className="text-[10px] ml-auto">
                           {lead.language.toUpperCase()}
@@ -448,7 +448,7 @@ export function RespondentDetailDialog({
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3 text-muted-foreground" />
                           <span className="text-muted-foreground">
-                            {format(new Date(emailLog.created_at), "dd MMM yyyy HH:mm")}
+                            {formatTimestampShort(emailLog.created_at)}
                           </span>
                         </div>
                       </div>
