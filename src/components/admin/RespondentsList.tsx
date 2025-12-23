@@ -117,7 +117,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
-  const [pendingEmailCounts, setPendingEmailCounts] = useState<Record<string, number>>({});
   
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,39 +181,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     fetchData();
   }, []);
 
-  // Realtime subscription for email_queue to update "To Send" counts live
-  useEffect(() => {
-    const fetchPendingCounts = async () => {
-      const { data, error } = await supabase
-        .from("email_queue")
-        .select("recipient_email")
-        .in("status", ["pending", "processing"]);
-
-      if (!error && data) {
-        const counts: Record<string, number> = {};
-        data.forEach((item) => {
-          const email = item.recipient_email.toLowerCase();
-          counts[email] = (counts[email] || 0) + 1;
-        });
-        setPendingEmailCounts(counts);
-      }
-    };
-
-    const channel = supabase
-      .channel("respondents-email-queue")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "email_queue" },
-        () => {
-          fetchPendingCounts();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   // Handle highlighted lead from Email History
   useEffect(() => {
@@ -245,7 +211,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes, pendingEmailsRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
         supabase
           .from("quiz_leads")
           .select("*")
@@ -266,10 +232,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .from("quiz_answers")
           .select("*")
           .order("answer_order", { ascending: true }),
-        supabase
-          .from("email_queue")
-          .select("recipient_email")
-          .in("status", ["pending", "processing"]),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
@@ -277,16 +239,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       if (quizzesRes.error) throw quizzesRes.error;
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
-
-      // Build pending email counts by email address
-      const emailCounts: Record<string, number> = {};
-      if (!pendingEmailsRes.error && pendingEmailsRes.data) {
-        pendingEmailsRes.data.forEach((item) => {
-          const email = item.recipient_email.toLowerCase();
-          emailCounts[email] = (emailCounts[email] || 0) + 1;
-        });
-      }
-      setPendingEmailCounts(emailCounts);
 
       // Convert hypothesis leads to match QuizLead interface
       const hypothesisLeadsConverted: QuizLead[] = (hypothesisLeadsRes.data || []).map((hl) => ({
@@ -637,7 +589,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             <AdminTable>
               <AdminTableHeader>
                 <AdminTableCell header>Email</AdminTableCell>
-                <AdminTableCell header>To Send</AdminTableCell>
                 <AdminTableCell header>Quiz</AdminTableCell>
                 <AdminTableCell header>Score</AdminTableCell>
                 <AdminTableCell header>Result</AdminTableCell>
@@ -706,18 +657,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                               )}
                             </div>
                           </div>
-                        </AdminTableCell>
-                        <AdminTableCell>
-                          {(() => {
-                            const count = pendingEmailCounts[lead.email.toLowerCase()] || 0;
-                            return count > 0 ? (
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                {count}
-                              </Badge>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            );
-                          })()}
                         </AdminTableCell>
                         <AdminTableCell>
                           {quiz ? (
