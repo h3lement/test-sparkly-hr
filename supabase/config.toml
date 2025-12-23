@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.translate-cta]
 verify_jwt = true
+
+[functions.process-email-queue]
+verify_jwt = false

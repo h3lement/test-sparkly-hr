@@ -266,6 +266,72 @@ export type Database = {
           },
         ]
       }
+      email_queue: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          html_body: string
+          id: string
+          language: string | null
+          max_retries: number
+          processing_started_at: string | null
+          quiz_id: string | null
+          quiz_lead_id: string | null
+          recipient_email: string
+          reply_to_email: string | null
+          retry_count: number
+          scheduled_for: string
+          sender_email: string
+          sender_name: string
+          sent_at: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          html_body: string
+          id?: string
+          language?: string | null
+          max_retries?: number
+          processing_started_at?: string | null
+          quiz_id?: string | null
+          quiz_lead_id?: string | null
+          recipient_email: string
+          reply_to_email?: string | null
+          retry_count?: number
+          scheduled_for?: string
+          sender_email: string
+          sender_name: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          html_body?: string
+          id?: string
+          language?: string | null
+          max_retries?: number
+          processing_started_at?: string | null
+          quiz_id?: string | null
+          quiz_lead_id?: string | null
+          recipient_email?: string
+          reply_to_email?: string | null
+          retry_count?: number
+          scheduled_for?: string
+          sender_email?: string
+          sender_name?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           body_content: Json
