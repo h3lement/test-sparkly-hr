@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Mail,
@@ -354,7 +353,7 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-2xl h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
         {/* Header with status */}
         <div className={`px-6 pt-6 pb-4 ${statusInfo.bgColor} border-b`}>
           <div className="flex items-start justify-between gap-4">
@@ -374,7 +373,7 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
           </div>
         </div>
         
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-6 space-y-5">
             {/* Email Info Card */}
             <div className="bg-muted/30 rounded-xl border p-4 space-y-3">
@@ -589,7 +588,7 @@ export function EmailDetailDialog({ open, onClose, log, quizTitle }: EmailDetail
               </div>
             </details>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
