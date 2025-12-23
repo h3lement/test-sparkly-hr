@@ -15,7 +15,7 @@ export function DynamicResultsScreen() {
     openMindednessResultLevels,
     quizData
   } = useDynamicQuiz();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
@@ -104,7 +104,7 @@ export function DynamicResultsScreen() {
       </div>
 
       <header className="text-center mb-8">
-        <p className="text-muted-foreground mb-2">Results for {email}</p>
+        <p className="text-muted-foreground mb-2">{t('resultsFor')} {email}</p>
         
         <h1 id="results-heading" className="font-heading text-3xl md:text-4xl font-bold mb-2">
           <span aria-hidden="true">{result?.emoji}</span> {getText(result?.title, 'Your Results')}
@@ -117,7 +117,7 @@ export function DynamicResultsScreen() {
           <div className="text-6xl font-bold gradient-text mb-2">
             {totalScore}
           </div>
-          <p className="text-muted-foreground">out of {maxScore} points</p>
+          <p className="text-muted-foreground">{t('outOf')} {maxScore} {t('points')}</p>
         </div>
         
         <div 
@@ -134,15 +134,15 @@ export function DynamicResultsScreen() {
         </div>
         
         <div className="flex justify-between text-sm text-muted-foreground">
-          <span>Best</span>
-          <span>Needs Work</span>
+          <span>{t('best')}</span>
+          <span>{t('needsWork')}</span>
         </div>
       </section>
 
       {/* Leadership Open-Mindedness */}
       <section className="glass rounded-2xl p-8 mb-8">
         <h2 className="font-heading text-xl font-semibold mb-4">
-          <span aria-hidden="true">{openMindednessResult.emoji}</span> {openMindednessResult.title}
+          <span aria-hidden="true">{openMindednessResult.emoji}</span> {t('leadershipOpenMindedness')}
         </h2>
         <div className="flex items-center gap-4 mb-4">
           <div className="text-4xl font-bold gradient-text">
@@ -170,14 +170,14 @@ export function DynamicResultsScreen() {
 
       {/* Result description */}
       <section className="glass rounded-2xl p-8 mb-8">
-        <h2 className="font-heading text-xl font-semibold mb-4">What This Means</h2>
+        <h2 className="font-heading text-xl font-semibold mb-4">{t('whatThisMeans')}</h2>
         <p className="text-muted-foreground leading-relaxed mb-6">
           {getText(result?.description)}
         </p>
         
         {result?.insights && result.insights.length > 0 && (
           <>
-            <h3 className="font-semibold mb-3">Key Insights:</h3>
+            <h3 className="font-semibold mb-3">{t('keyInsights')}</h3>
             <ol className="space-y-3" role="list">
               {result.insights.map((insight, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -195,10 +195,10 @@ export function DynamicResultsScreen() {
       {/* CTA */}
       <section className="glass rounded-2xl p-8 text-center">
         <h2 className="font-heading text-xl font-semibold mb-3">
-          {getText(quizData?.cta_title, 'Ready for Precise Employee Assessment?')}
+          {getText(quizData?.cta_title, t('wantToImprove'))}
         </h2>
         <p className="text-muted-foreground mb-4">
-          {getText(quizData?.cta_description, 'This quiz provides a general overview. For accurate, in-depth analysis of your team\'s performance and actionable improvement strategies, continue with professional testing.')}
+          {getText(quizData?.cta_description, t('wantToImproveDesc'))}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -211,14 +211,14 @@ export function DynamicResultsScreen() {
               target="_blank" 
               rel="noopener noreferrer"
             >
-              {getText(quizData?.cta_text, 'Continue to Sparkly.hr')}
+              {getText(quizData?.cta_text, t('visitSparkly'))}
             </a>
           </Button>
           <Button
             onClick={resetQuiz}
             variant="outline"
           >
-            Take Quiz Again
+            {t('takeQuizAgain')}
           </Button>
         </div>
       </section>
