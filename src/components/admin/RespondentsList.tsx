@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatTimestamp } from "@/lib/utils";
 import { 
   RefreshCw, 
   Download, 
@@ -28,6 +28,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -116,6 +122,10 @@ interface EmailLogStatus {
   opened_at: string | null;
   clicked_at: string | null;
   bounced_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+  subject: string;
+  html_body: string | null;
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
@@ -256,7 +266,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .order("answer_order", { ascending: true }),
         supabase
           .from("email_logs")
-          .select("quiz_lead_id, hypothesis_lead_id, status, delivery_status, opened_at, clicked_at, bounced_at")
+          .select("quiz_lead_id, hypothesis_lead_id, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body")
           .in("email_type", ["quiz_result_user", "hypothesis_result_user"])
           .order("created_at", { ascending: false }),
       ]);
@@ -280,6 +290,10 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             opened_at: log.opened_at,
             clicked_at: log.clicked_at,
             bounced_at: log.bounced_at,
+            delivered_at: log.delivered_at,
+            created_at: log.created_at,
+            subject: log.subject,
+            html_body: log.html_body,
           });
         }
       });
@@ -407,15 +421,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     return "";
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  // Use global formatTimestamp for consistency with email history table
 
   const getQuestionsForQuiz = (quizId: string | null) => {
     if (!quizId) return [];
@@ -782,21 +788,98 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           </Badge>
                         </AdminTableCell>
                         <AdminTableCell>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className={cn("flex items-center justify-center", emailStatus.color)}>
+                          {emailLogs.has(lead.id) ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={cn(
+                                    "flex items-center justify-center p-1 rounded hover:bg-secondary/80 transition-colors cursor-pointer",
+                                    emailStatus.color
+                                  )}
+                                  title={emailStatus.label}
+                                >
                                   <EmailIcon className="w-4 h-4" />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{emailStatus.label}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent 
+                                className="w-[400px] p-0" 
+                                align="end"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {(() => {
+                                  const log = emailLogs.get(lead.id);
+                                  if (!log) return null;
+                                  return (
+                                    <div className="flex flex-col">
+                                      <div className="p-3 border-b border-border space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                          <Badge className={cn(
+                                            "text-xs",
+                                            log.bounced_at ? "bg-destructive/10 text-destructive" :
+                                            log.clicked_at ? "bg-green-500/10 text-green-600" :
+                                            log.opened_at ? "bg-blue-500/10 text-blue-500" :
+                                            log.delivery_status === "delivered" ? "bg-green-500/10 text-green-500" :
+                                            "bg-primary/10 text-primary"
+                                          )}>
+                                            {emailStatus.label}
+                                          </Badge>
+                                          <span className="text-xs text-muted-foreground">
+                                            {formatTimestamp(log.created_at)}
+                                          </span>
+                                        </div>
+                                        <p className="text-sm font-medium truncate" title={log.subject}>
+                                          {log.subject}
+                                        </p>
+                                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                          {log.delivered_at && (
+                                            <span>Delivered: {formatTimestamp(log.delivered_at)}</span>
+                                          )}
+                                          {log.opened_at && (
+                                            <span>Opened: {formatTimestamp(log.opened_at)}</span>
+                                          )}
+                                          {log.clicked_at && (
+                                            <span>Clicked: {formatTimestamp(log.clicked_at)}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {log.html_body ? (
+                                        <ScrollArea className="h-[300px]">
+                                          <iframe
+                                            srcDoc={log.html_body}
+                                            className="w-full border-0 bg-white"
+                                            style={{ height: "300px" }}
+                                            title="Email Preview"
+                                            sandbox="allow-same-origin"
+                                          />
+                                        </ScrollArea>
+                                      ) : (
+                                        <div className="p-4 text-center text-sm text-muted-foreground">
+                                          No email preview available
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className={cn("flex items-center justify-center", emailStatus.color)}>
+                                    <EmailIcon className="w-4 h-4" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{emailStatus.label}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </AdminTableCell>
                         <AdminTableCell>
-                          <span className="text-sm text-muted-foreground">{formatDate(lead.created_at)}</span>
+                          <span className="text-sm text-muted-foreground">{formatTimestamp(lead.created_at)}</span>
                         </AdminTableCell>
                         <AdminTableCell align="right">
                           <Button
@@ -941,7 +1024,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(submission.created_at)}
+                            {formatTimestamp(submission.created_at)}
                           </p>
                           {idx === 0 && (
                             <Badge className="mt-1 text-xs bg-green-500/10 text-green-600 border-green-500/20">
