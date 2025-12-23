@@ -24,7 +24,7 @@ import {
   Trash2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
 import {
   Tooltip,
@@ -705,7 +705,7 @@ export function CTATemplateManager() {
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
-                <div className="w-[60px] px-3 py-2 text-center">Live</div>
+                <div className="w-[80px] px-3 py-2 text-center">Status</div>
                 <div className="w-[150px] px-3 py-2">Attached Quiz</div>
                 <div className="w-[180px] px-3 py-2">Name</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
@@ -721,13 +721,25 @@ export function CTATemplateManager() {
                     key={template.id}
                     className="flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm"
                   >
-                    <div className="w-[60px] px-3 py-2 flex justify-center">
-                      <Switch
-                        checked={template.is_live}
-                        onCheckedChange={() => handleToggleLive(template)}
+                    <div className="w-[80px] px-3 py-2 flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleLive(template)}
                         disabled={togglingLive === template.id}
-                        className="data-[state=checked]:bg-green-500"
-                      />
+                        className="px-0 h-auto hover:bg-transparent"
+                      >
+                        <Badge 
+                          variant={template.is_live ? "default" : "secondary"}
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                        >
+                          {togglingLive === template.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            template.is_live ? "Live" : "Draft"
+                          )}
+                        </Badge>
+                      </Button>
                     </div>
                     <div className="w-[150px] px-3 py-2">
                       <Select 
