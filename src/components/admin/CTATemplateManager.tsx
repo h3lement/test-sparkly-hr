@@ -24,6 +24,7 @@ import {
   Trash2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { CTAPreviewDialog } from "./CTAPreviewDialog";
 import {
   Tooltip,
@@ -557,6 +558,42 @@ export function CTATemplateManager() {
     setDeleteConfirmOpen(true);
   };
 
+  // Toggle live status
+  const [togglingLive, setTogglingLive] = useState<string | null>(null);
+  
+  const handleToggleLive = async (template: CTATemplate) => {
+    setTogglingLive(template.id);
+    try {
+      const newStatus = !template.is_live;
+      const { error } = await supabase
+        .from("cta_templates")
+        .update({ is_live: newStatus })
+        .eq("id", template.id);
+
+      if (error) throw error;
+
+      setTemplates(prev => prev.map(t => 
+        t.id === template.id ? { ...t, is_live: newStatus } : t
+      ));
+
+      toast({
+        title: newStatus ? "CTA is now Live" : "CTA is now Draft",
+        description: newStatus 
+          ? "This CTA will be shown on the public quiz results page"
+          : "This CTA will not be shown publicly",
+      });
+    } catch (error: any) {
+      console.error("Error toggling live status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update live status",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingLive(null);
+    }
+  };
+
   // Filtered templates for table view
   const filteredTemplates = useMemo(() => {
     const filtered = templates.filter(t => {
@@ -673,6 +710,7 @@ export function CTATemplateManager() {
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
+                <div className="w-[60px] px-3 py-2 text-center">Live</div>
                 <div className="w-[150px] px-3 py-2">Attached Quiz</div>
                 <div className="w-[180px] px-3 py-2">Name</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
@@ -688,6 +726,14 @@ export function CTATemplateManager() {
                     key={template.id}
                     className="flex items-center border-b last:border-b-0 hover:bg-muted/20 text-sm"
                   >
+                    <div className="w-[60px] px-3 py-2 flex justify-center">
+                      <Switch
+                        checked={template.is_live}
+                        onCheckedChange={() => handleToggleLive(template)}
+                        disabled={togglingLive === template.id}
+                        className="data-[state=checked]:bg-green-500"
+                      />
+                    </div>
                     <div className="w-[150px] px-3 py-2">
                       <Select 
                         value={template.quiz_id || "none"} 
