@@ -182,7 +182,76 @@ function generateRecommendations(dnsblResults: DNSBLResult[], vtResult: VirusTot
   return recommendations;
 }
 
-// Send notification email to all admins
+// UTF-8 safe base64 encoding
+function utf8ToBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Encode subject line for UTF-8 support (RFC 2047)
+function encodeSubject(subject: string): string {
+  if (!/^[\x00-\x7F]*$/.test(subject)) {
+    const encoded = utf8ToBase64(subject);
+    return `=?UTF-8?B?${encoded}?=`;
+  }
+  return subject;
+}
+
+// Get email config from app_settings
+async function getEmailConfig(supabase: any): Promise<{
+  senderName: string;
+  senderEmail: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUsername: string;
+  smtpPassword: string;
+  smtpTls: boolean;
+}> {
+  const defaults = {
+    senderName: "Sparkly System",
+    senderEmail: "noreply@sparkly.hr",
+    smtpHost: "",
+    smtpPort: "587",
+    smtpUsername: "",
+    smtpPassword: "",
+    smtpTls: true,
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", [
+        "email_sender_name", "email_sender_email",
+        "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_tls"
+      ]);
+
+    if (!error && data) {
+      for (const s of data) {
+        switch (s.setting_key) {
+          case "email_sender_name": defaults.senderName = s.setting_value || defaults.senderName; break;
+          case "email_sender_email": defaults.senderEmail = s.setting_value || defaults.senderEmail; break;
+          case "smtp_host": defaults.smtpHost = s.setting_value; break;
+          case "smtp_port": defaults.smtpPort = s.setting_value || defaults.smtpPort; break;
+          case "smtp_username": defaults.smtpUsername = s.setting_value; break;
+          case "smtp_password": defaults.smtpPassword = s.setting_value; break;
+          case "smtp_tls": defaults.smtpTls = s.setting_value === "true"; break;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching email config:", e);
+  }
+
+  return defaults;
+}
+
+// Send notification email to all admins via SMTP
 async function sendAdminNotification(
   supabase: any,
   domain: string,
@@ -190,9 +259,10 @@ async function sendAdminNotification(
   result: DomainReputationResult,
   isTest: boolean = false
 ) {
-  const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  if (!resendApiKey) {
-    console.log("RESEND_API_KEY not configured, skipping notification");
+  const emailConfig = await getEmailConfig(supabase);
+  
+  if (!emailConfig.smtpHost || !emailConfig.smtpUsername || !emailConfig.smtpPassword) {
+    console.log("SMTP not configured, skipping notification");
     return false;
   }
 
@@ -228,10 +298,8 @@ async function sendAdminNotification(
       return false;
     }
 
-    console.log(`Sending domain reputation alert to ${adminEmails.length} admin(s)`);
+    console.log(`Sending domain reputation alert to ${adminEmails.length} admin(s) via SMTP`);
 
-    const resend = new Resend(resendApiKey);
-    
     const statusEmoji = status === "danger" ? "🚨" : "⚠️";
     const statusText = status === "danger" ? "DANGER" : "WARNING";
     const listedBlacklists = result.dnsbl.results.filter(r => r.listed).map(r => r.name);
@@ -297,91 +365,55 @@ async function sendAdminNotification(
       </html>
     `;
 
-    // Get sender config from app_settings
-    let senderEmail = "noreply@sparkly.hr";
-    let senderName = "Sparkly System";
-    
-    try {
-      const { data: settings } = await supabase
-        .from("app_settings")
-        .select("setting_key, setting_value")
-        .in("setting_key", ["email_sender_email", "email_sender_name"]);
-      
-      if (settings) {
-        for (const s of settings) {
-          if (s.setting_key === "email_sender_email") senderEmail = s.setting_value;
-          if (s.setting_key === "email_sender_name") senderName = s.setting_value;
-        }
-      }
-    } catch (e) {
-      console.log("Could not fetch email settings, using defaults");
-    }
-
     const subject = `${statusEmoji} Domain Reputation ${statusText}: ${domain}`;
+    const encodedSubject = encodeSubject(subject);
     
-    const { data: sendData, error: sendError } = await resend.emails.send({
-      from: `${senderName} <${senderEmail}>`,
-      to: adminEmails,
-      subject,
-      html: emailHtml,
+    // Create SMTP client
+    const client = new SMTPClient({
+      connection: {
+        hostname: emailConfig.smtpHost,
+        port: parseInt(emailConfig.smtpPort, 10) || 587,
+        tls: emailConfig.smtpTls,
+        auth: {
+          username: emailConfig.smtpUsername,
+          password: emailConfig.smtpPassword,
+        },
+      },
     });
 
-    if (sendError) {
-      console.error("Error sending notification:", sendError);
-      
-      // Log failed email for each recipient
-      for (const recipientEmail of adminEmails) {
-        await supabase.from("email_logs").insert({
-          email_type: "domain_reputation_alert",
-          recipient_email: recipientEmail,
-          sender_email: senderEmail,
-          sender_name: senderName,
-          subject,
-          html_body: emailHtml,
-          status: "failed",
-          error_message: sendError.message || "Failed to send",
-        });
-      }
-      
-      // Log to activity log - generate a UUID for the record_id
-      const activityRecordId = crypto.randomUUID();
-      const emailTypeLabel = isTest ? "TEST " : "";
-      const { error: activityError } = await supabase.from("activity_logs").insert({
-        action_type: "EMAIL_FAILED",
-        table_name: "domain_reputation",
-        record_id: activityRecordId,
-        field_name: "notification_email",
-        old_value: null,
-        new_value: status,
-        description: `${emailTypeLabel}Domain reputation alert email failed to send to ${adminEmails.length} admin(s) for ${domain}: ${sendError.message || "Unknown error"}`,
-      });
-      if (activityError) {
-        console.error("Failed to log activity:", activityError);
-      }
-      
-      return false;
-    }
+    // Send to all admins
+    await client.send({
+      from: `${emailConfig.senderName} <${emailConfig.senderEmail}>`,
+      to: adminEmails,
+      subject: encodedSubject,
+      content: emailHtml,
+      html: emailHtml,
+      headers: {
+        "Content-Type": "text/html; charset=UTF-8",
+      },
+    });
 
-    console.log("Notification sent successfully");
+    await client.close();
+
+    console.log("Notification sent successfully via SMTP");
     
     // Log successful email for each recipient
     for (const recipientEmail of adminEmails) {
       await supabase.from("email_logs").insert({
         email_type: "domain_reputation_alert",
         recipient_email: recipientEmail,
-        sender_email: senderEmail,
-        sender_name: senderName,
+        sender_email: emailConfig.senderEmail,
+        sender_name: emailConfig.senderName,
         subject,
         html_body: emailHtml,
         status: "sent",
-        resend_id: sendData?.id || null,
       });
     }
     
-    // Log to activity log - generate a UUID for the record_id
+    // Log to activity log
     const activityRecordId = crypto.randomUUID();
     const emailTypeLabel = isTest ? "TEST " : "";
-    const { error: activityError } = await supabase.from("activity_logs").insert({
+    await supabase.from("activity_logs").insert({
       action_type: "EMAIL_SENT",
       table_name: "domain_reputation",
       record_id: activityRecordId,
@@ -390,13 +422,24 @@ async function sendAdminNotification(
       new_value: status,
       description: `${emailTypeLabel}Domain reputation alert (${statusText}) sent to ${adminEmails.length} admin(s) for ${domain}: ${adminEmails.join(", ")}`,
     });
-    if (activityError) {
-      console.error("Failed to log activity:", activityError);
-    }
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to send admin notification:", error);
+    
+    // Log failure
+    const activityRecordId = crypto.randomUUID();
+    const emailTypeLabel = isTest ? "TEST " : "";
+    await supabase.from("activity_logs").insert({
+      action_type: "EMAIL_FAILED",
+      table_name: "domain_reputation",
+      record_id: activityRecordId,
+      field_name: "notification_email",
+      old_value: null,
+      new_value: status,
+      description: `${emailTypeLabel}Domain reputation alert email failed: ${error.message || "Unknown error"}`,
+    });
+    
     return false;
   }
 }
