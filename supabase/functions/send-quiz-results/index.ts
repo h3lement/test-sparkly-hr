@@ -846,6 +846,25 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const body = await req.json();
     const emailConfig = await getEmailConfig();
+
+    // Check if email sending is enabled globally (skip for admin actions)
+    const adminActions = ["check_connection", "check_dns", "generate_dkim", "test_email"];
+    if (!adminActions.includes(body.action)) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      const { data: emailEnabledSetting } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "email_sending_enabled")
+        .maybeSingle();
+
+      if (emailEnabledSetting?.setting_value === "false") {
+        console.log("Email sending is disabled globally, skipping email send but still storing lead");
+        // Note: We continue to allow storing the lead in database, just skip email sending
+      }
+    }
     
     // Handle check_connection action
     if (body.action === "check_connection") {
@@ -1696,9 +1715,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Define the background email task - now queues emails instead of sending directly
     const queueEmailsInBackground = async () => {
-      console.log("Background task: Queuing emails...");
+      console.log("Background task: Checking email sending status and queuing emails...");
       
       try {
+        // Check if email sending is enabled globally
+        const { data: emailEnabledSetting } = await supabase
+          .from("app_settings")
+          .select("setting_value")
+          .eq("setting_key", "email_sending_enabled")
+          .maybeSingle();
+
+        if (emailEnabledSetting?.setting_value === "false") {
+          console.log("Background task: Email sending is disabled globally, skipping email queuing");
+          return;
+        }
         // Fetch email template configuration
         let templateData = null;
         if (quizId) {
