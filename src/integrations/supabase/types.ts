@@ -93,7 +93,6 @@ export type Database = {
           is_live: boolean
           name: string | null
           quiz_id: string | null
-          source_email_template_id: string | null
           version_number: number
         }
         Insert: {
@@ -108,7 +107,6 @@ export type Database = {
           is_live?: boolean
           name?: string | null
           quiz_id?: string | null
-          source_email_template_id?: string | null
           version_number?: number
         }
         Update: {
@@ -123,7 +121,6 @@ export type Database = {
           is_live?: boolean
           name?: string | null
           quiz_id?: string | null
-          source_email_template_id?: string | null
           version_number?: number
         }
         Relationships: [
@@ -132,13 +129,6 @@ export type Database = {
             columns: ["quiz_id"]
             isOneToOne: false
             referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cta_templates_source_email_template_id_fkey"
-            columns: ["source_email_template_id"]
-            isOneToOne: false
-            referencedRelation: "email_templates"
             referencedColumns: ["id"]
           },
         ]
