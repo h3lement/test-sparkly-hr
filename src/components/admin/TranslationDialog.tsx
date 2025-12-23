@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, Languages, Globe } from "lucide-react";
+import { Loader2, Languages, Globe, Clock } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -52,6 +52,8 @@ interface TranslationDialogProps {
 export interface TranslationOptions {
   targetLanguages: string[];
   includeUiText: boolean;
+  /** If set, the UI will call translation in smaller batches to avoid timeouts. */
+  batchSize?: number;
 }
 
 export function TranslationDialog({
@@ -63,17 +65,21 @@ export function TranslationDialog({
 }: TranslationDialogProps) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [includeUiText, setIncludeUiText] = useState(true);
-  const [selectAll, setSelectAll] = useState(true);
+  const [safeMode, setSafeMode] = useState(true);
+  const [selectAll, setSelectAll] = useState(false);
 
   const availableLanguages = ALL_LANGUAGES.filter(
     (lang) => lang.code !== primaryLanguage
   );
 
-  // Initialize with all languages selected
+  // Default to a safe selection to avoid long-running requests that can time out
   useEffect(() => {
     if (open) {
-      setSelectedLanguages(availableLanguages.map((l) => l.code));
-      setSelectAll(true);
+      const defaultLang = availableLanguages[0]?.code;
+      setSelectedLanguages(defaultLang ? [defaultLang] : []);
+      setSelectAll(false);
+      setSafeMode(true);
+      setIncludeUiText(true);
     }
   }, [open, primaryLanguage]);
 
@@ -99,10 +105,11 @@ export function TranslationDialog({
 
   const handleTranslate = async () => {
     if (selectedLanguages.length === 0) return;
-    
+
     await onTranslate({
       targetLanguages: selectedLanguages,
       includeUiText,
+      batchSize: safeMode ? 1 : undefined,
     });
   };
 
@@ -137,6 +144,24 @@ export function TranslationDialog({
               </Label>
               <p className="text-xs text-muted-foreground">
                 Translate buttons, labels, and other static website text so the entire page appears in the selected language.
+              </p>
+            </div>
+          </div>
+
+          {/* Reliability Option */}
+          <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+            <Checkbox
+              id="safeMode"
+              checked={safeMode}
+              onCheckedChange={(checked) => setSafeMode(checked === true)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="safeMode" className="font-medium cursor-pointer">
+                <Clock className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                Avoid timeouts (recommended)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Translates one language per request (slower, but reliable). Bulk translating many languages at once can time out.
               </p>
             </div>
           </div>

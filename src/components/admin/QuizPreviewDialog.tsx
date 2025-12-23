@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -105,8 +105,6 @@ export function QuizPreviewDialog({
   const [showTranslationDialog, setShowTranslationDialog] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [translationProgress, setTranslationProgress] = useState(0);
-  const translationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
   // Build quiz pages based on question count - memoized for performance
   const quizPages = useMemo(() => {
     const pages = [
@@ -159,16 +157,6 @@ export function QuizPreviewDialog({
       setTimeout(() => setIframeKey(prev => prev + 1), 50);
     }
   }, [open]);
-
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (translationIntervalRef.current) {
-        clearInterval(translationIntervalRef.current);
-      }
-    };
-  }, []);
-
   const handleIframeLoad = useCallback(() => {
     setIsLoading(false);
   }, []);
@@ -195,51 +183,59 @@ export function QuizPreviewDialog({
   const handleTranslate = async (options: TranslationOptions) => {
     setTranslating(true);
     setTranslationProgress(0);
-    
-    // Start progress animation - estimate ~15 seconds for translation
-    const startTime = Date.now();
-    const estimatedDuration = 15000; // 15 seconds estimate
-    
-    translationIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      // Use an easing function to slow down as it approaches 90%
-      const rawProgress = Math.min(elapsed / estimatedDuration, 0.9);
-      const easedProgress = 1 - Math.pow(1 - rawProgress, 3); // Ease out cubic
-      setTranslationProgress(Math.round(easedProgress * 90));
-    }, 100);
-    
+
+    const total = options.targetLanguages.length;
+    const batchSize = options.batchSize && options.batchSize > 0 ? options.batchSize : total;
+
+    const batches: string[][] = [];
+    for (let i = 0; i < options.targetLanguages.length; i += batchSize) {
+      batches.push(options.targetLanguages.slice(i, i + batchSize));
+    }
+
+    const toastId = toast.loading(
+      `Translating… (0/${batches.length} request${batches.length !== 1 ? "s" : ""})`
+    );
+
     try {
-      const { data, error } = await supabase.functions.invoke("translate-quiz", {
-        body: {
-          quizId,
-          sourceLanguage: primaryLanguage,
-          targetLanguages: options.targetLanguages,
-          includeUiText: options.includeUiText,
-        },
-      });
+      for (let i = 0; i < batches.length; i++) {
+        const langs = batches[i];
 
-      if (error) throw error;
+        toast.loading(
+          `Translating… (${i + 1}/${batches.length}) — ${langs.join(", ").toUpperCase()}`,
+          { id: toastId }
+        );
 
-      // Complete the progress
-      setTranslationProgress(100);
-      
-      toast.success(`Quiz translated to ${options.targetLanguages.length} languages`);
+        const { error } = await supabase.functions.invoke("translate-quiz", {
+          body: {
+            quizId,
+            sourceLanguage: primaryLanguage,
+            targetLanguages: langs,
+            includeUiText: options.includeUiText,
+          },
+        });
+
+        if (error) throw error;
+
+        const pct = Math.round(((i + 1) / batches.length) * 100);
+        setTranslationProgress(pct);
+      }
+
+      toast.success(`Translation complete (${total} languages)`, { id: toastId });
       setShowTranslationDialog(false);
       onTranslationComplete?.();
       handleRefresh();
     } catch (err) {
       console.error("Translation error:", err);
-      toast.error("Translation failed");
+      toast.error(
+        "Translation request timed out/failed. Run fewer languages at once (recommended: Avoid timeouts).",
+        { id: toastId }
+      );
     } finally {
-      if (translationIntervalRef.current) {
-        clearInterval(translationIntervalRef.current);
-        translationIntervalRef.current = null;
-      }
-      // Small delay to show 100% before hiding
+      // Small delay so users see 100% before it disappears
       setTimeout(() => {
         setTranslating(false);
         setTranslationProgress(0);
-      }, 500);
+      }, 400);
     }
   };
 
