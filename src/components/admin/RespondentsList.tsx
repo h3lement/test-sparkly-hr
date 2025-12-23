@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -248,7 +248,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         total_questions: hl.total_questions,
         result_category: `${hl.score}/${hl.total_questions}`, // No category for hypothesis
         created_at: hl.created_at,
-        openness_score: null,
+        openness_score: hl.openness_score ?? null,
         language: hl.language,
         quiz_id: hl.quiz_id,
         answers: null,
@@ -610,9 +610,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                   const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
 
                   return (
-                    <>
+                    <Fragment key={lead.id}>
                       <AdminTableRow 
-                        key={lead.id}
                         id={`lead-row-${lead.id}`}
                         index={index}
                         className={cn(
@@ -771,7 +770,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </AdminTableBody>

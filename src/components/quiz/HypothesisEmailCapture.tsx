@@ -26,7 +26,6 @@ export function HypothesisEmailCapture() {
     feedbackActionPlan,
     setFeedbackActionPlan,
     questions,
-    hasOpenMindedness,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +47,7 @@ export function HypothesisEmailCapture() {
     setIsSubmitting(true);
 
     const { correct, total } = calculateScore();
-    const opennessScore = hasOpenMindedness ? calculateOpenMindednessScore() : null;
+    const opennessScore = quizData?.include_open_mindedness ? calculateOpenMindednessScore() : null;
 
     try {
       // Save lead to database
