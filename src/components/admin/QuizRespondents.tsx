@@ -174,15 +174,31 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
       if (countError) throw countError;
       setTotalCount(count || 0);
 
-      // Get unique email count
-      const { data: uniqueData, error: uniqueError } = await supabase
-        .from(tableName)
-        .select("email")
-        .eq("quiz_id", quizId);
-      if (!uniqueError && uniqueData) {
-        const uniqueEmails = new Set(uniqueData.map((d: { email: string }) => d.email));
-        setUniqueCount(uniqueEmails.size);
+      // Get unique email count - use a separate count query with distinct
+      // Supabase has a 1000 row default limit, so we need to fetch all emails in batches
+      let allEmails: string[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data: emailBatch, error: emailError } = await supabase
+          .from(tableName)
+          .select("email")
+          .eq("quiz_id", quizId)
+          .range(offset, offset + batchSize - 1);
+        
+        if (emailError || !emailBatch || emailBatch.length === 0) {
+          hasMore = false;
+        } else {
+          allEmails = allEmails.concat(emailBatch.map((d: { email: string }) => d.email.toLowerCase()));
+          offset += batchSize;
+          hasMore = emailBatch.length === batchSize;
+        }
       }
+      
+      const uniqueEmails = new Set(allEmails);
+      setUniqueCount(uniqueEmails.size);
 
       // Get paginated data
       const { data, error } = await dataQuery

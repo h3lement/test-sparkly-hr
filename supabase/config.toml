@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.send-quiz-results]
 verify_jwt = false
+
+[functions.send-hypothesis-admin-email]
+verify_jwt = false
