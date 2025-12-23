@@ -136,6 +136,8 @@ export type TranslationKey =
   | 'ctaAdvice'
   | 'visitSparkly'
   | 'takeQuizAgain'
+  // Footer
+  | 'allRightsReserved'
   // Result levels
   | 'highPerformingTeam'
   | 'highPerformingDesc'
@@ -266,6 +268,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Very rigid - You rely solely on conventional methods',
     keyboardHint: 'Use Tab to navigate, Space to toggle',
     finalQuestion: 'Question {current} of {total}, final question',
+    allRightsReserved: 'All rights reserved.',
   },
   et: {
     pageTitle: 'Meeskonna tulemuslikkuse hindamine | Sparkly.hr',
@@ -374,6 +377,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Väga jäik - tugineb ainult tavapärastele meetoditele',
     keyboardHint: 'Kasuta Tab navigeerimiseks, tühikut valimiseks',
     finalQuestion: 'Küsimus {current} / {total}, viimane küsimus',
+    allRightsReserved: 'Kõik õigused kaitstud.',
   },
   de: {
     pageTitle: 'Team-Leistungsbewertung | Sparkly.hr',
@@ -482,6 +486,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Sehr starr - Sie verlassen sich nur auf konventionelle Methoden',
     keyboardHint: 'Tab zum Navigieren, Leertaste zum Umschalten',
     finalQuestion: 'Frage {current} von {total}, letzte Frage',
+    allRightsReserved: 'Alle Rechte vorbehalten.',
   },
   fr: {
     pageTitle: "Évaluation de performance d'équipe | Sparkly.hr",
@@ -590,6 +595,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Très rigide - Vous comptez uniquement sur les méthodes conventionnelles',
     keyboardHint: 'Utilisez Tab pour naviguer, Espace pour basculer',
     finalQuestion: 'Question {current} sur {total}, dernière question',
+    allRightsReserved: 'Tous droits réservés.',
   },
   es: {
     pageTitle: 'Evaluación de rendimiento del equipo | Sparkly.hr',
@@ -698,6 +704,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Muy rígido - Dependes únicamente de métodos convencionales',
     keyboardHint: 'Usa Tab para navegar, Espacio para alternar',
     finalQuestion: 'Pregunta {current} de {total}, pregunta final',
+    allRightsReserved: 'Todos los derechos reservados.',
   },
   it: {
     pageTitle: 'Valutazione delle prestazioni del team | Sparkly.hr',
@@ -806,6 +813,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Molto rigido - Ti affidi solo a metodi convenzionali',
     keyboardHint: 'Usa Tab per navigare, Spazio per selezionare',
     finalQuestion: 'Domanda {current} di {total}, domanda finale',
+    allRightsReserved: 'Tutti i diritti riservati.',
   },
   pt: {
     pageTitle: 'Avaliação de desempenho da equipa | Sparkly.hr',
@@ -914,6 +922,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Muito rígido - Depende apenas de métodos convencionais',
     keyboardHint: 'Use Tab para navegar, Espaço para alternar',
     finalQuestion: 'Pergunta {current} de {total}, pergunta final',
+    allRightsReserved: 'Todos os direitos reservados.',
   },
   nl: {
     pageTitle: 'Teamprestatiebeoordeling | Sparkly.hr',
@@ -1022,6 +1031,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Zeer rigide - U vertrouwt alleen op conventionele methoden',
     keyboardHint: 'Gebruik Tab om te navigeren, Spatie om te schakelen',
     finalQuestion: 'Vraag {current} van {total}, laatste vraag',
+    allRightsReserved: 'Alle rechten voorbehouden.',
   },
   pl: {
     pageTitle: 'Ocena wydajności zespołu | Sparkly.hr',
@@ -1130,6 +1140,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Bardzo sztywny - Polegasz wyłącznie na konwencjonalnych metodach',
     keyboardHint: 'Użyj Tab do nawigacji, Spacja do przełączania',
     finalQuestion: 'Pytanie {current} z {total}, ostatnie pytanie',
+    allRightsReserved: 'Wszelkie prawa zastrzeżone.',
   },
   ru: {
     pageTitle: 'Оценка эффективности команды | Sparkly.hr',
@@ -1238,6 +1249,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Очень жесткий - Вы полагаетесь только на традиционные методы',
     keyboardHint: 'Используйте Tab для навигации, Пробел для переключения',
     finalQuestion: 'Вопрос {current} из {total}, последний вопрос',
+    allRightsReserved: 'Все права защищены.',
   },
   sv: {
     pageTitle: 'Teamprestandautvärdering | Sparkly.hr',
@@ -1346,6 +1358,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Mycket rigid - Du förlitar dig enbart på konventionella metoder',
     keyboardHint: 'Använd Tab för att navigera, Mellanslag för att växla',
     finalQuestion: 'Fråga {current} av {total}, sista frågan',
+    allRightsReserved: 'Alla rättigheter förbehållna.',
   },
   no: {
     pageTitle: 'Teamytelsesvurdering | Sparkly.hr',
@@ -1454,6 +1467,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Veldig rigid - Du stoler kun på konvensjonelle metoder',
     keyboardHint: 'Bruk Tab for å navigere, Mellomrom for å bytte',
     finalQuestion: 'Spørsmål {current} av {total}, siste spørsmål',
+    allRightsReserved: 'Alle rettigheter reservert.',
   },
   da: {
     pageTitle: 'Teampræstationsvurdering | Sparkly.hr',
@@ -1562,6 +1576,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Meget rigid - Du stoler kun på konventionelle metoder',
     keyboardHint: 'Brug Tab til at navigere, Mellemrum til at skifte',
     finalQuestion: 'Spørgsmål {current} af {total}, sidste spørgsmål',
+    allRightsReserved: 'Alle rettigheder forbeholdes.',
   },
   fi: {
     pageTitle: 'Tiimin suorituskyvyn arviointi | Sparkly.hr',
@@ -1670,6 +1685,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Erittäin jäykkä - Luotat vain tavanomaisiin menetelmiin',
     keyboardHint: 'Käytä Tab navigointiin, Välilyönti valitsemiseen',
     finalQuestion: 'Kysymys {current} / {total}, viimeinen kysymys',
+    allRightsReserved: 'Kaikki oikeudet pidätetään.',
   },
   uk: {
     pageTitle: 'Оцінка продуктивності команди | Sparkly.hr',
@@ -1778,6 +1794,7 @@ export const translations: Partial<Record<Language, Record<TranslationKey, strin
     openMindednessNone: 'Дуже жорсткий - Ви покладаєтесь лише на традиційні методи',
     keyboardHint: 'Використовуйте Tab для навігації, Пробіл для перемикання',
     finalQuestion: 'Питання {current} з {total}, останнє питання',
+    allRightsReserved: 'Усі права захищені.',
   },
 };
 
