@@ -148,15 +148,15 @@ export function HypothesisEmailCapture() {
   // Get assessment category based on percentage
   const getAssessment = () => {
     if (percentage >= 90) {
-      return { label: "Bias Champion", emoji: "🏆", bgColor: "bg-emerald-500", description: "Excellent awareness! You see through most common biases about 50+ employees." };
+      return { label: t('biasChampion', 'Bias Champion', 'Ennakkoluulojen mestari'), emoji: '🏆', bgColor: 'bg-emerald-500', description: t('biasChampionDesc', 'Excellent awareness! You see through most common biases about 50+ employees.', 'Erinomainen tietoisuus! Näet läpi yleisimmät ennakkoluulot 50+-työntekijöistä.') };
     } else if (percentage >= 70) {
-      return { label: "Bias Aware", emoji: "⭐", bgColor: "bg-blue-500", description: "Strong understanding with room for refinement on 50+ workforce dynamics." };
+      return { label: t('biasAware', 'Bias Aware', 'Ennakkoluulotietoinen'), emoji: '⭐', bgColor: 'bg-blue-500', description: t('biasAwareDesc', 'Strong understanding with room for refinement on 50+ workforce dynamics.', 'Vahva ymmärrys, mutta tilaa hiontaan 50+-työvoiman dynamiikassa.') };
     } else if (percentage >= 50) {
-      return { label: "Bias Curious", emoji: "📚", bgColor: "bg-amber-500", description: "Solid foundation — the full material will deepen your insights about 50+ employees." };
+      return { label: t('biasCurious', 'Bias Curious', 'Ennakkoluuloja tutkiva'), emoji: '📚', bgColor: 'bg-amber-500', description: t('biasCuriousDesc', 'Solid foundation — the full material will deepen your insights about 50+ employees.', 'Vankka pohja — materiaali syventää oivalluksiasi 50+-työntekijöistä.') };
     } else if (percentage >= 30) {
-      return { label: "Bias Discoverer", emoji: "🌱", bgColor: "bg-orange-500", description: "Common misconceptions detected — valuable learning ahead about 50+ workforce." };
+      return { label: t('biasDiscoverer', 'Bias Discoverer', 'Ennakkoluulojen löytäjä'), emoji: '🌱', bgColor: 'bg-orange-500', description: t('biasDiscovererDesc', 'Common misconceptions detected — valuable learning ahead about 50+ workforce.', 'Yleisiä väärinkäsityksiä havaittu — arvokasta oppimista edessä.') };
     } else {
-      return { label: "Bias Explorer", emoji: "🔍", bgColor: "bg-red-500", description: "Many beliefs to reconsider — this material will be eye-opening about 50+ employees." };
+      return { label: t('biasExplorer', 'Bias Explorer', 'Ennakkoluulojen tutkija'), emoji: '🔍', bgColor: 'bg-red-500', description: t('biasExplorerDesc', 'Many beliefs to reconsider — this material will be eye-opening about 50+ employees.', 'Monta uskomusta harkittavaksi uudelleen — materiaali avaa silmät.') };
     }
   };
 
@@ -172,7 +172,7 @@ export function HypothesisEmailCapture() {
           <span className="text-4xl md:text-5xl mb-2 block">{assessment.emoji}</span>
           <h2 className="text-xl md:text-3xl font-bold mb-1 font-heading">{assessment.label}</h2>
           <p className="text-white/90 text-sm md:text-base font-medium">
-            {percentage}% · {correct} of {total} correct
+            {percentage}% · {correct} {t('of', 'of', '/')} {total} {t('correct', 'correct', 'oikein')}
           </p>
         </div>
         
@@ -186,33 +186,35 @@ export function HypothesisEmailCapture() {
 
       {/* Value Proposition - Mobile optimized */}
       <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 md:p-5 mb-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-        <p className="text-sm font-semibold text-foreground mb-3">Submit your email to receive:</p>
+        <p className="text-sm font-semibold text-foreground mb-3">
+          {t('submitEmailToReceive', 'Submit your email to receive:', 'Lähetä sähköpostiosoitteesi saadaksesi:')}
+        </p>
         <ul className="space-y-2.5 text-sm text-foreground/90">
           <li className="flex items-start gap-2.5">
             <span className="text-primary mt-0.5 text-base">✓</span>
-            <span>Correct answers with detailed explanations</span>
+            <span>{t('emailBenefit1', 'Correct answers with detailed explanations', 'Oikeat vastaukset selityksineen')}</span>
           </li>
           <li className="flex items-start gap-2.5">
             <span className="text-primary mt-0.5 text-base">✓</span>
-            <span>Research-backed insights on 50+ workforce</span>
+            <span>{t('emailBenefit2', 'Research-backed insights on 50+ workforce', 'Tutkimukseen perustuvat näkemykset 50+-työvoimasta')}</span>
           </li>
           <li className="flex items-start gap-2.5">
             <span className="text-primary mt-0.5 text-base">✓</span>
-            <span>Interview questions for 50+ candidates</span>
+            <span>{t('emailBenefit3', 'Interview questions for 50+ candidates', 'Haastattelukysymyksiä 50+-ehdokkaille')}</span>
           </li>
           <li className="flex items-start gap-2.5">
             <span className="text-primary mt-0.5 text-base">✓</span>
-            <span>Practical guidance on generational dynamics</span>
+            <span>{t('emailBenefit4', 'Practical guidance on generational dynamics', 'Käytännön ohjeistusta sukupolvien väliseen dynamiikkaan')}</span>
           </li>
         </ul>
       </div>
 
       <h1 id="email-heading" className="font-heading text-xl md:text-3xl font-bold mb-2 text-center animate-slide-up" style={{ animationDelay: '0.15s' }}>
-        Before we reveal the answers...
+        {t('beforeReveal', 'Before we reveal the answers...', 'Ennen kuin paljastamme vastaukset...')}
       </h1>
       
       <p className="text-muted-foreground mb-5 text-center text-sm md:text-base animate-slide-up" id="email-description" style={{ animationDelay: '0.2s' }}>
-        Take a moment to reflect on what you've learned.
+        {t('reflectPrompt', "Take a moment to reflect on what you've learned.", 'Käytä hetki pohtiaksesi oppimaasi.')}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -221,11 +223,11 @@ export function HypothesisEmailCapture() {
           <div>
             <label htmlFor="new-learnings" className="flex items-center gap-2 text-sm font-medium mb-2">
               <Lightbulb className="w-4 h-4 text-amber-500" />
-              What new insight surprised you most?
+              {t('newInsightQuestion', 'What new insight surprised you most?', 'Mikä uusi oivallus yllätti eniten?')}
             </label>
             <Textarea
               id="new-learnings"
-              placeholder="Share what you learned..."
+              placeholder={t('shareWhatYouLearned', 'Share what you learned...', 'Kerro mitä opit...')}
               value={feedbackNewLearnings}
               onChange={(e) => setFeedbackNewLearnings(e.target.value)}
               className="min-h-[70px] md:min-h-[80px] resize-none text-sm"
@@ -235,11 +237,11 @@ export function HypothesisEmailCapture() {
           <div>
             <label htmlFor="action-plan" className="flex items-center gap-2 text-sm font-medium mb-2">
               <Target className="w-4 h-4 text-primary" />
-              What will you do differently?
+              {t('actionPlanQuestion', 'What will you do differently?', 'Mitä teet toisin?')}
             </label>
             <Textarea
               id="action-plan"
-              placeholder="Your action plan..."
+              placeholder={t('yourActionPlan', 'Your action plan...', 'Toimintasuunnitelmasi...')}
               value={feedbackActionPlan}
               onChange={(e) => setFeedbackActionPlan(e.target.value)}
               className="min-h-[70px] md:min-h-[80px] resize-none text-sm"
@@ -251,7 +253,7 @@ export function HypothesisEmailCapture() {
         <div className="bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md animate-slide-up" style={{ animationDelay: '0.3s' }}>
           <label htmlFor="email-input" className="flex items-center gap-2 text-sm font-medium mb-3">
             <Mail className="w-4 h-4 text-primary" />
-            Enter your email to see results
+            {t('emailToSeeResults', 'Enter your email to see results', 'Syötä sähköpostiosoitteesi nähdäksesi tulokset')}
           </label>
           <Input
             id="email-input"
@@ -273,13 +275,15 @@ export function HypothesisEmailCapture() {
             disabled={isSubmitting}
             className="w-full h-14 text-base md:text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-xl transition-all"
           >
-            {isSubmitting ? 'Saving...' : 'Reveal the Truth'}
+            {isSubmitting
+              ? t('saving', 'Saving...', 'Tallennetaan...')
+              : t('revealTruth', 'Reveal the Truth', 'Paljasta totuus')}
           </Button>
         </div>
       </form>
 
       <p className="text-xs text-muted-foreground mt-4 text-center pb-4">
-        🔒 Your data is secure. We never share your information.
+        🔒 {t('dataSecure', 'Your data is secure. We never share your information.', 'Tietosi ovat turvassa. Emme koskaan jaa tietojasi.')}
       </p>
     </main>
   );
