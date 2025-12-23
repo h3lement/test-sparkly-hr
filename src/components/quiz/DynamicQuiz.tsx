@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { DynamicQuizProvider, useDynamicQuiz } from './DynamicQuizContext';
 import { DynamicWelcomeScreen } from './DynamicWelcomeScreen';
@@ -15,11 +15,39 @@ import { useLanguage } from './LanguageContext';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
 
+// Map URL step parameter to internal step names
+function parseStepFromUrl(step: string | undefined, questionCount: number): { step: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results', questionIndex?: number } {
+  if (!step) return { step: 'welcome' };
+  
+  const stepLower = step.toLowerCase();
+  
+  if (stepLower === 'welcome') return { step: 'welcome' };
+  if (stepLower === 'mindedness') return { step: 'mindedness' };
+  if (stepLower === 'email') return { step: 'email' };
+  if (stepLower === 'results') return { step: 'results' };
+  
+  // Handle question steps: q1, q2, q3, etc.
+  const questionMatch = stepLower.match(/^q(\d+)$/);
+  if (questionMatch) {
+    const qIndex = parseInt(questionMatch[1], 10) - 1; // Convert to 0-based
+    if (qIndex >= 0 && qIndex < questionCount) {
+      return { step: 'quiz', questionIndex: qIndex };
+    }
+  }
+  
+  return { step: 'welcome' };
+}
+
 function StandardQuizContent({ slug, quizType }: { slug: string; quizType: string }) {
+  const { step: urlStep } = useParams<{ step?: string }>();
+  const [searchParams] = useSearchParams();
+  const isPreviewMode = searchParams.get('preview') === '1';
   const navigate = useNavigate();
   const { quiz, questions, resultLevels, openMindednessResultLevels, loading, error } = useQuizData(slug);
   const { 
     currentStep, 
+    setCurrentStep,
+    setCurrentQuestion,
     setQuizData, 
     setQuestions, 
     setResultLevels,
@@ -27,6 +55,7 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
     quizData: existingQuizData
   } = useDynamicQuiz();
   const { setQuizId, dbTranslationsLoaded } = useLanguage();
+  const [initialStepApplied, setInitialStepApplied] = useState(false);
 
   // Load quiz data into context and set quizId for translations
   // Only set data if not already loaded (prevent reset during quiz)
@@ -39,10 +68,24 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
       setQuizData(quiz);
       setQuizId(quiz.id);
     }
-    if (questions.length && currentStep === 'welcome') setQuestions(questions);
+    // Always set questions in preview mode, otherwise only on welcome
+    if (questions.length && (currentStep === 'welcome' || isPreviewMode)) setQuestions(questions);
     if (resultLevels.length) setResultLevels(resultLevels);
     if (openMindednessResultLevels.length) setOpenMindednessResultLevels(openMindednessResultLevels);
-  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels, setQuizId, existingQuizData, currentStep]);
+  }, [quiz, questions, resultLevels, openMindednessResultLevels, setQuizData, setQuestions, setResultLevels, setOpenMindednessResultLevels, setQuizId, existingQuizData, currentStep, isPreviewMode]);
+
+  // In preview mode, apply the URL step directly (bypass normal flow)
+  useEffect(() => {
+    if (isPreviewMode && questions.length > 0 && !initialStepApplied) {
+      const regularQuestions = questions.filter(q => q.question_type !== 'open_mindedness');
+      const parsed = parseStepFromUrl(urlStep, regularQuestions.length);
+      setCurrentStep(parsed.step);
+      if (parsed.questionIndex !== undefined) {
+        setCurrentQuestion(parsed.questionIndex);
+      }
+      setInitialStepApplied(true);
+    }
+  }, [isPreviewMode, urlStep, questions, setCurrentStep, setCurrentQuestion, initialStepApplied]);
 
   // Show loading while data or translations are loading
   if (loading || !dbTranslationsLoaded) {
