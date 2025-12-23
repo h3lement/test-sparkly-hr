@@ -180,7 +180,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     email: 220,
     quiz: 180,
     score: 80,
-    result: 140,
     openness: 90,
     lang: 60,
     emailStatus: 110,
@@ -853,9 +852,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                   <ResizableTableHead columnKey="score" width={columnWidths.score} onResizeStart={handleMouseDown}>
                     Score
                   </ResizableTableHead>
-                  <ResizableTableHead columnKey="result" width={columnWidths.result} onResizeStart={handleMouseDown}>
-                    Result
-                  </ResizableTableHead>
                   <ResizableTableHead columnKey="openness" width={columnWidths.openness} onResizeStart={handleMouseDown}>
                     Openness
                   </ResizableTableHead>
@@ -962,13 +958,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.score, minWidth: columnWidths.score }}>
                         <span className="text-sm text-foreground">{lead.score}/{lead.total_questions}</span>
-                      </AdminTableCell>
-                      <AdminTableCell style={{ width: columnWidths.result, minWidth: columnWidths.result }}>
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 truncate max-w-full">
-                          {lead.leadType === "hypothesis" || quiz?.quiz_type === "emotional" 
-                            ? `${lead.score}/${lead.total_questions}` 
-                            : lead.result_category}
-                        </Badge>
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.openness, minWidth: columnWidths.openness }}>
                         {lead.openness_score !== null ? (
