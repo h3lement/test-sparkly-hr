@@ -87,6 +87,27 @@ interface EmailLog {
   quiz_lead?: {
     quiz_id: string | null;
   } | null;
+  // Queue item indicator
+  isQueueItem?: boolean;
+  scheduled_for?: string;
+}
+
+interface QueueItem {
+  id: string;
+  recipient_email: string;
+  sender_email: string;
+  sender_name: string;
+  subject: string;
+  status: string;
+  email_type: string;
+  language: string | null;
+  quiz_id: string | null;
+  quiz_lead_id: string | null;
+  created_at: string;
+  scheduled_for: string;
+  html_body: string | null;
+  error_message: string | null;
+  retry_count: number;
 }
 
 interface Quiz {
@@ -112,6 +133,7 @@ interface QueueStats {
 
 export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFilterCleared }: EmailLogsMonitorProps = {}) {
   const [logs, setLogs] = useState<EmailLog[]>([]);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(initialEmailFilter || "");
@@ -125,6 +147,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
   const [activityLogEmail, setActivityLogEmail] = useState<EmailLog | null>(null);
   const [queueStats, setQueueStats] = useState<QueueStats>({ pending: 0, processing: 0, failed: 0, lastProcessed: null });
   const [queueLoading, setQueueLoading] = useState(false);
+  const [processingQueue, setProcessingQueue] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [sortColumns, setSortColumns] = useState<Array<{ column: string; direction: "asc" | "desc" }>>(() => {
     try {
       const stored = localStorage.getItem("email-logs-sort-preferences");
@@ -156,15 +180,89 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     minWidth: 60,
   });
 
+  // Process email queue function
+  const processQueue = useCallback(async (silent = false) => {
+    if (processingQueue) return;
+    
+    setProcessingQueue(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("process-email-queue", {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      if (!silent && data?.processed > 0) {
+        toast({
+          title: "Queue processed",
+          description: `Processed ${data.processed} email(s)`,
+        });
+      }
+      
+      // Refresh data after processing
+      fetchQueueStats();
+      fetchLogs();
+    } catch (error: any) {
+      console.error("Error processing queue:", error);
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: "Failed to process email queue",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setProcessingQueue(false);
+    }
+  }, [processingQueue, toast]);
+
+  // Auto-process queue when connection is re-established
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log("Connection re-established, processing pending emails...");
+      toast({
+        title: "Connection restored",
+        description: "Processing pending emails...",
+      });
+      // Small delay to ensure connection is stable
+      setTimeout(() => {
+        processQueue(false);
+      }, 1000);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        title: "Connection lost",
+        description: "Emails will be queued and sent when connection is restored",
+        variant: "destructive",
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [processQueue, toast]);
+
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const [logsRes, quizzesRes] = await Promise.all([
+      const [logsRes, queueRes, quizzesRes] = await Promise.all([
         supabase
           .from("email_logs")
           .select("*, quiz_lead:quiz_leads(quiz_id)")
           .order("created_at", { ascending: false })
           .limit(1000),
+        supabase
+          .from("email_queue")
+          .select("*")
+          .in("status", ["pending", "processing", "failed"])
+          .order("created_at", { ascending: false }),
         supabase
           .from("quizzes")
           .select("id, title, slug"),
@@ -174,6 +272,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       if (quizzesRes.error) throw quizzesRes.error;
       
       setLogs((logsRes.data as EmailLog[]) || []);
+      setQueueItems((queueRes.data as QueueItem[]) || []);
       setQuizzes((quizzesRes.data as Quiz[]) || []);
     } catch (error: any) {
       console.error("Error fetching email logs:", error);
@@ -256,6 +355,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
         { event: "*", schema: "public", table: "email_queue" },
         () => {
           fetchQueueStats();
+          fetchLogs();
         }
       )
       .subscribe();
@@ -405,9 +505,50 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     );
   };
 
+  // Convert queue items to EmailLog format for unified display
+  const combinedLogs = useMemo(() => {
+    // Convert queue items to EmailLog format
+    const queueAsLogs: EmailLog[] = queueItems.map((item) => ({
+      id: item.id,
+      email_type: item.email_type,
+      recipient_email: item.recipient_email,
+      sender_email: item.sender_email,
+      sender_name: item.sender_name,
+      subject: item.subject,
+      status: item.status, // pending, processing, failed
+      resend_id: null,
+      error_message: item.error_message,
+      language: item.language,
+      quiz_lead_id: item.quiz_lead_id,
+      quiz_id: item.quiz_id,
+      created_at: item.created_at,
+      resend_attempts: item.retry_count,
+      last_attempt_at: null,
+      original_log_id: null,
+      html_body: item.html_body,
+      delivery_status: null,
+      delivered_at: null,
+      bounced_at: null,
+      complained_at: null,
+      bounce_type: null,
+      bounce_reason: null,
+      complaint_type: null,
+      opened_at: null,
+      clicked_at: null,
+      open_count: null,
+      click_count: null,
+      quiz_lead: null,
+      isQueueItem: true,
+      scheduled_for: item.scheduled_for,
+    }));
+
+    // Combine queue items first (they appear at top), then logs
+    return [...queueAsLogs, ...logs];
+  }, [logs, queueItems]);
+
   // Filter and search
   const filteredLogs = useMemo(() => {
-    let result = logs;
+    let result = combinedLogs;
 
     // Search filter
     if (searchQuery.trim()) {
@@ -426,9 +567,15 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       result = result.filter((log) => log.email_type === filterType);
     }
 
-    // Status filter
+    // Status filter - include queue statuses
     if (filterStatus !== "all") {
-      result = result.filter((log) => log.status === filterStatus);
+      if (filterStatus === "pending") {
+        result = result.filter((log) => log.status === "pending" || log.status === "processing");
+      } else if (filterStatus === "queued") {
+        result = result.filter((log) => log.isQueueItem);
+      } else {
+        result = result.filter((log) => log.status === filterStatus);
+      }
     }
 
     // Quiz filter - check both direct quiz_id and quiz_lead.quiz_id
@@ -439,7 +586,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     }
 
     return result;
-  }, [logs, searchQuery, filterType, filterStatus, filterQuiz]);
+  }, [combinedLogs, searchQuery, filterType, filterStatus, filterQuiz]);
 
   // Helper to get value for sorting
   const getSortValue = (log: EmailLog, column: string): any => {
@@ -525,7 +672,8 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
     return {
       total: base.length,
       sent: base.filter((l) => l.status === "sent").length,
-      failed: base.filter((l) => l.status === "failed").length,
+      failed: base.filter((l) => l.status === "failed" && !l.isQueueItem).length,
+      pending: base.filter((l) => l.isQueueItem).length,
       todaySent: base.filter((l) => l.status === "sent" && new Date(l.created_at) >= today).length,
       // Count quiz_result_user AND legacy quiz_results type
       quizUsers: base.filter((l) => l.email_type === "quiz_result_user" || l.email_type === "quiz_results").length,
@@ -578,10 +726,26 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                     )}
                   </div>
                 )}
+                {(queueStats.pending > 0 || queueStats.failed > 0) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => processQueue(false)}
+                    disabled={processingQueue}
+                  >
+                    {processingQueue ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Send className="h-3 w-3" />
+                    )}
+                    <span className="ml-1">Process</span>
+                  </Button>
+                )}
               </div>
-              <div className="flex items-center gap-1.5 text-sm text-green-600">
-                <Wifi className="h-4 w-4" />
-                <span>Live</span>
+              <div className={`flex items-center gap-1.5 text-sm ${isOnline ? "text-green-600" : "text-red-600"}`}>
+                <Wifi className={`h-4 w-4 ${!isOnline ? "opacity-50" : ""}`} />
+                <span>{isOnline ? "Live" : "Offline"}</span>
               </div>
               <Button onClick={() => { fetchLogs(); fetchQueueStats(); }} variant="outline" size="sm" disabled={loading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -629,6 +793,19 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
               <div>
                 <p className="text-2xl font-bold">{stats.sent}</p>
                 <p className="text-sm text-muted-foreground">Sent</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <Clock className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
               </div>
             </div>
           </CardContent>
@@ -712,12 +889,14 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="sent">Sent</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="queued">Queued</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
@@ -881,12 +1060,33 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                               Resent
                             </Badge>
                           )}
+                          {log.isQueueItem && (
+                            <Badge variant="outline" className="bg-cyan-500/10 text-cyan-600 border-cyan-500/20 text-xs shrink-0">
+                              <Inbox className="w-2.5 h-2.5 mr-0.5" />
+                              Queue
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td style={{ width: columnWidths.status }} className="px-4 py-3 overflow-hidden">
                         <div className="flex items-center gap-2 overflow-hidden">
-                          {/* Delivery status display */}
-                          {log.delivery_status === 'delivered' ? (
+                          {/* Queue status display */}
+                          {log.isQueueItem && log.status === "pending" ? (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 gap-1 shrink-0">
+                              <Clock className="w-3 h-3" />
+                              Pending
+                            </Badge>
+                          ) : log.isQueueItem && log.status === "processing" ? (
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1 shrink-0">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Processing
+                            </Badge>
+                          ) : log.isQueueItem && log.status === "failed" ? (
+                            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 gap-1 shrink-0">
+                              <AlertCircle className="w-3 h-3" />
+                              Queue Failed
+                            </Badge>
+                          ) : log.delivery_status === 'delivered' ? (
                             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 shrink-0">
                               <MailCheck className="w-3 h-3" />
                               Delivered

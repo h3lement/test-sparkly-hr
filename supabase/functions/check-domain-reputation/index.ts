@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -368,32 +367,86 @@ async function sendAdminNotification(
     const subject = `${statusEmoji} Domain Reputation ${statusText}: ${domain}`;
     const encodedSubject = encodeSubject(subject);
     
-    // Create SMTP client
-    const client = new SMTPClient({
-      connection: {
-        hostname: emailConfig.smtpHost,
-        port: parseInt(emailConfig.smtpPort, 10) || 587,
-        tls: emailConfig.smtpTls,
-        auth: {
-          username: emailConfig.smtpUsername,
-          password: emailConfig.smtpPassword,
-        },
-      },
+    // Raw SMTP send
+    const port = parseInt(emailConfig.smtpPort, 10) || 587;
+    const conn = await Deno.connectTls({
+      hostname: emailConfig.smtpHost,
+      port,
     });
 
-    // Send to all admins
-    await client.send({
-      from: `${emailConfig.senderName} <${emailConfig.senderEmail}>`,
-      to: adminEmails,
-      subject: encodedSubject,
-      content: emailHtml,
-      html: emailHtml,
-      headers: {
-        "Content-Type": "text/html; charset=UTF-8",
-      },
-    });
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const reader = conn.readable.getReader();
+    const writer = conn.writable.getWriter();
+    let buffer = "";
 
-    await client.close();
+    const readLine = async (): Promise<string> => {
+      while (!buffer.includes("\r\n")) {
+        const { value, done } = await reader.read();
+        if (done) throw new Error("Connection closed");
+        buffer += decoder.decode(value);
+      }
+      const lineEnd = buffer.indexOf("\r\n");
+      const line = buffer.slice(0, lineEnd);
+      buffer = buffer.slice(lineEnd + 2);
+      return line;
+    };
+
+    const readResponse = async (): Promise<number> => {
+      let code = 0;
+      while (true) {
+        const line = await readLine();
+        code = parseInt(line.slice(0, 3), 10);
+        if (line.length >= 4 && line[3] !== "-") break;
+      }
+      return code;
+    };
+
+    const writeLine = async (line: string) => {
+      await writer.write(encoder.encode(line + "\r\n"));
+    };
+
+    const command = async (cmd: string, expected: number[]) => {
+      await writeLine(cmd);
+      const code = await readResponse();
+      if (!expected.includes(code)) throw new Error(`SMTP error: got ${code}`);
+    };
+
+    // SMTP handshake
+    await readResponse(); // greeting
+    await command("EHLO localhost", [250]);
+    await command("AUTH LOGIN", [334]);
+    await command(utf8ToBase64(emailConfig.smtpUsername), [334]);
+    await command(utf8ToBase64(emailConfig.smtpPassword), [235]);
+
+    // Send email
+    await command(`MAIL FROM:<${emailConfig.senderEmail}>`, [250]);
+    for (const to of adminEmails) {
+      await command(`RCPT TO:<${to}>`, [250]);
+    }
+    await command("DATA", [354]);
+
+    const encodedName = encodeSubject(emailConfig.senderName);
+    const headers = [
+      `From: ${encodedName} <${emailConfig.senderEmail}>`,
+      `To: ${adminEmails.join(", ")}`,
+      `Subject: ${encodedSubject}`,
+      `Date: ${new Date().toUTCString()}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+    ];
+    for (const h of headers) await writeLine(h);
+    await writeLine("");
+    const bodyB64 = utf8ToBase64(emailHtml);
+    const lines = bodyB64.match(/.{1,76}/g) || [];
+    for (const l of lines) await writeLine(l);
+    await command(".", [250]);
+
+    try { await command("QUIT", [221]); } catch {}
+    reader.releaseLock();
+    writer.releaseLock();
+    conn.close();
 
     console.log("Notification sent successfully via SMTP");
     
