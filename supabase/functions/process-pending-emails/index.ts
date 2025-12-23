@@ -92,11 +92,105 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get pending notifications that are either:
-    // 1. Status 'pending' and created more than 30 seconds ago (give frontend time to send)
-    // 2. Status 'failed' with attempts < max_attempts
+    // First, find leads without any emails (orphaned leads)
+    // These are leads that don't have entries in pending_email_notifications, email_logs, or email_queue
     const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString();
     
+    // Find quiz_leads without emails
+    const { data: orphanedQuizLeads } = await supabase
+      .from("quiz_leads")
+      .select("id, created_at")
+      .lt("created_at", thirtySecondsAgo)
+      .order("created_at", { ascending: true })
+      .limit(20);
+    
+    if (orphanedQuizLeads && orphanedQuizLeads.length > 0) {
+      console.log(`Checking ${orphanedQuizLeads.length} quiz leads for missing emails`);
+      
+      for (const lead of orphanedQuizLeads) {
+        // Check if any email exists for this lead
+        const { data: existingLog } = await supabase
+          .from("email_logs")
+          .select("id")
+          .eq("quiz_lead_id", lead.id)
+          .limit(1)
+          .maybeSingle();
+        
+        const { data: existingQueue } = await supabase
+          .from("email_queue")
+          .select("id")
+          .eq("quiz_lead_id", lead.id)
+          .limit(1)
+          .maybeSingle();
+        
+        const { data: existingNotification } = await supabase
+          .from("pending_email_notifications")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .eq("lead_type", "quiz")
+          .limit(1)
+          .maybeSingle();
+        
+        // If no email record exists, create a pending notification
+        if (!existingLog && !existingQueue && !existingNotification) {
+          console.log(`Found orphaned quiz lead ${lead.id}, creating pending notification`);
+          await supabase.from("pending_email_notifications").insert({
+            lead_type: "quiz",
+            lead_id: lead.id,
+            status: "pending",
+          });
+        }
+      }
+    }
+    
+    // Find hypothesis_leads without emails
+    const { data: orphanedHypothesisLeads } = await supabase
+      .from("hypothesis_leads")
+      .select("id, created_at")
+      .lt("created_at", thirtySecondsAgo)
+      .order("created_at", { ascending: true })
+      .limit(20);
+    
+    if (orphanedHypothesisLeads && orphanedHypothesisLeads.length > 0) {
+      console.log(`Checking ${orphanedHypothesisLeads.length} hypothesis leads for missing emails`);
+      
+      for (const lead of orphanedHypothesisLeads) {
+        const { data: existingLog } = await supabase
+          .from("email_logs")
+          .select("id")
+          .eq("hypothesis_lead_id", lead.id)
+          .limit(1)
+          .maybeSingle();
+        
+        const { data: existingQueue } = await supabase
+          .from("email_queue")
+          .select("id")
+          .eq("hypothesis_lead_id", lead.id)
+          .limit(1)
+          .maybeSingle();
+        
+        const { data: existingNotification } = await supabase
+          .from("pending_email_notifications")
+          .select("id")
+          .eq("lead_id", lead.id)
+          .eq("lead_type", "hypothesis")
+          .limit(1)
+          .maybeSingle();
+        
+        if (!existingLog && !existingQueue && !existingNotification) {
+          console.log(`Found orphaned hypothesis lead ${lead.id}, creating pending notification`);
+          await supabase.from("pending_email_notifications").insert({
+            lead_type: "hypothesis",
+            lead_id: lead.id,
+            status: "pending",
+          });
+        }
+      }
+    }
+    
+    // Now get pending notifications that are either:
+    // 1. Status 'pending' and created more than 30 seconds ago (give frontend time to send)
+    // 2. Status 'failed' with attempts < max_attempts
     const { data: pendingItems, error: fetchError } = await supabase
       .from("pending_email_notifications")
       .select("*")
@@ -112,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!pendingItems || pendingItems.length === 0) {
       console.log("No pending notifications to process");
       return new Response(
-        JSON.stringify({ success: true, processed: 0 }),
+        JSON.stringify({ success: true, processed: 0, orphansChecked: (orphanedQuizLeads?.length || 0) + (orphanedHypothesisLeads?.length || 0) }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
