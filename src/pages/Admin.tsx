@@ -75,6 +75,12 @@ const Admin = () => {
     handleTabChange("leads");
   };
 
+  // Hypothesis leads are displayed in the same leads list
+  const handleViewHypothesisLead = (leadId: string) => {
+    setHighlightedLeadId(leadId);
+    handleTabChange("leads");
+  };
+
   const handleViewEmailHistory = (leadId: string, email: string) => {
     setEmailHistoryFilter(email);
     handleTabChange("email-logs");
@@ -637,6 +643,7 @@ const Admin = () => {
             <div className="w-full">
               <EmailLogsMonitor 
                 onViewQuizLead={handleViewQuizLead}
+                onViewHypothesisLead={handleViewHypothesisLead}
                 initialEmailFilter={emailHistoryFilter}
                 onEmailFilterCleared={() => setEmailHistoryFilter(null)}
               />

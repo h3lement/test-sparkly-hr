@@ -199,6 +199,7 @@ export type Database = {
           email_type: string
           error_message: string | null
           html_body: string | null
+          hypothesis_lead_id: string | null
           id: string
           language: string | null
           last_attempt_at: string | null
@@ -230,6 +231,7 @@ export type Database = {
           email_type: string
           error_message?: string | null
           html_body?: string | null
+          hypothesis_lead_id?: string | null
           id?: string
           language?: string | null
           last_attempt_at?: string | null
@@ -261,6 +263,7 @@ export type Database = {
           email_type?: string
           error_message?: string | null
           html_body?: string | null
+          hypothesis_lead_id?: string | null
           id?: string
           language?: string | null
           last_attempt_at?: string | null
@@ -279,6 +282,13 @@ export type Database = {
           subject?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "email_logs_hypothesis_lead_id_fkey"
+            columns: ["hypothesis_lead_id"]
+            isOneToOne: false
+            referencedRelation: "hypothesis_leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_logs_original_log_id_fkey"
             columns: ["original_log_id"]
@@ -308,6 +318,7 @@ export type Database = {
           email_type: string
           error_message: string | null
           html_body: string
+          hypothesis_lead_id: string | null
           id: string
           language: string | null
           max_retries: number
@@ -329,6 +340,7 @@ export type Database = {
           email_type: string
           error_message?: string | null
           html_body: string
+          hypothesis_lead_id?: string | null
           id?: string
           language?: string | null
           max_retries?: number
@@ -350,6 +362,7 @@ export type Database = {
           email_type?: string
           error_message?: string | null
           html_body?: string
+          hypothesis_lead_id?: string | null
           id?: string
           language?: string | null
           max_retries?: number

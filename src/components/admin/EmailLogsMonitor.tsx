@@ -69,6 +69,7 @@ interface EmailLog {
   error_message: string | null;
   language: string | null;
   quiz_lead_id: string | null;
+  hypothesis_lead_id: string | null;
   quiz_id: string | null;
   created_at: string;
   resend_attempts: number;
@@ -106,6 +107,7 @@ interface QueueItem {
   language: string | null;
   quiz_id: string | null;
   quiz_lead_id: string | null;
+  hypothesis_lead_id: string | null;
   created_at: string;
   scheduled_for: string;
   html_body: string | null;
@@ -123,6 +125,7 @@ const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 interface EmailLogsMonitorProps {
   onViewQuizLead?: (leadId: string) => void;
+  onViewHypothesisLead?: (leadId: string) => void;
   initialEmailFilter?: string | null;
   onEmailFilterCleared?: () => void;
 }
@@ -134,7 +137,7 @@ interface QueueStats {
   lastProcessed: string | null;
 }
 
-export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFilterCleared }: EmailLogsMonitorProps = {}) {
+export function EmailLogsMonitor({ onViewQuizLead, onViewHypothesisLead, initialEmailFilter, onEmailFilterCleared }: EmailLogsMonitorProps = {}) {
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -695,6 +698,7 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
       error_message: item.error_message,
       language: item.language,
       quiz_lead_id: item.quiz_lead_id,
+      hypothesis_lead_id: item.hypothesis_lead_id,
       quiz_id: item.quiz_id,
       created_at: item.created_at,
       resend_attempts: item.retry_count,
@@ -1284,12 +1288,14 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                   const isEvenRow = index % 2 === 0;
                   const rowNumber = startIndex + index + 1;
 
-                  const expectsQuizLeadLink =
+                  // Determine if we expect a lead link and which type
+                  const hasAnyLeadLink = log.quiz_lead_id || log.hypothesis_lead_id;
+                  const expectsLeadLink =
                     !log.isQueueItem &&
                     (log.email_type === "quiz_result_user" ||
                       log.email_type === "quiz_results" ||
                       log.email_type === "hypothesis_results");
-                  const missingQuizLeadLink = expectsQuizLeadLink && !log.quiz_lead_id;
+                  const missingLeadLink = expectsLeadLink && !hasAnyLeadLink;
 
                   return (
                     <tr key={log.id} className={`border-b border-border last:border-b-0 list-row-interactive ${isEvenRow ? "list-row-even" : "list-row-odd"}`}>
@@ -1413,13 +1419,13 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                       </td>
                       <td style={{ width: columnWidths.actions }} className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          {missingQuizLeadLink && (
+                          {missingLeadLink && (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground"
                               disabled
-                              title="Quiz lead link missing (lead was deleted or not recorded)"
+                              title="Lead link missing (lead was deleted or not recorded)"
                             >
                               <Link2Off className="w-4 h-4" />
                             </Button>
@@ -1431,6 +1437,17 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                               className="h-8 w-8 text-primary"
                               onClick={() => onViewQuizLead(log.quiz_lead_id!)}
                               title="View quiz lead"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {log.hypothesis_lead_id && onViewHypothesisLead && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary"
+                              onClick={() => onViewHypothesisLead(log.hypothesis_lead_id!)}
+                              title="View hypothesis lead"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </Button>
