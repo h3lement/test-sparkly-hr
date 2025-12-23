@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,25 @@ export function EmailPreviewPopover({
     : (storedEmailSubject || regeneratedSubject || "Email Preview");
 
   const hasContent = Boolean(displayHtml);
+
+  // When the user clicks the email icon, auto-generate a preview if none exists yet.
+  // This makes "pre-see" work with a single click (no extra "Generate Preview" click).
+  const autoRegeneratedRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      autoRegeneratedRef.current = false;
+      return;
+    }
+
+    if (autoRegeneratedRef.current) return;
+
+    const hasAnyHtml = Boolean(emailLog?.html_body || storedEmailHtml || regeneratedHtml);
+    if (!canShowSentHtml && !hasAnyHtml) {
+      autoRegeneratedRef.current = true;
+      void regeneratePreview();
+    }
+  }, [open, leadId, canShowSentHtml, emailLog?.html_body, storedEmailHtml, regeneratedHtml]);
 
   const regeneratePreview = async () => {
     setRegenerating(true);
