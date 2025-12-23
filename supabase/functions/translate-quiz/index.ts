@@ -59,6 +59,16 @@ const UI_TEXT_KEYS = [
   "sedonaAnger", "sedonaAngerDesc", "sedonaPride", "sedonaPrideDesc",
   "sedonaCourage", "sedonaCourageDesc", "sedonaAcceptance", "sedonaAcceptanceDesc",
   "sedonaPeace", "sedonaPeaceDesc",
+  // Hypothesis results screen UI
+  "resultsTitle", "biasChampion", "biasChampionDesc", "awareRecruiter", "awareRecruiterDesc",
+  "learningMindset", "learningMindsetDesc", "freshStart", "freshStartDesc",
+  "biasAware", "biasAwareDesc", "biasCurious", "biasCuriousDesc",
+  "biasDiscoverer", "biasDiscovererDesc", "biasExplorer", "biasExplorerDesc",
+  "yourReflections", "keyInsight", "actionPlan", "truthBehind", "correct", "of", "takeAgain",
+  "columnHypothesis", "columnWoman", "columnMan", "columnReality", "columnInterview",
+  "men", "women", "beforeReveal", "revealTruth", "reflectPrompt", "newInsightQuestion",
+  "actionPlanQuestion", "dataSecure", "emailToSeeResults", "saving",
+  "arrowKeys", "tabNavigate", "spaceToggle", "enterConfirm", "selectAllMethods", "keyboardHintCheckbox",
 ];
 
 // Default English UI texts
@@ -145,6 +155,52 @@ const DEFAULT_UI_TEXTS: Record<string, string> = {
   sedonaAcceptanceDesc: "Allowing what is",
   sedonaPeace: "Peace",
   sedonaPeaceDesc: "Inner stillness",
+  // Hypothesis results screen UI
+  resultsTitle: "Assumptions vs Reality - 50+ Employees",
+  biasChampion: "Bias Champion",
+  biasChampionDesc: "Excellent awareness! You see through most common biases about 50+ employees.",
+  awareRecruiter: "Aware Recruiter",
+  awareRecruiterDesc: "Good progress! You recognize many biases but have room to grow.",
+  learningMindset: "Learning Mindset",
+  learningMindsetDesc: "You're on your way. This test revealed some blind spots to work on.",
+  freshStart: "Fresh Start",
+  freshStartDesc: "Great that you took this test! Now you know where to focus your learning.",
+  biasAware: "Bias Aware",
+  biasAwareDesc: "Strong understanding with room for refinement on 50+ workforce dynamics.",
+  biasCurious: "Bias Curious",
+  biasCuriousDesc: "Solid foundation — the full material will deepen your insights about 50+ employees.",
+  biasDiscoverer: "Bias Discoverer",
+  biasDiscovererDesc: "Common misconceptions detected — valuable learning ahead about 50+ workforce.",
+  biasExplorer: "Bias Explorer",
+  biasExplorerDesc: "Many beliefs to reconsider — this material will be eye-opening about 50+ employees.",
+  yourReflections: "Your Reflections",
+  keyInsight: "Key Insight",
+  actionPlan: "Action Plan",
+  truthBehind: "The Truth Behind Each Belief",
+  correct: "correct",
+  of: "of",
+  takeAgain: "Take Again",
+  columnHypothesis: "Assumption",
+  columnWoman: "Woman assumption",
+  columnMan: "Man assumption",
+  columnReality: "Reality for 50+",
+  columnInterview: "Interview Question",
+  men: "Men",
+  women: "Women",
+  beforeReveal: "Before we reveal the answers...",
+  revealTruth: "Reveal the Truth",
+  reflectPrompt: "Take a moment to reflect on what you've learned.",
+  newInsightQuestion: "What new insight surprised you most?",
+  actionPlanQuestion: "What will you do differently?",
+  dataSecure: "Your data is secure. We never share your information.",
+  emailToSeeResults: "Enter your email to see results",
+  saving: "Saving...",
+  arrowKeys: "↑↓",
+  tabNavigate: "Tab",
+  spaceToggle: "Space",
+  enterConfirm: "Enter",
+  selectAllMethods: "Select all methods you are open to exploring.",
+  keyboardHintCheckbox: "Use Tab to navigate, Space to toggle",
 };
 
 // Cost per 1K tokens (approximate for gemini-2.5-flash)
@@ -221,7 +277,7 @@ serve(async (req) => {
       throw new Error("Quiz not found");
     }
 
-    // Fetch questions with answers
+    // Fetch questions with answers (standard quizzes)
     const { data: questions } = await supabase
       .from("quiz_questions")
       .select("*")
@@ -233,11 +289,31 @@ serve(async (req) => {
       .select("*")
       .in("question_id", (questions || []).map(q => q.id));
 
-    // Fetch result levels
+    // Fetch result levels (standard quizzes)
     const { data: resultLevels } = await supabase
       .from("quiz_result_levels")
       .select("*")
       .eq("quiz_id", quizId);
+
+    // Fetch open-mindedness result levels
+    const { data: omResultLevels } = await supabase
+      .from("open_mindedness_result_levels")
+      .select("*")
+      .eq("quiz_id", quizId);
+
+    // Fetch hypothesis pages (hypothesis quizzes)
+    const { data: hypothesisPages } = await supabase
+      .from("hypothesis_pages")
+      .select("*")
+      .eq("quiz_id", quizId)
+      .order("page_number");
+
+    // Fetch hypothesis questions
+    const { data: hypothesisQuestions } = await supabase
+      .from("hypothesis_questions")
+      .select("*")
+      .in("page_id", (hypothesisPages || []).map(p => p.id))
+      .order("question_order");
 
     const targetLanguages = getTargetLanguages(sourceLanguage, selectedTargetLanguages);
     
@@ -284,7 +360,7 @@ serve(async (req) => {
       }
     });
 
-    // Result levels
+    // Result levels (standard)
     (resultLevels || []).forEach((rl) => {
       const title = rl.title?.[sourceLanguage];
       const desc = rl.description?.[sourceLanguage];
@@ -299,6 +375,39 @@ serve(async (req) => {
             allTexts.push({ path: `result.${rl.id}.insights.${idx}`, text: insight, hash: simpleHash(insight) });
           }
         });
+      }
+    });
+
+    // Open-mindedness result levels
+    (omResultLevels || []).forEach((orl) => {
+      const title = orl.title?.[sourceLanguage];
+      const desc = orl.description?.[sourceLanguage];
+      if (title) allTexts.push({ path: `omresult.${orl.id}.title`, text: title, hash: simpleHash(title) });
+      if (desc) allTexts.push({ path: `omresult.${orl.id}.description`, text: desc, hash: simpleHash(desc) });
+    });
+
+    // Hypothesis pages
+    (hypothesisPages || []).forEach((hp) => {
+      const title = hp.title?.[sourceLanguage];
+      const desc = hp.description?.[sourceLanguage];
+      if (title) allTexts.push({ path: `hyppage.${hp.id}.title`, text: title, hash: simpleHash(title) });
+      if (desc) allTexts.push({ path: `hyppage.${hp.id}.description`, text: desc, hash: simpleHash(desc) });
+    });
+
+    // Hypothesis questions
+    (hypothesisQuestions || []).forEach((hq) => {
+      const fields = [
+        { key: "hypothesis_text", path: `hypq.${hq.id}.hypothesis` },
+        { key: "hypothesis_text_woman", path: `hypq.${hq.id}.hyp_woman` },
+        { key: "hypothesis_text_man", path: `hypq.${hq.id}.hyp_man` },
+        { key: "interview_question", path: `hypq.${hq.id}.interview` },
+        { key: "interview_question_woman", path: `hypq.${hq.id}.int_woman` },
+        { key: "interview_question_man", path: `hypq.${hq.id}.int_man` },
+        { key: "truth_explanation", path: `hypq.${hq.id}.truth` },
+      ];
+      for (const f of fields) {
+        const val = hq[f.key]?.[sourceLanguage];
+        if (val) allTexts.push({ path: f.path, text: val, hash: simpleHash(val) });
       }
     });
 
@@ -554,6 +663,82 @@ ${JSON.stringify(textsToTranslate.map(t => ({ path: t.path, text: t.text })), nu
           description: currentDesc,
           insights: currentInsights,
         }).eq("id", rl.id);
+      }
+    }
+
+    // Update open-mindedness result levels
+    for (const orl of omResultLevels || []) {
+      const currentTitle = orl.title || {};
+      const currentDesc = orl.description || {};
+      let hasUpdate = false;
+
+      for (const langCode of Object.keys(translations)) {
+        const translatedTitle = translations[langCode]?.[`omresult.${orl.id}.title`];
+        const translatedDesc = translations[langCode]?.[`omresult.${orl.id}.description`];
+        
+        if (translatedTitle) { currentTitle[langCode] = translatedTitle; hasUpdate = true; }
+        if (translatedDesc) { currentDesc[langCode] = translatedDesc; hasUpdate = true; }
+      }
+
+      if (hasUpdate) {
+        await supabase.from("open_mindedness_result_levels").update({
+          title: currentTitle,
+          description: currentDesc,
+        }).eq("id", orl.id);
+      }
+    }
+
+    // Update hypothesis pages
+    for (const hp of hypothesisPages || []) {
+      const currentTitle = hp.title || {};
+      const currentDesc = hp.description || {};
+      let hasUpdate = false;
+
+      for (const langCode of Object.keys(translations)) {
+        const translatedTitle = translations[langCode]?.[`hyppage.${hp.id}.title`];
+        const translatedDesc = translations[langCode]?.[`hyppage.${hp.id}.description`];
+        
+        if (translatedTitle) { currentTitle[langCode] = translatedTitle; hasUpdate = true; }
+        if (translatedDesc) { currentDesc[langCode] = translatedDesc; hasUpdate = true; }
+      }
+
+      if (hasUpdate) {
+        await supabase.from("hypothesis_pages").update({
+          title: currentTitle,
+          description: currentDesc,
+        }).eq("id", hp.id);
+      }
+    }
+
+    // Update hypothesis questions
+    for (const hq of hypothesisQuestions || []) {
+      const fieldMappings = [
+        { key: "hypothesis_text", path: `hypq.${hq.id}.hypothesis` },
+        { key: "hypothesis_text_woman", path: `hypq.${hq.id}.hyp_woman` },
+        { key: "hypothesis_text_man", path: `hypq.${hq.id}.hyp_man` },
+        { key: "interview_question", path: `hypq.${hq.id}.interview` },
+        { key: "interview_question_woman", path: `hypq.${hq.id}.int_woman` },
+        { key: "interview_question_man", path: `hypq.${hq.id}.int_man` },
+        { key: "truth_explanation", path: `hypq.${hq.id}.truth` },
+      ];
+
+      const updateData: Record<string, Record<string, string>> = {};
+      let hasUpdate = false;
+
+      for (const mapping of fieldMappings) {
+        const current = hq[mapping.key] || {};
+        for (const langCode of Object.keys(translations)) {
+          const translated = translations[langCode]?.[mapping.path];
+          if (translated) {
+            current[langCode] = translated;
+            hasUpdate = true;
+          }
+        }
+        updateData[mapping.key] = current;
+      }
+
+      if (hasUpdate) {
+        await supabase.from("hypothesis_questions").update(updateData).eq("id", hq.id);
       }
     }
 
