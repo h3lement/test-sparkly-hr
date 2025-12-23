@@ -39,6 +39,7 @@ interface TableCounts {
   emailLogs: number;
   activity: number;
   liveVersions: number;
+  totalCtas: number;
 }
 
 interface MenuItem {
@@ -54,7 +55,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "leads", slug: "leads", label: "Respondents", icon: Users, count: null },
   { id: "quizzes", slug: "quizzes", label: "Quizzes", icon: ClipboardList, count: null },
   { id: "admins", slug: "admins", label: "Admin Users", icon: Shield, count: null },
-  { id: "versions", slug: "versions", label: "Versions", icon: Layers, count: null },
+  { id: "versions", slug: "versions", label: "CTAs", icon: Layers, count: null },
   { id: "email-logs", slug: "email-logs", label: "Email History", icon: History, count: null },
   { id: "appearance", slug: "appearance", label: "Appearance", icon: Palette, count: null },
 ];
@@ -138,6 +139,7 @@ export function AdminSidebar({
     emailLogs: 0,
     activity: 0,
     liveVersions: 0,
+    totalCtas: 0,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [menuOrder, setMenuOrder] = useState<string[]>(DEFAULT_MENU_ITEMS.map(item => item.id));
@@ -187,7 +189,7 @@ export function AdminSidebar({
       
       const activeQuizIds = (activeQuizzesRes.data || []).map(q => q.id);
 
-      const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes, emailTemplatesRes, webVersionsRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, adminsRes, emailLogsRes, activityRes, emailTemplatesRes, webVersionsRes, ctaTemplatesRes] = await Promise.all([
         supabase.from("quiz_leads").select("email"),
         supabase.from("hypothesis_leads").select("email"),
         supabase.from("quizzes").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -201,6 +203,8 @@ export function AdminSidebar({
         activeQuizIds.length > 0
           ? supabase.from("quiz_result_versions").select("*", { count: "exact", head: true }).eq("is_live", true).in("quiz_id", activeQuizIds)
           : Promise.resolve({ count: 0 }),
+        // Count all CTA templates
+        supabase.from("cta_templates").select("*", { count: "exact", head: true }),
       ]);
 
       // Combine emails from both tables and calculate unique
@@ -220,6 +224,7 @@ export function AdminSidebar({
         emailLogs: emailLogsRes.count || 0,
         activity: activityRes.count || 0,
         liveVersions,
+        totalCtas: ctaTemplatesRes.count || 0,
       });
     } catch (error) {
       console.error("Error fetching counts:", error);
@@ -292,7 +297,7 @@ export function AdminSidebar({
           count = counts.admins;
           break;
         case "versions":
-          count = counts.liveVersions;
+          count = counts.totalCtas;
           break;
         case "email-logs":
           count = counts.emailLogs;
