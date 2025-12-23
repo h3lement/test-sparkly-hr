@@ -199,7 +199,7 @@ export function DynamicQuizQuestion() {
         </h1>
 
         <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
-          Use ↑↓ to navigate, Enter to confirm
+          {t('keyboardHintArrows')}
         </p>
 
         <fieldset className="space-y-3 mb-8" role="radiogroup" aria-labelledby="question-heading">

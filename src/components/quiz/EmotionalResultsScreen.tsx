@@ -14,7 +14,7 @@ export function EmotionalResultsScreen() {
     quizData,
     answers
   } = useDynamicQuiz();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
@@ -39,20 +39,24 @@ export function EmotionalResultsScreen() {
   const commonExperiences = insights.slice(0, 2);
   const pathForward = insights.slice(2, 4);
 
-  // Emotional level names
-  const emotionalLevelNames: Record<number, { name: string; description: string }> = {
-    1: { name: 'Apathy', description: "I can't, it's no use" },
-    2: { name: 'Grief', description: 'Pain about loss' },
-    3: { name: 'Fear', description: 'Anticipated danger' },
-    4: { name: 'Lust', description: 'Intense wanting' },
-    5: { name: 'Anger', description: 'Wanting to change' },
-    6: { name: 'Pride', description: "I'm right / better" },
-    7: { name: 'Courage', description: 'Willingness to act' },
-    8: { name: 'Acceptance', description: 'Allowing what is' },
-    9: { name: 'Peace', description: 'Inner stillness' },
+  // Emotional level names - using translations
+  const emotionalLevelNames: Record<number, { nameKey: string; descKey: string }> = {
+    1: { nameKey: 'sedonaApathy', descKey: 'sedonaApathyDesc' },
+    2: { nameKey: 'sedonaGrief', descKey: 'sedonaGriefDesc' },
+    3: { nameKey: 'sedonaFear', descKey: 'sedonaFearDesc' },
+    4: { nameKey: 'sedonaLust', descKey: 'sedonaLustDesc' },
+    5: { nameKey: 'sedonaAnger', descKey: 'sedonaAngerDesc' },
+    6: { nameKey: 'sedonaPride', descKey: 'sedonaPrideDesc' },
+    7: { nameKey: 'sedonaCourage', descKey: 'sedonaCourageDesc' },
+    8: { nameKey: 'sedonaAcceptance', descKey: 'sedonaAcceptanceDesc' },
+    9: { nameKey: 'sedonaPeace', descKey: 'sedonaPeaceDesc' },
   };
 
-  const currentLevel = emotionalLevelNames[emotionalLevel] || emotionalLevelNames[5];
+  const currentLevelKeys = emotionalLevelNames[emotionalLevel] || emotionalLevelNames[5];
+  const currentLevel = {
+    name: t(currentLevelKeys.nameKey as any),
+    description: t(currentLevelKeys.descKey as any),
+  };
 
   // Check if confetti is enabled for this quiz (default: true)
   const showConfetti = quizData?.show_confetti !== false;
@@ -97,10 +101,10 @@ export function EmotionalResultsScreen() {
       </div>
 
       <header className="text-center mb-8">
-        <p className="text-muted-foreground mb-2">Results for {email}</p>
+        <p className="text-muted-foreground mb-2">{t('resultsFor')} {email}</p>
         
         <h1 id="results-heading" className="font-heading text-3xl md:text-4xl font-bold mb-2">
-          <span aria-hidden="true">{result?.emoji}</span> {getText(result?.title, 'Your Emotional Profile')}
+          <span aria-hidden="true">{result?.emoji}</span> {getText(result?.title, t('yourEmotionalProfile'))}
         </h1>
         <p className="text-lg text-muted-foreground">{currentLevel.description}</p>
       </header>
@@ -111,9 +115,9 @@ export function EmotionalResultsScreen() {
           <div className="text-6xl font-bold gradient-text mb-1">
             {averageScore.toFixed(1)}
           </div>
-          <p className="text-muted-foreground text-sm">Average Score (1-9 scale)</p>
+          <p className="text-muted-foreground text-sm">{t('averageScore')}</p>
           <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
-            Level {emotionalLevel}: {currentLevel.name}
+            {t('levelLabel')} {emotionalLevel}: {currentLevel.name}
           </div>
         </div>
         
@@ -133,15 +137,15 @@ export function EmotionalResultsScreen() {
         </div>
         
         <div className="flex justify-between text-xs text-muted-foreground px-1">
-          <span>Apathy (1)</span>
-          <span>Anger (5)</span>
-          <span>Peace (9)</span>
+          <span>{t('sedonaApathy')} (1)</span>
+          <span>{t('sedonaAnger')} (5)</span>
+          <span>{t('sedonaPeace')} (9)</span>
         </div>
       </section>
 
       {/* Core State Description */}
       <section className="glass rounded-2xl p-8 mb-6">
-        <h2 className="font-heading text-xl font-semibold mb-4">What This Means</h2>
+        <h2 className="font-heading text-xl font-semibold mb-4">{t('whatThisMeans')}</h2>
         <p className="text-muted-foreground leading-relaxed">
           {getText(result?.description)}
         </p>
@@ -151,10 +155,10 @@ export function EmotionalResultsScreen() {
       {commonExperiences.length > 0 && (
         <section className="glass rounded-2xl p-8 mb-6">
           <h2 className="font-heading text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="text-2xl">💭</span> Common Experiences
+            <span className="text-2xl">💭</span> {t('commonExperiences')}
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            People in this emotional state often experience:
+            {t('commonExperiencesDesc')}
           </p>
           <ul className="space-y-3" role="list">
             {commonExperiences.map((experience, i) => (
@@ -176,10 +180,10 @@ export function EmotionalResultsScreen() {
       {pathForward.length > 0 && (
         <section className="glass rounded-2xl p-8 mb-6">
           <h2 className="font-heading text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="text-2xl">🌱</span> Path Forward
+            <span className="text-2xl">🌱</span> {t('pathForward')}
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Steps to support your emotional growth:
+            {t('pathForwardDesc')}
           </p>
           <ol className="space-y-3" role="list">
             {pathForward.map((step, i) => (
@@ -197,35 +201,38 @@ export function EmotionalResultsScreen() {
       {/* Sedona Scale Reference */}
       <section className="glass rounded-2xl p-6 mb-6">
         <h3 className="font-heading text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-          The Sedona Emotional Scale
+          {t('sedonaScaleTitle')}
         </h3>
         <div className="grid grid-cols-3 md:grid-cols-9 gap-2 text-center text-xs">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => (
-            <div 
-              key={level}
-              className={cn(
-                "p-2 rounded-lg transition-all",
-                level === emotionalLevel 
-                  ? "bg-primary text-primary-foreground font-bold scale-105 shadow-lg" 
-                  : "bg-muted/50 text-muted-foreground"
-              )}
-            >
-              <div className="font-semibold">{level}</div>
-              <div className="hidden md:block text-[10px] truncate">
-                {emotionalLevelNames[level]?.name}
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
+            const levelKeys = emotionalLevelNames[level];
+            return (
+              <div 
+                key={level}
+                className={cn(
+                  "p-2 rounded-lg transition-all",
+                  level === emotionalLevel 
+                    ? "bg-primary text-primary-foreground font-bold scale-105 shadow-lg" 
+                    : "bg-muted/50 text-muted-foreground"
+                )}
+              >
+                <div className="font-semibold">{level}</div>
+                <div className="hidden md:block text-[10px] truncate">
+                  {t(levelKeys?.nameKey as any)}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       {/* CTA */}
       <section className="glass rounded-2xl p-8 text-center">
         <h2 className="font-heading text-xl font-semibold mb-3">
-          {getText(quizData?.cta_title, 'Ready for Deeper Self-Understanding?')}
+          {getText(quizData?.cta_title, t('emotionalCtaTitle'))}
         </h2>
         <p className="text-muted-foreground mb-4">
-          {getText(quizData?.cta_description, 'This assessment provides insights into your current emotional state. For personalized guidance and support, continue to our resources.')}
+          {getText(quizData?.cta_description, t('emotionalCtaDesc'))}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -238,14 +245,14 @@ export function EmotionalResultsScreen() {
               target="_blank" 
               rel="noopener noreferrer"
             >
-              {getText(quizData?.cta_text, 'Learn More')}
+              {getText(quizData?.cta_text, t('learnMore'))}
             </a>
           </Button>
           <Button
             onClick={resetQuiz}
             variant="outline"
           >
-            Take Assessment Again
+            {t('takeAssessmentAgain')}
           </Button>
         </div>
       </section>
