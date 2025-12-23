@@ -239,14 +239,9 @@ function SortableQuizRow({
               <span className="text-muted-foreground">No CTA</span>
             </SelectItem>
             {ctaTemplates.map(cta => (
-              <SelectItem 
-                key={cta.id} 
-                value={cta.id}
-                disabled={cta.quiz_id !== null && cta.quiz_id !== quiz.id}
-              >
+              <SelectItem key={cta.id} value={cta.id}>
                 <span className={cta.quiz_id === quiz.id ? "font-medium" : ""}>
                   {cta.name || "Untitled"}
-                  {cta.quiz_id && cta.quiz_id !== quiz.id && " (in use)"}
                 </span>
               </SelectItem>
             ))}
