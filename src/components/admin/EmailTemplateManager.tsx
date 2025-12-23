@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Save, Check, Eye, Globe, Mail, Server } from "lucide-react";
-import { EmailVersionHistory, WebVersionHistory } from "./VersionHistoryTables";
+import { RefreshCw, Save, Check, Eye, Mail, Server } from "lucide-react";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
 import { EmailSettings } from "./EmailSettings";
 interface EmailTemplate {
@@ -689,12 +688,8 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
   return (
     <div className="max-w-4xl space-y-6">
       {currentQuizId && (
-        <Tabs defaultValue="web" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="web" className="gap-2">
-              <Globe className="w-4 h-4" />
-              Web Templates
-            </TabsTrigger>
+        <Tabs defaultValue="email" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="email" className="gap-2">
               <Mail className="w-4 h-4" />
               Email Templates
@@ -704,11 +699,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
               Email Server
             </TabsTrigger>
           </TabsList>
-
-          {/* Web Templates Tab */}
-          <TabsContent value="web" className="space-y-6">
-            <WebVersionHistory quizId={currentQuizId} />
-          </TabsContent>
 
           {/* Email Templates Tab */}
           <TabsContent value="email" className="space-y-6">
@@ -841,22 +831,6 @@ export function EmailTemplateManager({ quizId: propQuizId, quizTitle }: EmailTem
                 </Button>
               </div>
             )}
-
-            {/* Email Version History */}
-            <EmailVersionHistory 
-              quizId={currentQuizId} 
-              onLoadTemplate={(template) => {
-                setSenderName(template.sender_name);
-                setSenderEmail(template.sender_email);
-                setSubjects(template.subjects);
-                toast({
-                  title: "Version loaded",
-                  description: `Version ${template.version_number} loaded into editor`,
-                });
-              }}
-              onSetLive={() => fetchTemplates()}
-              onPreview={(template) => openPreviewDialog(template)}
-            />
           </TabsContent>
 
           {/* Email Server Tab */}
