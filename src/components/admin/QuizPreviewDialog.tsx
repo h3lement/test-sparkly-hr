@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { 
   ExternalLink, 
@@ -21,7 +22,8 @@ import {
   ChevronRight,
   Brain,
   Loader2,
-  Languages
+  Languages,
+  Sparkles
 } from "lucide-react";
 import { TranslationDialog, TranslationOptions } from "./TranslationDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,6 +104,8 @@ export function QuizPreviewDialog({
   const [isLoading, setIsLoading] = useState(true);
   const [showTranslationDialog, setShowTranslationDialog] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState(0);
+  const translationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Build quiz pages based on question count - memoized for performance
   const quizPages = useMemo(() => {
@@ -156,6 +160,15 @@ export function QuizPreviewDialog({
     }
   }, [open]);
 
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (translationIntervalRef.current) {
+        clearInterval(translationIntervalRef.current);
+      }
+    };
+  }, []);
+
   const handleIframeLoad = useCallback(() => {
     setIsLoading(false);
   }, []);
@@ -181,6 +194,20 @@ export function QuizPreviewDialog({
 
   const handleTranslate = async (options: TranslationOptions) => {
     setTranslating(true);
+    setTranslationProgress(0);
+    
+    // Start progress animation - estimate ~15 seconds for translation
+    const startTime = Date.now();
+    const estimatedDuration = 15000; // 15 seconds estimate
+    
+    translationIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      // Use an easing function to slow down as it approaches 90%
+      const rawProgress = Math.min(elapsed / estimatedDuration, 0.9);
+      const easedProgress = 1 - Math.pow(1 - rawProgress, 3); // Ease out cubic
+      setTranslationProgress(Math.round(easedProgress * 90));
+    }, 100);
+    
     try {
       const { data, error } = await supabase.functions.invoke("translate-quiz", {
         body: {
@@ -193,6 +220,9 @@ export function QuizPreviewDialog({
 
       if (error) throw error;
 
+      // Complete the progress
+      setTranslationProgress(100);
+      
       toast.success(`Quiz translated to ${options.targetLanguages.length} languages`);
       setShowTranslationDialog(false);
       onTranslationComplete?.();
@@ -201,7 +231,15 @@ export function QuizPreviewDialog({
       console.error("Translation error:", err);
       toast.error("Translation failed");
     } finally {
-      setTranslating(false);
+      if (translationIntervalRef.current) {
+        clearInterval(translationIntervalRef.current);
+        translationIntervalRef.current = null;
+      }
+      // Small delay to show 100% before hiding
+      setTimeout(() => {
+        setTranslating(false);
+        setTranslationProgress(0);
+      }, 500);
     }
   };
 
@@ -237,7 +275,24 @@ export function QuizPreviewDialog({
       >
         {/* Header */}
         <DialogHeader className="px-4 py-2 border-b flex-shrink-0">
-          <div className="flex items-center justify-between gap-4">
+          {/* AI Translation Progress Bar - shown at very top when translating */}
+          {translating && (
+            <div className="absolute top-0 left-0 right-0 z-50">
+              <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 px-4 py-2 border-b">
+                <div className="flex items-center gap-3 mb-1.5">
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                  <span className="text-sm font-medium text-primary">
+                    AI Translation in progress...
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto tabular-nums">
+                    {translationProgress}%
+                  </span>
+                </div>
+                <Progress value={translationProgress} className="h-1.5" />
+              </div>
+            </div>
+          )}
+          <div className={cn("flex items-center justify-between gap-4", translating && "mt-12")}>
             <div className="flex items-center gap-3 min-w-0">
               <DialogTitle className="text-sm font-semibold truncate">
                 {quizTitle || quizSlug}
