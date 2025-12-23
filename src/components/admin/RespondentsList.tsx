@@ -66,7 +66,9 @@ import {
   AdminEmptyState,
   AdminLoading,
   AdminPagination,
+  DataFetchWrapper,
 } from "@/components/admin";
+import { withRetry } from "@/hooks/useSupabaseConnection";
 
 interface QuizLead {
   id: string;
@@ -150,6 +152,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [emailLogs, setEmailLogs] = useState<Map<string, EmailLogStatus>>(new Map());
   
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQuizFilter, setSelectedQuizFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("365");
@@ -258,43 +262,54 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     }
   }, [highlightedLeadId, leads, preferences.itemsPerPage, onHighlightCleared]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isRetry = false) => {
+    if (isRetry) {
+      setRetrying(true);
+    } else {
+      setLoading(true);
+    }
+    setFetchError(null);
+    
     try {
-      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes, emailLogsRes] = await Promise.all([
-        supabase
-          .from("quiz_leads")
-          .select("id, email, score, total_questions, result_category, created_at, openness_score, language, quiz_id, answers, email_html, email_subject")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("hypothesis_leads")
-          .select("id, email, score, total_questions, created_at, openness_score, language, quiz_id, email_html, email_subject")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("quizzes")
-          .select("*")
-          .eq("is_active", true),
-        supabase
-          .from("quiz_questions")
-          .select("*")
-          .order("question_order", { ascending: true }),
-        supabase
-          .from("quiz_answers")
-          .select("*")
-          .order("answer_order", { ascending: true }),
-        supabase
-          .from("email_logs")
-          .select("quiz_lead_id, hypothesis_lead_id, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body")
-          .in("email_type", ["quiz_result_user", "hypothesis_result_user"])
-          .order("created_at", { ascending: false }),
-      ]);
-
-      if (leadsRes.error) throw leadsRes.error;
-      if (hypothesisLeadsRes.error) throw hypothesisLeadsRes.error;
-      if (quizzesRes.error) throw quizzesRes.error;
-      if (questionsRes.error) throw questionsRes.error;
-      if (answersRes.error) throw answersRes.error;
-      if (emailLogsRes.error) throw emailLogsRes.error;
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes, emailLogsRes] = await withRetry(
+        async () => {
+          const results = await Promise.all([
+            supabase
+              .from("quiz_leads")
+              .select("id, email, score, total_questions, result_category, created_at, openness_score, language, quiz_id, answers, email_html, email_subject")
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("hypothesis_leads")
+              .select("id, email, score, total_questions, created_at, openness_score, language, quiz_id, email_html, email_subject")
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("quizzes")
+              .select("*")
+              .eq("is_active", true),
+            supabase
+              .from("quiz_questions")
+              .select("*")
+              .order("question_order", { ascending: true }),
+            supabase
+              .from("quiz_answers")
+              .select("*")
+              .order("answer_order", { ascending: true }),
+            supabase
+              .from("email_logs")
+              .select("quiz_lead_id, hypothesis_lead_id, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body")
+              .in("email_type", ["quiz_result_user", "hypothesis_result_user"])
+              .order("created_at", { ascending: false }),
+          ]);
+          
+          // Check for errors in any result
+          for (const res of results) {
+            if (res.error) throw res.error;
+          }
+          
+          return results;
+        },
+        { maxRetries: 2, retryDelay: 1000 }
+      );
 
       // Build email logs map by lead_id (use first/most recent log per lead)
       const logsMap = new Map<string, EmailLogStatus>();
@@ -354,17 +369,31 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       setQuizzes(quizzesRes.data || []);
       setQuestions(questionsRes.data || []);
       setAnswers(answersRes.data || []);
-    } catch (error: any) {
+      
+      if (isRetry) {
+        toast({
+          title: "Data refreshed",
+          description: "Successfully loaded respondents data",
+        });
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch respondents data";
       console.error("Error fetching data:", error);
+      setFetchError(errorMessage);
       toast({
         title: "Error",
-        description: "Failed to fetch respondents data",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
+
+  const handleRetry = useCallback(() => {
+    fetchData(true);
+  }, []);
 
   const deleteLead = async (leadId: string, email: string) => {
     try {
@@ -596,9 +625,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                 <TooltipContent>Reset column widths</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+            <Button onClick={() => fetchData()} variant="outline" size="sm" disabled={loading || retrying}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading || retrying ? "animate-spin" : ""}`} />
+              {retrying ? "Retrying..." : "Refresh"}
             </Button>
             <Button onClick={downloadCSV} variant="default" size="sm">
               <Download className="w-4 h-4 mr-2" />
@@ -690,21 +719,29 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         quizzes={quizzes} 
         leads={filteredLeads} 
         loading={loading}
-        onLeadInserted={fetchData}
+        onLeadInserted={() => fetchData()}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         showControls={false}
       />
 
-      {loading ? (
-        <AdminLoading message="Loading respondents..." />
-      ) : filteredLeads.length === 0 ? (
-        <AdminEmptyState
-          icon={Users}
-          title="No submissions found"
-          description="Quiz submissions will appear here once users complete quizzes."
-        />
-      ) : (
+      <DataFetchWrapper
+        loading={loading}
+        error={fetchError}
+        retrying={retrying}
+        onRetry={handleRetry}
+        onRefresh={() => fetchData()}
+        loadingMessage="Loading respondents..."
+        emptyMessage="Quiz submissions will appear here once users complete quizzes."
+        isEmpty={filteredLeads.length === 0}
+      >
+        {filteredLeads.length === 0 ? (
+          <AdminEmptyState
+            icon={Users}
+            title="No submissions found"
+            description="Quiz submissions will appear here once users complete quizzes."
+          />
+        ) : (
         <AdminCard>
           <AdminCardContent noPadding>
             <AdminTable className="table-fixed">
@@ -885,7 +922,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             />
           </AdminCardContent>
         </AdminCard>
-      )}
+        )}
+      </DataFetchWrapper>
 
       {/* Email Quiz History Dialog */}
       <Dialog open={!!selectedEmail} onOpenChange={() => setSelectedEmail(null)}>
