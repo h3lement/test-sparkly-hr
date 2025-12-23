@@ -210,7 +210,7 @@ export function HypothesisQuestionScreen() {
   const answeredCount = Object.values(pageAnswers).filter(v => v !== null).length;
 
   if (!currentPage) {
-    return <div className="text-center p-8">Loading...</div>;
+    return <div className="text-center p-8">{t('loading', 'Loading...', 'Ladataan...')}</div>;
   }
 
   return (
@@ -391,18 +391,18 @@ export function HypothesisQuestionScreen() {
                 <div className="md:hidden p-4 space-y-3">
                   {/* Question Number & Answer Feedback */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-primary">Question {overallNumber}</span>
+                    <span className="text-sm font-bold text-primary">{t('question', 'Question', 'Kysymys')} {overallNumber}</span>
                     {answer !== null && (
                       <div className="flex items-center gap-1">
                         {isCorrect ? (
                           <>
                             <ThumbsUp className="w-4 h-4 text-green-500" />
-                            <span className="text-xs text-green-600 font-medium">Correct!</span>
+                            <span className="text-xs text-green-600 font-medium">{t('correctLabel', 'Correct!', 'Oikein!')}</span>
                           </>
                         ) : (
                           <>
                             <ThumbsDown className="w-4 h-4 text-red-500" />
-                            <span className="text-xs text-red-500 font-medium">Incorrect</span>
+                            <span className="text-xs text-red-500 font-medium">{t('incorrectLabel', 'Incorrect', 'Väärin')}</span>
                           </>
                         )}
                       </div>
@@ -413,7 +413,7 @@ export function HypothesisQuestionScreen() {
                   <div className="p-3 bg-pink-50/80 dark:bg-pink-950/20 rounded-xl border border-pink-200/50 dark:border-pink-800/30">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <span className="text-base">👩</span>
-                      <span className="text-xs font-semibold text-pink-600 dark:text-pink-400 uppercase">Women 50+</span>
+                      <span className="text-xs font-semibold text-pink-600 dark:text-pink-400 uppercase">{t('women', 'Women', 'Naiset')} 50+</span>
                     </div>
                     <p className="text-sm leading-relaxed text-foreground">
                       {womanHypothesis}
@@ -424,7 +424,7 @@ export function HypothesisQuestionScreen() {
                   <div className="p-3 bg-blue-50/80 dark:bg-blue-950/20 rounded-xl border border-blue-200/50 dark:border-blue-800/30">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <span className="text-base">👨</span>
-                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">Men 50+</span>
+                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('men', 'Men', 'Miehet')} 50+</span>
                     </div>
                     <p className="text-sm leading-relaxed text-foreground">
                       {manHypothesis}
@@ -441,7 +441,7 @@ export function HypothesisQuestionScreen() {
                       )}
                       onClick={() => handleAnswer(question.id, true)}
                     >
-                      True
+                      {t('trueLabel', 'True', 'Tosi')}
                     </Button>
                     <Button
                       variant={answer === false ? "default" : "outline"}
@@ -451,7 +451,7 @@ export function HypothesisQuestionScreen() {
                       )}
                       onClick={() => handleAnswer(question.id, false)}
                     >
-                      False
+                      {t('falseLabel', 'False', 'Epätosi')}
                     </Button>
                   </div>
                 </div>
@@ -473,7 +473,7 @@ export function HypothesisQuestionScreen() {
                 setPageAnswers(newAnswers);
               }}
             >
-              All True
+              {t('allTrue', 'All True', 'Kaikki tosi')}
             </Button>
             <Button
               size="sm"
@@ -485,11 +485,11 @@ export function HypothesisQuestionScreen() {
                 setPageAnswers(newAnswers);
               }}
             >
-              All False
+              {t('allFalse', 'All False', 'Kaikki epätosi')}
             </Button>
           </div>
           {allQuestionsAnswered && (
-            <span className="text-xs text-green-600 font-semibold">✓ Ready!</span>
+            <span className="text-xs text-green-600 font-semibold">✓ {t('ready', 'Ready!', 'Valmis!')}</span>
           )}
         </div>
       </div>
@@ -507,7 +507,7 @@ export function HypothesisQuestionScreen() {
             className="h-14 px-8 text-lg font-semibold rounded-xl border-2"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Previous
+            {t('previous', 'Previous', 'Edellinen')}
           </Button>
         )}
         <Button
@@ -519,18 +519,18 @@ export function HypothesisQuestionScreen() {
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Submitting...
+              {t('submitting', 'Submitting...', 'Lähetetään...')}
             </>
           ) : (
             <>
               {currentPageIndex < sortedPages.length - 1 ? (
                 <>
-                  Submit & Next Page ({answeredCount}/{pageQuestions.length})
+                  {t('submitNextPage', 'Submit & Next Page', 'Lähetä & Seuraava sivu')} ({answeredCount}/{pageQuestions.length})
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               ) : (
                 <>
-                  Submit & See Results ({answeredCount}/{pageQuestions.length})
+                  {t('submitSeeResults', 'Submit & See Results', 'Lähetä & Katso tulokset')} ({answeredCount}/{pageQuestions.length})
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}
