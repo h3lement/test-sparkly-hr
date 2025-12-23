@@ -72,6 +72,13 @@ interface CTATemplate {
   cta_url: string;
   created_at: string;
   created_by_email: string | null;
+  source_email_template_id: string | null;
+}
+
+interface SourceEmailTemplate {
+  id: string;
+  version_number: number;
+  template_type: string;
 }
 
 interface EmailTemplateLink {
@@ -113,6 +120,7 @@ export function CTATemplateManager() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [templates, setTemplates] = useState<CTATemplate[]>([]);
   const [emailTemplateLinks, setEmailTemplateLinks] = useState<EmailTemplateLink[]>([]);
+  const [sourceEmailTemplates, setSourceEmailTemplates] = useState<Record<string, SourceEmailTemplate>>({});
   const [selectedQuizId, setSelectedQuizId] = useState<string>("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
   const [loading, setLoading] = useState(true);
@@ -209,7 +217,7 @@ export function CTATemplateManager() {
         }));
         setTemplates(typedTemplates);
 
-        // Fetch email templates that link to CTAs
+        // Fetch email templates that link to CTAs (used by CTAs)
         const ctaIds = typedTemplates.map(t => t.id);
         if (ctaIds.length > 0) {
           const { data: emailData, error: emailError } = await supabase
@@ -219,6 +227,26 @@ export function CTATemplateManager() {
 
           if (!emailError && emailData) {
             setEmailTemplateLinks(emailData as EmailTemplateLink[]);
+          }
+        }
+
+        // Fetch source email templates (CTAs extracted from these)
+        const sourceEmailIds = typedTemplates
+          .map(t => t.source_email_template_id)
+          .filter((id): id is string => !!id);
+        
+        if (sourceEmailIds.length > 0) {
+          const { data: sourceData, error: sourceError } = await supabase
+            .from("email_templates")
+            .select("id, version_number, template_type")
+            .in("id", sourceEmailIds);
+
+          if (!sourceError && sourceData) {
+            const sourceMap: Record<string, SourceEmailTemplate> = {};
+            sourceData.forEach(s => {
+              sourceMap[s.id] = s as SourceEmailTemplate;
+            });
+            setSourceEmailTemplates(sourceMap);
           }
         }
       }
@@ -587,7 +615,7 @@ export function CTATemplateManager() {
                 <div className="w-[80px] px-3 py-2">Version</div>
                 <div className="w-[130px] px-3 py-2">Quiz</div>
                 <div className="w-[150px] px-3 py-2">Name</div>
-                <div className="w-[80px] px-3 py-2 text-center">Source</div>
+                <div className="w-[100px] px-3 py-2 text-center">Source</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
                 <div className="w-[140px] px-3 py-2">Email Templates</div>
                 <div className="w-[130px] px-3 py-2">Created</div>
@@ -596,7 +624,10 @@ export function CTATemplateManager() {
               </div>
               {filteredTemplates.map(template => {
                 const quiz = quizzes.find(q => q.id === template.quiz_id);
-                const isExtractedFromEmail = !template.name || template.name === "Untitled CTA";
+                const sourceEmail = template.source_email_template_id 
+                  ? sourceEmailTemplates[template.source_email_template_id] 
+                  : null;
+                const isExtractedFromEmail = !!template.source_email_template_id;
                 return (
                   <div
                     key={template.id}
@@ -621,12 +652,21 @@ export function CTATemplateManager() {
                     <div className="w-[150px] px-3 py-2 truncate text-muted-foreground">
                       {template.name || "Untitled CTA"}
                     </div>
-                    <div className="w-[80px] px-3 py-2 text-center">
+                    <div className="w-[100px] px-3 py-2 text-center">
                       {isExtractedFromEmail ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1">
-                          <Mail className="w-2.5 h-2.5" />
-                          Email
-                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 cursor-help">
+                                <Mail className="w-2.5 h-2.5" />
+                                Email v{sourceEmail?.version_number || "?"}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Extracted from Email Template v{sourceEmail?.version_number || "?"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       ) : (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           Manual
