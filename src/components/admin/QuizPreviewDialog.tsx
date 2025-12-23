@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { 
-  ExternalLink, 
-  Home, 
-  HelpCircle, 
-  Mail, 
+import {
+  ExternalLink,
+  Home,
+  HelpCircle,
+  Mail,
   Trophy,
   Maximize2,
   Minimize2,
@@ -23,7 +23,7 @@ import {
   Brain,
   Loader2,
   Languages,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { TranslationDialog, TranslationOptions } from "./TranslationDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,14 +105,43 @@ export function QuizPreviewDialog({
   const [showTranslationDialog, setShowTranslationDialog] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [translationProgress, setTranslationProgress] = useState(0);
-  // Build quiz pages based on question count - memoized for performance
+  const [hypothesisPageCount, setHypothesisPageCount] = useState<number | null>(null);
+
+  // Fetch hypothesis page count so preview shortcuts match actual hypothesis_pages
+  useEffect(() => {
+    if (!open || quizType !== "hypothesis") return;
+
+    let cancelled = false;
+    (async () => {
+      const { count, error } = await supabase
+        .from("hypothesis_pages")
+        .select("id", { count: "exact", head: true })
+        .eq("quiz_id", quizId);
+
+      if (cancelled) return;
+      if (error) {
+        console.error("Failed to load hypothesis pages count", error);
+        setHypothesisPageCount(null);
+        return;
+      }
+      setHypothesisPageCount(typeof count === "number" ? count : null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, quizType, quizId]);
+
+  // Build quiz pages based on question/page count - memoized for performance
   const quizPages = useMemo(() => {
-    const pages = [
-      { id: "welcome", label: "Welcome", icon: Home, step: "welcome" },
-    ];
-    
-    // Add question pages
-    for (let i = 1; i <= questionCount; i++) {
+    const pages = [{ id: "welcome", label: "Welcome", icon: Home, step: "welcome" }];
+
+    const count =
+      quizType === "hypothesis"
+        ? Math.max(1, hypothesisPageCount ?? 0)
+        : Math.max(1, questionCount);
+
+    for (let i = 1; i <= count; i++) {
       pages.push({
         id: `q${i}`,
         label: `Q${i}`,
@@ -120,31 +149,30 @@ export function QuizPreviewDialog({
         step: `q${i}`,
       });
     }
-    
+
     // Add open-mindedness if enabled
     if (includeOpenMindedness) {
       pages.push({ id: "mindedness", label: "Open Mind", icon: Brain, step: "mindedness" });
     }
-    
+
     // Add email and results
     pages.push(
       { id: "email", label: "Email", icon: Mail, step: "email" },
       { id: "results", label: "Results", icon: Trophy, step: "results" }
     );
-    
+
     return pages;
-  }, [questionCount, includeOpenMindedness]);
+  }, [questionCount, includeOpenMindedness, quizType, hypothesisPageCount]);
 
   // Get current page index for navigation
-  const currentPageIndex = quizPages.findIndex(p => p.id === currentPage);
+  const currentPageIndex = quizPages.findIndex((p) => p.id === currentPage);
   const canGoPrev = currentPageIndex > 0;
   const canGoNext = currentPageIndex < quizPages.length - 1;
 
   // Build iframe URL - correct format: /:quizSlug/:step?lang=xx&preview=1
   const iframeUrl = useMemo(() => {
-    const page = quizPages.find(p => p.id === currentPage);
+    const page = quizPages.find((p) => p.id === currentPage);
     const step = page?.step || "welcome";
-    // Format: /quiz-slug/step?lang=en&preview=1 (preview mode allows direct page access)
     return `/${quizSlug}/${step}?lang=${selectedLanguage}&preview=1`;
   }, [quizSlug, currentPage, selectedLanguage, quizPages]);
 
