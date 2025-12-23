@@ -964,7 +964,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.result, minWidth: columnWidths.result }}>
                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 truncate max-w-full">
-                          {lead.result_category}
+                          {lead.leadType === "hypothesis" ? `${lead.score}/${lead.total_questions}` : lead.result_category}
                         </Badge>
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.openness, minWidth: columnWidths.openness }}>
