@@ -180,7 +180,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     result: 140,
     openness: 90,
     lang: 60,
-    emailStatus: 80,
+    emailStatus: 110,
     submitted: 140,
     actions: 50,
   }), []);
