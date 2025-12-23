@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -358,9 +363,16 @@ export function QuizRespondents({ quizId, displayLanguage, quizType = "standard"
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">Respondents</span>
-          <Badge variant="secondary" className="text-xs">
-            {totalCount}
-          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="text-xs cursor-help">
+                {totalCount}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Unique / Total</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
         <div className="flex items-center gap-2">
           <Button
