@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.render-email-preview]
 verify_jwt = true
+
+[functions.pregenerate-email-preview]
+verify_jwt = false
