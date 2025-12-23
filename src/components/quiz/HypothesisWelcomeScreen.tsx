@@ -1,12 +1,17 @@
 import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage, languages } from './LanguageContext';
+import { useUiTranslations } from '@/hooks/useUiTranslations';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Globe, Users, Target, CheckCircle, Award } from 'lucide-react';
 
 export function HypothesisWelcomeScreen() {
   const { setCurrentStep, quizData, questions } = useHypothesisQuiz();
   const { language, setLanguage } = useLanguage();
+
+  const { getTranslation } = useUiTranslations({ quizId: quizData?.id || null, language });
+  const t = (key: string, fallback: string, fiFallback?: string) =>
+    getTranslation(key, language === 'fi' ? (fiFallback ?? fallback) : fallback);
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
@@ -18,11 +23,18 @@ export function HypothesisWelcomeScreen() {
     return quizData.discover_items.map(item => getText(item));
   };
 
-  const defaultDiscoverItems = [
-    'Uncover hidden assumptions about 50+ employees',
-    'Test your bias awareness with real scenarios',
-    'Get evidence-based insights for better hiring',
-  ];
+  const defaultDiscoverItems =
+    language === 'fi'
+      ? [
+          'Paljasta piileviä oletuksia 50+ työntekijöistä',
+          'Testaa ennakkoluulojasi käytännön tilanteilla',
+          'Saa tutkimusperusteisia oivalluksia parempaan rekrytointiin',
+        ]
+      : [
+          'Uncover hidden assumptions about 50+ employees',
+          'Test your bias awareness with real scenarios',
+          'Get evidence-based insights for better hiring',
+        ];
 
   const discoverItems = getDiscoverItems().length > 0 ? getDiscoverItems() : defaultDiscoverItems;
 
@@ -32,7 +44,7 @@ export function HypothesisWelcomeScreen() {
         href="#start-quiz" 
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
       >
-        Skip to start quiz
+        {language === 'fi' ? 'Siirry aloitukseen' : 'Skip to start quiz'}
       </a>
 
       {/* Language Selector */}
@@ -72,11 +84,11 @@ export function HypothesisWelcomeScreen() {
       <div className="grid grid-cols-2 gap-4 mb-8 max-w-md mx-auto">
         <div className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="text-3xl font-bold text-primary mb-1">{questions.length}</div>
-          <div className="text-sm text-muted-foreground">Hypotheses to test</div>
+          <div className="text-sm text-muted-foreground">{language === 'fi' ? 'Hypoteesia testattavana' : 'Hypotheses to test'}</div>
         </div>
         <div className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="text-3xl font-bold text-primary mb-1">~5</div>
-          <div className="text-sm text-muted-foreground">Minutes to complete</div>
+          <div className="text-sm text-muted-foreground">{language === 'fi' ? 'Minuuttia' : 'Minutes to complete'}</div>
         </div>
       </div>
       
@@ -84,7 +96,7 @@ export function HypothesisWelcomeScreen() {
       <section className="bg-card border border-border/50 rounded-2xl p-6 md:p-8 mb-10 text-left shadow-sm" aria-labelledby="discover-heading">
         <h2 id="discover-heading" className="font-heading text-xl font-semibold mb-5 text-foreground flex items-center gap-2">
           <Users className="w-5 h-5 text-primary" />
-          What you'll discover:
+          {t('discoverTitle', "What you'll discover:", 'Mitä saat selville:')}
         </h2>
         <ul className="space-y-4" role="list">
           {discoverItems.map((item, i) => (
@@ -107,7 +119,7 @@ export function HypothesisWelcomeScreen() {
           className="bg-primary text-primary-foreground px-10 py-6 text-base font-semibold rounded-xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:bg-primary/90 transition-all duration-300"
           aria-describedby="quiz-duration"
         >
-          {getText(quizData?.cta_text, 'Start the Test')}
+          {getText(quizData?.cta_text, t('startButton', 'Start Free Assessment', 'Aloita ilmainen arviointi'))}
         </Button>
         <Button 
           onClick={() => setCurrentStep('quiz')}
@@ -115,7 +127,7 @@ export function HypothesisWelcomeScreen() {
           size="lg"
           className="px-10 py-6 text-base font-semibold rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 transition-all duration-300"
         >
-          Free Assessment
+          {t('startButton', 'Free Assessment', 'Ilmainen arviointi')}
         </Button>
       </div>
       

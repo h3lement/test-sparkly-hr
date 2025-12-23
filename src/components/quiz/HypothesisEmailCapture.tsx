@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { useUiTranslations } from '@/hooks/useUiTranslations';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { Mail, Lightbulb, Target } from 'lucide-react';
@@ -32,14 +33,20 @@ export function HypothesisEmailCapture() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  const { getTranslation } = useUiTranslations({ quizId: quizData?.id || null, language });
+  const t = (key: string, fallback: string, fiFallback?: string) =>
+    getTranslation(key, language === 'fi' ? (fiFallback ?? fallback) : fallback);
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const validation = emailSchema.safeParse(email);
     if (!validation.success) {
       toast({
-        title: 'Invalid email',
-        description: validation.error.errors[0]?.message || 'Please enter a valid email address.',
+        title: t('invalidEmail', 'Invalid email', 'Virheellinen sähköposti'),
+        description:
+          validation.error.errors[0]?.message || t('somethingWrong', 'Please enter a valid email address.', 'Syötä kelvollinen sähköpostiosoite.'),
         variant: 'destructive',
       });
       return;
