@@ -186,14 +186,26 @@ export type Database = {
       }
       email_logs: {
         Row: {
+          bounce_reason: string | null
+          bounce_type: string | null
+          bounced_at: string | null
+          click_count: number | null
+          clicked_at: string | null
+          complained_at: string | null
+          complaint_type: string | null
           created_at: string
+          delivered_at: string | null
+          delivery_status: string | null
           email_type: string
           error_message: string | null
           html_body: string | null
           id: string
           language: string | null
           last_attempt_at: string | null
+          open_count: number | null
+          opened_at: string | null
           original_log_id: string | null
+          provider_response: Json | null
           quiz_id: string | null
           quiz_lead_id: string | null
           recipient_email: string
@@ -205,14 +217,26 @@ export type Database = {
           subject: string
         }
         Insert: {
+          bounce_reason?: string | null
+          bounce_type?: string | null
+          bounced_at?: string | null
+          click_count?: number | null
+          clicked_at?: string | null
+          complained_at?: string | null
+          complaint_type?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
           email_type: string
           error_message?: string | null
           html_body?: string | null
           id?: string
           language?: string | null
           last_attempt_at?: string | null
+          open_count?: number | null
+          opened_at?: string | null
           original_log_id?: string | null
+          provider_response?: Json | null
           quiz_id?: string | null
           quiz_lead_id?: string | null
           recipient_email: string
@@ -224,14 +248,26 @@ export type Database = {
           subject: string
         }
         Update: {
+          bounce_reason?: string | null
+          bounce_type?: string | null
+          bounced_at?: string | null
+          click_count?: number | null
+          clicked_at?: string | null
+          complained_at?: string | null
+          complaint_type?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
           email_type?: string
           error_message?: string | null
           html_body?: string | null
           id?: string
           language?: string | null
           last_attempt_at?: string | null
+          open_count?: number | null
+          opened_at?: string | null
           original_log_id?: string | null
+          provider_response?: Json | null
           quiz_id?: string | null
           quiz_lead_id?: string | null
           recipient_email?: string
@@ -413,6 +449,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_webhook_events: {
+        Row: {
+          created_at: string
+          event_data: Json
+          event_type: string
+          id: string
+          processed: boolean
+          resend_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json
+          event_type: string
+          id?: string
+          processed?: boolean
+          resend_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json
+          event_type?: string
+          id?: string
+          processed?: boolean
+          resend_id?: string
+        }
+        Relationships: []
       }
       hypothesis_leads: {
         Row: {
