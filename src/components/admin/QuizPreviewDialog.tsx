@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Brain
+  Brain,
+  Loader2
 } from "lucide-react";
 
 // Primary languages shown first
@@ -56,6 +57,8 @@ const OTHER_LANGUAGES = [
 
 const ALL_LANGUAGES = [...PRIMARY_LANGUAGES, ...OTHER_LANGUAGES];
 
+const STORAGE_KEY = "quiz-preview-language";
+
 interface QuizPreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -75,10 +78,18 @@ export function QuizPreviewDialog({
   questionCount = 6,
   includeOpenMindedness = true,
 }: QuizPreviewDialogProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  // Initialize language from localStorage
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || "en";
+    } catch {
+      return "en";
+    }
+  });
   const [currentPage, setCurrentPage] = useState("welcome");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Build quiz pages based on question count - memoized for performance
   const quizPages = useMemo(() => {
@@ -127,12 +138,18 @@ export function QuizPreviewDialog({
   useEffect(() => {
     if (open) {
       setCurrentPage("welcome");
+      setIsLoading(true);
       // Small delay before refreshing iframe
       setTimeout(() => setIframeKey(prev => prev + 1), 50);
     }
   }, [open]);
 
+  const handleIframeLoad = useCallback(() => {
+    setIsLoading(false);
+  }, []);
+
   const handleRefresh = () => {
+    setIsLoading(true);
     setIframeKey(prev => prev + 1);
   };
 
@@ -142,12 +159,18 @@ export function QuizPreviewDialog({
 
   const handleLanguageChange = (langCode: string) => {
     setSelectedLanguage(langCode);
-    // Don't auto-refresh on language change - let user refresh manually if needed
+    // Persist to localStorage
+    try {
+      localStorage.setItem(STORAGE_KEY, langCode);
+    } catch {
+      // Ignore storage errors
+    }
   };
 
   const handlePageChange = (pageId: string) => {
     if (pageId !== currentPage) {
       setCurrentPage(pageId);
+      setIsLoading(true);
       setIframeKey(prev => prev + 1);
     }
   };
@@ -305,12 +328,22 @@ export function QuizPreviewDialog({
         </div>
 
         {/* Quiz Preview Iframe */}
-        <div className="flex-1 overflow-hidden bg-background">
+        <div className="flex-1 overflow-hidden bg-background relative">
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Loading preview...</span>
+              </div>
+            </div>
+          )}
           <iframe
             key={iframeKey}
             src={iframeUrl}
             className="w-full h-full border-0"
             title="Quiz Preview"
+            onLoad={handleIframeLoad}
           />
         </div>
       </DialogContent>
