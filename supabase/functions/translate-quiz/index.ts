@@ -334,14 +334,30 @@ serve(async (req) => {
       }
     }
 
-    // Discover items (array of strings)
-    const discoverItems = quiz.discover_items?.[sourceLanguage] || [];
-    if (Array.isArray(discoverItems)) {
-      discoverItems.forEach((item: string, idx: number) => {
-        if (item) {
-          allTexts.push({ path: `quiz.discover_items.${idx}`, text: item, hash: simpleHash(item) });
+    // Discover items - handle two structures:
+    // Structure A: {en: ["item1", "item2"], fi: ["item1", "item2"]} (language -> array)
+    // Structure B: [{en: "item1", fi: "item1"}, {en: "item2", fi: "item2"}] (array of lang objects)
+    const discoverItemsRaw = quiz.discover_items;
+    if (discoverItemsRaw) {
+      if (Array.isArray(discoverItemsRaw)) {
+        // Structure B: array of language objects
+        discoverItemsRaw.forEach((item: Record<string, string>, idx: number) => {
+          const text = item?.[sourceLanguage];
+          if (text) {
+            allTexts.push({ path: `quiz.discover_items.${idx}`, text, hash: simpleHash(text) });
+          }
+        });
+      } else if (typeof discoverItemsRaw === 'object') {
+        // Structure A: language -> array
+        const discoverItems = discoverItemsRaw[sourceLanguage] || [];
+        if (Array.isArray(discoverItems)) {
+          discoverItems.forEach((item: string, idx: number) => {
+            if (item) {
+              allTexts.push({ path: `quiz.discover_items.${idx}`, text: item, hash: simpleHash(item) });
+            }
+          });
         }
-      });
+      }
     }
 
     // Questions
@@ -552,17 +568,35 @@ ${JSON.stringify(textsToTranslate.map(t => ({ path: t.path, text: t.text })), nu
       updatedQuiz[field] = currentValue;
     }
 
-    // Handle discover_items
-    const updatedDiscoverItems = quiz.discover_items || {};
-    for (const langCode of Object.keys(translations)) {
-      const items: string[] = [];
-      let idx = 0;
-      while (translations[langCode]?.[`quiz.discover_items.${idx}`]) {
-        items.push(translations[langCode][`quiz.discover_items.${idx}`]);
-        idx++;
-      }
-      if (items.length > 0) {
-        updatedDiscoverItems[langCode] = items;
+    // Handle discover_items - detect and preserve structure
+    const existingDiscoverItems = quiz.discover_items;
+    let updatedDiscoverItems: any;
+    
+    if (Array.isArray(existingDiscoverItems)) {
+      // Structure B: array of language objects [{en: "...", fi: "..."}, ...]
+      updatedDiscoverItems = existingDiscoverItems.map((item: Record<string, string>, idx: number) => {
+        const newItem = { ...item };
+        for (const langCode of Object.keys(translations)) {
+          const translated = translations[langCode]?.[`quiz.discover_items.${idx}`];
+          if (translated) {
+            newItem[langCode] = translated;
+          }
+        }
+        return newItem;
+      });
+    } else {
+      // Structure A: {en: [...], fi: [...]} - language -> array
+      updatedDiscoverItems = existingDiscoverItems || {};
+      for (const langCode of Object.keys(translations)) {
+        const items: string[] = [];
+        let idx = 0;
+        while (translations[langCode]?.[`quiz.discover_items.${idx}`]) {
+          items.push(translations[langCode][`quiz.discover_items.${idx}`]);
+          idx++;
+        }
+        if (items.length > 0) {
+          updatedDiscoverItems[langCode] = items;
+        }
       }
     }
     updatedQuiz.discover_items = updatedDiscoverItems;
