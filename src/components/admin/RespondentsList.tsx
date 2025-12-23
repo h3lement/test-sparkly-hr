@@ -14,8 +14,20 @@ import {
   ChevronUp,
   Users,
   Calendar,
-  Wifi
+  Wifi,
+  Mail,
+  MailCheck,
+  MailOpen,
+  MailX,
+  MailWarning,
+  Clock
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -97,6 +109,15 @@ interface QuizAnswer {
   answer_order: number;
 }
 
+interface EmailLogStatus {
+  lead_id: string;
+  status: string;
+  delivery_status: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  bounced_at: string | null;
+}
+
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 interface RespondentsPreferences {
@@ -117,6 +138,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
+  const [emailLogs, setEmailLogs] = useState<Map<string, EmailLogStatus>>(new Map());
   
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -211,7 +233,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes, emailLogsRes] = await Promise.all([
         supabase
           .from("quiz_leads")
           .select("*")
@@ -232,6 +254,11 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .from("quiz_answers")
           .select("*")
           .order("answer_order", { ascending: true }),
+        supabase
+          .from("email_logs")
+          .select("quiz_lead_id, hypothesis_lead_id, status, delivery_status, opened_at, clicked_at, bounced_at")
+          .in("email_type", ["quiz_result_user", "hypothesis_result_user"])
+          .order("created_at", { ascending: false }),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
@@ -239,6 +266,24 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       if (quizzesRes.error) throw quizzesRes.error;
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
+      if (emailLogsRes.error) throw emailLogsRes.error;
+
+      // Build email logs map by lead_id (use first/most recent log per lead)
+      const logsMap = new Map<string, EmailLogStatus>();
+      (emailLogsRes.data || []).forEach((log) => {
+        const leadId = log.quiz_lead_id || log.hypothesis_lead_id;
+        if (leadId && !logsMap.has(leadId)) {
+          logsMap.set(leadId, {
+            lead_id: leadId,
+            status: log.status,
+            delivery_status: log.delivery_status,
+            opened_at: log.opened_at,
+            clicked_at: log.clicked_at,
+            bounced_at: log.bounced_at,
+          });
+        }
+      });
+      setEmailLogs(logsMap);
 
       // Convert hypothesis leads to match QuizLead interface
       const hypothesisLeadsConverted: QuizLead[] = (hypothesisLeadsRes.data || []).map((hl) => ({
@@ -386,6 +431,33 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       return {};
     }
     return answersJson as Record<string, string>;
+  };
+
+  // Get email status icon and info for a lead
+  const getEmailStatusInfo = (leadId: string) => {
+    const log = emailLogs.get(leadId);
+    if (!log) {
+      return { icon: Clock, color: "text-muted-foreground", label: "No email sent" };
+    }
+    if (log.bounced_at) {
+      return { icon: MailX, color: "text-destructive", label: "Bounced" };
+    }
+    if (log.clicked_at) {
+      return { icon: MailCheck, color: "text-green-600", label: "Clicked" };
+    }
+    if (log.opened_at) {
+      return { icon: MailOpen, color: "text-blue-500", label: "Opened" };
+    }
+    if (log.delivery_status === "delivered") {
+      return { icon: MailCheck, color: "text-green-500", label: "Delivered" };
+    }
+    if (log.status === "sent") {
+      return { icon: Mail, color: "text-primary", label: "Sent" };
+    }
+    if (log.status === "failed") {
+      return { icon: MailWarning, color: "text-destructive", label: "Failed" };
+    }
+    return { icon: Mail, color: "text-muted-foreground", label: log.status };
   };
 
   // Apply quiz filter first
@@ -594,6 +666,9 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                 <AdminTableCell header>Result</AdminTableCell>
                 <AdminTableCell header>Openness</AdminTableCell>
                 <AdminTableCell header>Lang</AdminTableCell>
+                <AdminTableCell header>
+                  <Mail className="w-4 h-4" />
+                </AdminTableCell>
                 <AdminTableCell header>Submitted</AdminTableCell>
                 <AdminTableCell header align="right">&nbsp;</AdminTableCell>
               </AdminTableHeader>
@@ -608,6 +683,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                   const quizQuestions = getQuestionsForQuiz(effectiveQuizId);
                   const leadAnswers = parseLeadAnswers(lead.answers);
                   const hasAnswers = quizQuestions.length > 0 && Object.keys(leadAnswers).length > 0;
+                  const emailStatus = getEmailStatusInfo(lead.id);
+                  const EmailIcon = emailStatus.icon;
 
                   return (
                     <Fragment key={lead.id}>
@@ -705,6 +782,20 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           </Badge>
                         </AdminTableCell>
                         <AdminTableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className={cn("flex items-center justify-center", emailStatus.color)}>
+                                  <EmailIcon className="w-4 h-4" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{emailStatus.label}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </AdminTableCell>
+                        <AdminTableCell>
                           <span className="text-sm text-muted-foreground">{formatDate(lead.created_at)}</span>
                         </AdminTableCell>
                         <AdminTableCell align="right">
@@ -723,7 +814,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </AdminTableRow>
                       {isExpanded && hasAnswers && (
                         <tr key={`${lead.id}-expanded`}>
-                          <td colSpan={9} className="density-px density-py bg-secondary/20">
+                          <td colSpan={10} className="density-px density-py bg-secondary/20">
                             <div className="space-y-3">
                               <p className="text-sm font-medium text-foreground">Quiz Answers</p>
                               <div className="grid gap-2">
