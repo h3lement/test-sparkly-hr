@@ -144,6 +144,10 @@ function hasSmtpConfigured(config: EmailConfigSettings): boolean {
   return !!(config.smtpHost && config.smtpUsername && config.smtpPassword);
 }
 
+function isEmailServiceConfigured(config: EmailConfigSettings): boolean {
+  return hasSmtpConfigured(config);
+}
+
 // Encode subject line for UTF-8 support (RFC 2047)
 function encodeSubject(subject: string): string {
   if (!/^[\x00-\x7F]*$/.test(subject)) {
