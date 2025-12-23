@@ -494,6 +494,8 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          email_html: string | null
+          email_subject: string | null
           feedback_action_plan: string | null
           feedback_new_learnings: string | null
           id: string
@@ -507,6 +509,8 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          email_html?: string | null
+          email_subject?: string | null
           feedback_action_plan?: string | null
           feedback_new_learnings?: string | null
           id?: string
@@ -520,6 +524,8 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          email_html?: string | null
+          email_subject?: string | null
           feedback_action_plan?: string | null
           feedback_new_learnings?: string | null
           id?: string
@@ -859,6 +865,8 @@ export type Database = {
           answers: Json | null
           created_at: string
           email: string
+          email_html: string | null
+          email_subject: string | null
           id: string
           language: string | null
           openness_score: number | null
@@ -871,6 +879,8 @@ export type Database = {
           answers?: Json | null
           created_at?: string
           email: string
+          email_html?: string | null
+          email_subject?: string | null
           id?: string
           language?: string | null
           openness_score?: number | null
@@ -883,6 +893,8 @@ export type Database = {
           answers?: Json | null
           created_at?: string
           email?: string
+          email_html?: string | null
+          email_subject?: string | null
           id?: string
           language?: string | null
           openness_score?: number | null

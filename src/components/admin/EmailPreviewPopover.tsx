@@ -34,45 +34,9 @@ interface EmailPreviewPopoverProps {
   emailStatusLabel: string;
   emailStatusColor: string;
   EmailIcon: React.ElementType;
-  // Prefetched preview data from parent
-  prefetchedHtml?: string | null;
-  prefetchedSubject?: string | null;
-  prefetchLoading?: boolean;
-}
-
-type RenderEmailPreviewBody = { leadId: string; leadType: "quiz" | "hypothesis" };
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-async function invokeRenderEmailPreview(
-  body: RenderEmailPreviewBody,
-  opts?: { retries?: number }
-): Promise<any> {
-  const retries = opts?.retries ?? 1;
-  let lastErr: any = null;
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const { data, error } = await supabase.functions.invoke("render-email-preview", {
-      body,
-    });
-
-    if (!error) return data;
-
-    lastErr = error;
-    const status = (error as any)?.status;
-    const msg = String((error as any)?.message ?? "");
-    const isBootError =
-      status === 503 || msg.includes("BOOT_ERROR") || msg.toLowerCase().includes("failed to start");
-
-    if (isBootError && attempt < retries) {
-      await sleep(1200 * (attempt + 1));
-      continue;
-    }
-
-    throw error;
-  }
-
-  throw lastErr ?? new Error("Failed to render email preview");
+  // Pre-stored email content from lead record (instant access)
+  storedEmailHtml?: string | null;
+  storedEmailSubject?: string | null;
 }
 
 export function EmailPreviewPopover({
@@ -83,52 +47,52 @@ export function EmailPreviewPopover({
   emailStatusLabel,
   emailStatusColor,
   EmailIcon,
-  prefetchedHtml,
-  prefetchedSubject,
-  prefetchLoading: parentLoading = false,
+  storedEmailHtml,
+  storedEmailSubject,
 }: EmailPreviewPopoverProps) {
   const [open, setOpen] = useState(false);
+  const [regeneratedHtml, setRegeneratedHtml] = useState<string | null>(null);
+  const [regeneratedSubject, setRegeneratedSubject] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  const [localHtml, setLocalHtml] = useState<string | null>(null);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [localSubject, setLocalSubject] = useState<string | null>(null);
-
-  // Use prefetched data if available, otherwise use local state
-  const previewHtml = prefetchedHtml ?? localHtml;
-  const previewSubject = prefetchedSubject ?? localSubject;
-  const previewLoading = parentLoading || localLoading;
-
+  // Priority: 1) Sent email from logs, 2) Stored on lead, 3) Regenerated
   const canShowSentHtml = Boolean(emailLog?.html_body);
+  const hasStoredEmail = Boolean(storedEmailHtml);
+  
+  const displayHtml = canShowSentHtml 
+    ? emailLog!.html_body! 
+    : (storedEmailHtml || regeneratedHtml);
+  
+  const displaySubject = canShowSentHtml 
+    ? emailLog?.subject 
+    : (storedEmailSubject || regeneratedSubject || "Email Preview");
 
-  const fetchPreview = async (force = false) => {
-    if ((!force && previewHtml) || localLoading) return;
-    setLocalLoading(true);
-    setPreviewError(null);
+  const hasContent = Boolean(displayHtml);
+
+  const regeneratePreview = async () => {
+    setRegenerating(true);
+    setRegenerateError(null);
 
     try {
-      const data = await invokeRenderEmailPreview({ leadId, leadType }, { retries: 1 });
+      const { data, error } = await supabase.functions.invoke("render-email-preview", {
+        body: { leadId, leadType },
+      });
 
-      setLocalHtml(data?.html ?? null);
-      setLocalSubject(data?.subject ?? null);
+      if (error) throw error;
+
+      setRegeneratedHtml(data?.html ?? null);
+      setRegeneratedSubject(data?.subject ?? null);
       if (!data?.html) {
-        setPreviewError("No preview HTML was returned");
+        setRegenerateError("No preview HTML was returned");
       }
     } catch (err: any) {
-      console.error("Failed to fetch email preview:", err);
-      setPreviewError(err?.message || `Failed to load preview (${leadType}: ${leadId})`);
+      console.error("Failed to regenerate email preview:", err);
+      setRegenerateError(err?.message || "Failed to regenerate preview");
     } finally {
-      setLocalLoading(false);
+      setRegenerating(false);
     }
   };
-
-  // Auto-fetch if dialog opens and no prefetched/sent data available
-  useEffect(() => {
-    if (!open) return;
-    if (!canShowSentHtml && !previewHtml && !previewLoading) {
-      void fetchPreview(false);
-    }
-  }, [open, canShowSentHtml, previewHtml, previewLoading]);
 
   return (
     <>
@@ -176,58 +140,65 @@ export function EmailPreviewPopover({
                 <span className="text-xs text-muted-foreground">
                   Submitted: {formatTimestamp(leadCreatedAt)}
                 </span>
+                {hasStoredEmail && !canShowSentHtml && (
+                  <Badge variant="outline" className="text-xs">
+                    Prepared
+                  </Badge>
+                )}
               </div>
               {!canShowSentHtml && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchPreview(true)}
-                  disabled={previewLoading}
+                  onClick={regeneratePreview}
+                  disabled={regenerating}
                 >
-                  {previewLoading ? (
+                  {regenerating ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : previewHtml ? (
-                    <>
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Regenerate
+                      Regenerating...
                     </>
                   ) : (
                     <>
-                      <Eye className="w-4 h-4 mr-2" />
-                      Generate
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Regenerate
                     </>
                   )}
                 </Button>
               )}
             </div>
             <DialogTitle className="text-sm font-medium truncate mt-2">
-              {canShowSentHtml ? emailLog?.subject : previewSubject || "Email Preview"}
+              {displaySubject}
             </DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden">
-            {canShowSentHtml ? (
-              <EmailHtmlViewer html={emailLog!.html_body!} heightClassName="h-[calc(90vh-120px)]" iframeHeight={800} title="Sent Email" />
-            ) : previewLoading && !previewHtml ? (
+            {hasContent ? (
+              <EmailHtmlViewer 
+                html={displayHtml!} 
+                heightClassName="h-[calc(90vh-120px)]" 
+                iframeHeight={800} 
+                title={canShowSentHtml ? "Sent Email" : "Prepared Email Preview"} 
+              />
+            ) : regenerating ? (
               <div className="p-8 flex flex-col items-center justify-center gap-2 text-muted-foreground h-64">
                 <Loader2 className="w-8 h-8 animate-spin" />
-                <span className="text-sm">Generating preview...</span>
+                <span className="text-sm">Regenerating preview...</span>
               </div>
-            ) : previewError ? (
+            ) : regenerateError ? (
               <div className="p-8 text-center">
-                <p className="text-sm text-destructive">{previewError}</p>
-                <Button variant="ghost" size="sm" onClick={() => fetchPreview(true)} className="mt-2">
+                <p className="text-sm text-destructive">{regenerateError}</p>
+                <Button variant="ghost" size="sm" onClick={regeneratePreview} className="mt-2">
                   Try again
                 </Button>
               </div>
-            ) : previewHtml ? (
-              <EmailHtmlViewer html={previewHtml} heightClassName="h-[calc(90vh-120px)]" iframeHeight={800} title="Prepared Email Preview" />
             ) : (
               <div className="p-8 text-center text-sm text-muted-foreground">
-                Click &quot;Generate&quot; to preview the prepared email.
+                <p className="mb-4">No prepared email found for this respondent.</p>
+                <Button variant="outline" size="sm" onClick={regeneratePreview}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Generate Preview
+                </Button>
               </div>
             )}
           </div>
@@ -235,33 +206,4 @@ export function EmailPreviewPopover({
       </Dialog>
     </>
   );
-}
-
-// Utility function to prefetch email previews for a list of leads
-export async function prefetchEmailPreviews(
-  leads: { id: string; leadType: "quiz" | "hypothesis" }[]
-): Promise<Map<string, { html: string; subject: string }>> {
-  const results = new Map<string, { html: string; subject: string }>();
-
-  // Process in batches to avoid overwhelming the backend function
-  const batchSize = 5;
-  for (let i = 0; i < leads.length; i += batchSize) {
-    const batch = leads.slice(i, i + batchSize);
-    const promises = batch.map(async (lead) => {
-      try {
-        const data = await invokeRenderEmailPreview(
-          { leadId: lead.id, leadType: lead.leadType },
-          { retries: 1 }
-        );
-        if (data?.html) {
-          results.set(lead.id, { html: data.html, subject: data.subject || "" });
-        }
-      } catch (err) {
-        console.warn(`Failed to prefetch preview for lead ${lead.id}:`, err);
-      }
-    });
-    await Promise.all(promises);
-  }
-
-  return results;
 }

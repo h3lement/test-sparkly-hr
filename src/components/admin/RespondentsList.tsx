@@ -46,7 +46,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { RespondentsGrowthChart, type DateRangeOption } from "./RespondentsGrowthChart";
-import { EmailPreviewPopover, prefetchEmailPreviews } from "./EmailPreviewPopover";
+import { EmailPreviewPopover } from "./EmailPreviewPopover";
 import { logActivity } from "@/hooks/useActivityLog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import type { Json } from "@/integrations/supabase/types";
@@ -80,6 +80,8 @@ interface QuizLead {
   quiz_id: string | null;
   answers: Json | null;
   leadType: "quiz" | "hypothesis"; // Track source table
+  email_html: string | null; // Stored email content for instant preview
+  email_subject: string | null;
 }
 
 interface Quiz {
@@ -262,11 +264,11 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes, emailLogsRes] = await Promise.all([
         supabase
           .from("quiz_leads")
-          .select("*")
+          .select("id, email, score, total_questions, result_category, created_at, openness_score, language, quiz_id, answers, email_html, email_subject")
           .order("created_at", { ascending: false }),
         supabase
           .from("hypothesis_leads")
-          .select("*")
+          .select("id, email, score, total_questions, created_at, openness_score, language, quiz_id, email_html, email_subject")
           .order("created_at", { ascending: false }),
         supabase
           .from("quizzes")
@@ -328,12 +330,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         quiz_id: hl.quiz_id,
         answers: null,
         leadType: "hypothesis" as const,
+        email_html: hl.email_html ?? null,
+        email_subject: hl.email_subject ?? null,
       }));
 
       // Convert quiz leads with leadType
       const quizLeadsConverted: QuizLead[] = (leadsRes.data || []).map((ql) => ({
         ...ql,
         leadType: "quiz" as const,
+        email_html: ql.email_html ?? null,
+        email_subject: ql.email_subject ?? null,
       }));
 
       // Get active quiz IDs
@@ -553,39 +559,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
     setCurrentPage(1);
   }, [searchQuery, selectedQuizFilter, showUniqueEmails, showUniqueEmailQuiz]);
 
-  // Prefetch email previews for the current page leads without sent emails
-  const [prefetchedPreviews, setPrefetchedPreviews] = useState<Map<string, { html: string; subject: string }>>(new Map());
-  const [prefetching, setPrefetching] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // Clear previous page cache immediately to avoid showing mismatched previews
-    setPrefetchedPreviews(new Map());
-
-    // Prefetch email previews for leads that don't have sent email logs
-    const leadsWithoutSentEmail = paginatedLeads.filter((lead) => !emailLogs.has(lead.id));
-    if (leadsWithoutSentEmail.length === 0) {
-      setPrefetching(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    // Prefetch in background
-    setPrefetching(true);
-    prefetchEmailPreviews(leadsWithoutSentEmail)
-      .then((results) => {
-        if (!cancelled) setPrefetchedPreviews(results);
-      })
-      .finally(() => {
-        if (!cancelled) setPrefetching(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [paginatedLeads, emailLogs]);
+  // Email content is now stored on leads - no prefetching needed
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -777,7 +751,6 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                   const effectiveQuizId = quiz?.id || null;
                   const emailStatus = getEmailStatusInfo(lead.id);
                   const EmailIcon = emailStatus.icon;
-                  const prefetched = prefetchedPreviews.get(lead.id);
 
                   return (
                     <AdminTableRow 
@@ -874,9 +847,8 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           emailStatusLabel={emailStatus.label}
                           emailStatusColor={emailStatus.color}
                           EmailIcon={EmailIcon}
-                          prefetchedHtml={prefetched?.html}
-                          prefetchedSubject={prefetched?.subject}
-                          prefetchLoading={prefetching && !prefetched}
+                          storedEmailHtml={lead.email_html}
+                          storedEmailSubject={lead.email_subject}
                         />
                       </AdminTableCell>
                       <AdminTableCell style={{ width: columnWidths.submitted, minWidth: columnWidths.submitted }}>
