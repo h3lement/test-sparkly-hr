@@ -273,6 +273,7 @@ export function EmailSettings() {
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [allowedTestEmails, setAllowedTestEmails] = useState<string[]>([]);
   
   // DNS section collapse preferences
   interface DnsSectionPrefs {
@@ -382,6 +383,53 @@ export function EmailSettings() {
       supabase.removeChannel(quizChannel);
     };
   }, []);
+
+  // Fetch allowed test email addresses (sender email + admin emails)
+  useEffect(() => {
+    const fetchAllowedTestEmails = async () => {
+      try {
+        const emails = new Set<string>();
+
+        // Add sender email from current config
+        if (emailConfig.senderEmail) {
+          emails.add(emailConfig.senderEmail.toLowerCase().trim());
+        }
+
+        // Fetch admin emails
+        const { data: adminRoles } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (adminRoles && adminRoles.length > 0) {
+          const adminUserIds = adminRoles.map((r) => r.user_id);
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("email")
+            .in("user_id", adminUserIds);
+
+          if (profiles) {
+            profiles.forEach((p) => {
+              if (p.email) {
+                emails.add(p.email.toLowerCase().trim());
+              }
+            });
+          }
+        }
+
+        setAllowedTestEmails(Array.from(emails));
+      } catch (err) {
+        console.error("Failed to fetch allowed test emails:", err);
+      }
+    };
+    fetchAllowedTestEmails();
+  }, [emailConfig.senderEmail]);
+
+  // Check if current test email is allowed
+  const isTestEmailAllowed = () => {
+    if (!testEmail.trim()) return true;
+    return allowedTestEmails.includes(testEmail.toLowerCase().trim());
+  };
 
   // Fetch templates when quiz is selected
   useEffect(() => {
@@ -894,6 +942,15 @@ export function EmailSettings() {
       toast({
         title: "Error",
         description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isTestEmailAllowed()) {
+      toast({
+        title: "Restricted",
+        description: `Test emails can only be sent to admin accounts or the sender email (${emailConfig.senderEmail})`,
         variant: "destructive",
       });
       return;

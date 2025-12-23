@@ -1350,6 +1350,55 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
+      // SECURITY: Restrict test emails to admin users or the configured sender email only
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Get list of allowed test email recipients: sender email + all admin emails
+      const allowedEmails = new Set<string>();
+      
+      // Add the configured sender email
+      if (emailConfig.senderEmail) {
+        allowedEmails.add(emailConfig.senderEmail.toLowerCase().trim());
+      }
+      
+      // Fetch admin emails from profiles + user_roles
+      const { data: adminProfiles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminProfiles && adminProfiles.length > 0) {
+        const adminUserIds = adminProfiles.map((r: { user_id: string }) => r.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("email")
+          .in("user_id", adminUserIds);
+
+        if (profiles) {
+          profiles.forEach((p: { email: string | null }) => {
+            if (p.email) {
+              allowedEmails.add(p.email.toLowerCase().trim());
+            }
+          });
+        }
+      }
+
+      const recipientEmail = (body.testEmail || "").toLowerCase().trim();
+      if (!allowedEmails.has(recipientEmail)) {
+        console.warn("Test email blocked - recipient not allowed:", body.testEmail, "Allowed:", Array.from(allowedEmails));
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Test emails can only be sent to admin accounts or the sender email (${emailConfig.senderEmail}). Current recipient: ${body.testEmail}` 
+          }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      console.log("Test email recipient allowed:", body.testEmail);
+
       const emailType = body.emailType || "simple";
       let subject = "Sparkly Email Configuration Test";
       let html = "";
@@ -1518,6 +1567,55 @@ const handler = async (req: Request): Promise<Response> => {
 
     // For test emails, wait for the email to complete
     if (isTest) {
+      // SECURITY: Restrict test emails to admin users or the configured sender email only
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Get list of allowed test email recipients: sender email + all admin emails
+      const allowedEmails = new Set<string>();
+      
+      // Add the configured sender email
+      if (emailConfig.senderEmail) {
+        allowedEmails.add(emailConfig.senderEmail.toLowerCase().trim());
+      }
+      
+      // Fetch admin emails from profiles + user_roles
+      const { data: adminProfiles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminProfiles && adminProfiles.length > 0) {
+        const adminUserIds = adminProfiles.map((r: { user_id: string }) => r.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("email")
+          .in("user_id", adminUserIds);
+
+        if (profiles) {
+          profiles.forEach((p: { email: string | null }) => {
+            if (p.email) {
+              allowedEmails.add(p.email.toLowerCase().trim());
+            }
+          });
+        }
+      }
+
+      const recipientEmail = email.toLowerCase().trim();
+      if (!allowedEmails.has(recipientEmail)) {
+        console.warn("Test email blocked - recipient not allowed:", email, "Allowed:", Array.from(allowedEmails));
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Test emails can only be sent to admin accounts or the sender email (${emailConfig.senderEmail}). Current recipient: ${email}` 
+          }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      console.log("Test email recipient allowed:", email);
+
       // Original synchronous behavior for test emails
       if (!isEmailServiceConfigured(emailConfig)) {
         console.error("Email service not configured");
