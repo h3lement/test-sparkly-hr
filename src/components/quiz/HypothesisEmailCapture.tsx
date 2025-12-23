@@ -49,7 +49,7 @@ export function HypothesisEmailCapture() {
 
     try {
       // Save lead to database
-      const { error } = await supabase.from('hypothesis_leads').insert({
+      const { data: insertedLead, error } = await supabase.from('hypothesis_leads').insert({
         quiz_id: quizData?.id,
         session_id: sessionId,
         email: validation.data,
@@ -58,7 +58,7 @@ export function HypothesisEmailCapture() {
         feedback_new_learnings: feedbackNewLearnings || null,
         feedback_action_plan: feedbackActionPlan || null,
         language,
-      });
+      }).select('id').single();
 
       if (error) {
         console.error('Error saving lead:', error);
@@ -70,6 +70,25 @@ export function HypothesisEmailCapture() {
         setIsSubmitting(false);
         return;
       }
+
+      // Send admin notification email (fire and forget)
+      const quizTitle = typeof quizData?.title === 'object' && quizData.title !== null 
+        ? (quizData.title as Record<string, string>)[language] || (quizData.title as Record<string, string>)['en'] || 'Quiz'
+        : String(quizData?.title || 'Quiz');
+      
+      supabase.functions.invoke('send-hypothesis-admin-email', {
+        body: {
+          email: validation.data,
+          score: correct,
+          totalQuestions: total,
+          quizId: quizData?.id,
+          quizTitle,
+          language,
+          feedbackNewLearnings: feedbackNewLearnings || null,
+          feedbackActionPlan: feedbackActionPlan || null,
+          leadId: insertedLead?.id,
+        }
+      }).catch(err => console.error('Admin email notification error:', err));
 
       toast({
         title: 'Success!',

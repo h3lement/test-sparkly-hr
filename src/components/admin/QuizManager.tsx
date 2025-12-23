@@ -384,10 +384,11 @@ export function QuizManager() {
             supabase
               .from(respondentsTable)
               .select("email")
-              .eq("quiz_id", quiz.id),
+              .eq("quiz_id", quiz.id)
+              .limit(5000),  // Increased limit for unique counting
           ]);
           
-          // Count unique emails
+          // Count unique emails (case-insensitive)
           const uniqueEmails = new Set(respondentsData?.map(r => r.email.toLowerCase()) || []);
           const uniqueRespondentsCount = uniqueEmails.size;
           
