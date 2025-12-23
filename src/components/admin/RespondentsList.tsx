@@ -117,6 +117,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
+  const [pendingEmailCounts, setPendingEmailCounts] = useState<Record<string, number>>({});
   
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -210,7 +211,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes] = await Promise.all([
+      const [leadsRes, hypothesisLeadsRes, quizzesRes, questionsRes, answersRes, pendingEmailsRes] = await Promise.all([
         supabase
           .from("quiz_leads")
           .select("*")
@@ -231,6 +232,10 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
           .from("quiz_answers")
           .select("*")
           .order("answer_order", { ascending: true }),
+        supabase
+          .from("email_queue")
+          .select("recipient_email")
+          .in("status", ["pending", "processing"]),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
@@ -238,6 +243,16 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
       if (quizzesRes.error) throw quizzesRes.error;
       if (questionsRes.error) throw questionsRes.error;
       if (answersRes.error) throw answersRes.error;
+
+      // Build pending email counts by email address
+      const emailCounts: Record<string, number> = {};
+      if (!pendingEmailsRes.error && pendingEmailsRes.data) {
+        pendingEmailsRes.data.forEach((item) => {
+          const email = item.recipient_email.toLowerCase();
+          emailCounts[email] = (emailCounts[email] || 0) + 1;
+        });
+      }
+      setPendingEmailCounts(emailCounts);
 
       // Convert hypothesis leads to match QuizLead interface
       const hypothesisLeadsConverted: QuizLead[] = (hypothesisLeadsRes.data || []).map((hl) => ({
@@ -588,6 +603,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             <AdminTable>
               <AdminTableHeader>
                 <AdminTableCell header>Email</AdminTableCell>
+                <AdminTableCell header>To Send</AdminTableCell>
                 <AdminTableCell header>Quiz</AdminTableCell>
                 <AdminTableCell header>Score</AdminTableCell>
                 <AdminTableCell header>Result</AdminTableCell>
@@ -658,6 +674,18 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                           </div>
                         </AdminTableCell>
                         <AdminTableCell>
+                          {(() => {
+                            const count = pendingEmailCounts[lead.email.toLowerCase()] || 0;
+                            return count > 0 ? (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                {count}
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            );
+                          })()}
+                        </AdminTableCell>
+                        <AdminTableCell>
                           {quiz ? (
                             <div className="flex flex-col gap-0.5">
                               <button
@@ -723,7 +751,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                       </AdminTableRow>
                       {isExpanded && hasAnswers && (
                         <tr key={`${lead.id}-expanded`}>
-                          <td colSpan={8} className="density-px density-py bg-secondary/20">
+                          <td colSpan={9} className="density-px density-py bg-secondary/20">
                             <div className="space-y-3">
                               <p className="text-sm font-medium text-foreground">Quiz Answers</p>
                               <div className="grid gap-2">
