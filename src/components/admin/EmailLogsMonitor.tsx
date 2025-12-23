@@ -44,7 +44,11 @@ import {
   Settings,
   History,
   Loader2,
-  Inbox
+  Inbox,
+  MailCheck,
+  MailX,
+  MousePointer,
+  EyeIcon
 } from "lucide-react";
 import { ActivityLogDialog } from "./ActivityLogDialog";
 import { useResizableColumns } from "@/hooks/useResizableColumns";
@@ -68,6 +72,18 @@ interface EmailLog {
   last_attempt_at: string | null;
   original_log_id: string | null;
   html_body: string | null;
+  // Delivery tracking fields
+  delivery_status: string | null;
+  delivered_at: string | null;
+  bounced_at: string | null;
+  complained_at: string | null;
+  bounce_type: string | null;
+  bounce_reason: string | null;
+  complaint_type: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  open_count: number | null;
+  click_count: number | null;
   quiz_lead?: {
     quiz_id: string | null;
   } | null;
@@ -869,7 +885,28 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                       </td>
                       <td style={{ width: columnWidths.status }} className="px-4 py-3 overflow-hidden">
                         <div className="flex items-center gap-2 overflow-hidden">
-                          {log.status === "sent" ? (
+                          {/* Delivery status display */}
+                          {log.delivery_status === 'delivered' ? (
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 shrink-0">
+                              <MailCheck className="w-3 h-3" />
+                              Delivered
+                            </Badge>
+                          ) : log.delivery_status === 'bounced' ? (
+                            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 gap-1 shrink-0">
+                              <MailX className="w-3 h-3" />
+                              Bounced
+                            </Badge>
+                          ) : log.delivery_status === 'complained' ? (
+                            <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 gap-1 shrink-0">
+                              <AlertCircle className="w-3 h-3" />
+                              Complaint
+                            </Badge>
+                          ) : log.delivery_status === 'opened' || log.delivery_status === 'clicked' ? (
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1 shrink-0">
+                              <EyeIcon className="w-3 h-3" />
+                              Opened
+                            </Badge>
+                          ) : log.status === "sent" ? (
                             <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 shrink-0">
                               <CheckCircle2 className="w-3 h-3" />
                               Sent
@@ -879,6 +916,19 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                               <AlertCircle className="w-3 h-3" />
                               Failed
                             </Badge>
+                          )}
+                          {/* Engagement indicators */}
+                          {(log.open_count ?? 0) > 0 && (
+                            <span className="text-xs text-blue-600 flex items-center gap-0.5" title={`Opened ${log.open_count} times`}>
+                              <EyeIcon className="w-3 h-3" />
+                              {log.open_count}
+                            </span>
+                          )}
+                          {(log.click_count ?? 0) > 0 && (
+                            <span className="text-xs text-purple-600 flex items-center gap-0.5" title={`Clicked ${log.click_count} times`}>
+                              <MousePointer className="w-3 h-3" />
+                              {log.click_count}
+                            </span>
                           )}
                           {totalAttempts > 1 && (
                             <span className="text-xs text-amber-600 font-medium shrink-0">×{totalAttempts}</span>
@@ -1059,6 +1109,62 @@ export function EmailLogsMonitor({ onViewQuizLead, initialEmailFilter, onEmailFi
                     {selectedLog.status === "sent" ? "Sent" : "Failed"}
                   </span>
                 </div>
+                {selectedLog.delivery_status && selectedLog.delivery_status !== 'sent' && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">Delivery:</span>
+                    <span className={
+                      selectedLog.delivery_status === 'delivered' ? 'text-emerald-600' :
+                      selectedLog.delivery_status === 'bounced' ? 'text-red-600' :
+                      selectedLog.delivery_status === 'complained' ? 'text-orange-600' :
+                      selectedLog.delivery_status === 'opened' || selectedLog.delivery_status === 'clicked' ? 'text-blue-600' :
+                      'text-muted-foreground'
+                    }>
+                      {selectedLog.delivery_status.charAt(0).toUpperCase() + selectedLog.delivery_status.slice(1)}
+                    </span>
+                  </div>
+                )}
+                {selectedLog.delivered_at && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">Delivered:</span>
+                    <span className="text-emerald-600">{formatFullTimestamp(selectedLog.delivered_at)}</span>
+                  </div>
+                )}
+                {selectedLog.opened_at && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">First Open:</span>
+                    <span className="text-blue-600">{formatFullTimestamp(selectedLog.opened_at)} ({selectedLog.open_count || 1} opens)</span>
+                  </div>
+                )}
+                {selectedLog.clicked_at && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-muted-foreground font-medium">First Click:</span>
+                    <span className="text-purple-600">{formatFullTimestamp(selectedLog.clicked_at)} ({selectedLog.click_count || 1} clicks)</span>
+                  </div>
+                )}
+                {selectedLog.bounced_at && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-red-500 font-medium">Bounced:</span>
+                    <span className="text-red-600">{formatFullTimestamp(selectedLog.bounced_at)}</span>
+                  </div>
+                )}
+                {selectedLog.bounce_type && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-red-500 font-medium">Bounce Type:</span>
+                    <span className="text-red-600">{selectedLog.bounce_type}</span>
+                  </div>
+                )}
+                {selectedLog.bounce_reason && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-red-500 font-medium">Reason:</span>
+                    <span className="text-red-600">{selectedLog.bounce_reason}</span>
+                  </div>
+                )}
+                {selectedLog.complained_at && (
+                  <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <span className="text-orange-500 font-medium">Complaint:</span>
+                    <span className="text-orange-600">{formatFullTimestamp(selectedLog.complained_at)} ({selectedLog.complaint_type || 'unknown'})</span>
+                  </div>
+                )}
                 {selectedLog.resend_id && (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-muted-foreground font-medium">Resend ID:</span>
