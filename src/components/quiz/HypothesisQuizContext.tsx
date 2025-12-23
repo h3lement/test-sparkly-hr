@@ -58,6 +58,7 @@ export interface QuizData {
   cta_description: Record<string, string>;
   cta_retry_text: Record<string, string>;
   cta_url: string | null;
+  cta_retry_url: string | null;
   quiz_type: string;
   include_open_mindedness?: boolean;
 }
