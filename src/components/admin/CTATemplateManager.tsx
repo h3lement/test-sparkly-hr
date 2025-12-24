@@ -106,6 +106,30 @@ const LANGUAGES = [
   { code: "lv", name: "Latvian" },
   { code: "ga", name: "Irish" },
   { code: "mt", name: "Maltese" },
+  { code: "ru", name: "Russian" },
+  { code: "uk", name: "Ukrainian" },
+  { code: "no", name: "Norwegian" },
+  { code: "tr", name: "Turkish" },
+  { code: "ja", name: "Japanese" },
+  { code: "ko", name: "Korean" },
+  { code: "zh", name: "Chinese" },
+  { code: "ar", name: "Arabic" },
+  { code: "he", name: "Hebrew" },
+  { code: "th", name: "Thai" },
+  { code: "vi", name: "Vietnamese" },
+  { code: "id", name: "Indonesian" },
+  { code: "ms", name: "Malay" },
+  { code: "hi", name: "Hindi" },
+  { code: "sr", name: "Serbian" },
+  { code: "mk", name: "Macedonian" },
+  { code: "sq", name: "Albanian" },
+  { code: "bs", name: "Bosnian" },
+  { code: "ka", name: "Georgian" },
+  { code: "az", name: "Azerbaijani" },
+  { code: "hy", name: "Armenian" },
+  { code: "be", name: "Belarusian" },
+  { code: "kk", name: "Kazakh" },
+  { code: "uz", name: "Uzbek" },
 ];
 
 export function CTATemplateManager() {
@@ -146,6 +170,8 @@ export function CTATemplateManager() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<CTATemplate | null>(null);
+  const [batchTranslating, setBatchTranslating] = useState(false);
+  const [batchTranslateProgress, setBatchTranslateProgress] = useState<{ current: number; total: number; }>({ current: 0, total: 0 });
 
   const { toast } = useToast();
   
@@ -462,6 +488,86 @@ export function CTATemplateManager() {
     }
   };
 
+  // Batch translate all CTA templates
+  const handleBatchTranslateAll = async () => {
+    // Get all templates that have content in at least one language
+    const templatesWithContent = templates.filter(t => {
+      const hasTitle = Object.values(t.cta_title || {}).some(v => v?.trim());
+      const hasText = Object.values(t.cta_text || {}).some(v => v?.trim());
+      return hasTitle || hasText;
+    });
+
+    if (templatesWithContent.length === 0) {
+      toast({
+        title: "No CTAs to translate",
+        description: "Add content to CTA templates first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBatchTranslating(true);
+    setBatchTranslateProgress({ current: 0, total: templatesWithContent.length });
+
+    let successCount = 0;
+    let errorCount = 0;
+    let totalCost = 0;
+
+    try {
+      for (let i = 0; i < templatesWithContent.length; i++) {
+        const template = templatesWithContent[i];
+        setBatchTranslateProgress({ current: i + 1, total: templatesWithContent.length });
+
+        // Find the source language (first language with content)
+        const sourceLang = Object.keys(template.cta_title || {}).find(k => template.cta_title[k]?.trim()) ||
+          Object.keys(template.cta_text || {}).find(k => template.cta_text[k]?.trim()) || 'en';
+
+        try {
+          const { data, error } = await supabase.functions.invoke("translate-cta", {
+            body: {
+              ctaTemplateId: template.id,
+              sourceLanguage: sourceLang,
+              regenerate: false, // Only translate missing
+              sourceContent: {
+                cta_title: template.cta_title?.[sourceLang] || "",
+                cta_description: template.cta_description?.[sourceLang] || "",
+                cta_text: template.cta_text?.[sourceLang] || "",
+                cta_retry_text: template.cta_retry_text?.[sourceLang] || "",
+              },
+            },
+          });
+
+          if (error) throw error;
+          
+          if (data.translatedCount > 0) {
+            successCount++;
+            totalCost += data.costEur || 0;
+          }
+        } catch (err) {
+          console.error(`Error translating CTA ${template.id}:`, err);
+          errorCount++;
+        }
+      }
+
+      await fetchData();
+
+      toast({
+        title: "Batch Translation Complete",
+        description: `Translated ${successCount} CTAs${errorCount > 0 ? `, ${errorCount} failed` : ""} (€${totalCost.toFixed(4)})`,
+      });
+    } catch (error: any) {
+      console.error("Batch translation error:", error);
+      toast({
+        title: "Error",
+        description: "Batch translation failed",
+        variant: "destructive",
+      });
+    } finally {
+      setBatchTranslating(false);
+      setBatchTranslateProgress({ current: 0, total: 0 });
+    }
+  };
+
   const loadVersionToEdit = (template: CTATemplate) => {
     handleOpenEditor(template);
   };
@@ -725,6 +831,34 @@ export function CTATemplateManager() {
                   ))}
                 </SelectContent>
               </Select>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBatchTranslateAll}
+                      disabled={batchTranslating || templates.length === 0}
+                      className="gap-1.5"
+                    >
+                      {batchTranslating ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {batchTranslateProgress.current}/{batchTranslateProgress.total}
+                        </>
+                      ) : (
+                        <>
+                          <Languages className="w-3.5 h-3.5" />
+                          Translate All
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Translate all CTA templates to missing languages</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button
                 variant="outline"
                 size="sm"
