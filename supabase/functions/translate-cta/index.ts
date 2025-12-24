@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// All supported target languages
+// All supported target languages (EU languages + Russian/Ukrainian)
 const ALL_TARGET_LANGUAGES = [
   { code: "en", name: "English" },
   { code: "et", name: "Estonian" },
@@ -32,6 +32,8 @@ const ALL_TARGET_LANGUAGES = [
   { code: "lv", name: "Latvian" },
   { code: "ga", name: "Irish" },
   { code: "mt", name: "Maltese" },
+  { code: "ru", name: "Russian" },
+  { code: "uk", name: "Ukrainian" },
 ];
 
 // Cost per 1K tokens (approximate for gemini-2.5-flash)

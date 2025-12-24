@@ -21,7 +21,23 @@ const SUPPORTED_LANGUAGES = [
   { code: "pt", name: "Portuguese" },
   { code: "nl", name: "Dutch" },
   { code: "pl", name: "Polish" },
+  { code: "ro", name: "Romanian" },
+  { code: "el", name: "Greek" },
+  { code: "cs", name: "Czech" },
+  { code: "hu", name: "Hungarian" },
+  { code: "sv", name: "Swedish" },
+  { code: "bg", name: "Bulgarian" },
+  { code: "da", name: "Danish" },
+  { code: "fi", name: "Finnish" },
+  { code: "sk", name: "Slovak" },
+  { code: "hr", name: "Croatian" },
+  { code: "lt", name: "Lithuanian" },
+  { code: "sl", name: "Slovenian" },
+  { code: "lv", name: "Latvian" },
+  { code: "ga", name: "Irish" },
+  { code: "mt", name: "Maltese" },
   { code: "ru", name: "Russian" },
+  { code: "uk", name: "Ukrainian" },
 ];
 
 interface EmailTemplate {

@@ -107,7 +107,7 @@ const PRIMARY_LANGUAGES = [
   { code: "et", label: "Estonian" },
 ];
 
-// All target languages for display/reference (EU languages)
+// All target languages for display/reference (EU languages + Russian/Ukrainian)
 const ALL_LANGUAGES = [
   { code: "en", label: "English" },
   { code: "et", label: "Estonian" },
@@ -133,6 +133,8 @@ const ALL_LANGUAGES = [
   { code: "lv", label: "Latvian" },
   { code: "ga", label: "Irish" },
   { code: "mt", label: "Maltese" },
+  { code: "ru", label: "Russian" },
+  { code: "uk", label: "Ukrainian" },
 ];
 
 interface TranslationMeta {
