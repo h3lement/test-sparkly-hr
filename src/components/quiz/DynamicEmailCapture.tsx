@@ -6,6 +6,7 @@ import { useLanguage } from './LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import confetti from 'canvas-confetti';
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255);
 
@@ -91,6 +92,31 @@ export function DynamicEmailCapture() {
         setIsSubmitting(false);
         return;
       }
+
+      // Fire confetti celebration
+      const end = Date.now() + 800;
+      const colors = ['#4f46e5', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+
+      (function frame() {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.6 },
+          colors: colors
+        });
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.6 },
+          colors: colors
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
 
       toast({
         title: t('emailSuccess'),
