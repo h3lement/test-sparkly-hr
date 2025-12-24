@@ -153,6 +153,13 @@ export function useGlobalAppearance() {
 
     loadAppearance();
 
+    // Hard lock: prevent any code from re-adding "dark" after we remove it.
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      if (root.classList.contains("dark")) root.classList.remove("dark");
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+
     // Listen for auth state changes to reload appearance
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       loadAppearance();
@@ -164,6 +171,7 @@ export function useGlobalAppearance() {
     mediaQuery.addEventListener("change", handleChange);
 
     return () => {
+      observer.disconnect();
       subscription.unsubscribe();
       mediaQuery.removeEventListener("change", handleChange);
     };
