@@ -69,7 +69,8 @@ const DEFAULT_COLORS: AppearanceColors = {
 };
 
 const DEFAULT_PREFERENCES: AppearancePreferences = {
-  themeMode: "system",
+  // Enforce daylight mode across the entire app (admin + public)
+  themeMode: "light",
   uiDensity: "default",
   headingFont: "'Playfair Display', serif",
   bodyFont: "'DM Sans', sans-serif",
@@ -81,20 +82,8 @@ const DEFAULT_PREFERENCES: AppearancePreferences = {
 function applyAppearance(prefs: AppearancePreferences) {
   const root = document.documentElement;
 
-  // Determine if dark mode should be active
-  let shouldBeDark = false;
-  if (prefs.themeMode === "system") {
-    shouldBeDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  } else {
-    shouldBeDark = prefs.themeMode === "dark";
-  }
-
-  // Apply theme mode - explicitly add or remove dark class
-  if (shouldBeDark) {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
-  }
+  // Enforce daylight mode: never allow the "dark" class in the app UI.
+  root.classList.remove("dark");
 
   // Apply UI density
   root.classList.remove("density-compact", "density-default", "density-comfortable");
@@ -107,9 +96,8 @@ function applyAppearance(prefs: AppearancePreferences) {
   // Apply border radius
   root.style.setProperty("--radius", `${prefs.borderRadius}rem`);
 
-  // Apply colors based on the determined mode (not class state which might be stale)
-  const colors = shouldBeDark ? prefs.colors.dark : prefs.colors.light;
-  Object.entries(colors).forEach(([key, value]) => {
+  // Always apply light palette
+  Object.entries(prefs.colors.light).forEach(([key, value]) => {
     root.style.setProperty(key, value);
   });
 }
