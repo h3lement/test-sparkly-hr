@@ -143,29 +143,25 @@ function ColorInput({ colorKey, value, onChange }: ColorInputProps) {
   const label = COLOR_LABELS[colorKey] || colorKey;
 
   return (
-    <div className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg">
+    <div className="flex items-center gap-2 p-1.5 bg-secondary/30 rounded">
       <div
-        className="w-8 h-8 rounded-md border border-border shrink-0"
+        className="w-5 h-5 rounded border border-border shrink-0"
         style={{ backgroundColor: `hsl(${value})` }}
       />
-      <div className="flex-1 min-w-0">
-        <Label className="text-xs font-medium">{label}</Label>
-      </div>
-      <div className="flex items-center gap-1">
-        <Input
-          type="color"
-          value={hexValue}
-          onChange={(e) => onChange(colorKey, hexToHsl(e.target.value))}
-          className="w-8 h-8 p-0.5 cursor-pointer"
-        />
-        <Input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(colorKey, e.target.value)}
-          className="w-28 font-mono text-xs h-8"
-          placeholder="H S% L%"
-        />
-      </div>
+      <span className="text-[10px] font-medium flex-1 truncate">{label}</span>
+      <Input
+        type="color"
+        value={hexValue}
+        onChange={(e) => onChange(colorKey, hexToHsl(e.target.value))}
+        className="w-6 h-6 p-0 cursor-pointer"
+      />
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(colorKey, e.target.value)}
+        className="w-20 font-mono text-[10px] h-6 px-1"
+        placeholder="H S% L%"
+      />
     </div>
   );
 }
@@ -292,100 +288,95 @@ export function PublicThemeSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Public Website Theme
-          </CardTitle>
-          <CardDescription>
-            Configure the color scheme for all public-facing pages (quizzes, quiz list, etc.). 
-            This applies to all visitors regardless of their login status.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Actions */}
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={openPreview}>
-              <Eye className="h-4 w-4 mr-2" />
-              Preview Public Site
-            </Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleReset} disabled={saving}>
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset to Sparkly Defaults
+              <Globe className="h-4 w-4" />
+              <CardTitle className="text-base">Public Website Theme</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={openPreview}>
+                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                Preview
               </Button>
-              <Button onClick={handleSave} disabled={!hasChanges || saving}>
-                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Public Theme
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={saving}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                Reset
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={!hasChanges || saving}>
+                {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                Save
               </Button>
             </div>
           </div>
-
-          {/* Typography */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Heading Font</Label>
+          <CardDescription className="text-xs mt-1">
+            Color scheme for all public-facing pages (quizzes, quiz list, etc.)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Row 1: Typography + Border Radius */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Heading Font</Label>
               <Select 
                 value={localSettings.headingFont} 
                 onValueChange={(v) => updateSetting("headingFont", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {HEADING_FONTS.map(font => (
-                    <SelectItem key={font.value} value={font.value}>
+                    <SelectItem key={font.value} value={font.value} className="text-xs">
                       <span style={{ fontFamily: font.value }}>{font.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Body Font</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Body Font</Label>
               <Select 
                 value={localSettings.bodyFont} 
                 onValueChange={(v) => updateSetting("bodyFont", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {BODY_FONTS.map(font => (
-                    <SelectItem key={font.value} value={font.value}>
+                    <SelectItem key={font.value} value={font.value} className="text-xs">
                       <span style={{ fontFamily: font.value }}>{font.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Border Radius</Label>
+                <span className="text-xs text-muted-foreground font-mono">{localSettings.borderRadius}rem</span>
+              </div>
+              <Slider
+                value={[localSettings.borderRadius]}
+                onValueChange={([v]) => updateSetting("borderRadius", v)}
+                min={0}
+                max={2}
+                step={0.125}
+                className="w-full"
+              />
+            </div>
           </div>
 
-          {/* Border Radius */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Border Radius</Label>
-              <span className="text-sm text-muted-foreground font-mono">{localSettings.borderRadius}rem</span>
+          {/* Row 2: Color Palette */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label className="text-xs font-medium">Color Palette</Label>
             </div>
-            <Slider
-              value={[localSettings.borderRadius]}
-              onValueChange={([v]) => updateSetting("borderRadius", v)}
-              min={0}
-              max={2}
-              step={0.125}
-              className="w-full"
-            />
-          </div>
-
-          {/* Color Palette */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-muted-foreground" />
-              <Label className="text-base font-medium">Public Color Palette</Label>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
               {ESSENTIAL_COLORS.map(colorKey => (
                 <ColorInput
                   key={colorKey}
@@ -397,52 +388,34 @@ export function PublicThemeSettings() {
             </div>
           </div>
 
-          {/* Live Preview Box */}
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">Live Preview</Label>
-            <div 
-              className="border rounded-lg overflow-hidden"
-              style={{ 
-                backgroundColor: `hsl(${localSettings.colors["--background"]})`,
-                color: `hsl(${localSettings.colors["--foreground"]})`,
-                borderRadius: `${localSettings.borderRadius}rem`,
-              }}
-            >
-              <div 
-                className="p-4 border-b"
-                style={{ 
-                  backgroundColor: `hsl(${localSettings.colors["--card"]})`,
-                  borderColor: `hsl(${localSettings.colors["--border"]})`,
-                }}
-              >
-                <h3 
-                  className="text-xl font-bold"
-                  style={{ fontFamily: localSettings.headingFont }}
-                >
-                  Quiz Title Preview
+          {/* Live Preview - Compact */}
+          <div className="p-3 rounded-lg border" style={{ 
+            backgroundColor: `hsl(${localSettings.colors["--background"]})`,
+            color: `hsl(${localSettings.colors["--foreground"]})`,
+            borderRadius: `${localSettings.borderRadius}rem`,
+          }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold" style={{ fontFamily: localSettings.headingFont }}>
+                  Preview Title
                 </h3>
-                <p 
-                  className="text-sm mt-1"
-                  style={{ 
-                    fontFamily: localSettings.bodyFont,
-                    color: `hsl(${localSettings.colors["--muted-foreground"]})`,
-                  }}
-                >
-                  This is how the public quiz pages will look
+                <p className="text-xs" style={{ 
+                  fontFamily: localSettings.bodyFont,
+                  color: `hsl(${localSettings.colors["--muted-foreground"]})`,
+                }}>
+                  Public quiz preview
                 </p>
               </div>
-              <div className="p-4">
-                <button
-                  className="px-4 py-2 rounded font-medium"
-                  style={{ 
-                    backgroundColor: `hsl(${localSettings.colors["--primary"]})`,
-                    color: `hsl(${localSettings.colors["--primary-foreground"]})`,
-                    borderRadius: `${localSettings.borderRadius}rem`,
-                  }}
-                >
-                  Start Quiz
-                </button>
-              </div>
+              <button
+                className="px-3 py-1.5 rounded text-xs font-medium"
+                style={{ 
+                  backgroundColor: `hsl(${localSettings.colors["--primary"]})`,
+                  color: `hsl(${localSettings.colors["--primary-foreground"]})`,
+                  borderRadius: `${localSettings.borderRadius}rem`,
+                }}
+              >
+                Start Quiz
+              </button>
             </div>
           </div>
         </CardContent>

@@ -527,29 +527,25 @@ function ColorInput({ colorKey, value, onChange }: ColorInputProps) {
   const label = COLOR_LABELS[colorKey] || colorKey;
 
   return (
-    <div className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg">
+    <div className="flex items-center gap-2 p-1.5 bg-secondary/30 rounded">
       <div
-        className="w-8 h-8 rounded-md border border-border shrink-0"
+        className="w-5 h-5 rounded border border-border shrink-0"
         style={{ backgroundColor: `hsl(${value})` }}
       />
-      <div className="flex-1 min-w-0">
-        <Label className="text-xs font-medium">{label}</Label>
-      </div>
-      <div className="flex items-center gap-1">
-        <Input
-          type="color"
-          value={hexValue}
-          onChange={(e) => onChange(colorKey, hexToHsl(e.target.value))}
-          className="w-8 h-8 p-0.5 cursor-pointer"
-        />
-        <Input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(colorKey, e.target.value)}
-          className="w-28 font-mono text-xs h-8"
-          placeholder="H S% L%"
-        />
-      </div>
+      <span className="text-[10px] font-medium flex-1 truncate">{label}</span>
+      <Input
+        type="color"
+        value={hexValue}
+        onChange={(e) => onChange(colorKey, hexToHsl(e.target.value))}
+        className="w-6 h-6 p-0 cursor-pointer"
+      />
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(colorKey, e.target.value)}
+        className="w-20 font-mono text-[10px] h-6 px-1"
+        placeholder="H S% L%"
+      />
     </div>
   );
 }
@@ -716,557 +712,376 @@ export function AppearanceSettings() {
 
   return (
     <div className="w-full">
-      <div className="flex items-start justify-between mb-8">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Appearance</h1>
-          <p className="text-muted-foreground mt-1">Customize your admin panel theme and design</p>
+          <h1 className="text-2xl font-bold text-foreground">Appearance</h1>
+          <p className="text-sm text-muted-foreground">Customize theme and design</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleReset} disabled={!hasChanges || saving}>
-            <RotateCcw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges || saving}>
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
             Reset
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges || saving}>
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Save Changes
+          <Button size="sm" onClick={handleSave} disabled={!hasChanges || saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+            Save
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="public" className="space-y-6">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="public" className="gap-2">
-            <Globe className="h-4 w-4" />
-            Public Theme
+      <Tabs defaultValue="public" className="space-y-4">
+        <TabsList className="bg-secondary h-9">
+          <TabsTrigger value="public" className="gap-1.5 text-xs px-3 h-7">
+            <Globe className="h-3.5 w-3.5" />
+            Public
           </TabsTrigger>
-          <TabsTrigger value="general" className="gap-2">
-            <Monitor className="h-4 w-4" />
-            Admin General
+          <TabsTrigger value="admin" className="gap-1.5 text-xs px-3 h-7">
+            <Monitor className="h-3.5 w-3.5" />
+            Admin
           </TabsTrigger>
-          <TabsTrigger value="typography" className="gap-2">
-            <Type className="h-4 w-4" />
-            Typography
+          <TabsTrigger value="colors" className="gap-1.5 text-xs px-3 h-7">
+            <Palette className="h-3.5 w-3.5" />
+            Colors
           </TabsTrigger>
-          <TabsTrigger value="light-colors" className="gap-2">
-            <Sun className="h-4 w-4" />
-            Light Colors
-          </TabsTrigger>
-          <TabsTrigger value="dark-colors" className="gap-2">
-            <Moon className="h-4 w-4" />
-            Dark Colors
-          </TabsTrigger>
-          <TabsTrigger value="quiz-design" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Quiz Design
+          <TabsTrigger value="quiz-design" className="gap-1.5 text-xs px-3 h-7">
+            <Sparkles className="h-3.5 w-3.5" />
+            Reference
           </TabsTrigger>
         </TabsList>
 
-        {/* Public Theme Tab - NEW */}
+        {/* Public Theme Tab */}
         <TabsContent value="public">
           <PublicThemeSettings />
         </TabsContent>
 
-        {/* General Tab */}
-        <TabsContent value="general" className="space-y-6">
-          {/* Preset Themes */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Theme Presets
-              </CardTitle>
-              <CardDescription>Quick-start with a pre-designed color scheme</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {THEME_PRESETS.map((preset) => {
-                  const isActive = localPrefs.activePreset === preset.id;
-                  const primaryColor = preset.colors.light["--primary"];
-                  return (
-                    <button
-                      key={preset.id}
-                      onClick={() => {
-                        const updated = {
-                          ...localPrefs,
-                          colors: preset.colors,
-                          activePreset: preset.id,
-                        };
-                        setLocalPrefs(updated);
-                        setHasChanges(true);
-                        applyTheme(updated);
-                      }}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                        isActive
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-white shadow-md"
-                        style={{ backgroundColor: `hsl(${primaryColor})` }}
-                      />
-                      <span className={`text-xs font-medium ${isActive ? "text-primary" : ""}`}>
-                        {preset.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Compact Theme Mode */}
-          <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
-            <div className="flex items-center gap-3">
-              <Palette className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <span className="font-medium">Theme Mode</span>
-                <p className="text-sm text-muted-foreground">Choose interface appearance</p>
-              </div>
-            </div>
-            <div className="flex items-center rounded-lg border border-border bg-secondary/30 p-1">
-              {[
-                { value: "light", icon: Sun },
-                { value: "dark", icon: Moon },
-                { value: "system", icon: Monitor },
-              ].map(({ value, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => updateThemeMode(value as AppearancePreferences["themeMode"])}
-                  className={`flex items-center justify-center p-2 rounded-md transition-all ${
-                    localPrefs.themeMode === value
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  }`}
-                  title={value.charAt(0).toUpperCase() + value.slice(1)}
-                >
-                  <Icon className="h-4 w-4" />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Square className="h-5 w-5" />
-                UI Density
-              </CardTitle>
-              <CardDescription>Choose how compact or spacious the interface should be</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { value: "compact", label: "Compact", scale: 0.85 },
-                  { value: "default", label: "Default", scale: 1 },
-                  { value: "comfortable", label: "Comfortable", scale: 1.15 },
-                ].map(({ value, label, scale }) => (
-                  <button
-                    key={value}
-                    onClick={() => updateLocalPref("uiDensity", value as AppearancePreferences["uiDensity"])}
-                    className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-                      localPrefs.uiDensity === value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {/* Visual representation showing scaled lines */}
-                    <div 
-                      className="flex flex-col justify-center items-center w-full"
-                      style={{ 
-                        gap: `${4 * scale}px`,
-                        padding: `${8 * scale}px`
-                      }}
-                    >
-                      <div 
-                        className={`rounded-sm ${localPrefs.uiDensity === value ? "bg-primary" : "bg-muted-foreground/40"}`}
-                        style={{ width: `${48 * scale}px`, height: `${6 * scale}px` }}
-                      />
-                      <div 
-                        className={`rounded-sm ${localPrefs.uiDensity === value ? "bg-primary/60" : "bg-muted-foreground/25"}`}
-                        style={{ width: `${36 * scale}px`, height: `${4 * scale}px` }}
-                      />
-                      <div 
-                        className={`rounded-sm ${localPrefs.uiDensity === value ? "bg-primary/60" : "bg-muted-foreground/25"}`}
-                        style={{ width: `${42 * scale}px`, height: `${4 * scale}px` }}
-                      />
-                    </div>
-                    <span className={`text-sm font-medium ${localPrefs.uiDensity === value ? "text-primary" : ""}`}>
-                      {label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Live Preview */}
-              <div className="space-y-3">
-                <Label className="text-muted-foreground">Live Preview</Label>
-                <div className="border border-border rounded-lg overflow-hidden bg-card">
-                  {/* Preview Header */}
-                  <div 
-                    className="border-b border-border bg-secondary/30 flex items-center justify-between"
-                    style={{ padding: "var(--density-padding)" }}
-                  >
-                    <span className="font-medium">Sample Card Header</span>
-                    <div className="flex items-center" style={{ gap: "var(--density-gap)" }}>
-                      <div className="h-6 w-6 rounded bg-primary/20" />
-                      <div className="h-6 w-6 rounded bg-primary/20" />
-                    </div>
-                  </div>
-                  {/* Preview Content */}
-                  <div style={{ padding: "var(--density-padding)" }}>
-                    <div className="space-y-2" style={{ gap: "var(--density-gap)" }}>
-                      <p className="text-muted-foreground">This is how content spacing will look with your selected density.</p>
-                      <div className="flex flex-wrap" style={{ gap: "var(--density-gap)" }}>
-                        <button 
-                          className="bg-primary text-primary-foreground rounded font-medium"
-                          style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
-                        >
-                          Button
-                        </button>
-                        <button 
-                          className="border border-border rounded font-medium"
-                          style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
-                        >
-                          Secondary
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Preview Table Row */}
-                  <div className="border-t border-border">
-                    <div 
-                      className="flex items-center justify-between border-b border-border/50 last:border-0"
-                      style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
-                    >
-                      <span>Table Row Item</span>
-                      <span className="text-muted-foreground text-sm">Value</span>
-                    </div>
-                    <div 
-                      className="flex items-center justify-between border-b border-border/50 last:border-0"
-                      style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
-                    >
-                      <span>Another Row</span>
-                      <span className="text-muted-foreground text-sm">Data</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Box className="h-5 w-5" />
-                Layout & Spacing
-              </CardTitle>
-              <CardDescription>Adjust border radius and spacing scale</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Border Radius</Label>
-                  <span className="text-sm text-muted-foreground font-mono">{localPrefs.borderRadius}rem</span>
-                </div>
-                <Slider
-                  value={[localPrefs.borderRadius]}
-                  onValueChange={([v]) => updateLocalPref("borderRadius", v)}
-                  min={0}
-                  max={2}
-                  step={0.125}
-                  className="w-full"
-                />
-                <div className="flex gap-2">
-                  {[0, 0.25, 0.5, 0.75, 1, 1.5, 2].map(v => (
-                    <div
-                      key={v}
-                      className="w-12 h-12 bg-primary/20 border border-primary/30"
-                      style={{ borderRadius: `${v}rem` }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Spacing Scale</Label>
-                  <span className="text-sm text-muted-foreground font-mono">{localPrefs.spacing}x</span>
-                </div>
-                <Slider
-                  value={[localPrefs.spacing]}
-                  onValueChange={([v]) => updateLocalPref("spacing", v)}
-                  min={0.75}
-                  max={1.5}
-                  step={0.05}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Multiplier for all spacing values (padding, margins, gaps)
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Typography Tab */}
-        <TabsContent value="typography" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Font Families</CardTitle>
-              <CardDescription>Choose fonts for headings and body text</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6 sm:grid-cols-2">
-              <div className="space-y-3">
-                <Label>Heading Font</Label>
-                <Select 
-                  value={localPrefs.headingFont} 
-                  onValueChange={(v) => updateLocalPref("headingFont", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HEADING_FONTS.map(font => (
-                      <SelectItem key={font.value} value={font.value}>
-                        <span style={{ fontFamily: font.value }}>{font.label}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">({font.category})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="p-4 bg-secondary/30 rounded-lg">
-                  <p className="text-2xl" style={{ fontFamily: localPrefs.headingFont }}>
-                    Preview Heading
-                  </p>
-                  <p className="text-lg mt-1" style={{ fontFamily: localPrefs.headingFont }}>
-                    Subheading Text
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <Label>Body Font</Label>
-                <Select 
-                  value={localPrefs.bodyFont} 
-                  onValueChange={(v) => updateLocalPref("bodyFont", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BODY_FONTS.map(font => (
-                      <SelectItem key={font.value} value={font.value}>
-                        <span style={{ fontFamily: font.value }}>{font.label}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">({font.category})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="p-4 bg-secondary/30 rounded-lg">
-                  <p className="text-base" style={{ fontFamily: localPrefs.bodyFont }}>
-                    This is how body text will appear in your interface.
-                  </p>
-                  <p className="text-sm mt-2 text-muted-foreground" style={{ fontFamily: localPrefs.bodyFont }}>
-                    Secondary text and descriptions use this font too.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Light Colors Tab */}
-        <TabsContent value="light-colors" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
+        {/* Admin Tab - Combined General + Typography */}
+        <TabsContent value="admin" className="space-y-4">
+          {/* Row 1: Presets + Theme Mode */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Theme Presets */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Base Colors</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Theme Presets
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.base}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {THEME_PRESETS.map((preset) => {
+                    const isActive = localPrefs.activePreset === preset.id;
+                    const primaryColor = preset.colors.light["--primary"];
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => {
+                          const updated = {
+                            ...localPrefs,
+                            colors: preset.colors,
+                            activePreset: preset.id,
+                          };
+                          setLocalPrefs(updated);
+                          setHasChanges(true);
+                          applyTheme(updated);
+                        }}
+                        className={`flex flex-col items-center gap-1.5 p-2 rounded-md border transition-all ${
+                          isActive
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: `hsl(${primaryColor})` }}
+                        />
+                        <span className={`text-[10px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                          {preset.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
 
+            {/* Theme Mode + Density */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Surface Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.surfaces}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Brand Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.brand}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">UI Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.ui}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Feedback & Borders</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Sun className="h-4 w-4" />
+                  Display Settings
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <ColorGroup
-                  title="Feedback"
-                  keys={COLOR_GROUPS.feedback}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
-                <ColorGroup
-                  title="Borders & Inputs"
-                  keys={COLOR_GROUPS.borders}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
+                {/* Theme Mode */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Theme Mode</span>
+                  <div className="flex items-center rounded-md border border-border bg-secondary/30 p-0.5">
+                    {[
+                      { value: "light", icon: Sun },
+                      { value: "dark", icon: Moon },
+                      { value: "system", icon: Monitor },
+                    ].map(({ value, icon: Icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => updateThemeMode(value as AppearancePreferences["themeMode"])}
+                        className={`flex items-center justify-center p-1.5 rounded transition-all ${
+                          localPrefs.themeMode === value
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        }`}
+                        title={value.charAt(0).toUpperCase() + value.slice(1)}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* UI Density */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">UI Density</span>
+                  <div className="flex items-center rounded-md border border-border bg-secondary/30 p-0.5">
+                    {[
+                      { value: "compact", icon: Minimize2 },
+                      { value: "default", icon: Square },
+                      { value: "comfortable", icon: Maximize2 },
+                    ].map(({ value, icon: Icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => updateLocalPref("uiDensity", value as AppearancePreferences["uiDensity"])}
+                        className={`flex items-center justify-center p-1.5 rounded transition-all ${
+                          localPrefs.uiDensity === value
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        }`}
+                        title={value.charAt(0).toUpperCase() + value.slice(1)}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 2: Typography + Layout */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Typography */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Type className="h-4 w-4" />
+                  Typography
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Heading Font</Label>
+                  <Select 
+                    value={localPrefs.headingFont} 
+                    onValueChange={(v) => updateLocalPref("headingFont", v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HEADING_FONTS.map(font => (
+                        <SelectItem key={font.value} value={font.value} className="text-xs">
+                          <span style={{ fontFamily: font.value }}>{font.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Body Font</Label>
+                  <Select 
+                    value={localPrefs.bodyFont} 
+                    onValueChange={(v) => updateLocalPref("bodyFont", v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BODY_FONTS.map(font => (
+                        <SelectItem key={font.value} value={font.value} className="text-xs">
+                          <span style={{ fontFamily: font.value }}>{font.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
 
+            {/* Layout & Spacing */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Quiz Colors</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Box className="h-4 w-4" />
+                  Layout
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.quiz}
-                  colors={localPrefs.colors.light}
-                  onChange={(k, v) => updateColor("light", k, v)}
-                />
+              <CardContent className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs">Border Radius</Label>
+                    <span className="text-xs text-muted-foreground font-mono">{localPrefs.borderRadius}rem</span>
+                  </div>
+                  <Slider
+                    value={[localPrefs.borderRadius]}
+                    onValueChange={([v]) => updateLocalPref("borderRadius", v)}
+                    min={0}
+                    max={2}
+                    step={0.125}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs">Spacing Scale</Label>
+                    <span className="text-xs text-muted-foreground font-mono">{localPrefs.spacing}x</span>
+                  </div>
+                  <Slider
+                    value={[localPrefs.spacing]}
+                    onValueChange={([v]) => updateLocalPref("spacing", v)}
+                    min={0.75}
+                    max={1.5}
+                    step={0.05}
+                    className="w-full"
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Dark Colors Tab */}
-        <TabsContent value="dark-colors" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Base Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.base}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-              </CardContent>
-            </Card>
+        {/* Colors Tab - Combined Light + Dark */}
+        <TabsContent value="colors" className="space-y-4">
+          <Tabs defaultValue="light" className="w-full">
+            <TabsList className="h-8 mb-4">
+              <TabsTrigger value="light" className="gap-1.5 text-xs px-3 h-6">
+                <Sun className="h-3 w-3" />
+                Light
+              </TabsTrigger>
+              <TabsTrigger value="dark" className="gap-1.5 text-xs px-3 h-6">
+                <Moon className="h-3 w-3" />
+                Dark
+              </TabsTrigger>
+            </TabsList>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Surface Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.surfaces}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-              </CardContent>
-            </Card>
+            <TabsContent value="light">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Base</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.base.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.light[key] || "0 0% 50%"} onChange={(k, v) => updateColor("light", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Surfaces</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.surfaces.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.light[key] || "0 0% 50%"} onChange={(k, v) => updateColor("light", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Brand</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.brand.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.light[key] || "0 0% 50%"} onChange={(k, v) => updateColor("light", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">UI</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.ui.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.light[key] || "0 0% 50%"} onChange={(k, v) => updateColor("light", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Feedback & Borders</h4>
+                  <div className="space-y-1">
+                    {[...COLOR_GROUPS.feedback, ...COLOR_GROUPS.borders].map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.light[key] || "0 0% 50%"} onChange={(k, v) => updateColor("light", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Quiz</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.quiz.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.light[key] || "0 0% 50%"} onChange={(k, v) => updateColor("light", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </TabsContent>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Brand Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.brand}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">UI Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.ui}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Feedback & Borders</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ColorGroup
-                  title="Feedback"
-                  keys={COLOR_GROUPS.feedback}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-                <ColorGroup
-                  title="Borders & Inputs"
-                  keys={COLOR_GROUPS.borders}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Quiz Colors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ColorGroup
-                  title=""
-                  keys={COLOR_GROUPS.quiz}
-                  colors={localPrefs.colors.dark}
-                  onChange={(k, v) => updateColor("dark", k, v)}
-                />
-              </CardContent>
-            </Card>
-          </div>
+            <TabsContent value="dark">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Base</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.base.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.dark[key] || "0 0% 50%"} onChange={(k, v) => updateColor("dark", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Surfaces</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.surfaces.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.dark[key] || "0 0% 50%"} onChange={(k, v) => updateColor("dark", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Brand</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.brand.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.dark[key] || "0 0% 50%"} onChange={(k, v) => updateColor("dark", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">UI</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.ui.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.dark[key] || "0 0% 50%"} onChange={(k, v) => updateColor("dark", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Feedback & Borders</h4>
+                  <div className="space-y-1">
+                    {[...COLOR_GROUPS.feedback, ...COLOR_GROUPS.borders].map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.dark[key] || "0 0% 50%"} onChange={(k, v) => updateColor("dark", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <h4 className="text-xs font-medium mb-2 text-muted-foreground">Quiz</h4>
+                  <div className="space-y-1">
+                    {COLOR_GROUPS.quiz.map(key => (
+                      <ColorInput key={key} colorKey={key} value={localPrefs.colors.dark[key] || "0 0% 50%"} onChange={(k, v) => updateColor("dark", k, v)} />
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Quiz Design Reference Tab */}
-        <TabsContent value="quiz-design" className="space-y-6">
+        <TabsContent value="quiz-design" className="space-y-4">
           <QuizDesignReference />
         </TabsContent>
       </Tabs>
