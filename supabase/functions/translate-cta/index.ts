@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// All supported target languages (EU languages + Russian/Ukrainian)
+// All supported target languages
 const ALL_TARGET_LANGUAGES = [
   { code: "en", name: "English" },
   { code: "et", name: "Estonian" },
@@ -34,6 +34,28 @@ const ALL_TARGET_LANGUAGES = [
   { code: "mt", name: "Maltese" },
   { code: "ru", name: "Russian" },
   { code: "uk", name: "Ukrainian" },
+  { code: "no", name: "Norwegian" },
+  { code: "tr", name: "Turkish" },
+  { code: "ja", name: "Japanese" },
+  { code: "ko", name: "Korean" },
+  { code: "zh", name: "Chinese" },
+  { code: "ar", name: "Arabic" },
+  { code: "he", name: "Hebrew" },
+  { code: "th", name: "Thai" },
+  { code: "vi", name: "Vietnamese" },
+  { code: "id", name: "Indonesian" },
+  { code: "ms", name: "Malay" },
+  { code: "hi", name: "Hindi" },
+  { code: "sr", name: "Serbian" },
+  { code: "mk", name: "Macedonian" },
+  { code: "sq", name: "Albanian" },
+  { code: "bs", name: "Bosnian" },
+  { code: "ka", name: "Georgian" },
+  { code: "az", name: "Azerbaijani" },
+  { code: "hy", name: "Armenian" },
+  { code: "be", name: "Belarusian" },
+  { code: "kk", name: "Kazakh" },
+  { code: "uz", name: "Uzbek" },
 ];
 
 // Cost per 1K tokens (approximate for gemini-2.5-flash)
