@@ -81,12 +81,19 @@ const DEFAULT_PREFERENCES: AppearancePreferences = {
 function applyAppearance(prefs: AppearancePreferences) {
   const root = document.documentElement;
 
-  // Apply theme mode
+  // Determine if dark mode should be active
+  let shouldBeDark = false;
   if (prefs.themeMode === "system") {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    root.classList.toggle("dark", prefersDark);
+    shouldBeDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   } else {
-    root.classList.toggle("dark", prefs.themeMode === "dark");
+    shouldBeDark = prefs.themeMode === "dark";
+  }
+
+  // Apply theme mode - explicitly add or remove dark class
+  if (shouldBeDark) {
+    root.classList.add("dark");
+  } else {
+    root.classList.remove("dark");
   }
 
   // Apply UI density
@@ -100,9 +107,8 @@ function applyAppearance(prefs: AppearancePreferences) {
   // Apply border radius
   root.style.setProperty("--radius", `${prefs.borderRadius}rem`);
 
-  // Apply colors based on current mode
-  const isDark = root.classList.contains("dark");
-  const colors = isDark ? prefs.colors.dark : prefs.colors.light;
+  // Apply colors based on the determined mode (not class state which might be stale)
+  const colors = shouldBeDark ? prefs.colors.dark : prefs.colors.light;
   Object.entries(colors).forEach(([key, value]) => {
     root.style.setProperty(key, value);
   });
