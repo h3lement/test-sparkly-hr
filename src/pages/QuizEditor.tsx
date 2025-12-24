@@ -1874,6 +1874,40 @@ export default function QuizEditor() {
     }>;
   }, [quizId]);
 
+  const fetchHypothesisPagesForErrorCheck = useCallback(async () => {
+    if (!quizId || quizId === "new") return [];
+    
+    const { data: pages, error: pagesError } = await supabase
+      .from("hypothesis_pages")
+      .select("id, title, page_number")
+      .eq("quiz_id", quizId)
+      .order("page_number");
+
+    if (pagesError) throw pagesError;
+    
+    const pagesWithQuestions = await Promise.all(
+      (pages || []).map(async (page) => {
+        const { data: questions, error: qError } = await supabase
+          .from("hypothesis_questions")
+          .select("id, hypothesis_text")
+          .eq("page_id", page.id)
+          .order("question_order");
+
+        if (qError) throw qError;
+        return {
+          id: page.id,
+          title: page.title as Json,
+          questions: (questions || []).map(q => ({
+            id: q.id,
+            hypothesis_text: q.hypothesis_text as Json,
+          })),
+        };
+      })
+    );
+
+    return pagesWithQuestions;
+  }, [quizId]);
+
   // Error checking hook
   const errorChecker = QuizErrorChecker({
     quizId: quizId || "",
@@ -1891,6 +1925,7 @@ export default function QuizEditor() {
     quizType,
     getLocalizedValue,
     fetchHypothesisResultLevels: fetchHypothesisResultLevelsForErrorCheck,
+    fetchHypothesisPages: fetchHypothesisPagesForErrorCheck,
   });
 
   const handleCheckErrors = async () => {

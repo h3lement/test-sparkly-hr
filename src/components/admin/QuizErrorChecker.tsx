@@ -31,7 +31,7 @@ interface ResultLevel {
 }
 
 interface QuizError {
-  tab: "general" | "questions" | "mindedness" | "results";
+  tab: "general" | "questions" | "hypothesis" | "mindedness" | "results";
   message: string;
 }
 
@@ -61,6 +61,7 @@ interface QuizErrorCheckerProps {
   quizType: "standard" | "hypothesis" | "emotional";
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
   fetchHypothesisResultLevels?: () => Promise<HypothesisResultLevel[]>;
+  fetchHypothesisPages?: () => Promise<Array<{ id: string; title: Json; questions: Array<{ id: string; hypothesis_text: Json }> }>>;
 }
 
 export interface CheckErrorsResult {
@@ -85,6 +86,7 @@ export function QuizErrorChecker({
   quizType,
   getLocalizedValue,
   fetchHypothesisResultLevels,
+  fetchHypothesisPages,
 }: QuizErrorCheckerProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<CheckErrorsResult | null>(null);
@@ -132,43 +134,90 @@ export function QuizErrorChecker({
       errors.push({ tab: "general", message: `Quiz description is recommended (${primaryLanguage.toUpperCase()})` });
     }
 
-    // === QUESTIONS TAB VALIDATIONS ===
-
-    // At least one question is required
-    const regularQuestions = questions.filter(q => q.question_type !== "open_mindedness");
-    if (regularQuestions.length === 0) {
-      errors.push({ tab: "questions", message: "At least one question is required" });
-    }
-
-    // Each question must have text
-    regularQuestions.forEach((q, index) => {
-      const questionText = getLocalizedValue(q.question_text, primaryLanguage);
-      if (!questionText) {
-        errors.push({ 
-          tab: "questions", 
-          message: `Question ${index + 1} is missing text (${primaryLanguage.toUpperCase()})` 
-        });
+    // === QUESTIONS TAB VALIDATIONS (standard quizzes only) ===
+    if (quizType !== "hypothesis") {
+      // At least one question is required
+      const regularQuestions = questions.filter(q => q.question_type !== "open_mindedness");
+      if (regularQuestions.length === 0) {
+        errors.push({ tab: "questions", message: "At least one question is required" });
       }
 
-      // Each question must have at least 2 answers
-      if (q.answers.length < 2) {
-        errors.push({ 
-          tab: "questions", 
-          message: `Question ${index + 1} needs at least 2 answers (has ${q.answers.length})` 
-        });
-      }
-
-      // Each answer must have text
-      q.answers.forEach((a, aIndex) => {
-        const answerText = getLocalizedValue(a.answer_text, primaryLanguage);
-        if (!answerText) {
+      // Each question must have text
+      regularQuestions.forEach((q, index) => {
+        const questionText = getLocalizedValue(q.question_text, primaryLanguage);
+        if (!questionText) {
           errors.push({ 
             tab: "questions", 
-            message: `Question ${index + 1}, Answer ${aIndex + 1} is missing text (${primaryLanguage.toUpperCase()})` 
+            message: `Question ${index + 1} is missing text (${primaryLanguage.toUpperCase()})` 
           });
         }
+
+        // Each question must have at least 2 answers
+        if (q.answers.length < 2) {
+          errors.push({ 
+            tab: "questions", 
+            message: `Question ${index + 1} needs at least 2 answers (has ${q.answers.length})` 
+          });
+        }
+
+        // Each answer must have text
+        q.answers.forEach((a, aIndex) => {
+          const answerText = getLocalizedValue(a.answer_text, primaryLanguage);
+          if (!answerText) {
+            errors.push({ 
+              tab: "questions", 
+              message: `Question ${index + 1}, Answer ${aIndex + 1} is missing text (${primaryLanguage.toUpperCase()})` 
+            });
+          }
+        });
       });
-    });
+    }
+
+    // === HYPOTHESIS TAB VALIDATIONS (hypothesis quizzes only) ===
+    if (quizType === "hypothesis" && fetchHypothesisPages) {
+      try {
+        const pages = await fetchHypothesisPages();
+        
+        if (pages.length === 0) {
+          errors.push({ tab: "hypothesis", message: "At least one hypothesis page is required" });
+        }
+
+        let totalQuestions = 0;
+        pages.forEach((page, pageIndex) => {
+          const pageTitle = getLocalizedValue(page.title, primaryLanguage);
+          if (!pageTitle) {
+            errors.push({ 
+              tab: "hypothesis", 
+              message: `Page ${pageIndex + 1} is missing title (${primaryLanguage.toUpperCase()})` 
+            });
+          }
+
+          if (page.questions.length === 0) {
+            errors.push({ 
+              tab: "hypothesis", 
+              message: `Page ${pageIndex + 1} has no questions` 
+            });
+          }
+
+          page.questions.forEach((q, qIndex) => {
+            totalQuestions++;
+            const hypothesisText = getLocalizedValue(q.hypothesis_text, primaryLanguage);
+            if (!hypothesisText) {
+              errors.push({ 
+                tab: "hypothesis", 
+                message: `Page ${pageIndex + 1}, Question ${qIndex + 1} is missing hypothesis text (${primaryLanguage.toUpperCase()})` 
+              });
+            }
+          });
+        });
+
+        if (totalQuestions === 0) {
+          errors.push({ tab: "hypothesis", message: "At least one hypothesis question is required" });
+        }
+      } catch (err) {
+        console.error("Error fetching hypothesis pages for validation:", err);
+      }
+    }
 
     // === OPEN-MINDEDNESS TAB VALIDATIONS ===
     
@@ -303,11 +352,12 @@ export function QuizErrorChecker({
       });
 
       // Validate point ranges coverage
-      if (resultLevels.length > 0 && regularQuestions.length > 0) {
+      const standardQuestions = questions.filter(q => q.question_type !== "open_mindedness");
+      if (resultLevels.length > 0 && standardQuestions.length > 0) {
         let maxPossibleScore = 0;
         let minPossibleScore = 0;
 
-        for (const q of regularQuestions) {
+        for (const q of standardQuestions) {
           if (q.answers.length > 0) {
             const scores = q.answers.map((a) => a.score_value);
             maxPossibleScore += Math.max(...scores);
@@ -541,8 +591,8 @@ export function CheckErrorsButton({
 }
 
 // Helper to get first tab with errors
-export function getFirstErrorTab(errors: QuizError[]): "general" | "questions" | "mindedness" | "results" | null {
-  const tabOrder: Array<"general" | "questions" | "mindedness" | "results"> = ["general", "questions", "mindedness", "results"];
+export function getFirstErrorTab(errors: QuizError[]): "general" | "questions" | "hypothesis" | "mindedness" | "results" | null {
+  const tabOrder: Array<"general" | "questions" | "hypothesis" | "mindedness" | "results"> = ["general", "questions", "hypothesis", "mindedness", "results"];
   for (const tab of tabOrder) {
     if (errors.some(e => e.tab === tab)) {
       return tab;
