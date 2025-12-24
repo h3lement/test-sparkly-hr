@@ -5,10 +5,18 @@ import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award, Light
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useUiTranslations } from '@/hooks/useUiTranslations';
+import { useHypothesisResultLevels } from '@/hooks/useHypothesisResultLevels';
 
 // UI text keys are stored in the backend UI translations table.
 // This component intentionally avoids hardcoded per-language dictionaries so all languages work consistently.
 
+// Default fallback levels in case database has none
+const DEFAULT_RESULT_LEVELS = [
+  { min: 80, max: 100, emoji: '🏆', titleKey: 'biasChampion', titleFallback: 'Bias Champion', descKey: 'biasChampionDesc', descFallback: 'Excellent awareness! You see through most common biases about 50+ employees.', color: 'text-green-500', bgColor: 'bg-green-500/10' },
+  { min: 60, max: 79, emoji: '👁️', titleKey: 'awareRecruiter', titleFallback: 'Aware Recruiter', descKey: 'awareRecruiterDesc', descFallback: 'Good progress! You recognize many biases but have room to grow.', color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+  { min: 40, max: 59, emoji: '📚', titleKey: 'learningMindset', titleFallback: 'Learning Mindset', descKey: 'learningMindsetDesc', descFallback: "You're on your way. This test revealed some blind spots to work on.", color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
+  { min: 0, max: 39, emoji: '🌱', titleKey: 'freshStart', titleFallback: 'Fresh Start', descKey: 'freshStartDesc', descFallback: 'Great that you took this test! Now you know where to focus your learning.', color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+];
 
 export function HypothesisResultsScreen() {
   const { 
@@ -23,6 +31,9 @@ export function HypothesisResultsScreen() {
   } = useHypothesisQuiz();
   const { language } = useLanguage();
   const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({});
+  
+  // Fetch database result levels
+  const { resultLevels: dbResultLevels, getResultLevel: getDbResultLevel } = useHypothesisResultLevels(quizData?.id);
   
   // Use UI translations from database
   const { getTranslation } = useUiTranslations({
@@ -44,12 +55,29 @@ export function HypothesisResultsScreen() {
     return textObj[language] || textObj['en'] || fallback;
   };
 
-  // Get result level based on score
+  // Get result level based on score - use database if available, fallback to defaults
   const getResultLevel = () => {
-    if (percentage >= 80) return { title: t('biasChampion', 'Bias Champion'), emoji: '🏆', color: 'text-green-500', bgColor: 'bg-green-500/10', description: t('biasChampionDesc', 'Excellent awareness! You see through most common biases about 50+ employees.') };
-    if (percentage >= 60) return { title: t('awareRecruiter', 'Aware Recruiter'), emoji: '👁️', color: 'text-blue-500', bgColor: 'bg-blue-500/10', description: t('awareRecruiterDesc', 'Good progress! You recognize many biases but have room to grow.') };
-    if (percentage >= 40) return { title: t('learningMindset', 'Learning Mindset'), emoji: '📚', color: 'text-amber-500', bgColor: 'bg-amber-500/10', description: t('learningMindsetDesc', "You're on your way. This test revealed some blind spots to work on.") };
-    return { title: t('freshStart', 'Fresh Start'), emoji: '🌱', color: 'text-orange-500', bgColor: 'bg-orange-500/10', description: t('freshStartDesc', 'Great that you took this test! Now you know where to focus your learning.') };
+    // Try to get from database first
+    const dbLevel = getDbResultLevel(percentage);
+    if (dbLevel) {
+      return {
+        title: dbLevel.title[language] || dbLevel.title['en'] || 'Result',
+        emoji: dbLevel.emoji,
+        color: dbLevel.color_class.split(' ')[0] || 'text-green-500',
+        bgColor: dbLevel.color_class.split(' ')[1] || 'bg-green-500/10',
+        description: dbLevel.description[language] || dbLevel.description['en'] || '',
+      };
+    }
+
+    // Fallback to defaults with translations
+    const fallback = DEFAULT_RESULT_LEVELS.find(l => percentage >= l.min && percentage <= l.max) || DEFAULT_RESULT_LEVELS[3];
+    return {
+      title: t(fallback.titleKey, fallback.titleFallback),
+      emoji: fallback.emoji,
+      color: fallback.color,
+      bgColor: fallback.bgColor,
+      description: t(fallback.descKey, fallback.descFallback),
+    };
   };
 
   const resultLevel = getResultLevel();

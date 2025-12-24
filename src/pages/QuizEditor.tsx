@@ -26,6 +26,7 @@ import { ToneOfVoiceEditor } from "@/components/admin/ToneOfVoiceEditor";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { OpenMindednessEditor } from "@/components/admin/OpenMindednessEditor";
 import { OpenMindednessResultLevels } from "@/components/admin/OpenMindednessResultLevels";
+import { HypothesisResultLevels } from "@/components/admin/HypothesisResultLevels";
 import { QuizRespondents } from "@/components/admin/QuizRespondents";
 import { QuizStats } from "@/components/admin/QuizStats";
 import { QuizActivityLog } from "@/components/admin/QuizActivityLog";
@@ -2753,126 +2754,138 @@ export default function QuizEditor() {
               <QuizErrorDisplay errors={errorCheckResult.errors} activeTab="results" />
             )}
             
-            {/* Compact Results Header */}
-            <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg border">
-              {/* Point Range Validator */}
-              {(() => {
-                const validation = getPointRangeValidation();
-                return (
-                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
-                    validation.isValid 
-                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" 
-                      : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                  }`}>
-                    {validation.isValid ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : (
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                    )}
-                    <span className="font-medium">{validation.message}</span>
-                  </div>
-                );
-              })()}
-
-              {/* AI Model Selector - moved to header */}
-
-              <div className="flex-1" />
-
-              {/* Action Buttons */}
-              {!isPreviewMode && !isCreating && (
-                <>
+            {/* Hypothesis Quiz Result Levels */}
+            {quizType === "hypothesis" ? (
+              <HypothesisResultLevels
+                quizId={quizId!}
+                maxScore={hypothesisQuestionCount}
+                primaryLanguage={primaryLanguage}
+                model={selectedAiModel}
+              />
+            ) : (
+              <>
+                {/* Compact Results Header */}
+                <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg border">
+                  {/* Point Range Validator */}
                   {(() => {
                     const validation = getPointRangeValidation();
                     return (
-                      <>
-                        <AutoSuggestScoresButton
-                          resultLevels={resultLevels}
-                          minPossibleScore={validation.minScore ?? 0}
-                          maxPossibleScore={validation.maxScore ?? 100}
-                          onUpdateLevels={setResultLevels}
-                        />
-                        <SyncAnswerWeightsButton
-                          quizId={quizId!}
-                          questions={questions}
-                          resultLevels={resultLevels}
-                          language={primaryLanguage}
-                          onUpdateQuestions={setQuestions}
-                          getLocalizedValue={getLocalizedValue}
-                        />
-                      </>
+                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
+                        validation.isValid 
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" 
+                          : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                      }`}>
+                        {validation.isValid ? (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                        )}
+                        <span className="font-medium">{validation.message}</span>
+                      </div>
                     );
                   })()}
-                  <BulkAiFillButton
-                    quizId={quizId!}
-                    language={primaryLanguage}
-                    model={selectedAiModel}
-                    resultLevels={resultLevels}
-                    onUpdateLevel={updateResultLevel}
-                    getLocalizedValue={getLocalizedValue}
-                    jsonToRecord={jsonToRecord}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowVersionsDialog(true)}
-                    className="h-7 px-2 text-xs gap-1"
-                  >
-                    <History className="w-3.5 h-3.5" />
-                    Versions
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowGenerateDialog(true)}
-                    className="h-7 px-2 text-xs gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Generate with AI
-                  </Button>
-                </>
-              )}
-              {!isPreviewMode && (
-                <Button 
-                  onClick={addResultLevel} 
-                  size="sm" 
-                  className="h-7 px-3 text-xs gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Level
-                </Button>
-              )}
-            </div>
 
-            <SortableResultList
-              resultLevels={resultLevels}
-              displayLanguage={displayLanguage}
-              isPreviewMode={isPreviewMode}
-              quizId={quizId}
-              model={selectedAiModel}
-              onReorderLevels={(reorderedLevels) => setResultLevels(reorderedLevels)}
-              onUpdateLevel={updateResultLevel}
-              onDeleteLevel={deleteResultLevel}
-              getLocalizedValue={getLocalizedValue}
-              jsonToRecord={jsonToRecord}
-            />
+                  {/* AI Model Selector - moved to header */}
 
-            {/* AI Dialogs */}
-            {!isCreating && quizId && (
-              <>
-                <GenerateResultsDialog
-                  open={showGenerateDialog}
-                  onOpenChange={setShowGenerateDialog}
+                  <div className="flex-1" />
+
+                  {/* Action Buttons */}
+                  {!isPreviewMode && !isCreating && (
+                    <>
+                      {(() => {
+                        const validation = getPointRangeValidation();
+                        return (
+                          <>
+                            <AutoSuggestScoresButton
+                              resultLevels={resultLevels}
+                              minPossibleScore={validation.minScore ?? 0}
+                              maxPossibleScore={validation.maxScore ?? 100}
+                              onUpdateLevels={setResultLevels}
+                            />
+                            <SyncAnswerWeightsButton
+                              quizId={quizId!}
+                              questions={questions}
+                              resultLevels={resultLevels}
+                              language={primaryLanguage}
+                              onUpdateQuestions={setQuestions}
+                              getLocalizedValue={getLocalizedValue}
+                            />
+                          </>
+                        );
+                      })()}
+                      <BulkAiFillButton
+                        quizId={quizId!}
+                        language={primaryLanguage}
+                        model={selectedAiModel}
+                        resultLevels={resultLevels}
+                        onUpdateLevel={updateResultLevel}
+                        getLocalizedValue={getLocalizedValue}
+                        jsonToRecord={jsonToRecord}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowVersionsDialog(true)}
+                        className="h-7 px-2 text-xs gap-1"
+                      >
+                        <History className="w-3.5 h-3.5" />
+                        Versions
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowGenerateDialog(true)}
+                        className="h-7 px-2 text-xs gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Generate with AI
+                      </Button>
+                    </>
+                  )}
+                  {!isPreviewMode && (
+                    <Button 
+                      onClick={addResultLevel} 
+                      size="sm" 
+                      className="h-7 px-3 text-xs gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Level
+                    </Button>
+                  )}
+                </div>
+
+                <SortableResultList
+                  resultLevels={resultLevels}
+                  displayLanguage={displayLanguage}
+                  isPreviewMode={isPreviewMode}
                   quizId={quizId}
-                  language={primaryLanguage}
                   model={selectedAiModel}
-                  onResultsGenerated={(levels) => setResultLevels(levels)}
+                  onReorderLevels={(reorderedLevels) => setResultLevels(reorderedLevels)}
+                  onUpdateLevel={updateResultLevel}
+                  onDeleteLevel={deleteResultLevel}
+                  getLocalizedValue={getLocalizedValue}
+                  jsonToRecord={jsonToRecord}
                 />
-                <ResultVersionsDialog
-                  open={showVersionsDialog}
-                  onOpenChange={setShowVersionsDialog}
-                  quizId={quizId}
-                  onRestoreVersion={(levels) => setResultLevels(levels)}
-                />
+
+                {/* AI Dialogs */}
+                {!isCreating && quizId && (
+                  <>
+                    <GenerateResultsDialog
+                      open={showGenerateDialog}
+                      onOpenChange={setShowGenerateDialog}
+                      quizId={quizId}
+                      language={primaryLanguage}
+                      model={selectedAiModel}
+                      onResultsGenerated={(levels) => setResultLevels(levels)}
+                    />
+                    <ResultVersionsDialog
+                      open={showVersionsDialog}
+                      onOpenChange={setShowVersionsDialog}
+                      quizId={quizId}
+                      onRestoreVersion={(levels) => setResultLevels(levels)}
+                    />
+                  </>
+                )}
               </>
             )}
           </TabsContent>
