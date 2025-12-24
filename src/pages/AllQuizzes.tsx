@@ -55,10 +55,12 @@ export default function AllQuizzes() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [quizTypeLabels, setQuizTypeLabels] = useState<Record<string, Record<string, string>>>({});
+  const [pageTranslations, setPageTranslations] = useState<Record<string, Record<string, string>>>({});
 
   useEffect(() => {
     fetchQuizzes();
     fetchQuizTypeLabels();
+    fetchPageTranslations();
   }, []);
 
   const fetchQuizzes = async () => {
@@ -98,6 +100,35 @@ export default function AllQuizzes() {
     } catch (error) {
       console.error("Error fetching quiz type labels:", error);
     }
+  };
+
+  const fetchPageTranslations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ui_translations")
+        .select("translation_key, translations")
+        .like("translation_key", "allQuizzes.%")
+        .is("quiz_id", null);
+
+      if (error) throw error;
+      
+      const translations: Record<string, Record<string, string>> = {};
+      (data || []).forEach(item => {
+        const key = item.translation_key.replace("allQuizzes.", "");
+        translations[key] = item.translations as Record<string, string>;
+      });
+      setPageTranslations(translations);
+    } catch (error) {
+      console.error("Error fetching page translations:", error);
+    }
+  };
+
+  const getPageText = (key: string, fallback: string): string => {
+    const translations = pageTranslations[key];
+    if (translations) {
+      return translations[language] || translations["en"] || fallback;
+    }
+    return fallback;
   };
 
   const getLocalizedText = (json: Json, lang: string = language): string => {
@@ -174,10 +205,10 @@ export default function AllQuizzes() {
       <main className="flex-1 max-w-4xl mx-auto px-6 py-12 w-full">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Available Quizzes
+            {getPageText("title", "Available Quizzes")}
           </h1>
           <p className="text-lg text-muted-foreground">
-            Select a quiz to get started
+            {getPageText("subtitle", "Select a quiz to get started")}
           </p>
         </div>
 
@@ -187,7 +218,7 @@ export default function AllQuizzes() {
           </div>
         ) : quizzes.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No quizzes available at the moment.
+            {getPageText("noQuizzes", "No quizzes available at the moment.")}
           </div>
         ) : (
           <div className="grid gap-4">
@@ -211,9 +242,9 @@ export default function AllQuizzes() {
                           {title}
                         </h2>
                         {/* Free Badge - shown only if not already in badgeText */}
-                        {!badgeText?.toLowerCase().includes('free') && (
+                        {!badgeText?.toLowerCase().includes('free') && !badgeText?.toLowerCase().includes('tasuta') && !badgeText?.toLowerCase().includes('gratis') && (
                           <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 border-emerald-500/30 font-semibold text-xs">
-                            Free
+                            {getPageText("free", "Free")}
                           </Badge>
                         )}
                         {typeStyle.label && (
