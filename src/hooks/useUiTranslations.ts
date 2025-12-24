@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface UiTranslation {
   translation_key: string;
+  quiz_id?: string | null;
   translations: Record<string, string>;
 }
 
@@ -32,26 +33,36 @@ export function useUiTranslations({
   const [error, setError] = useState<Error | null>(null);
 
   const fetchTranslations = useCallback(async () => {
-    if (!quizId) {
-      setTranslations({});
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      // Fetch global (quiz_id IS NULL) + quiz-specific translations when quizId is provided.
+      // Quiz-specific should override global keys.
+      let query = supabase
         .from('ui_translations')
-        .select('translation_key, translations')
-        .eq('quiz_id', quizId);
+        .select('translation_key, translations, quiz_id');
+
+      if (quizId) {
+        query = query.or(`quiz_id.eq.${quizId},quiz_id.is.null`);
+      } else {
+        query = query.is('quiz_id', null);
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
 
-      // Build a flat map of key -> translated value for current language
+      // Build a flat map of key -> translated value for current language.
+      // Ensure deterministic precedence: global first, then quiz-specific.
       const translationMap: Record<string, string> = {};
-      
-      (data as UiTranslation[] || []).forEach((item) => {
+      const rows = ((data as UiTranslation[]) || []).slice().sort((a, b) => {
+        const aRank = a.quiz_id ? 1 : 0;
+        const bRank = b.quiz_id ? 1 : 0;
+        return aRank - bRank;
+      });
+
+      rows.forEach((item) => {
         const translatedValue = item.translations?.[language] || item.translations?.['en'];
         if (translatedValue) {
           translationMap[item.translation_key] = translatedValue;
