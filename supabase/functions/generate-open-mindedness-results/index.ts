@@ -55,19 +55,35 @@ serve(async (req) => {
       throw new Error("Quiz not found");
     }
 
-    // Fetch open-mindedness question with answers
-    const { data: omQuestion, error: omError } = await supabase
-      .from("quiz_questions")
-      .select(`
-        *,
-        quiz_answers (*)
-      `)
-      .eq("quiz_id", quizId)
-      .eq("question_type", "open_mindedness")
-      .single();
+    // Fetch GLOBAL open-mindedness module (shared across all quizzes)
+    const { data: globalModule, error: moduleError } = await supabase
+      .from("global_open_mindedness_module")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
 
-    if (omError || !omQuestion) {
-      throw new Error("Open-mindedness question not found");
+    if (moduleError) {
+      console.error("Error fetching global OM module:", moduleError);
+      throw new Error("Failed to fetch global open-mindedness module");
+    }
+
+    if (!globalModule) {
+      throw new Error("Global open-mindedness module not configured");
+    }
+
+    // Fetch GLOBAL open-mindedness answers
+    const { data: globalAnswers, error: answersError } = await supabase
+      .from("global_open_mindedness_answers")
+      .select("*")
+      .order("answer_order");
+
+    if (answersError) {
+      console.error("Error fetching global OM answers:", answersError);
+      throw new Error("Failed to fetch global open-mindedness answers");
+    }
+
+    if (!globalAnswers || globalAnswers.length === 0) {
+      throw new Error("No global open-mindedness answers configured");
     }
 
     // Get localized values
@@ -80,12 +96,11 @@ serve(async (req) => {
     };
 
     const quizTitle = getLocalizedValue(quiz.title, language);
-    const questionText = getLocalizedValue(omQuestion.question_text, language);
-    const maxScore = omQuestion.quiz_answers?.length || 0;
+    const questionText = getLocalizedValue(globalModule.question_text, language);
+    const maxScore = globalAnswers.reduce((sum: number, a: any) => sum + (a.score_value || 1), 0);
 
-    // Build answer options
-    const answerOptions = (omQuestion.quiz_answers || [])
-      .sort((a: any, b: any) => a.answer_order - b.answer_order)
+    // Build answer options from global answers
+    const answerOptions = globalAnswers
       .map((a: any) => `- ${getLocalizedValue(a.answer_text, language)} (${a.score_value} points)`)
       .join("\n");
 
@@ -125,6 +140,7 @@ OUTPUT FORMAT (JSON array):
 Generate the ${numberOfLevels} result levels now:`;
 
     console.log("Calling AI with prompt length:", prompt.length);
+    console.log("Using global OM module with", globalAnswers.length, "answers, max score:", maxScore);
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
