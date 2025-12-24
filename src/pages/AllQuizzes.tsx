@@ -45,6 +45,8 @@ const LANGUAGES = [
   { code: "lv", label: "Latviešu" },
   { code: "ga", label: "Gaeilge" },
   { code: "mt", label: "Malti" },
+  { code: "ru", label: "Русский" },
+  { code: "uk", label: "Українська" },
 ];
 
 export default function AllQuizzes() {
