@@ -208,6 +208,10 @@ export default function QuizEditor() {
   const [badgeText, setBadgeText] = useState<Record<string, string>>({});
   // Removed legacy CTA states (ctaText, ctaTitle, ctaDescription, ctaUrl) - now handled via cta_template_id relationship
   const [durationText, setDurationText] = useState<Record<string, string>>({});
+  const [startCtaText, setStartCtaText] = useState<Record<string, string>>({});
+  const [startCtaSecondaryText, setStartCtaSecondaryText] = useState<Record<string, string>>({});
+  const [startCtaUrl, setStartCtaUrl] = useState("");
+  const [startCtaSecondaryUrl, setStartCtaSecondaryUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   
   // Quiz behavior settings
@@ -290,7 +294,9 @@ export default function QuizEditor() {
       slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
       title, description, headline, headline_highlight: headlineHighlight,
       badge_text: badgeText, cta_template_id: ctaTemplateId,
-      duration_text: durationText, is_active: isActive, primary_language: primaryLanguage,
+      duration_text: durationText, start_cta_text: startCtaText, start_cta_secondary_text: startCtaSecondaryText,
+      start_cta_url: startCtaUrl || null, start_cta_secondary_url: startCtaSecondaryUrl || null,
+      is_active: isActive, primary_language: primaryLanguage,
       quiz_type: quizType, shuffle_questions: shuffleQuestions, shuffle_answers: shuffleAnswers, enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness, tone_of_voice: toneOfVoice,
       tone_source: toneSource, use_tone_for_ai: useToneForAi, tone_intensity: toneIntensity,
@@ -315,7 +321,7 @@ export default function QuizEditor() {
     count += resultLevelsDirtyTracking.getDeletedIds(resultLevels).length;
     
     return count;
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaTemplateId, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaTemplateId, durationText, startCtaText, startCtaSecondaryText, startCtaUrl, startCtaSecondaryUrl, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   const pendingChangesCount = getPendingChangesCount();
 
@@ -333,6 +339,10 @@ export default function QuizEditor() {
       badge_text: badgeText,
       cta_template_id: ctaTemplateId,
       duration_text: durationText,
+      start_cta_text: startCtaText,
+      start_cta_secondary_text: startCtaSecondaryText,
+      start_cta_url: startCtaUrl || null,
+      start_cta_secondary_url: startCtaSecondaryUrl || null,
       is_active: isActive,
       primary_language: primaryLanguage,
       quiz_type: quizType,
@@ -767,6 +777,10 @@ export default function QuizEditor() {
       setBadgeText(jsonToRecord(quiz.badge_text));
       setCtaTemplateId((quiz as any).cta_template_id || null);
       setDurationText(jsonToRecord(quiz.duration_text));
+      setStartCtaText(jsonToRecord((quiz as any).start_cta_text));
+      setStartCtaSecondaryText(jsonToRecord((quiz as any).start_cta_secondary_text));
+      setStartCtaUrl((quiz as any).start_cta_url || "");
+      setStartCtaSecondaryUrl((quiz as any).start_cta_secondary_url || "");
       setIsActive(quiz.is_active);
       setPrimaryLanguage(quiz.primary_language || "en");
       setTranslationMeta((quiz as any).translation_meta || {});
@@ -930,6 +944,10 @@ export default function QuizEditor() {
         badge_text: jsonToRecord(quiz.badge_text),
         cta_template_id: (quiz as any).cta_template_id || null,
         duration_text: jsonToRecord(quiz.duration_text),
+        start_cta_text: jsonToRecord((quiz as any).start_cta_text),
+        start_cta_secondary_text: jsonToRecord((quiz as any).start_cta_secondary_text),
+        start_cta_url: (quiz as any).start_cta_url || null,
+        start_cta_secondary_url: (quiz as any).start_cta_secondary_url || null,
         is_active: quiz.is_active,
         primary_language: quiz.primary_language || "en",
         shuffle_questions: (quiz as any).shuffle_questions || false,
@@ -1311,6 +1329,10 @@ export default function QuizEditor() {
         badge_text: badgeText,
         cta_template_id: ctaTemplateId,
         duration_text: durationText,
+        start_cta_text: startCtaText,
+        start_cta_secondary_text: startCtaSecondaryText,
+        start_cta_url: startCtaUrl || null,
+        start_cta_secondary_url: startCtaSecondaryUrl || null,
         is_active: isActive,
         primary_language: primaryLanguage,
         quiz_type: quizType,
@@ -2668,16 +2690,62 @@ export default function QuizEditor() {
               onBuyingPersonaChange={setBuyingPersona}
             />
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs">Duration Text ({displayLanguage.toUpperCase()})</Label>
-                <Input
-                  value={durationText[displayLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setDurationText, displayLanguage, e.target.value)}
-                  placeholder="Takes only 2 minutes"
-                  className="h-8"
-                  disabled={isPreviewMode}
-                />
+            {/* Start CTAs and Duration */}
+            <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+              <Label className="text-xs font-medium">Welcome Screen CTAs ({displayLanguage.toUpperCase()})</Label>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Primary Button Text</Label>
+                  <Input
+                    value={startCtaText[displayLanguage] || ""}
+                    onChange={(e) => setLocalizedValue(setStartCtaText, displayLanguage, e.target.value)}
+                    placeholder="Start Quiz"
+                    className="h-8"
+                    disabled={isPreviewMode}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Primary Button URL (optional)</Label>
+                  <Input
+                    value={startCtaUrl}
+                    onChange={(e) => setStartCtaUrl(e.target.value)}
+                    placeholder="Leave empty for default behavior"
+                    className="h-8"
+                    disabled={isPreviewMode}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Secondary Button Text</Label>
+                  <Input
+                    value={startCtaSecondaryText[displayLanguage] || ""}
+                    onChange={(e) => setLocalizedValue(setStartCtaSecondaryText, displayLanguage, e.target.value)}
+                    placeholder="Learn More"
+                    className="h-8"
+                    disabled={isPreviewMode}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Secondary Button URL (optional)</Label>
+                  <Input
+                    value={startCtaSecondaryUrl}
+                    onChange={(e) => setStartCtaSecondaryUrl(e.target.value)}
+                    placeholder="Leave empty for default behavior"
+                    className="h-8"
+                    disabled={isPreviewMode}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Duration Text</Label>
+                  <Input
+                    value={durationText[displayLanguage] || ""}
+                    onChange={(e) => setLocalizedValue(setDurationText, displayLanguage, e.target.value)}
+                    placeholder="Takes only 2 minutes"
+                    className="h-8"
+                    disabled={isPreviewMode}
+                  />
+                </div>
               </div>
             </div>
           </TabsContent>

@@ -1173,6 +1173,10 @@ export type Database = {
           shuffle_answers: boolean
           shuffle_questions: boolean
           slug: string
+          start_cta_secondary_text: Json
+          start_cta_secondary_url: string | null
+          start_cta_text: Json
+          start_cta_url: string | null
           title: Json
           tone_intensity: number | null
           tone_of_voice: string | null
@@ -1210,6 +1214,10 @@ export type Database = {
           shuffle_answers?: boolean
           shuffle_questions?: boolean
           slug: string
+          start_cta_secondary_text?: Json
+          start_cta_secondary_url?: string | null
+          start_cta_text?: Json
+          start_cta_url?: string | null
           title?: Json
           tone_intensity?: number | null
           tone_of_voice?: string | null
@@ -1247,6 +1255,10 @@ export type Database = {
           shuffle_answers?: boolean
           shuffle_questions?: boolean
           slug?: string
+          start_cta_secondary_text?: Json
+          start_cta_secondary_url?: string | null
+          start_cta_text?: Json
+          start_cta_url?: string | null
           title?: Json
           tone_intensity?: number | null
           tone_of_voice?: string | null

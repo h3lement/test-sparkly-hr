@@ -11,6 +11,10 @@ export interface QuizData {
   headline_highlight: Record<string, string>;
   discover_items: Array<Record<string, string>>;
   duration_text: Record<string, string>;
+  start_cta_text: Record<string, string>;
+  start_cta_secondary_text: Record<string, string>;
+  start_cta_url: string | null;
+  start_cta_secondary_url: string | null;
   cta_url: string;
   cta_text: Record<string, string>;
   cta_title: Record<string, string>;
@@ -134,6 +138,10 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           headline_highlight: quizData.headline_highlight as Record<string, string>,
           discover_items: quizData.discover_items as Array<Record<string, string>>,
           duration_text: quizData.duration_text as Record<string, string>,
+          start_cta_text: (quizData as any).start_cta_text as Record<string, string> || {},
+          start_cta_secondary_text: (quizData as any).start_cta_secondary_text as Record<string, string> || {},
+          start_cta_url: (quizData as any).start_cta_url || null,
+          start_cta_secondary_url: (quizData as any).start_cta_secondary_url || null,
           cta_url: ctaUrl,
           cta_text: ctaText,
           cta_title: ctaTitle,

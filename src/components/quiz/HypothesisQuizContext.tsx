@@ -53,6 +53,10 @@ export interface QuizData {
   badge_text: Record<string, string>;
   duration_text: Record<string, string>;
   discover_items: Record<string, string>[];
+  start_cta_text: Record<string, string>;
+  start_cta_secondary_text: Record<string, string>;
+  start_cta_url: string | null;
+  start_cta_secondary_url: string | null;
   cta_text: Record<string, string>;
   cta_title: Record<string, string>;
   cta_description: Record<string, string>;

@@ -47,6 +47,10 @@ export interface QuizData {
   badge_text: Record<string, string>;
   duration_text: Record<string, string>;
   discover_items: Record<string, string>[];
+  start_cta_text: Record<string, string>;
+  start_cta_secondary_text: Record<string, string>;
+  start_cta_url: string | null;
+  start_cta_secondary_url: string | null;
   cta_text: Record<string, string>;
   cta_title: Record<string, string>;
   cta_description: Record<string, string>;
@@ -109,6 +113,10 @@ export function useHypothesisQuizPublic(slug: string) {
         badge_text: data.badge_text as Record<string, string>,
         duration_text: data.duration_text as Record<string, string>,
         discover_items: (data.discover_items || []) as Record<string, string>[],
+        start_cta_text: ((data as any).start_cta_text || {}) as Record<string, string>,
+        start_cta_secondary_text: ((data as any).start_cta_secondary_text || {}) as Record<string, string>,
+        start_cta_url: (data as any).start_cta_url || null,
+        start_cta_secondary_url: (data as any).start_cta_secondary_url || null,
         cta_text: ctaText,
         cta_title: ctaTitle,
         cta_description: ctaDescription,
