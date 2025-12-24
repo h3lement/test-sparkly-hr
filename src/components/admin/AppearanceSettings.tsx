@@ -407,7 +407,8 @@ const THEME_PRESETS: ThemePreset[] = [
 ];
 
 const DEFAULT_PREFERENCES: AppearancePreferences = {
-  themeMode: "system",
+  // Enforce daylight mode across the entire app (admin + public)
+  themeMode: "light",
   uiDensity: "default",
   headingFont: "'Playfair Display', serif",
   bodyFont: "'DM Sans', sans-serif",
@@ -609,14 +610,9 @@ export function AppearanceSettings() {
 
   const applyTheme = (prefs: AppearancePreferences) => {
     const root = document.documentElement;
-    
-    // Apply theme mode
-    if (prefs.themeMode === "system") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      root.classList.toggle("dark", prefersDark);
-    } else {
-      root.classList.toggle("dark", prefs.themeMode === "dark");
-    }
+
+    // Enforce daylight mode: never allow the "dark" class in the app UI.
+    root.classList.remove("dark");
 
     // Apply UI density
     root.classList.remove("density-compact", "density-default", "density-comfortable");
@@ -629,10 +625,8 @@ export function AppearanceSettings() {
     // Apply border radius
     root.style.setProperty("--radius", `${prefs.borderRadius}rem`);
 
-    // Apply colors based on current mode
-    const isDark = root.classList.contains("dark");
-    const colors = isDark ? prefs.colors.dark : prefs.colors.light;
-    Object.entries(colors).forEach(([key, value]) => {
+    // Always apply light palette
+    Object.entries(prefs.colors.light).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
   };
