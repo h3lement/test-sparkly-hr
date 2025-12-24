@@ -96,7 +96,7 @@ function SortableMenuItem({ item, isActive, collapsed, isEditing, onTabChange, f
             : "text-foreground hover:bg-secondary"
         } ${collapsed ? "justify-center" : ""} ${isEditing ? "cursor-grab" : "cursor-pointer"}`}
         style={{ padding: "var(--density-padding-sm) var(--density-padding)" }}
-        onClick={() => !isEditing && onTabChange(item.id)}
+        onClick={() => !isEditing && onTabChange(item.slug)}
         title={collapsed ? `${item.label}${item.count !== null ? ` (${item.count})` : ""}` : undefined}
         {...(isEditing ? { ...attributes, ...listeners } : {})}
       >
@@ -435,7 +435,7 @@ export function AdminSidebar({
                 <SortableMenuItem
                   key={item.id}
                   item={item}
-                  isActive={activeTab === item.id}
+                  isActive={activeTab === item.slug}
                   collapsed={collapsed}
                   isEditing={isEditing}
                   onTabChange={onTabChange}
