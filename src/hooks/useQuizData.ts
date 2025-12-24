@@ -109,10 +109,19 @@ export function useQuizData(slug: string): UseQuizDataReturn {
           .eq('is_live', true)
           .maybeSingle();
 
-        // Use CTA from cta_templates if available, fallback to quizzes table
-        const ctaTitle = ctaTemplate?.cta_title as Record<string, string> || (quizData as any).cta_title as Record<string, string> || {};
-        const ctaDescription = ctaTemplate?.cta_description as Record<string, string> || (quizData as any).cta_description as Record<string, string> || {};
-        const ctaText = ctaTemplate?.cta_text as Record<string, string> || quizData.cta_text as Record<string, string>;
+        // Merge CTA data: quiz table as base, template overrides per-language
+        const quizCtaTitle = (quizData as any).cta_title as Record<string, string> || {};
+        const quizCtaDescription = (quizData as any).cta_description as Record<string, string> || {};
+        const quizCtaText = quizData.cta_text as Record<string, string> || {};
+        
+        const templateCtaTitle = ctaTemplate?.cta_title as Record<string, string> || {};
+        const templateCtaDescription = ctaTemplate?.cta_description as Record<string, string> || {};
+        const templateCtaText = ctaTemplate?.cta_text as Record<string, string> || {};
+        
+        // Merge: template overrides quiz, but only for languages that exist in template
+        const ctaTitle = { ...quizCtaTitle, ...templateCtaTitle };
+        const ctaDescription = { ...quizCtaDescription, ...templateCtaDescription };
+        const ctaText = { ...quizCtaText, ...templateCtaText };
         const ctaUrl = ctaTemplate?.cta_url || quizData.cta_url || 'https://sparkly.hr';
 
         setQuiz({
