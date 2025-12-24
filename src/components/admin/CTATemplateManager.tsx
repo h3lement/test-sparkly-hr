@@ -76,6 +76,7 @@ interface CTATemplate {
   cta_url: string;
   cta_retry_url: string | null;
   created_at: string;
+  updated_at: string;
   created_by_email: string | null;
 }
 
@@ -109,7 +110,6 @@ const LANGUAGES = [
 export function CTATemplateManager() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [templates, setTemplates] = useState<CTATemplate[]>([]);
-  const [updatingQuiz, setUpdatingQuiz] = useState<string | null>(null);
   const [selectedQuizId, setSelectedQuizId] = useState<string>("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
   const [loading, setLoading] = useState(true);
@@ -523,40 +523,6 @@ export function CTATemplateManager() {
     const textLangs = Object.keys(template.cta_text || {}).filter(k => template.cta_text[k]?.trim());
     return Math.max(titleLangs.length, textLangs.length);
   };
-
-  // Update CTA quiz attachment
-  const handleUpdateQuizAttachment = async (ctaId: string, newQuizId: string | null) => {
-    setUpdatingQuiz(ctaId);
-    try {
-      const { error } = await supabase
-        .from("cta_templates")
-        .update({ quiz_id: newQuizId })
-        .eq("id", ctaId);
-
-      if (error) throw error;
-
-      setTemplates(prev => prev.map(t => 
-        t.id === ctaId ? { ...t, quiz_id: newQuizId } : t
-      ));
-
-      toast({
-        title: "Updated",
-        description: newQuizId 
-          ? `CTA attached to ${quizzes.find(q => q.id === newQuizId)?.slug || "quiz"}`
-          : "CTA detached from quiz",
-      });
-    } catch (error: any) {
-      console.error("Error updating quiz attachment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update quiz attachment",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingQuiz(null);
-    }
-  };
-
   // Clone CTA template
   const handleCloneCta = async (template: CTATemplate) => {
     setCloning(template.id);
@@ -790,16 +756,22 @@ export function CTATemplateManager() {
             <div className="border rounded-lg overflow-hidden">
               <div className="flex bg-muted/40 text-sm font-medium border-b">
                 <div className="w-[80px] px-3 py-2 text-center">Status</div>
-                <div className="w-[150px] px-3 py-2">Attached Quiz</div>
+                <div className="w-[150px] px-3 py-2">Used by Quizzes</div>
                 <div className="w-[180px] px-3 py-2">Name</div>
                 <div className="flex-1 px-3 py-2">Button Text</div>
-                <div className="w-[130px] px-3 py-2">Created</div>
+                <div className="w-[140px] px-3 py-2">Retry Text</div>
                 <div className="w-[60px] px-3 py-2 text-center">Lang</div>
+                <div className="w-[130px] px-3 py-2">Updated</div>
                 <div className="w-[120px] px-3 py-2 text-center">Actions</div>
               </div>
               {filteredTemplates.map(template => {
+                // Find all quizzes using this CTA template (via cta_template_id)
+                const relatedQuizzes = quizzes.filter(q => 
+                  q.id === template.quiz_id || 
+                  // Could also check via cta_template_id relation if exposed
+                  false
+                );
                 const quiz = quizzes.find(q => q.id === template.quiz_id);
-                const isUpdating = updatingQuiz === template.id;
                 return (
                   <div
                     key={template.id}
@@ -826,29 +798,13 @@ export function CTATemplateManager() {
                       </Button>
                     </div>
                     <div className="w-[150px] px-3 py-2">
-                      <Select 
-                        value={template.quiz_id || "none"} 
-                        onValueChange={(val) => handleUpdateQuizAttachment(template.id, val === "none" ? null : val)}
-                        disabled={isUpdating}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          {isUpdating ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <SelectValue placeholder="Select quiz" />
-                          )}
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover z-50">
-                          <SelectItem value="none">
-                            <span className="text-muted-foreground">Not attached</span>
-                          </SelectItem>
-                          {quizzes.map(q => (
-                            <SelectItem key={q.id} value={q.id}>
-                              {q.slug}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {quiz ? (
+                        <Badge variant="outline" className="text-xs truncate max-w-full" title={quiz.slug}>
+                          {quiz.slug}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not attached</span>
+                      )}
                     </div>
                     <div 
                       className="w-[180px] px-3 py-2 truncate text-primary hover:underline cursor-pointer"
@@ -860,21 +816,24 @@ export function CTATemplateManager() {
                     <div className="flex-1 px-3 py-2 text-muted-foreground truncate">
                       {template.cta_text?.en || template.cta_text?.et || "—"}
                     </div>
-                    <div className="w-[130px] px-3 py-2">
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(template.created_at)}
-                      </div>
-                      {template.created_by_email && (
-                        <div className="text-[10px] text-muted-foreground/70 truncate">
-                          {template.created_by_email.split("@")[0]}
-                        </div>
-                      )}
+                    <div className="w-[140px] px-3 py-2 text-muted-foreground truncate text-xs">
+                      {template.cta_retry_text?.en || template.cta_retry_text?.et || "—"}
                     </div>
                     <div className="w-[60px] px-3 py-2 text-center">
                       <Badge variant="outline" className="text-[10px] gap-0.5">
                         <Languages className="w-2.5 h-2.5" />
                         {getTranslationCount(template)}
                       </Badge>
+                    </div>
+                    <div className="w-[130px] px-3 py-2">
+                      <div className="text-xs text-muted-foreground">
+                        {formatDate(template.updated_at || template.created_at)}
+                      </div>
+                      {template.created_by_email && (
+                        <div className="text-[10px] text-muted-foreground/70 truncate">
+                          {template.created_by_email.split("@")[0]}
+                        </div>
+                      )}
                     </div>
                     <div className="w-[120px] px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
