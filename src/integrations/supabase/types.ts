@@ -496,6 +496,51 @@ export type Database = {
         }
         Relationships: []
       }
+      global_open_mindedness_answers: {
+        Row: {
+          answer_order: number
+          answer_text: Json
+          created_at: string
+          id: string
+          score_value: number
+        }
+        Insert: {
+          answer_order: number
+          answer_text?: Json
+          created_at?: string
+          id?: string
+          score_value?: number
+        }
+        Update: {
+          answer_order?: number
+          answer_text?: Json
+          created_at?: string
+          id?: string
+          score_value?: number
+        }
+        Relationships: []
+      }
+      global_open_mindedness_module: {
+        Row: {
+          created_at: string
+          id: string
+          question_text: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_text?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_text?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hypothesis_leads: {
         Row: {
           created_at: string
