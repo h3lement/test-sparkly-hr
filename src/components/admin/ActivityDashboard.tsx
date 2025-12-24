@@ -807,12 +807,12 @@ export function ActivityDashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left">
-                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[140px]">Timestamp</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[120px]">User</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[100px]">Action</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[90px]">Type</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[160px]">Object</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground">Description</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[140px]">Timestamp</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground w-[80px]"></th>
                     </tr>
                   </thead>
@@ -822,9 +822,6 @@ export function ActivityDashboard() {
                         key={activity.id}
                         className={`list-row-interactive ${index % 2 === 0 ? 'list-row-even' : 'list-row-odd'}`}
                       >
-                        <td className="py-3 px-3 whitespace-nowrap text-muted-foreground" title={formatFullDate(activity.created_at)}>
-                          {formatDate(activity.created_at)}
-                        </td>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2">
                             {activity.user_email ? (
@@ -908,6 +905,9 @@ export function ActivityDashboard() {
                               </p>
                             )}
                           </div>
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap text-muted-foreground" title={formatFullDate(activity.created_at)}>
+                          {formatDate(activity.created_at)}
                         </td>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-1">
