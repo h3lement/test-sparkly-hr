@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { RotateCcw, Save, Sun, Moon, Monitor, Type, Palette, Box, Loader2, Sparkles, Copy, Check, Maximize2, Minimize2, Square } from "lucide-react";
+import { RotateCcw, Save, Sun, Moon, Monitor, Type, Palette, Box, Loader2, Sparkles, Copy, Check, Maximize2, Minimize2, Square, Globe } from "lucide-react";
+import { PublicThemeSettings } from "./PublicThemeSettings";
 
 interface ColorToken {
   key: string;
@@ -732,11 +733,15 @@ export function AppearanceSettings() {
         </div>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs defaultValue="public" className="space-y-6">
         <TabsList className="bg-secondary">
+          <TabsTrigger value="public" className="gap-2">
+            <Globe className="h-4 w-4" />
+            Public Theme
+          </TabsTrigger>
           <TabsTrigger value="general" className="gap-2">
             <Monitor className="h-4 w-4" />
-            General
+            Admin General
           </TabsTrigger>
           <TabsTrigger value="typography" className="gap-2">
             <Type className="h-4 w-4" />
@@ -755,6 +760,11 @@ export function AppearanceSettings() {
             Quiz Design
           </TabsTrigger>
         </TabsList>
+
+        {/* Public Theme Tab - NEW */}
+        <TabsContent value="public">
+          <PublicThemeSettings />
+        </TabsContent>
 
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
