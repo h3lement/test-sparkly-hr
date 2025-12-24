@@ -54,17 +54,17 @@ function AppContent() {
           <Route path="/" element={<AllQuizzes />} />
           <Route path="/all" element={<AllQuizzes />} />
           
-          {/* Language-prefixed quiz routes: /en/quiz-slug, /et/quiz-slug, etc. */}
-          <Route path="/:lang/:quizSlug" element={<LanguagePrefixedQuiz />} />
-          <Route path="/:lang/:quizSlug/:step" element={<LanguagePrefixedQuiz />} />
-          
           {/* Quiz routes without language prefix (will detect from IP) */}
           <Route path="/quiz/:quizSlug" element={<DynamicQuiz />} />
           <Route path="/quiz/:quizSlug/:step" element={<DynamicQuiz />} />
           
-          {/* Legacy routes - treat first param as potential quiz slug */}
+          {/* Legacy routes - treat first param as potential quiz slug (placed before language-prefixed to avoid mismatching slugs as language codes) */}
           <Route path="/:quizSlug" element={<DynamicQuiz />} />
           <Route path="/:quizSlug/:step" element={<DynamicQuiz />} />
+          
+          {/* Language-prefixed quiz routes: /en/quiz-slug, /et/quiz-slug, etc. - these come LAST because the slug routes above are more specific for preview mode */}
+          <Route path="/:lang/:quizSlug" element={<LanguagePrefixedQuiz />} />
+          <Route path="/:lang/:quizSlug/:step" element={<LanguagePrefixedQuiz />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
