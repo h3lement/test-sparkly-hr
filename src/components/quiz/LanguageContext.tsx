@@ -54,16 +54,17 @@ const COUNTRY_TO_LANGUAGE: Record<string, Language> = {
 
 /**
  * Detects the user's language from IP address country.
- * Uses the free ip-api.com service.
+ * Uses ipapi.co which supports HTTPS (ip-api.com only supports HTTP which fails on HTTPS sites).
  */
 const detectLanguageFromIp = async (): Promise<Language> => {
   try {
-    // Use ip-api.com - free for non-commercial use, no API key required
-    const response = await fetch('http://ip-api.com/json/?fields=countryCode');
+    // Use ipapi.co - free tier, HTTPS supported, no API key required for basic use
+    const response = await fetch('https://ipapi.co/country/', {
+      headers: { 'Accept': 'text/plain' }
+    });
     if (!response.ok) return 'en';
     
-    const data = await response.json();
-    const countryCode = data.countryCode as string;
+    const countryCode = (await response.text()).trim().toUpperCase();
     return COUNTRY_TO_LANGUAGE[countryCode] || 'en';
   } catch (error) {
     console.warn('IP language detection failed, falling back to English:', error);
