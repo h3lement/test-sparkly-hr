@@ -19,7 +19,8 @@ export function DynamicEmailCapture() {
     openMindednessScore,
     resultLevels,
     openMindednessResultLevels,
-    quizData
+    quizData,
+    answers
   } = useDynamicQuiz();
   const { language, t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,7 +65,45 @@ export function DynamicEmailCapture() {
       : 4;
 
     try {
-      const { error } = await supabase.functions.invoke('send-quiz-results', {
+      // PRIORITY 1: Save lead to database FIRST (most important)
+      console.log('Saving lead to database...');
+      const { data: insertedLead, error: insertError } = await supabase
+        .from('quiz_leads')
+        .insert({
+          email: validation.data,
+          score: totalScore,
+          total_questions: maxScore,
+          result_category: result ? getText(result.title) : 'Your Results',
+          openness_score: openMindednessScore ?? null,
+          language: language,
+          quiz_id: quizData?.id || null,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('Error saving lead:', insertError);
+        toast({
+          title: t('emailError'),
+          description: 'Failed to save your results. Please try again.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const quizLeadId = insertedLead?.id;
+      console.log('Lead saved successfully with ID:', quizLeadId);
+
+      // PRIORITY 2: Trigger background email preview pre-generation (fire and forget)
+      if (quizLeadId) {
+        supabase.functions.invoke('pregenerate-email-preview', {
+          body: { leadId: quizLeadId, leadType: 'quiz' }
+        }).catch(err => console.warn('Email preview pregeneration error:', err));
+      }
+
+      // PRIORITY 3: Queue emails via edge function (fire and forget - emails can be retried)
+      supabase.functions.invoke('send-quiz-results', {
         body: {
           email: validation.data,
           totalScore,
@@ -79,19 +118,10 @@ export function DynamicEmailCapture() {
           opennessDescription: omResult ? getText(omResult.description) : '',
           quizId: quizData?.id,
           quizSlug: quizData?.slug,
+          // Pass leadId so edge function doesn't create duplicate lead
+          existingLeadId: quizLeadId,
         },
-      });
-
-      if (error) {
-        console.error('Error sending results:', error);
-        toast({
-          title: t('emailError'),
-          description: t('somethingWrong'),
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-        return;
-      }
+      }).catch(err => console.error('Email sending error:', err));
 
       // Fire confetti celebration
       const end = Date.now() + 800;
