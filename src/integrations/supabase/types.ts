@@ -95,6 +95,7 @@ export type Database = {
           is_live: boolean
           name: string | null
           quiz_id: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -110,6 +111,7 @@ export type Database = {
           is_live?: boolean
           name?: string | null
           quiz_id?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -125,6 +127,7 @@ export type Database = {
           is_live?: boolean
           name?: string | null
           quiz_id?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
