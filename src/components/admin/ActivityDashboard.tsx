@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +49,8 @@ import {
   Pencil,
   ChevronLeft,
   ChevronRight,
-  Search
+  Search,
+  ExternalLink
 } from "lucide-react";
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
@@ -82,9 +84,16 @@ interface ActivityFormData {
   new_value: string;
 }
 
+interface ObjectInfo {
+  name: string;
+  link: string | null;
+}
+
 export function ActivityDashboard() {
+  const navigate = useNavigate();
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [objectNames, setObjectNames] = useState<Record<string, ObjectInfo>>({});
   const [loading, setLoading] = useState(true);
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [adminFilter, setAdminFilter] = useState<string>("all");
@@ -149,6 +158,114 @@ export function ActivityDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch object names for activities
+  const fetchObjectNames = useCallback(async (activitiesData: ActivityLog[]) => {
+    const objectMap: Record<string, ObjectInfo> = {};
+    
+    // Group record IDs by table
+    const quizIds = new Set<string>();
+    const leadIds = new Set<string>();
+    const hypothesisLeadIds = new Set<string>();
+    const templateIds = new Set<string>();
+    const ctaIds = new Set<string>();
+    
+    activitiesData.forEach((activity) => {
+      const key = `${activity.table_name}:${activity.record_id}`;
+      if (objectMap[key]) return;
+      
+      switch (activity.table_name) {
+        case "quizzes":
+          quizIds.add(activity.record_id);
+          break;
+        case "quiz_leads":
+          leadIds.add(activity.record_id);
+          break;
+        case "hypothesis_leads":
+          hypothesisLeadIds.add(activity.record_id);
+          break;
+        case "email_templates":
+          templateIds.add(activity.record_id);
+          break;
+        case "cta_templates":
+          ctaIds.add(activity.record_id);
+          break;
+      }
+    });
+
+    try {
+      // Fetch all object names in parallel
+      const [quizzesRes, leadsRes, hypothesisRes, templatesRes, ctasRes] = await Promise.all([
+        quizIds.size > 0 
+          ? supabase.from("quizzes").select("id, title, slug").in("id", Array.from(quizIds))
+          : Promise.resolve({ data: [] }),
+        leadIds.size > 0 
+          ? supabase.from("quiz_leads").select("id, email, quiz_id").in("id", Array.from(leadIds))
+          : Promise.resolve({ data: [] }),
+        hypothesisLeadIds.size > 0 
+          ? supabase.from("hypothesis_leads").select("id, email, quiz_id").in("id", Array.from(hypothesisLeadIds))
+          : Promise.resolve({ data: [] }),
+        templateIds.size > 0 
+          ? supabase.from("email_templates").select("id, template_type, quiz_id").in("id", Array.from(templateIds))
+          : Promise.resolve({ data: [] }),
+        ctaIds.size > 0 
+          ? supabase.from("cta_templates").select("id, name, quiz_id").in("id", Array.from(ctaIds))
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      // Map quizzes
+      (quizzesRes.data || []).forEach((quiz: any) => {
+        const title = typeof quiz.title === 'object' ? (quiz.title.en || quiz.title.hr || Object.values(quiz.title)[0] || quiz.slug) : quiz.title;
+        objectMap[`quizzes:${quiz.id}`] = {
+          name: title || quiz.slug,
+          link: `/admin/quiz/${quiz.id}`,
+        };
+      });
+
+      // Map quiz leads
+      (leadsRes.data || []).forEach((lead: any) => {
+        objectMap[`quiz_leads:${lead.id}`] = {
+          name: lead.email,
+          link: `/admin/leads`,
+        };
+      });
+
+      // Map hypothesis leads
+      (hypothesisRes.data || []).forEach((lead: any) => {
+        objectMap[`hypothesis_leads:${lead.id}`] = {
+          name: lead.email,
+          link: `/admin/leads`,
+        };
+      });
+
+      // Map email templates
+      (templatesRes.data || []).forEach((template: any) => {
+        objectMap[`email_templates:${template.id}`] = {
+          name: `${template.template_type} template`,
+          link: template.quiz_id ? `/admin/quiz/${template.quiz_id}/email` : null,
+        };
+      });
+
+      // Map CTA templates
+      (ctasRes.data || []).forEach((cta: any) => {
+        objectMap[`cta_templates:${cta.id}`] = {
+          name: cta.name || "CTA Template",
+          link: `/admin/versions`,
+        };
+      });
+
+      setObjectNames(objectMap);
+    } catch (error) {
+      console.error("Error fetching object names:", error);
+    }
+  }, []);
+
+  // Fetch object names when activities change
+  useEffect(() => {
+    if (activities.length > 0) {
+      fetchObjectNames(activities);
+    }
+  }, [activities, fetchObjectNames]);
 
   // Always-on realtime subscription for activity_logs
   useEffect(() => {
@@ -692,8 +809,9 @@ export function ActivityDashboard() {
                     <tr className="border-b border-border text-left">
                       <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[140px]">Timestamp</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[120px]">User</th>
-                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[110px]">Action</th>
-                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[100px]">Type</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[100px]">Action</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[90px]">Type</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[160px]">Object</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground">Description</th>
                       <th className="py-3 px-3 font-medium text-muted-foreground w-[80px]"></th>
                     </tr>
@@ -738,6 +856,33 @@ export function ActivityDashboard() {
                           <Badge variant="secondary" className="text-xs">
                             {getTableLabel(activity.table_name)}
                           </Badge>
+                        </td>
+                        <td className="py-3 px-3">
+                          {(() => {
+                            const objectKey = `${activity.table_name}:${activity.record_id}`;
+                            const objectInfo = objectNames[objectKey];
+                            if (objectInfo?.name) {
+                              return objectInfo.link ? (
+                                <button
+                                  onClick={() => navigate(objectInfo.link!)}
+                                  className="flex items-center gap-1 text-primary hover:underline font-medium truncate max-w-[150px]"
+                                  title={objectInfo.name}
+                                >
+                                  <span className="truncate">{objectInfo.name}</span>
+                                  <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                                </button>
+                              ) : (
+                                <span className="text-foreground truncate max-w-[150px]" title={objectInfo.name}>
+                                  {objectInfo.name}
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="text-muted-foreground text-xs font-mono truncate max-w-[100px]" title={activity.record_id}>
+                                {activity.record_id.slice(0, 8)}...
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-3">
                           <div className="space-y-0.5">
