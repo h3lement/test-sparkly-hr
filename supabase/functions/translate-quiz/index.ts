@@ -305,6 +305,19 @@ serve(async (req) => {
       .select("*")
       .eq("quiz_id", quizId);
 
+    // Fetch GLOBAL open-mindedness module (shared across all quizzes)
+    const { data: globalOMModule } = await supabase
+      .from("global_open_mindedness_module")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+
+    // Fetch GLOBAL open-mindedness answers
+    const { data: globalOMAnswers } = await supabase
+      .from("global_open_mindedness_answers")
+      .select("*")
+      .order("answer_order");
+
     // Fetch hypothesis pages (hypothesis quizzes)
     const { data: hypothesisPages } = await supabase
       .from("hypothesis_pages")
@@ -404,6 +417,22 @@ serve(async (req) => {
       const desc = orl.description?.[sourceLanguage];
       if (title) allTexts.push({ path: `omresult.${orl.id}.title`, text: title, hash: simpleHash(title) });
       if (desc) allTexts.push({ path: `omresult.${orl.id}.description`, text: desc, hash: simpleHash(desc) });
+    });
+
+    // GLOBAL Open-mindedness module (shared across ALL quizzes)
+    if (globalOMModule) {
+      const omQuestion = globalOMModule.question_text?.[sourceLanguage];
+      if (omQuestion) {
+        allTexts.push({ path: `global_om.question`, text: omQuestion, hash: simpleHash(omQuestion) });
+      }
+    }
+
+    // GLOBAL Open-mindedness answers
+    (globalOMAnswers || []).forEach((goa) => {
+      const answerText = goa.answer_text?.[sourceLanguage];
+      if (answerText) {
+        allTexts.push({ path: `global_om_answer.${goa.id}`, text: answerText, hash: simpleHash(answerText) });
+      }
     });
 
     // Hypothesis pages
@@ -723,6 +752,47 @@ ${JSON.stringify(textsToTranslate.map(t => ({ path: t.path, text: t.text })), nu
           title: currentTitle,
           description: currentDesc,
         }).eq("id", orl.id);
+      }
+    }
+
+    // Update GLOBAL open-mindedness module (shared across all quizzes)
+    if (globalOMModule) {
+      const currentQuestion = globalOMModule.question_text || {};
+      let hasUpdate = false;
+
+      for (const langCode of Object.keys(translations)) {
+        const translatedQuestion = translations[langCode]?.[`global_om.question`];
+        if (translatedQuestion) {
+          currentQuestion[langCode] = translatedQuestion;
+          hasUpdate = true;
+        }
+      }
+
+      if (hasUpdate) {
+        console.log("Updating global OM module with translations for:", Object.keys(currentQuestion).join(", "));
+        await supabase.from("global_open_mindedness_module").update({
+          question_text: currentQuestion,
+        }).eq("id", globalOMModule.id);
+      }
+    }
+
+    // Update GLOBAL open-mindedness answers
+    for (const goa of globalOMAnswers || []) {
+      const currentText = goa.answer_text || {};
+      let hasUpdate = false;
+
+      for (const langCode of Object.keys(translations)) {
+        const translatedAnswer = translations[langCode]?.[`global_om_answer.${goa.id}`];
+        if (translatedAnswer) {
+          currentText[langCode] = translatedAnswer;
+          hasUpdate = true;
+        }
+      }
+
+      if (hasUpdate) {
+        await supabase.from("global_open_mindedness_answers").update({
+          answer_text: currentText,
+        }).eq("id", goa.id);
       }
     }
 
