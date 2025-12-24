@@ -203,8 +203,7 @@ export default function QuizEditor() {
   const [headline, setHeadline] = useState<Record<string, string>>({});
   const [headlineHighlight, setHeadlineHighlight] = useState<Record<string, string>>({});
   const [badgeText, setBadgeText] = useState<Record<string, string>>({});
-  const [ctaText, setCtaText] = useState<Record<string, string>>({});
-  // Removed legacy CTA states - now handled via cta_template_id relationship
+  // Removed legacy CTA states (ctaText, ctaTitle, ctaDescription, ctaUrl) - now handled via cta_template_id relationship
   const [durationText, setDurationText] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
   
@@ -288,7 +287,7 @@ export default function QuizEditor() {
     const currentQuizFields = {
       slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
       title, description, headline, headline_highlight: headlineHighlight,
-      badge_text: badgeText, cta_text: ctaText, cta_template_id: ctaTemplateId,
+      badge_text: badgeText, cta_template_id: ctaTemplateId,
       duration_text: durationText, is_active: isActive, primary_language: primaryLanguage,
       quiz_type: quizType, shuffle_questions: shuffleQuestions, shuffle_answers: shuffleAnswers, enable_scoring: enableScoring,
       include_open_mindedness: includeOpenMindedness, tone_of_voice: toneOfVoice,
@@ -314,7 +313,7 @@ export default function QuizEditor() {
     count += resultLevelsDirtyTracking.getDeletedIds(resultLevels).length;
     
     return count;
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTemplateId, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaTemplateId, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   const pendingChangesCount = getPendingChangesCount();
 
@@ -330,7 +329,6 @@ export default function QuizEditor() {
       headline,
       headline_highlight: headlineHighlight,
       badge_text: badgeText,
-      cta_text: ctaText,
       cta_template_id: ctaTemplateId,
       duration_text: durationText,
       is_active: isActive,
@@ -580,7 +578,7 @@ export default function QuizEditor() {
     // Mark everything as clean after successful save
     questionsDirtyTracking.markClean(questions);
     resultLevelsDirtyTracking.markClean(resultLevels);
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTemplateId, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaTemplateId, durationText, isActive, primaryLanguage, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, questionsDirtyTracking, resultLevelsDirtyTracking]);
 
   // Auto-save hook
   const { status: autoSaveStatus, triggerSave, saveNow } = useAutoSave({
@@ -594,7 +592,7 @@ export default function QuizEditor() {
     if (!initialLoadComplete.current) return;
     if (isCreating) return;
     triggerSave();
-  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaText, ctaTemplateId, durationText, isActive, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
+  }, [slug, title, description, headline, headlineHighlight, badgeText, ctaTemplateId, durationText, isActive, shuffleQuestions, shuffleAnswers, enableScoring, includeOpenMindedness, toneOfVoice, toneSource, useToneForAi, toneIntensity, icpDescription, buyingPersona, questions, resultLevels, triggerSave, isCreating]);
 
   useEffect(() => {
     const checkAdminAndLoad = async () => {
@@ -765,7 +763,6 @@ export default function QuizEditor() {
       setHeadline(jsonToRecord(quiz.headline));
       setHeadlineHighlight(jsonToRecord(quiz.headline_highlight));
       setBadgeText(jsonToRecord(quiz.badge_text));
-      setCtaText(jsonToRecord(quiz.cta_text));
       setCtaTemplateId((quiz as any).cta_template_id || null);
       setDurationText(jsonToRecord(quiz.duration_text));
       setIsActive(quiz.is_active);
@@ -929,7 +926,6 @@ export default function QuizEditor() {
         headline: jsonToRecord(quiz.headline),
         headline_highlight: jsonToRecord(quiz.headline_highlight),
         badge_text: jsonToRecord(quiz.badge_text),
-        cta_text: jsonToRecord(quiz.cta_text),
         cta_template_id: (quiz as any).cta_template_id || null,
         duration_text: jsonToRecord(quiz.duration_text),
         is_active: quiz.is_active,
@@ -1311,7 +1307,6 @@ export default function QuizEditor() {
         headline,
         headline_highlight: headlineHighlight,
         badge_text: badgeText,
-        cta_text: ctaText,
         cta_template_id: ctaTemplateId,
         duration_text: durationText,
         is_active: isActive,
@@ -1839,7 +1834,6 @@ export default function QuizEditor() {
     description,
     headline,
     headlineHighlight,
-    ctaText,
     ctaTemplateId,
     durationText,
     questions,
@@ -2576,16 +2570,6 @@ export default function QuizEditor() {
                   disabled={isPreviewMode}
                 />
               </div>
-              <div>
-                <Label className="text-xs">CTA Button Text ({displayLanguage.toUpperCase()})</Label>
-                <Input
-                  value={ctaText[displayLanguage] || ""}
-                  onChange={(e) => setLocalizedValue(setCtaText, displayLanguage, e.target.value)}
-                  placeholder="Start Quiz"
-                  className="h-8"
-                  disabled={isPreviewMode}
-                />
-               </div>
             </div>
           </TabsContent>
 

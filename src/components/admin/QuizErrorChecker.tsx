@@ -42,7 +42,6 @@ interface QuizErrorCheckerProps {
   description: Record<string, string>;
   headline: Record<string, string>;
   headlineHighlight: Record<string, string>;
-  ctaText: Record<string, string>;
   ctaTemplateId: string | null;
   durationText: Record<string, string>;
   questions: Question[];
@@ -65,7 +64,6 @@ export function QuizErrorChecker({
   description,
   headline,
   headlineHighlight,
-  ctaText,
   ctaTemplateId,
   durationText,
   questions,
@@ -103,10 +101,7 @@ export function QuizErrorChecker({
       errors.push({ tab: "general", message: `Headline highlight is required (${primaryLanguage.toUpperCase()})` });
     }
 
-    // CTA text is required
-    if (!getLocalizedValue(ctaText, primaryLanguage)) {
-      errors.push({ tab: "general", message: `CTA button text is required (${primaryLanguage.toUpperCase()})` });
-    }
+    // CTA template is required
 
     // CTA template is recommended
     if (!ctaTemplateId) {
