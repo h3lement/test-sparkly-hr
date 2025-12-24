@@ -63,11 +63,11 @@ const ESSENTIAL_COLORS = [
 ];
 
 const DEFAULT_THEME: PublicThemeSettings = {
-  preset: "sparkly",
+  preset: "emotions",
   colors: DEFAULT_PUBLIC_COLORS,
   headingFont: "'Playfair Display', serif",
   bodyFont: "'DM Sans', sans-serif",
-  borderRadius: 0.75,
+  borderRadius: 0.5,
 };
 
 function hslToHex(hsl: string): string {
