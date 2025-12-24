@@ -343,7 +343,7 @@ serve(async (req) => {
     const allTexts: { path: string; text: string; hash: string }[] = [];
     
     // Quiz fields
-    const quizFields = ["title", "description", "headline", "headline_highlight", "badge_text", "cta_text", "cta_title", "cta_description", "duration_text"];
+    const quizFields = ["title", "description", "headline", "headline_highlight", "badge_text", "cta_text", "cta_title", "cta_description", "cta_retry_text", "duration_text", "start_cta_text", "start_cta_secondary_text"];
     for (const field of quizFields) {
       const value = quiz[field]?.[sourceLanguage];
       if (value) {
