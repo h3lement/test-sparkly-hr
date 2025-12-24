@@ -12,7 +12,7 @@ import { useDirtyTracking, useQuestionsDirtyTracking } from "@/hooks/useDirtyTra
 import { Plus, Trash2, ChevronDown, Save, ArrowLeft, Languages, Loader2, Eye, Sparkles, Brain, ExternalLink, History, AlertTriangle, CheckCircle2, AlertCircle, FileQuestion, MonitorPlay } from "lucide-react";
 import { QuizPreviewDialog } from "@/components/admin/QuizPreviewDialog";
 import { AiModelSelector, AI_MODELS, type AiModelId } from "@/components/admin/AiModelSelector";
-import { QuizErrorChecker, QuizErrorDisplay, QuizErrorSummary, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult } from "@/components/admin/QuizErrorChecker";
+import { QuizErrorChecker, QuizErrorDisplay, QuizErrorSummary, CheckErrorsButton, getFirstErrorTab, type CheckErrorsResult, type QuickFixHandlers } from "@/components/admin/QuizErrorChecker";
 import { RegenerationDialog, type RegenerationType } from "@/components/admin/RegenerationDialog";
 import { SortableQuestionList } from "@/components/admin/SortableQuestionList";
 import { SortableResultList } from "@/components/admin/SortableResultList";
@@ -2463,7 +2463,18 @@ export default function QuizEditor() {
           {errorCheckResult && !errorCheckResult.isValid && (
             <QuizErrorSummary 
               errors={errorCheckResult.errors} 
-              onNavigateToTab={(tab) => setActiveTab(tab)} 
+              onNavigateToTab={(tab) => setActiveTab(tab)}
+              quickFixHandlers={{
+                create_open_mindedness: () => {
+                  // Create the OM question with defaults
+                  const omQuestion = getDefaultOMQuestion();
+                  setQuestions(prev => [...prev, omQuestion]);
+                  setActiveTab("mindedness");
+                  toast({ title: "Open-Mindedness question created", description: "Default question and options added. Customize as needed." });
+                  // Clear the error check to refresh
+                  setErrorCheckResult(null);
+                },
+              }}
             />
           )}
 

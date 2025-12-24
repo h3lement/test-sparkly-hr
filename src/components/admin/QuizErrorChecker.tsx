@@ -33,6 +33,7 @@ interface ResultLevel {
 interface QuizError {
   tab: "general" | "questions" | "hypothesis" | "mindedness" | "results";
   message: string;
+  fixAction?: string; // Identifier for quick-fix actions
 }
 
 interface HypothesisResultLevel {
@@ -254,7 +255,8 @@ export function QuizErrorChecker({
       if (!openMindednessQuestion) {
         errors.push({ 
           tab: "mindedness", 
-          message: "Open-Mindedness module is enabled but no question is configured" 
+          message: "Open-Mindedness module is enabled but no question is configured",
+          fixAction: "create_open_mindedness",
         });
       } else {
         const omQuestionText = getLocalizedValue(openMindednessQuestion.question_text, primaryLanguage);
@@ -511,13 +513,20 @@ export function QuizErrorDisplay({
   );
 }
 
+// Quick fix handlers type
+export type QuickFixHandlers = {
+  create_open_mindedness?: () => void;
+};
+
 // Component to display ALL errors grouped by tab with navigation
 export function QuizErrorSummary({
   errors,
   onNavigateToTab,
+  quickFixHandlers,
 }: {
   errors: QuizError[];
   onNavigateToTab: (tab: string) => void;
+  quickFixHandlers?: QuickFixHandlers;
 }) {
   if (errors.length === 0) return null;
 
@@ -552,13 +561,27 @@ export function QuizErrorSummary({
                   {TAB_LABELS[tab] || tab}
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-                <ul className="space-y-1 ml-1">
-                  {errorsByTab[tab].map((error, index) => (
-                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-destructive/70 mt-1">•</span>
-                      <span>{error.message}</span>
-                    </li>
-                  ))}
+                <ul className="space-y-1.5 ml-1">
+                  {errorsByTab[tab].map((error, index) => {
+                    const hasQuickFix = error.fixAction && quickFixHandlers?.[error.fixAction as keyof QuickFixHandlers];
+                    return (
+                      <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-destructive/70 mt-1">•</span>
+                        <span className="flex-1">{error.message}</span>
+                        {hasQuickFix && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              quickFixHandlers![error.fixAction as keyof QuickFixHandlers]?.();
+                            }}
+                            className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors font-medium shrink-0"
+                          >
+                            Quick Fix
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
