@@ -80,11 +80,22 @@ export function useHypothesisQuizPublic(slug: string) {
         .eq('is_live', true)
         .maybeSingle();
 
-      // Use CTA from cta_templates if available, fallback to quizzes table
-      const ctaTitle = ctaTemplate?.cta_title as Record<string, string> || ((data as any).cta_title || {}) as Record<string, string>;
-      const ctaDescription = ctaTemplate?.cta_description as Record<string, string> || ((data as any).cta_description || {}) as Record<string, string>;
-      const ctaText = ctaTemplate?.cta_text as Record<string, string> || data.cta_text as Record<string, string>;
-      const ctaRetryText = ctaTemplate?.cta_retry_text as Record<string, string> || ((data as any).cta_retry_text || {}) as Record<string, string>;
+      // Merge CTA data: quiz table as base, template overrides per-language
+      const quizCtaTitle = ((data as any).cta_title || {}) as Record<string, string>;
+      const quizCtaDescription = ((data as any).cta_description || {}) as Record<string, string>;
+      const quizCtaText = (data.cta_text || {}) as Record<string, string>;
+      const quizCtaRetryText = ((data as any).cta_retry_text || {}) as Record<string, string>;
+
+      const templateCtaTitle = (ctaTemplate?.cta_title || {}) as Record<string, string>;
+      const templateCtaDescription = (ctaTemplate?.cta_description || {}) as Record<string, string>;
+      const templateCtaText = (ctaTemplate?.cta_text || {}) as Record<string, string>;
+      const templateCtaRetryText = (ctaTemplate?.cta_retry_text || {}) as Record<string, string>;
+
+      // Merge: template overrides quiz, but only for languages that exist in template
+      const ctaTitle = { ...quizCtaTitle, ...templateCtaTitle };
+      const ctaDescription = { ...quizCtaDescription, ...templateCtaDescription };
+      const ctaText = { ...quizCtaText, ...templateCtaText };
+      const ctaRetryText = { ...quizCtaRetryText, ...templateCtaRetryText };
       const ctaUrl = ctaTemplate?.cta_url || data.cta_url;
       const ctaRetryUrl = ctaTemplate?.cta_retry_url || (data as any).cta_retry_url || null;
 
