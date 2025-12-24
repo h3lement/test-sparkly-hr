@@ -1889,7 +1889,7 @@ export default function QuizEditor() {
       (pages || []).map(async (page) => {
         const { data: questions, error: qError } = await supabase
           .from("hypothesis_questions")
-          .select("id, hypothesis_text")
+          .select("id, hypothesis_text, hypothesis_text_woman, hypothesis_text_man")
           .eq("page_id", page.id)
           .order("question_order");
 
@@ -1897,9 +1897,11 @@ export default function QuizEditor() {
         return {
           id: page.id,
           title: page.title as Json,
-          questions: (questions || []).map(q => ({
+          questions: (questions || []).map((q) => ({
             id: q.id,
             hypothesis_text: q.hypothesis_text as Json,
+            hypothesis_text_woman: q.hypothesis_text_woman as Json,
+            hypothesis_text_man: q.hypothesis_text_man as Json,
           })),
         };
       })

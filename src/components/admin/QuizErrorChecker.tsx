@@ -45,6 +45,19 @@ interface HypothesisResultLevel {
   color_class: string;
 }
 
+interface HypothesisQuestionForValidation {
+  id: string;
+  hypothesis_text: Json;
+  hypothesis_text_woman: Json;
+  hypothesis_text_man: Json;
+}
+
+interface HypothesisPageForValidation {
+  id: string;
+  title: Json;
+  questions: HypothesisQuestionForValidation[];
+}
+
 interface QuizErrorCheckerProps {
   quizId: string;
   slug: string;
@@ -61,7 +74,7 @@ interface QuizErrorCheckerProps {
   quizType: "standard" | "hypothesis" | "emotional";
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
   fetchHypothesisResultLevels?: () => Promise<HypothesisResultLevel[]>;
-  fetchHypothesisPages?: () => Promise<Array<{ id: string; title: Json; questions: Array<{ id: string; hypothesis_text: Json }> }>>;
+  fetchHypothesisPages?: () => Promise<HypothesisPageForValidation[]>;
 }
 
 export interface CheckErrorsResult {
@@ -201,11 +214,26 @@ export function QuizErrorChecker({
 
           page.questions.forEach((q, qIndex) => {
             totalQuestions++;
-            const hypothesisText = getLocalizedValue(q.hypothesis_text, primaryLanguage);
-            if (!hypothesisText) {
-              errors.push({ 
-                tab: "hypothesis", 
-                message: `Page ${pageIndex + 1}, Question ${qIndex + 1} is missing hypothesis text (${primaryLanguage.toUpperCase()})` 
+
+            const womanHypothesis =
+              getLocalizedValue(q.hypothesis_text_woman, primaryLanguage) ||
+              getLocalizedValue(q.hypothesis_text, primaryLanguage);
+
+            const manHypothesis =
+              getLocalizedValue(q.hypothesis_text_man, primaryLanguage) ||
+              getLocalizedValue(q.hypothesis_text, primaryLanguage);
+
+            if (!womanHypothesis) {
+              errors.push({
+                tab: "hypothesis",
+                message: `Page ${pageIndex + 1}, Hypothesis ${qIndex + 1} is missing Women text (${primaryLanguage.toUpperCase()})`,
+              });
+            }
+
+            if (!manHypothesis) {
+              errors.push({
+                tab: "hypothesis",
+                message: `Page ${pageIndex + 1}, Hypothesis ${qIndex + 1} is missing Men text (${primaryLanguage.toUpperCase()})`,
               });
             }
           });
