@@ -391,7 +391,16 @@ export function QuizErrorChecker({
   };
 }
 
-// Component to display errors under tabs
+// Tab labels for display
+const TAB_LABELS: Record<string, string> = {
+  general: "General",
+  questions: "Questions",
+  hypothesis: "Hypothesis",
+  mindedness: "Open-Mindedness",
+  results: "Results",
+};
+
+// Component to display errors under tabs (current tab only)
 export function QuizErrorDisplay({ 
   errors, 
   activeTab 
@@ -418,6 +427,64 @@ export function QuizErrorDisplay({
               </li>
             ))}
           </ol>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component to display ALL errors grouped by tab with navigation
+export function QuizErrorSummary({
+  errors,
+  onNavigateToTab,
+}: {
+  errors: QuizError[];
+  onNavigateToTab: (tab: string) => void;
+}) {
+  if (errors.length === 0) return null;
+
+  // Group errors by tab
+  const errorsByTab = errors.reduce((acc, error) => {
+    if (!acc[error.tab]) acc[error.tab] = [];
+    acc[error.tab].push(error);
+    return acc;
+  }, {} as Record<string, QuizError[]>);
+
+  const tabOrder = ["general", "questions", "hypothesis", "mindedness", "results"];
+  const sortedTabs = tabOrder.filter(tab => errorsByTab[tab]);
+
+  return (
+    <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0 text-destructive" />
+        <div className="flex-1">
+          <h4 className="font-semibold text-destructive mb-3">
+            {errors.length} issue{errors.length > 1 ? "s" : ""} found:
+          </h4>
+          <div className="space-y-3">
+            {sortedTabs.map((tab) => (
+              <div key={tab} className="bg-background/50 rounded-md p-3 border border-border/50">
+                <button
+                  onClick={() => onNavigateToTab(tab)}
+                  className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors mb-2"
+                >
+                  <span className="px-2 py-0.5 bg-destructive/20 text-destructive rounded text-xs font-semibold">
+                    {errorsByTab[tab].length}
+                  </span>
+                  {TAB_LABELS[tab] || tab}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <ul className="space-y-1 ml-1">
+                  {errorsByTab[tab].map((error, index) => (
+                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                      <span className="text-destructive/70 mt-1">•</span>
+                      <span>{error.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
