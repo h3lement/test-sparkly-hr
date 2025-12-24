@@ -688,6 +688,50 @@ export type Database = {
           },
         ]
       }
+      hypothesis_result_levels: {
+        Row: {
+          color_class: string | null
+          created_at: string
+          description: Json
+          emoji: string | null
+          id: string
+          max_score: number
+          min_score: number
+          quiz_id: string
+          title: Json
+        }
+        Insert: {
+          color_class?: string | null
+          created_at?: string
+          description?: Json
+          emoji?: string | null
+          id?: string
+          max_score: number
+          min_score: number
+          quiz_id: string
+          title?: Json
+        }
+        Update: {
+          color_class?: string | null
+          created_at?: string
+          description?: Json
+          emoji?: string | null
+          id?: string
+          max_score?: number
+          min_score?: number
+          quiz_id?: string
+          title?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_result_levels_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       open_mindedness_result_levels: {
         Row: {
           color_class: string | null
