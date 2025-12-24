@@ -254,8 +254,6 @@ export default function QuizEditor() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [regenerationProgress, setRegenerationProgress] = useState(0);
 
-  // Translate basics (title, headline, description) to all languages
-  const [translatingBasics, setTranslatingBasics] = useState(false);
   const [errorCheckResult, setErrorCheckResult] = useState<CheckErrorsResult | null>(null);
   const [isCheckingErrors, setIsCheckingErrors] = useState(false);
   
@@ -1469,30 +1467,57 @@ export default function QuizEditor() {
     setShowTranslationDialog(false);
     
     try {
-      const { data, error } = await supabase.functions.invoke("translate-quiz", {
-        body: { 
-          quizId, 
-          sourceLanguage: primaryLanguage, 
-          model: selectedAiModel,
-          targetLanguages: options.targetLanguages,
-          includeUiText: options.includeUiText,
-        },
-      });
+      // Use different endpoint based on basicsOnly option
+      if (options.basicsOnly) {
+        const { data, error } = await supabase.functions.invoke("translate-quiz-basics", {
+          body: { 
+            quizId, 
+            sourceLanguage: primaryLanguage,
+            targetLanguages: options.targetLanguages,
+            regenerate: options.regenerateAll ?? false,
+            model: selectedAiModel,
+          },
+        });
 
-      if (error) throw error;
-      
-      if (data.error) {
-        throw new Error(data.error);
+        if (error) throw error;
+        
+        if (!data.success) {
+          throw new Error(data.message || "Translation failed");
+        }
+
+        const costInfo = data.costEur ? ` (Cost: €${data.costEur.toFixed(4)})` : "";
+        
+        toast({
+          title: "Translation complete",
+          description: `Translated title, headline & description to ${data.translatedCount} languages${costInfo}`,
+        });
+      } else {
+        const { data, error } = await supabase.functions.invoke("translate-quiz", {
+          body: { 
+            quizId, 
+            sourceLanguage: primaryLanguage, 
+            model: selectedAiModel,
+            targetLanguages: options.targetLanguages,
+            includeUiText: options.includeUiText,
+            regenerate: options.regenerateAll ?? false,
+          },
+        });
+
+        if (error) throw error;
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const costInfo = data.sessionCost ? ` (Cost: $${data.sessionCost.toFixed(4)})` : "";
+        const skippedInfo = data.skippedCount > 0 ? `, ${data.skippedCount} already translated` : "";
+        const uiInfo = data.uiTextsTranslated > 0 ? `, ${data.uiTextsTranslated} UI texts` : "";
+        
+        toast({
+          title: "Translation complete",
+          description: `Translated ${data.translatedCount || 0} texts to ${data.translatedLanguages?.length || 0} languages${uiInfo}${skippedInfo}${costInfo}`,
+        });
       }
-
-      const costInfo = data.sessionCost ? ` (Cost: $${data.sessionCost.toFixed(4)})` : "";
-      const skippedInfo = data.skippedCount > 0 ? `, ${data.skippedCount} already translated` : "";
-      const uiInfo = data.uiTextsTranslated > 0 ? `, ${data.uiTextsTranslated} UI texts` : "";
-      
-      toast({
-        title: "Translation complete",
-        description: `Translated ${data.translatedCount || 0} texts to ${data.translatedLanguages?.length || 0} languages${uiInfo}${skippedInfo}${costInfo}`,
-      });
 
       // Reload quiz data to show translations
       await loadQuizData(quizId);
@@ -1505,48 +1530,6 @@ export default function QuizEditor() {
       });
     } finally {
       setTranslating(false);
-    }
-  };
-
-  // Translate just quiz basics (title, headline, description) to all languages
-  const handleTranslateBasics = async () => {
-    if (!quizId || isCreating) return;
-    
-    setTranslatingBasics(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("translate-quiz-basics", {
-        body: { 
-          quizId, 
-          sourceLanguage: primaryLanguage,
-          regenerate: false, // Only translate missing languages
-        },
-      });
-
-      if (error) throw error;
-      
-      if (!data.success) {
-        throw new Error(data.message || "Translation failed");
-      }
-
-      const costInfo = data.costEur ? ` (Cost: €${data.costEur.toFixed(4)})` : "";
-      
-      toast({
-        title: "Translation complete",
-        description: `Translated title, headline & description to ${data.translatedCount} languages${costInfo}`,
-      });
-
-      // Reload quiz data to show translations
-      await loadQuizData(quizId);
-    } catch (error: any) {
-      console.error("Translation basics error:", error);
-      toast({
-        title: "Translation failed",
-        description: error.message || "Failed to translate quiz basics",
-        variant: "destructive",
-      });
-    } finally {
-      setTranslatingBasics(false);
     }
   };
 
@@ -2576,23 +2559,6 @@ export default function QuizEditor() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Description ({displayLanguage.toUpperCase()})</Label>
-                {!isCreating && !isPreviewMode && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs gap-1"
-                    onClick={handleTranslateBasics}
-                    disabled={translatingBasics}
-                  >
-                    {translatingBasics ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Languages className="w-3 h-3" />
-                    )}
-                    {translatingBasics ? "Translating..." : "Translate Title, Headline, Description to all languages"}
-                  </Button>
-                )}
               </div>
               <Textarea
                 value={description[displayLanguage] || ""}

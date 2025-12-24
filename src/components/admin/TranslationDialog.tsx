@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, Languages, Globe, Clock } from "lucide-react";
+import { Loader2, Languages, Globe, RefreshCw, Type } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -56,6 +56,10 @@ export interface TranslationOptions {
   includeUiText: boolean;
   /** If set, the UI will call translation in smaller batches to avoid timeouts. */
   batchSize?: number;
+  /** Force retranslate even for fields that already have translations */
+  regenerateAll?: boolean;
+  /** Only translate Title, Headline, Description fields */
+  basicsOnly?: boolean;
 }
 
 export function TranslationDialog({
@@ -67,7 +71,8 @@ export function TranslationDialog({
 }: TranslationDialogProps) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [includeUiText, setIncludeUiText] = useState(true);
-  const [safeMode, setSafeMode] = useState(true);
+  const [regenerateAll, setRegenerateAll] = useState(false);
+  const [basicsOnly, setBasicsOnly] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
 
   const availableLanguages = ALL_LANGUAGES.filter(
@@ -86,7 +91,8 @@ export function TranslationDialog({
 
     setSelectedLanguages(preferred.length > 0 ? preferred : (fallback ? [fallback] : []));
     setSelectAll(false);
-    setSafeMode(true);
+    setRegenerateAll(false);
+    setBasicsOnly(false);
     setIncludeUiText(true);
   }, [open, primaryLanguage]);
 
@@ -115,8 +121,10 @@ export function TranslationDialog({
 
     await onTranslate({
       targetLanguages: selectedLanguages,
-      includeUiText,
-      batchSize: safeMode ? 1 : undefined,
+      includeUiText: basicsOnly ? false : includeUiText,
+      batchSize: 1, // Always use safe mode (one language per request)
+      regenerateAll,
+      basicsOnly,
     });
   };
 
@@ -136,39 +144,59 @@ export function TranslationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* UI Text Option */}
+        <div className="space-y-4 py-4">
+          {/* Translation scope */}
           <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
             <Checkbox
-              id="includeUiText"
-              checked={includeUiText}
-              onCheckedChange={(checked) => setIncludeUiText(checked === true)}
+              id="basicsOnly"
+              checked={basicsOnly}
+              onCheckedChange={(checked) => setBasicsOnly(checked === true)}
             />
             <div className="space-y-1">
-              <Label htmlFor="includeUiText" className="font-medium cursor-pointer">
-                <Globe className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-                Include static UI text
+              <Label htmlFor="basicsOnly" className="font-medium cursor-pointer">
+                <Type className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                Title, Headline, Description only
               </Label>
               <p className="text-xs text-muted-foreground">
-                Translate buttons, labels, and other static website text so the entire page appears in the selected language.
+                Only translate these 3 basic fields (faster). Leave unchecked to translate full quiz content.
               </p>
             </div>
           </div>
 
-          {/* Reliability Option */}
+          {/* UI Text Option - only shown when not basicsOnly */}
+          {!basicsOnly && (
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+              <Checkbox
+                id="includeUiText"
+                checked={includeUiText}
+                onCheckedChange={(checked) => setIncludeUiText(checked === true)}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="includeUiText" className="font-medium cursor-pointer">
+                  <Globe className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                  Include static UI text
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Translate buttons, labels, and other static website text.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Regenerate All Option */}
           <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
             <Checkbox
-              id="safeMode"
-              checked={safeMode}
-              onCheckedChange={(checked) => setSafeMode(checked === true)}
+              id="regenerateAll"
+              checked={regenerateAll}
+              onCheckedChange={(checked) => setRegenerateAll(checked === true)}
             />
             <div className="space-y-1">
-              <Label htmlFor="safeMode" className="font-medium cursor-pointer">
-                <Clock className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-                Avoid timeouts (recommended)
+              <Label htmlFor="regenerateAll" className="font-medium cursor-pointer">
+                <RefreshCw className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                Regenerate all translations
               </Label>
               <p className="text-xs text-muted-foreground">
-                Translates one language per request (slower, but reliable). Bulk translating many languages at once can time out.
+                Force retranslate even fields that already have translations. Leave unchecked to only translate missing content.
               </p>
             </div>
           </div>

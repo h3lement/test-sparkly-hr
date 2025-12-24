@@ -235,6 +235,7 @@ interface TranslateRequest {
   model?: string;
   targetLanguages?: string[];
   includeUiText?: boolean;
+  regenerate?: boolean;
 }
 
 interface TranslationMeta {
@@ -262,11 +263,12 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { quizId, sourceLanguage, model, targetLanguages: selectedTargetLanguages, includeUiText }: TranslateRequest = await req.json();
+    const { quizId, sourceLanguage, model, targetLanguages: selectedTargetLanguages, includeUiText, regenerate }: TranslateRequest = await req.json();
     const selectedModel = model || 'google/gemini-2.5-flash';
     const shouldIncludeUiText = includeUiText !== false; // Default to true
+    const forceRegenerate = regenerate === true;
     console.log(`Starting smart translation for quiz ${quizId} from ${sourceLanguage} using model ${selectedModel}`);
-    console.log(`Target languages: ${selectedTargetLanguages?.length || 'all'}, Include UI text: ${shouldIncludeUiText}`);
+    console.log(`Target languages: ${selectedTargetLanguages?.length || 'all'}, Include UI text: ${shouldIncludeUiText}, Regenerate: ${forceRegenerate}`);
 
     // Fetch quiz data
     const { data: quiz, error: quizError } = await supabase
@@ -451,8 +453,8 @@ serve(async (req) => {
       
       for (const item of allTexts) {
         const previousHash = langMeta?.field_hashes?.[item.path];
-        // Translate if: no previous translation OR source text changed
-        if (!previousHash || previousHash !== item.hash) {
+        // Translate if: regenerate forced OR no previous translation OR source text changed
+        if (forceRegenerate || !previousHash || previousHash !== item.hash) {
           textsForLang.push({ path: item.path, text: item.text });
         }
       }
