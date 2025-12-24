@@ -62,6 +62,7 @@ interface Quiz {
   cta_text: Record<string, string>;
   cta_url: string | null;
   primary_language: string;
+  cta_template_id: string | null;
 }
 
 interface CTATemplate {
@@ -251,7 +252,7 @@ export function CTATemplateManager() {
       // Fetch quizzes
       const { data: quizzesData, error: quizzesError } = await supabase
         .from("quizzes")
-        .select("id, title, slug, cta_title, cta_description, cta_text, cta_url, primary_language")
+        .select("id, title, slug, cta_title, cta_description, cta_text, cta_url, primary_language, cta_template_id")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
@@ -765,13 +766,10 @@ export function CTATemplateManager() {
                 <div className="w-[120px] px-3 py-2 text-center">Actions</div>
               </div>
               {filteredTemplates.map(template => {
-                // Find all quizzes using this CTA template (via cta_template_id)
+                // Find all quizzes using this CTA template (via cta_template_id or quiz_id)
                 const relatedQuizzes = quizzes.filter(q => 
-                  q.id === template.quiz_id || 
-                  // Could also check via cta_template_id relation if exposed
-                  false
+                  q.cta_template_id === template.id || q.id === template.quiz_id
                 );
-                const quiz = quizzes.find(q => q.id === template.quiz_id);
                 return (
                   <div
                     key={template.id}
@@ -798,15 +796,33 @@ export function CTATemplateManager() {
                       </Button>
                     </div>
                     <div className="w-[150px] px-3 py-2">
-                      {quiz ? (
-                        <Badge variant="outline" className="text-xs truncate max-w-full" title={quiz.slug}>
-                          {quiz.slug}
-                        </Badge>
+                      {relatedQuizzes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {relatedQuizzes.slice(0, 2).map(q => (
+                            <Badge 
+                              key={q.id} 
+                              variant="outline" 
+                              className="text-[10px] truncate max-w-[70px]" 
+                              title={q.slug}
+                            >
+                              {q.slug}
+                            </Badge>
+                          ))}
+                          {relatedQuizzes.length > 2 && (
+                            <Badge 
+                              variant="secondary" 
+                              className="text-[10px]"
+                              title={relatedQuizzes.slice(2).map(q => q.slug).join(', ')}
+                            >
+                              +{relatedQuizzes.length - 2}
+                            </Badge>
+                          )}
+                        </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Not attached</span>
+                        <span className="text-xs text-muted-foreground">Not used</span>
                       )}
                     </div>
-                    <div 
+                    <div
                       className="w-[180px] px-3 py-2 truncate text-primary hover:underline cursor-pointer"
                       onClick={() => handleOpenEditor(template)}
                       title="Click to edit"
