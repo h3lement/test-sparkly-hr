@@ -39,6 +39,8 @@ const ALL_LANGUAGES = [
   { code: "lv", name: "Latvian" },
   { code: "ga", name: "Irish" },
   { code: "mt", name: "Maltese" },
+  { code: "ru", name: "Russian" },
+  { code: "uk", name: "Ukrainian" },
 ];
 
 interface TranslationDialogProps {

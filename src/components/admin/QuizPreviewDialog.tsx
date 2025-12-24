@@ -35,7 +35,7 @@ const PRIMARY_LANGUAGES = [
   { code: "et", label: "ET" },
 ];
 
-// Other EU languages
+// Other EU languages + Russian/Ukrainian
 const OTHER_LANGUAGES = [
   { code: "de", label: "DE" },
   { code: "fr", label: "FR" },
@@ -59,6 +59,8 @@ const OTHER_LANGUAGES = [
   { code: "lv", label: "LV" },
   { code: "ga", label: "GA" },
   { code: "mt", label: "MT" },
+  { code: "ru", label: "RU" },
+  { code: "uk", label: "UK" },
 ];
 
 const ALL_LANGUAGES = [...PRIMARY_LANGUAGES, ...OTHER_LANGUAGES];
