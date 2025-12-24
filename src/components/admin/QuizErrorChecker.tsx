@@ -43,7 +43,7 @@ interface QuizErrorCheckerProps {
   headline: Record<string, string>;
   headlineHighlight: Record<string, string>;
   ctaText: Record<string, string>;
-  ctaUrl: string;
+  ctaTemplateId: string | null;
   durationText: Record<string, string>;
   questions: Question[];
   resultLevels: ResultLevel[];
@@ -66,7 +66,7 @@ export function QuizErrorChecker({
   headline,
   headlineHighlight,
   ctaText,
-  ctaUrl,
+  ctaTemplateId,
   durationText,
   questions,
   resultLevels,
@@ -108,9 +108,9 @@ export function QuizErrorChecker({
       errors.push({ tab: "general", message: `CTA button text is required (${primaryLanguage.toUpperCase()})` });
     }
 
-    // CTA URL should be valid if provided
-    if (ctaUrl && !ctaUrl.startsWith("http")) {
-      errors.push({ tab: "general", message: "CTA URL must be a valid URL (start with http:// or https://)" });
+    // CTA template is recommended
+    if (!ctaTemplateId) {
+      errors.push({ tab: "general", message: "CTA template is not linked" });
     }
 
     // Duration text is recommended
