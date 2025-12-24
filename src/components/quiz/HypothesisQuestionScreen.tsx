@@ -45,8 +45,19 @@ export function HypothesisQuestionScreen() {
   const sortedPages = [...pages].sort((a, b) => a.page_number - b.page_number);
 
   const { getTranslation } = useUiTranslations({ quizId: quizData?.id || null, language });
+
   const t = (key: string, fallback: string, fiFallback?: string) =>
     getTranslation(key, language === 'fi' ? (fiFallback ?? fallback) : fallback);
+
+  const tFmt = (
+    key: string,
+    vars: Record<string, string | number>,
+    fallback: string,
+    fiFallback?: string
+  ) =>
+    t(key, fallback, fiFallback).replace(/\{(\w+)\}/g, (_, k: string) =>
+      Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : `{${k}}`
+    );
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
@@ -224,7 +235,12 @@ export function HypothesisQuestionScreen() {
           />
         </div>
         <p className="text-xs text-muted-foreground mt-2 text-right font-medium">
-          {t('progressCompleted', `${progress.current} of ${progress.total} hypotheses completed`, `${progress.current}/${progress.total} hypoteesia tehty`)}
+          {tFmt(
+            'progressCompleted',
+            { current: progress.current, total: progress.total },
+            '{current} of {total} hypotheses completed',
+            '{current}/{total} hypoteesia tehty'
+          )}
         </p>
       </div>
 
@@ -233,7 +249,12 @@ export function HypothesisQuestionScreen() {
         <div className="flex justify-between items-center mb-3">
           <h1 className="font-heading text-2xl md:text-3xl font-semibold text-foreground">{getText(currentPage.title)}</h1>
           <span className="text-sm text-muted-foreground bg-sparkly-blush px-3 py-1.5 rounded-full font-medium">
-            {t('pageOf', `Page ${currentPageIndex + 1} of ${sortedPages.length}`, `Sivu ${currentPageIndex + 1}/${sortedPages.length}`)}
+            {tFmt(
+              'pageOf',
+              { current: currentPageIndex + 1, total: sortedPages.length },
+              'Page {current} of {total}',
+              'Sivu {current}/{total}'
+            )}
           </span>
         </div>
         <p className="text-muted-foreground">{getText(currentPage.description)}</p>
@@ -263,7 +284,12 @@ export function HypothesisQuestionScreen() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-foreground">{t('hypothesesLabel', 'Hypotheses', 'Hypoteesit')}</span>
             <span className="text-xs text-muted-foreground">
-              {answeredCount}/{pageQuestions.length} answered
+              {tFmt(
+                'answeredCount',
+                { answered: answeredCount, total: pageQuestions.length },
+                '{answered}/{total} answered',
+                '{answered}/{total} vastattu'
+              )}
             </span>
           </div>
         </div>
@@ -272,7 +298,12 @@ export function HypothesisQuestionScreen() {
         <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
           <div className="col-span-2 flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              {t('thisPageAnswered', 'This page:', 'Tällä sivulla:')} <span className="font-semibold text-foreground">{answeredCount}</span> {t('of', 'of', '/')} {pageQuestions.length} {t('answered', 'answered', 'vastattu')}
+              {tFmt(
+                'thisPageAnswered',
+                { answered: answeredCount, total: pageQuestions.length },
+                'This page: {answered} of {total} answered',
+                'Tällä sivulla: {answered} / {total} vastattu'
+              )}
             </span>
             {allQuestionsAnswered && (
               <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ {t('readyToSubmit', 'Ready to submit!', 'Valmis lähetettäväksi!')}</span>
