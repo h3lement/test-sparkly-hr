@@ -1855,6 +1855,25 @@ export default function QuizEditor() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  const fetchHypothesisResultLevelsForErrorCheck = useCallback(async () => {
+    if (!quizId || quizId === "new") return [];
+    const { data, error } = await supabase
+      .from("hypothesis_result_levels")
+      .select("*")
+      .eq("quiz_id", quizId);
+
+    if (error) throw error;
+    return (data || []) as Array<{
+      id: string;
+      min_score: number;
+      max_score: number;
+      title: Json;
+      description: Json;
+      emoji: string;
+      color_class: string;
+    }>;
+  }, [quizId]);
+
   // Error checking hook
   const errorChecker = QuizErrorChecker({
     quizId: quizId || "",
@@ -1869,7 +1888,9 @@ export default function QuizEditor() {
     resultLevels,
     includeOpenMindedness,
     primaryLanguage,
+    quizType,
     getLocalizedValue,
+    fetchHypothesisResultLevels: fetchHypothesisResultLevelsForErrorCheck,
   });
 
   const handleCheckErrors = async () => {

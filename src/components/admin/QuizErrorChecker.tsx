@@ -35,6 +35,16 @@ interface QuizError {
   message: string;
 }
 
+interface HypothesisResultLevel {
+  id: string;
+  min_score: number;
+  max_score: number;
+  title: Json;
+  description: Json;
+  emoji: string;
+  color_class: string;
+}
+
 interface QuizErrorCheckerProps {
   quizId: string;
   slug: string;
@@ -48,7 +58,9 @@ interface QuizErrorCheckerProps {
   resultLevels: ResultLevel[];
   includeOpenMindedness: boolean;
   primaryLanguage: string;
+  quizType: "standard" | "hypothesis" | "emotional";
   getLocalizedValue: (obj: Json | Record<string, string>, lang: string) => string;
+  fetchHypothesisResultLevels?: () => Promise<HypothesisResultLevel[]>;
 }
 
 export interface CheckErrorsResult {
@@ -70,7 +82,9 @@ export function QuizErrorChecker({
   resultLevels,
   includeOpenMindedness,
   primaryLanguage,
+  quizType,
   getLocalizedValue,
+  fetchHypothesisResultLevels,
 }: QuizErrorCheckerProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<CheckErrorsResult | null>(null);
@@ -193,87 +207,150 @@ export function QuizErrorChecker({
 
     // === RESULTS TAB VALIDATIONS ===
 
-    // At least one result level is required
-    if (resultLevels.length === 0) {
-      errors.push({ tab: "results", message: "At least one result level is required" });
-    }
+    if (quizType === "hypothesis") {
+      const levels = fetchHypothesisResultLevels ? await fetchHypothesisResultLevels() : [];
 
-    // Each result level must have title and description
-    resultLevels.forEach((level, index) => {
-      const levelTitle = getLocalizedValue(level.title, primaryLanguage);
-      const levelDesc = getLocalizedValue(level.description, primaryLanguage);
-      
-      if (!levelTitle) {
-        errors.push({ 
-          tab: "results", 
-          message: `Result level ${index + 1} is missing title (${primaryLanguage.toUpperCase()})` 
-        });
-      }
-      if (!levelDesc) {
-        errors.push({ 
-          tab: "results", 
-          message: `Result level ${index + 1} is missing description (${primaryLanguage.toUpperCase()})` 
-        });
+      if (levels.length === 0) {
+        errors.push({ tab: "results", message: "At least one hypothesis result level is required" });
       }
 
-      // Check insights
-      const insights = Array.isArray(level.insights) ? level.insights : [];
-      if (insights.length === 0) {
-        errors.push({ 
-          tab: "results", 
-          message: `Result level ${index + 1} has no insights` 
-        });
-      }
-    });
+      levels.forEach((level, index) => {
+        const levelTitle = getLocalizedValue(level.title, primaryLanguage);
+        const levelDesc = getLocalizedValue(level.description, primaryLanguage);
 
-    // Validate point ranges coverage
-    if (resultLevels.length > 0 && regularQuestions.length > 0) {
-      let maxPossibleScore = 0;
-      let minPossibleScore = 0;
-      
-      for (const q of regularQuestions) {
-        if (q.answers.length > 0) {
-          const scores = q.answers.map(a => a.score_value);
-          maxPossibleScore += Math.max(...scores);
-          minPossibleScore += Math.min(...scores);
-        }
-      }
-
-      const sortedLevels = [...resultLevels].sort((a, b) => a.min_score - b.min_score);
-      
-      // Check start coverage
-      if (sortedLevels[0]?.min_score > minPossibleScore) {
-        errors.push({ 
-          tab: "results", 
-          message: `Score gap: points ${minPossibleScore}-${sortedLevels[0].min_score - 1} have no result level` 
-        });
-      }
-
-      // Check gaps and overlaps between levels
-      for (let i = 0; i < sortedLevels.length - 1; i++) {
-        const current = sortedLevels[i];
-        const next = sortedLevels[i + 1];
-        
-        if (current.max_score + 1 < next.min_score) {
-          errors.push({ 
-            tab: "results", 
-            message: `Score gap: points ${current.max_score + 1}-${next.min_score - 1} have no result level` 
+        if (!levelTitle) {
+          errors.push({
+            tab: "results",
+            message: `Hypothesis result level ${index + 1} is missing title (${primaryLanguage.toUpperCase()})`,
           });
-        } else if (current.max_score >= next.min_score) {
-          errors.push({ 
-            tab: "results", 
-            message: `Score overlap: points ${next.min_score}-${current.max_score} covered by multiple levels` 
+        }
+        if (!levelDesc) {
+          errors.push({
+            tab: "results",
+            message: `Hypothesis result level ${index + 1} is missing description (${primaryLanguage.toUpperCase()})`,
+          });
+        }
+      });
+
+      // Validate percent ranges cover 0–100 without gaps/overlaps
+      if (levels.length > 0) {
+        const sortedLevels = [...levels].sort((a, b) => a.min_score - b.min_score);
+
+        if (sortedLevels[0]?.min_score > 0) {
+          errors.push({
+            tab: "results",
+            message: `Score gap: %0-${sortedLevels[0].min_score - 1} have no result level`,
+          });
+        }
+
+        for (let i = 0; i < sortedLevels.length - 1; i++) {
+          const current = sortedLevels[i];
+          const next = sortedLevels[i + 1];
+
+          if (current.max_score + 1 < next.min_score) {
+            errors.push({
+              tab: "results",
+              message: `Score gap: %${current.max_score + 1}-${next.min_score - 1} have no result level`,
+            });
+          } else if (current.max_score >= next.min_score) {
+            errors.push({
+              tab: "results",
+              message: `Score overlap: %${next.min_score}-${current.max_score} covered by multiple levels`,
+            });
+          }
+        }
+
+        const lastLevel = sortedLevels[sortedLevels.length - 1];
+        if (lastLevel?.max_score < 100) {
+          errors.push({
+            tab: "results",
+            message: `Score gap: %${lastLevel.max_score + 1}-100 have no result level`,
           });
         }
       }
+    } else {
+      // At least one result level is required
+      if (resultLevels.length === 0) {
+        errors.push({ tab: "results", message: "At least one result level is required" });
+      }
 
-      // Check end coverage
-      const lastLevel = sortedLevels[sortedLevels.length - 1];
-      if (lastLevel?.max_score < maxPossibleScore) {
-        errors.push({ 
-          tab: "results", 
-          message: `Score gap: points ${lastLevel.max_score + 1}-${maxPossibleScore} have no result level` 
-        });
+      // Each result level must have title and description
+      resultLevels.forEach((level, index) => {
+        const levelTitle = getLocalizedValue(level.title, primaryLanguage);
+        const levelDesc = getLocalizedValue(level.description, primaryLanguage);
+
+        if (!levelTitle) {
+          errors.push({
+            tab: "results",
+            message: `Result level ${index + 1} is missing title (${primaryLanguage.toUpperCase()})`,
+          });
+        }
+        if (!levelDesc) {
+          errors.push({
+            tab: "results",
+            message: `Result level ${index + 1} is missing description (${primaryLanguage.toUpperCase()})`,
+          });
+        }
+
+        // Check insights
+        const insights = Array.isArray(level.insights) ? level.insights : [];
+        if (insights.length === 0) {
+          errors.push({
+            tab: "results",
+            message: `Result level ${index + 1} has no insights`,
+          });
+        }
+      });
+
+      // Validate point ranges coverage
+      if (resultLevels.length > 0 && regularQuestions.length > 0) {
+        let maxPossibleScore = 0;
+        let minPossibleScore = 0;
+
+        for (const q of regularQuestions) {
+          if (q.answers.length > 0) {
+            const scores = q.answers.map((a) => a.score_value);
+            maxPossibleScore += Math.max(...scores);
+            minPossibleScore += Math.min(...scores);
+          }
+        }
+
+        const sortedLevels = [...resultLevels].sort((a, b) => a.min_score - b.min_score);
+
+        // Check start coverage
+        if (sortedLevels[0]?.min_score > minPossibleScore) {
+          errors.push({
+            tab: "results",
+            message: `Score gap: points ${minPossibleScore}-${sortedLevels[0].min_score - 1} have no result level`,
+          });
+        }
+
+        // Check gaps and overlaps between levels
+        for (let i = 0; i < sortedLevels.length - 1; i++) {
+          const current = sortedLevels[i];
+          const next = sortedLevels[i + 1];
+
+          if (current.max_score + 1 < next.min_score) {
+            errors.push({
+              tab: "results",
+              message: `Score gap: points ${current.max_score + 1}-${next.min_score - 1} have no result level`,
+            });
+          } else if (current.max_score >= next.min_score) {
+            errors.push({
+              tab: "results",
+              message: `Score overlap: points ${next.min_score}-${current.max_score} covered by multiple levels`,
+            });
+          }
+        }
+
+        // Check end coverage
+        const lastLevel = sortedLevels[sortedLevels.length - 1];
+        if (lastLevel?.max_score < maxPossibleScore) {
+          errors.push({
+            tab: "results",
+            message: `Score gap: points ${lastLevel.max_score + 1}-${maxPossibleScore} have no result level`,
+          });
+        }
       }
     }
 
