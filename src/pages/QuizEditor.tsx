@@ -254,7 +254,8 @@ export default function QuizEditor() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [regenerationProgress, setRegenerationProgress] = useState(0);
 
-  // Error checking state
+  // Translate basics (title, headline, description) to all languages
+  const [translatingBasics, setTranslatingBasics] = useState(false);
   const [errorCheckResult, setErrorCheckResult] = useState<CheckErrorsResult | null>(null);
   const [isCheckingErrors, setIsCheckingErrors] = useState(false);
   
@@ -1507,6 +1508,48 @@ export default function QuizEditor() {
     }
   };
 
+  // Translate just quiz basics (title, headline, description) to all languages
+  const handleTranslateBasics = async () => {
+    if (!quizId || isCreating) return;
+    
+    setTranslatingBasics(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-quiz-basics", {
+        body: { 
+          quizId, 
+          sourceLanguage: primaryLanguage,
+          regenerate: false, // Only translate missing languages
+        },
+      });
+
+      if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.message || "Translation failed");
+      }
+
+      const costInfo = data.costEur ? ` (Cost: €${data.costEur.toFixed(4)})` : "";
+      
+      toast({
+        title: "Translation complete",
+        description: `Translated title, headline & description to ${data.translatedCount} languages${costInfo}`,
+      });
+
+      // Reload quiz data to show translations
+      await loadQuizData(quizId);
+    } catch (error: any) {
+      console.error("Translation basics error:", error);
+      toast({
+        title: "Translation failed",
+        description: error.message || "Failed to translate quiz basics",
+        variant: "destructive",
+      });
+    } finally {
+      setTranslatingBasics(false);
+    }
+  };
+
   // Get translation status for a language
   const getTranslationStatus = (langCode: string) => {
     const langMeta = translationMeta.translations?.[langCode];
@@ -2530,8 +2573,27 @@ export default function QuizEditor() {
               )}
             </div>
 
-            <div>
-              <Label className="text-xs">Description ({displayLanguage.toUpperCase()})</Label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Description ({displayLanguage.toUpperCase()})</Label>
+                {!isCreating && !isPreviewMode && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs gap-1"
+                    onClick={handleTranslateBasics}
+                    disabled={translatingBasics}
+                  >
+                    {translatingBasics ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Languages className="w-3 h-3" />
+                    )}
+                    {translatingBasics ? "Translating..." : "Translate Title, Headline, Description to all languages"}
+                  </Button>
+                )}
+              </div>
               <Textarea
                 value={description[displayLanguage] || ""}
                 onChange={(e) => setLocalizedValue(setDescription, displayLanguage, e.target.value)}

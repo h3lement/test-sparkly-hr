@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.batch-translate-quizzes]
 verify_jwt = true
+
+[functions.translate-quiz-basics]
+verify_jwt = true
