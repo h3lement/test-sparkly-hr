@@ -15,3 +15,4 @@ export { QuizPreviewDialog } from "./QuizPreviewDialog";
 // Connection & Data Handling
 export { ConnectionStatus } from "./ConnectionStatus";
 export { DataFetchWrapper } from "./DataFetchWrapper";
+export { BatchTranslateButton } from "./BatchTranslateButton";

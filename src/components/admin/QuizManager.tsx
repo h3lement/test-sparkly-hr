@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, RefreshCw, Copy, Info, ArrowUpDown, ArrowUp, ArrowDown, GripVertical, Rows3, Rows4, RotateCcw, Languages, Loader2 } from "lucide-react";
+import { BatchTranslateButton } from "@/components/admin/BatchTranslateButton";
 import { formatTimestamp } from "@/lib/utils";
 import { withRetry } from "@/hooks/useSupabaseConnection";
 import { DataFetchWrapper } from "@/components/admin/DataFetchWrapper";
@@ -946,18 +947,20 @@ export function QuizManager() {
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <BatchTranslateButton onComplete={fetchQuizzes} />
           <Button 
             onClick={translateAllQuizzes} 
             variant="outline" 
             size="sm" 
             disabled={translatingAll || loading}
+            title="Quick translate all active quizzes to all languages"
           >
             {translatingAll ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Languages className="w-4 h-4 mr-2" />
             )}
-            Translate All
+            Quick Translate
           </Button>
           <Button onClick={handleCreateQuiz} size="sm">
             <Plus className="w-4 h-4 mr-2" />

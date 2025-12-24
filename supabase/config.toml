@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.pregenerate-email-preview]
 verify_jwt = false
+
+[functions.batch-translate-quizzes]
+verify_jwt = true
