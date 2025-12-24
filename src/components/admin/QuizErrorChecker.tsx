@@ -565,11 +565,13 @@ export function CheckErrorsButton({
   isChecking,
   lastCheck,
   onFixClick,
+  onIgnore,
 }: {
   onClick: () => void;
   isChecking: boolean;
   lastCheck: CheckErrorsResult | null;
   onFixClick?: () => void;
+  onIgnore?: () => void;
 }) {
   return (
     <div className="flex items-center gap-1">
@@ -602,6 +604,18 @@ export function CheckErrorsButton({
         >
           <ArrowRight className="w-3.5 h-3.5" />
           Fix
+        </Button>
+      )}
+
+      {/* Ignore button - dismiss errors without fixing */}
+      {lastCheck?.isValid === false && onIgnore && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onIgnore}
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          Ignore
         </Button>
       )}
     </div>

@@ -2167,6 +2167,7 @@ export default function QuizEditor() {
                         }
                       }
                     }}
+                    onIgnore={() => setErrorCheckResult(null)}
                   />
                 )}
                 
