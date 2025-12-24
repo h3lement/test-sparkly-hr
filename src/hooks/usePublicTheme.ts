@@ -1,34 +1,34 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// Sparkly.hr default public color palette (daylight mode)
+// Sparkly.hr default public color palette - Emotions style (soft lavender/cream)
 export const DEFAULT_PUBLIC_COLORS: Record<string, string> = {
-  "--background": "20 40% 97%",
-  "--foreground": "230 25% 15%",
-  "--card": "0 0% 100%",
-  "--card-foreground": "230 25% 15%",
+  "--background": "30 33% 96%",        // Soft warm cream (#f8f5f2)
+  "--foreground": "250 20% 25%",       // Deep purple-gray text
+  "--card": "0 0% 100%",               // Pure white cards
+  "--card-foreground": "250 20% 25%",  // Deep purple-gray
   "--popover": "0 0% 100%",
-  "--popover-foreground": "230 25% 15%",
-  "--primary": "235 55% 52%",
+  "--popover-foreground": "250 20% 25%",
+  "--primary": "250 45% 58%",          // Soft lavender/purple (#7c6fae)
   "--primary-foreground": "0 0% 100%",
-  "--secondary": "20 25% 93%",
-  "--secondary-foreground": "230 25% 20%",
-  "--muted": "20 20% 90%",
-  "--muted-foreground": "230 15% 45%",
-  "--accent": "235 45% 60%",
+  "--secondary": "250 25% 94%",        // Light lavender tint
+  "--secondary-foreground": "250 20% 30%",
+  "--muted": "250 15% 92%",            // Subtle lavender muted
+  "--muted-foreground": "250 15% 50%", // Muted purple-gray
+  "--accent": "315 40% 65%",           // Rose/pink accent for highlights
   "--accent-foreground": "0 0% 100%",
-  "--destructive": "0 84% 60%",
+  "--destructive": "0 72% 55%",
   "--destructive-foreground": "0 0% 100%",
-  "--border": "20 15% 88%",
-  "--input": "20 15% 88%",
-  "--ring": "235 55% 52%",
-  "--quiz-primary": "235 55% 52%",
-  "--quiz-primary-light": "235 45% 60%",
-  "--quiz-glow": "235 55% 65%",
-  "--sparkly-blush": "15 60% 95%",
-  "--sparkly-cream": "40 30% 96%",
-  "--sparkly-indigo": "235 55% 52%",
-  "--sparkly-indigo-light": "235 45% 60%",
+  "--border": "250 15% 90%",           // Soft lavender border
+  "--input": "250 15% 90%",
+  "--ring": "250 45% 58%",
+  "--quiz-primary": "250 45% 58%",     // Main lavender
+  "--quiz-primary-light": "250 35% 70%", // Lighter lavender
+  "--quiz-glow": "250 45% 75%",        // Glow effect
+  "--sparkly-blush": "330 50% 95%",    // Soft pink blush
+  "--sparkly-cream": "30 33% 96%",     // Warm cream background
+  "--sparkly-indigo": "250 45% 58%",   // Lavender primary
+  "--sparkly-indigo-light": "250 35% 70%",
 };
 
 export interface PublicThemeSettings {
