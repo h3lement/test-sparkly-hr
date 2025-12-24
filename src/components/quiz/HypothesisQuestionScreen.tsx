@@ -6,7 +6,6 @@ import { useUiTranslations } from '@/hooks/useUiTranslations';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowRight, ArrowLeft, Loader2, ThumbsUp, ThumbsDown, ArrowUp, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import confetti from 'canvas-confetti';
 
 type AnswerValue = boolean | null;
 
@@ -35,7 +34,6 @@ export function HypothesisQuestionScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showScrollHelper, setShowScrollHelper] = useState(false);
   const [firstUnansweredIndex, setFirstUnansweredIndex] = useState<number | null>(null);
-  const [hasShownConfetti, setHasShownConfetti] = useState(false);
   
   const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -135,42 +133,6 @@ export function HypothesisQuestionScreen() {
 
   const allQuestionsAnswered = pageQuestions.every(q => pageAnswers[q.id] !== null && pageAnswers[q.id] !== undefined);
 
-  // Trigger confetti when all questions on a page are answered
-  useEffect(() => {
-    if (allQuestionsAnswered && !hasShownConfetti && pageQuestions.length > 0) {
-      setHasShownConfetti(true);
-      
-      // Fire confetti from both sides
-      const end = Date.now() + 600;
-      const colors = ['#4f46e5', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
-
-      (function frame() {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0, y: 0.6 },
-          colors: colors
-        });
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1, y: 0.6 },
-          colors: colors
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      }());
-    }
-  }, [allQuestionsAnswered, hasShownConfetti, pageQuestions.length]);
-
-  // Reset confetti flag when page changes
-  useEffect(() => {
-    setHasShownConfetti(false);
-  }, [currentPage?.id]);
 
   const handleSubmitAndContinue = async () => {
     if (!allQuestionsAnswered || isSubmitting) return;
