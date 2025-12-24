@@ -686,86 +686,110 @@ export function ActivityDashboard() {
             </div>
           ) : (
             <>
-              <div className="divide-y divide-border">
-                {paginatedActivities.map((activity, index) => (
-                  <div
-                    key={activity.id}
-                    className={`flex items-start gap-4 p-4 list-row-interactive ${index % 2 === 0 ? 'list-row-even' : 'list-row-odd'}`}
-                  >
-                    {activity.user_email ? (
-                      <Avatar className="h-9 w-9 bg-secondary shrink-0">
-                        <AvatarFallback className="text-xs bg-secondary text-foreground">
-                          {getInitials(activity.user_email)}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-sm font-medium">
-                          {activity.user_email?.split("@")[0] || "System"}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={`${getActionColor(activity.action_type)} gap-1 text-xs`}
-                        >
-                          {getActionIcon(activity.action_type)}
-                          {activity.action_type}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {getTableLabel(activity.table_name)}
-                        </Badge>
-                      </div>
-                      {activity.description && (
-                        <p className="text-sm text-foreground">{activity.description}</p>
-                      )}
-                      {activity.field_name && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <span className="font-medium">{activity.field_name}:</span>
-                          {activity.old_value && (
-                            <span className="line-through text-red-500/70 mx-1">
-                              {activity.old_value.slice(0, 30)}
-                              {activity.old_value.length > 30 && "..."}
-                            </span>
-                          )}
-                          {activity.old_value && activity.new_value && "→"}
-                          {activity.new_value && (
-                            <span className="text-green-600 mx-1">
-                              {activity.new_value.slice(0, 30)}
-                              {activity.new_value.length > 30 && "..."}
-                            </span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <p className="text-xs text-muted-foreground" title={formatFullDate(activity.created_at)}>
-                        {formatDate(activity.created_at)}
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => openEditDialog(activity)}
-                        title="Edit"
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[140px]">Timestamp</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[120px]">User</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[110px]">Action</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground whitespace-nowrap w-[100px]">Type</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground">Description</th>
+                      <th className="py-3 px-3 font-medium text-muted-foreground w-[80px]"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {paginatedActivities.map((activity, index) => (
+                      <tr
+                        key={activity.id}
+                        className={`list-row-interactive ${index % 2 === 0 ? 'list-row-even' : 'list-row-odd'}`}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteConfirmId(activity.id)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                        <td className="py-3 px-3 whitespace-nowrap text-muted-foreground" title={formatFullDate(activity.created_at)}>
+                          {formatDate(activity.created_at)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2">
+                            {activity.user_email ? (
+                              <Avatar className="h-6 w-6 bg-secondary shrink-0">
+                                <AvatarFallback className="text-[10px] bg-secondary text-foreground">
+                                  {getInitials(activity.user_email)}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                              </div>
+                            )}
+                            <span className="font-medium truncate max-w-[80px]">
+                              {activity.user_email?.split("@")[0] || "System"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <Badge
+                            variant="outline"
+                            className={`${getActionColor(activity.action_type)} gap-1 text-xs`}
+                          >
+                            {getActionIcon(activity.action_type)}
+                            {activity.action_type}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-3">
+                          <Badge variant="secondary" className="text-xs">
+                            {getTableLabel(activity.table_name)}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="space-y-0.5">
+                            {activity.description && (
+                              <p className="text-foreground">{activity.description}</p>
+                            )}
+                            {activity.field_name && (
+                              <p className="text-xs text-muted-foreground">
+                                <span className="font-medium">{activity.field_name}:</span>
+                                {activity.old_value && (
+                                  <span className="line-through text-red-500/70 mx-1">
+                                    {activity.old_value.slice(0, 30)}
+                                    {activity.old_value.length > 30 && "..."}
+                                  </span>
+                                )}
+                                {activity.old_value && activity.new_value && "→"}
+                                {activity.new_value && (
+                                  <span className="text-green-600 mx-1">
+                                    {activity.new_value.slice(0, 30)}
+                                    {activity.new_value.length > 30 && "..."}
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => openEditDialog(activity)}
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteConfirmId(activity.id)}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               {/* Pagination Controls */}
