@@ -53,6 +53,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { logActivity } from "@/hooks/useActivityLog";
@@ -178,14 +183,16 @@ export default function QuizEditor() {
   const [translating, setTranslating] = useState(false);
   const { toast } = useToast();
   
-  // User preference for language selection
-  const { preferences: editorPrefs, updatePreference: updateEditorPref } = useUserPreferences<{ language: string }>({
+  // User preference for language selection and AI context expanded state
+  const { preferences: editorPrefs, updatePreference: updateEditorPref } = useUserPreferences<{ language: string; aiContextExpanded: boolean }>({
     key: "quiz_editor",
-    defaultValue: { language: "en" },
+    defaultValue: { language: "en", aiContextExpanded: false },
   });
   
   const primaryLanguage = editorPrefs.language || "en";
   const setPrimaryLanguage = (lang: string) => updateEditorPref("language", lang);
+  const aiContextExpanded = editorPrefs.aiContextExpanded ?? false;
+  const setAiContextExpanded = (expanded: boolean) => updateEditorPref("aiContextExpanded", expanded);
   
   // Preview language for viewing translations
   const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
@@ -2671,25 +2678,6 @@ export default function QuizEditor() {
               />
             </div>
 
-            {/* Tone of Voice */}
-            <ToneOfVoiceEditor
-              toneOfVoice={toneOfVoice}
-              toneSource={toneSource}
-              useToneForAi={useToneForAi}
-              toneIntensity={toneIntensity}
-              icpDescription={icpDescription}
-              buyingPersona={buyingPersona}
-              quizId={isCreating ? undefined : quizId}
-              model={selectedAiModel}
-              isPreviewMode={isPreviewMode}
-              onToneChange={setToneOfVoice}
-              onSourceChange={setToneSource}
-              onUseToneChange={setUseToneForAi}
-              onIntensityChange={setToneIntensity}
-              onIcpChange={setIcpDescription}
-              onBuyingPersonaChange={setBuyingPersona}
-            />
-
             {/* Start CTAs and Duration */}
             <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
               <Label className="text-xs font-medium">Welcome Screen CTAs ({displayLanguage.toUpperCase()})</Label>
@@ -2748,6 +2736,38 @@ export default function QuizEditor() {
                 </div>
               </div>
             </div>
+
+            {/* AI Context & Tone Settings - Collapsible */}
+            <Collapsible open={aiContextExpanded} onOpenChange={setAiContextExpanded}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-3 border rounded-lg bg-muted/30 hover:bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-xs font-medium">AI Context & Tone Settings</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${aiContextExpanded ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <ToneOfVoiceEditor
+                  toneOfVoice={toneOfVoice}
+                  toneSource={toneSource}
+                  useToneForAi={useToneForAi}
+                  toneIntensity={toneIntensity}
+                  icpDescription={icpDescription}
+                  buyingPersona={buyingPersona}
+                  quizId={isCreating ? undefined : quizId}
+                  model={selectedAiModel}
+                  isPreviewMode={isPreviewMode}
+                  onToneChange={setToneOfVoice}
+                  onSourceChange={setToneSource}
+                  onUseToneChange={setUseToneForAi}
+                  onIntensityChange={setToneIntensity}
+                  onIcpChange={setIcpDescription}
+                  onBuyingPersonaChange={setBuyingPersona}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </TabsContent>
 
           {quizType !== "hypothesis" && (
