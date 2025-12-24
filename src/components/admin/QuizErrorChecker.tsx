@@ -150,14 +150,13 @@ export function QuizErrorChecker({
 
     // === QUESTIONS TAB VALIDATIONS (standard quizzes only) ===
     if (quizType !== "hypothesis") {
-      // At least one question is required
-      const regularQuestions = questions.filter(q => q.question_type !== "open_mindedness");
-      if (regularQuestions.length === 0) {
+      // At least one question is required (all questions are now regular - OM is global)
+      if (questions.length === 0) {
         errors.push({ tab: "questions", message: "At least one question is required" });
       }
 
       // Each question must have text
-      regularQuestions.forEach((q, index) => {
+      questions.forEach((q, index) => {
         const questionText = getLocalizedValue(q.question_text, primaryLanguage);
         if (!questionText) {
           errors.push({ 
@@ -350,13 +349,12 @@ export function QuizErrorChecker({
         }
       });
 
-      // Validate point ranges coverage
-      const standardQuestions = questions.filter(q => q.question_type !== "open_mindedness");
-      if (resultLevels.length > 0 && standardQuestions.length > 0) {
+      // Validate point ranges coverage (all questions are now regular - OM is global)
+      if (resultLevels.length > 0 && questions.length > 0) {
         let maxPossibleScore = 0;
         let minPossibleScore = 0;
 
-        for (const q of standardQuestions) {
+        for (const q of questions) {
           if (q.answers.length > 0) {
             const scores = q.answers.map((a) => a.score_value);
             maxPossibleScore += Math.max(...scores);
