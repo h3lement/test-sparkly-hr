@@ -3,7 +3,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useDynamicQuiz } from './DynamicQuizContext';
 import { useLanguage } from './LanguageContext';
 import { useUiTranslations } from '@/hooks/useUiTranslations';
+import { useGlobalOMPublic } from '@/hooks/useGlobalOMPublic';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 export function DynamicOpenMindedness() {
   const { 
@@ -11,15 +13,14 @@ export function DynamicOpenMindedness() {
     setOpenMindednessAnswers, 
     setCurrentStep, 
     setCurrentQuestion,
-    getOpenMindednessQuestion,
     getRegularQuestions,
     getTotalQuestionCount,
     quizData
   } = useDynamicQuiz();
   const { language } = useLanguage();
   const { getTranslation } = useUiTranslations({ quizId: quizData?.id, language });
+  const { module: globalOM, loading: loadingGlobalOM } = useGlobalOMPublic();
 
-  const openMindednessQuestion = getOpenMindednessQuestion();
   const regularQuestions = getRegularQuestions();
 
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
@@ -47,7 +48,18 @@ export function DynamicOpenMindedness() {
   const currentQuestionNumber = regularQuestions.length + 1;
   const progress = (currentQuestionNumber / totalQuestions) * 100;
 
-  if (!openMindednessQuestion) {
+  // Show loading state while fetching global module
+  if (loadingGlobalOM) {
+    return (
+      <main className="max-w-2xl mx-auto animate-fade-in text-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading question...</p>
+      </main>
+    );
+  }
+
+  // Use global OM module
+  if (!globalOM) {
     return null;
   }
 
@@ -72,7 +84,7 @@ export function DynamicOpenMindedness() {
       </div>
 
       <h1 id="mindedness-heading" className="font-heading text-2xl md:text-3xl font-semibold mb-8 leading-tight">
-        {getText(openMindednessQuestion.question_text)}
+        {getText(globalOM.question_text)}
       </h1>
 
       <p className="text-xs text-muted-foreground mb-4 hidden sm:block" aria-hidden="true">
@@ -80,8 +92,8 @@ export function DynamicOpenMindedness() {
       </p>
 
       <fieldset className="space-y-3 mb-8">
-        <legend className="sr-only">{getText(openMindednessQuestion.question_text)}</legend>
-        {openMindednessQuestion.answers.map((answer, index) => {
+        <legend className="sr-only">{getText(globalOM.question_text)}</legend>
+        {globalOM.answers.map((answer, index) => {
           const isChecked = openMindednessAnswers[answer.id] || false;
           return (
             <label

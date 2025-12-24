@@ -249,40 +249,9 @@ export function QuizErrorChecker({
     }
 
     // === OPEN-MINDEDNESS TAB VALIDATIONS ===
-    
-    if (includeOpenMindedness) {
-      const openMindednessQuestion = questions.find(q => q.question_type === "open_mindedness");
-      if (!openMindednessQuestion) {
-        errors.push({ 
-          tab: "mindedness", 
-          message: "Open-Mindedness module is enabled but no question is configured",
-          fixAction: "create_open_mindedness",
-        });
-      } else {
-        const omQuestionText = getLocalizedValue(openMindednessQuestion.question_text, primaryLanguage);
-        if (!omQuestionText) {
-          errors.push({ 
-            tab: "mindedness", 
-            message: `Open-Mindedness question text is missing (${primaryLanguage.toUpperCase()})` 
-          });
-        }
-        if (openMindednessQuestion.answers.length < 3) {
-          errors.push({ 
-            tab: "mindedness", 
-            message: `Open-Mindedness question needs at least 3 options (has ${openMindednessQuestion.answers.length})` 
-          });
-        }
-        openMindednessQuestion.answers.forEach((a, aIndex) => {
-          const answerText = getLocalizedValue(a.answer_text, primaryLanguage);
-          if (!answerText) {
-            errors.push({ 
-              tab: "mindedness", 
-              message: `Open-Mindedness option ${aIndex + 1} is missing text (${primaryLanguage.toUpperCase()})` 
-            });
-          }
-        });
-      }
-    }
+    // Note: OM module is now global - validation handled by the global module itself
+    // The module cannot be deleted, only toggled on/off per quiz
+    // No validation errors needed here since the global module is always configured
 
     // === RESULTS TAB VALIDATIONS ===
 

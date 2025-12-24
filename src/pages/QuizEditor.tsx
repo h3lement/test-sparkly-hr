@@ -2803,8 +2803,6 @@ export default function QuizEditor() {
             {!isCreating && (
               <>
                 <OpenMindednessEditor
-                  questions={questions}
-                  setQuestions={setQuestions}
                   displayLanguage={displayLanguage}
                   isPreviewMode={isPreviewMode}
                   includeOpenMindedness={includeOpenMindedness}
