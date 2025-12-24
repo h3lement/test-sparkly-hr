@@ -16,3 +16,4 @@ export { QuizPreviewDialog } from "./QuizPreviewDialog";
 export { ConnectionStatus } from "./ConnectionStatus";
 export { DataFetchWrapper } from "./DataFetchWrapper";
 export { BatchTranslateButton } from "./BatchTranslateButton";
+export { HypothesisResultLevels } from "./HypothesisResultLevels";
