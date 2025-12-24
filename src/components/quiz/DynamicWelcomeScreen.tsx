@@ -79,13 +79,37 @@ export function DynamicWelcomeScreen() {
       <div className="flex flex-col sm:flex-row gap-4 justify-center" role="group" aria-label="Quiz actions">
         <Button 
           id="start-quiz"
-          onClick={() => setCurrentStep('quiz')}
+          onClick={() => {
+            const url = quizData?.start_cta_url;
+            if (url) {
+              window.location.href = url;
+            } else {
+              setCurrentStep('quiz');
+            }
+          }}
           size="lg"
           className="bg-primary text-primary-foreground px-8 py-6 text-base font-semibold rounded-lg glow-primary hover:bg-primary/90 transition-all"
           aria-describedby="quiz-duration"
         >
-          {t('startButton')}
+          {getText(quizData?.start_cta_text, t('startButton'))}
         </Button>
+        {getText(quizData?.start_cta_secondary_text) && (
+          <Button 
+            variant="outline"
+            size="lg"
+            onClick={() => {
+              const url = quizData?.start_cta_secondary_url;
+              if (url) {
+                window.location.href = url;
+              } else {
+                setCurrentStep('quiz');
+              }
+            }}
+            className="px-8 py-6 text-base font-medium rounded-lg border-primary text-primary hover:bg-primary/5 transition-all"
+          >
+            {getText(quizData?.start_cta_secondary_text)}
+          </Button>
+        )}
       </div>
       
       <p id="quiz-duration" className="text-sm text-muted-foreground mt-8">
