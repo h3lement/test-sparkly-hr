@@ -11,9 +11,15 @@ import { EmotionalResultsScreen } from './EmotionalResultsScreen';
 import { HypothesisQuiz } from './HypothesisQuiz';
 import { useQuizData } from '@/hooks/useQuizData';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
-import { useLanguage } from './LanguageContext';
+import { useLanguage, languages, type Language } from './LanguageContext';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
+
+// Supported language codes for URL prefix
+const SUPPORTED_LANG_PREFIXES = [
+  'da', 'nl', 'en', 'et', 'fi', 'fr', 'de', 'it', 'no', 'pl', 'pt', 'ru', 'es', 'sv', 'uk',
+  'ro', 'el', 'cs', 'hu', 'bg', 'sk', 'hr', 'lt', 'sl', 'lv', 'ga', 'mt'
+];
 
 // Map URL step parameter to internal step names
 function parseStepFromUrl(step: string | undefined, questionCount: number): { step: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results', questionIndex?: number } {
@@ -38,7 +44,13 @@ function parseStepFromUrl(step: string | undefined, questionCount: number): { st
   return { step: 'welcome' };
 }
 
-function StandardQuizContent({ slug, quizType }: { slug: string; quizType: string }) {
+interface StandardQuizContentProps {
+  slug: string;
+  quizType: string;
+  languageFromUrl?: string;
+}
+
+function StandardQuizContent({ slug, quizType, languageFromUrl }: StandardQuizContentProps) {
   const { step: urlStep } = useParams<{ step?: string }>();
   const [searchParams] = useSearchParams();
   const isPreviewMode = searchParams.get('preview') === '1';
@@ -54,15 +66,21 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
     setOpenMindednessResultLevels,
     quizData: existingQuizData
   } = useDynamicQuiz();
-  const { setQuizId, setLanguage, dbTranslationsLoaded } = useLanguage();
+  const { setQuizId, setLanguage, language, dbTranslationsLoaded } = useLanguage();
   const [initialStepApplied, setInitialStepApplied] = useState(false);
   
-  // Read language from URL parameter and apply it
+  // Apply language from URL path (e.g., /et/quiz-slug)
+  useEffect(() => {
+    if (languageFromUrl && SUPPORTED_LANG_PREFIXES.includes(languageFromUrl)) {
+      setLanguage(languageFromUrl as Language);
+    }
+  }, [languageFromUrl, setLanguage]);
+  
+  // Read language from URL query parameter and apply it (legacy support)
   useEffect(() => {
     const langParam = searchParams.get('lang');
-    if (langParam) {
-      // Cast to Language type - the context will handle validation
-      setLanguage(langParam as any);
+    if (langParam && SUPPORTED_LANG_PREFIXES.includes(langParam)) {
+      setLanguage(langParam as Language);
     }
   }, [searchParams, setLanguage]);
 
@@ -145,10 +163,19 @@ function StandardQuizContent({ slug, quizType }: { slug: string; quizType: strin
   );
 }
 
-function QuizTypeRouter() {
-  const { quizSlug } = useParams<{ quizSlug: string }>();
+interface QuizTypeRouterProps {
+  languageFromUrl?: string;
+}
+
+function QuizTypeRouter({ languageFromUrl }: QuizTypeRouterProps) {
+  const { quizSlug, lang } = useParams<{ quizSlug: string; lang?: string }>();
   const navigate = useNavigate();
-  const slug = quizSlug || 'team-performance';
+  
+  // Determine actual language and slug
+  // If lang param exists and is a valid language, use it
+  // Otherwise, treat it as a quiz slug (for backwards compatibility)
+  const effectiveLanguage = languageFromUrl || (lang && SUPPORTED_LANG_PREFIXES.includes(lang) ? lang : undefined);
+  const slug = quizSlug || (lang && !SUPPORTED_LANG_PREFIXES.includes(lang) ? lang : 'team-performance');
   
   // Force light mode for public quiz pages
   useForceLightMode();
@@ -214,18 +241,22 @@ function QuizTypeRouter() {
 
   // Route to hypothesis quiz if type matches
   if (quizType === 'hypothesis') {
-    return <HypothesisQuiz />;
+    return <HypothesisQuiz languageFromUrl={effectiveLanguage} />;
   }
 
   // Emotional and standard quizzes use the same flow
   // (emotional quiz uses average-based scoring but same components)
   return (
     <DynamicQuizProvider>
-      <StandardQuizContent slug={slug} quizType={quizType || 'standard'} />
+      <StandardQuizContent slug={slug} quizType={quizType || 'standard'} languageFromUrl={effectiveLanguage} />
     </DynamicQuizProvider>
   );
 }
 
-export function DynamicQuiz() {
-  return <QuizTypeRouter />;
+interface DynamicQuizProps {
+  languageFromUrl?: string;
+}
+
+export function DynamicQuiz({ languageFromUrl }: DynamicQuizProps) {
+  return <QuizTypeRouter languageFromUrl={languageFromUrl} />;
 }

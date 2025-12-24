@@ -34,30 +34,41 @@ const SUPPORTED_LANGUAGE_CODES: Language[] = [
   'ro', 'el', 'cs', 'hu', 'bg', 'sk', 'hr', 'lt', 'sl', 'lv', 'ga', 'mt'
 ];
 
+// Map country codes to language codes for IP-based detection
+const COUNTRY_TO_LANGUAGE: Record<string, Language> = {
+  // Nordic countries
+  'EE': 'et', 'FI': 'fi', 'SE': 'sv', 'NO': 'no', 'DK': 'da',
+  // Western Europe
+  'DE': 'de', 'AT': 'de', 'CH': 'de', 'NL': 'nl', 'BE': 'nl', 'FR': 'fr', 'LU': 'fr', 'MC': 'fr',
+  // Southern Europe
+  'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es',
+  'IT': 'it', 'PT': 'pt', 'BR': 'pt',
+  // Eastern Europe
+  'PL': 'pl', 'RU': 'ru', 'UA': 'uk',
+  // Other EU countries
+  'RO': 'ro', 'GR': 'el', 'CZ': 'cs', 'HU': 'hu', 'BG': 'bg', 'SK': 'sk',
+  'HR': 'hr', 'LT': 'lt', 'SI': 'sl', 'LV': 'lv', 'IE': 'ga', 'MT': 'mt',
+  // English-speaking countries
+  'US': 'en', 'GB': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en',
+};
+
 /**
- * Detects the user's preferred language from browser settings
- * Returns the best matching supported language or 'en' as fallback
+ * Detects the user's language from IP address country.
+ * Uses the free ip-api.com service.
  */
-const detectBrowserLanguage = (): Language => {
+const detectLanguageFromIp = async (): Promise<Language> => {
   try {
-    // Get browser languages (ordered by preference)
-    const browserLanguages = navigator.languages || [navigator.language];
+    // Use ip-api.com - free for non-commercial use, no API key required
+    const response = await fetch('http://ip-api.com/json/?fields=countryCode');
+    if (!response.ok) return 'en';
     
-    for (const browserLang of browserLanguages) {
-      // Extract the primary language code (e.g., 'en-US' -> 'en')
-      const primaryCode = browserLang.split('-')[0].toLowerCase() as Language;
-      
-      // Check if it's a supported language
-      if (SUPPORTED_LANGUAGE_CODES.includes(primaryCode)) {
-        return primaryCode;
-      }
-    }
+    const data = await response.json();
+    const countryCode = data.countryCode as string;
+    return COUNTRY_TO_LANGUAGE[countryCode] || 'en';
   } catch (error) {
-    console.warn('Could not detect browser language:', error);
+    console.warn('IP language detection failed, falling back to English:', error);
+    return 'en';
   }
-  
-  // Default to English
-  return 'en';
 };
 
 export type TranslationKey = 
@@ -2301,11 +2312,22 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children, initialQuizId = null }: LanguageProviderProps) {
-  // Detect browser language on initial load
-  const [language, setLanguage] = useState<Language>(() => detectBrowserLanguage());
+  // Start with English, then detect from IP
+  const [language, setLanguage] = useState<Language>('en');
+  const [languageDetected, setLanguageDetected] = useState(false);
   const [quizId, setQuizId] = useState<string | null>(initialQuizId);
   const [dbTranslations, setDbTranslations] = useState<Record<string, Record<string, string>>>({});
   const [dbTranslationsLoaded, setDbTranslationsLoaded] = useState(false);
+
+  // Detect language from IP on initial load
+  useEffect(() => {
+    if (languageDetected) return;
+    
+    detectLanguageFromIp().then((detectedLang) => {
+      setLanguage(detectedLang);
+      setLanguageDetected(true);
+    });
+  }, [languageDetected]);
 
   // Fetch DB translations when quizId changes
   useEffect(() => {
