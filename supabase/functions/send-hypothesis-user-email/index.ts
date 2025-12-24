@@ -433,14 +433,32 @@ const handler = async (req: Request): Promise<Response> => {
     const emailConfig = await getEmailConfig(supabase);
     const trans = emailTranslations[language] || emailTranslations['en'];
 
-    // Fetch quiz CTA URL
-    const { data: quiz } = await supabase
-      .from('quizzes')
-      .select('cta_url')
-      .eq('id', quizId)
-      .single();
+    // Priority 1: Fetch live CTA template for this quiz
+    let ctaUrl = 'https://sparkly.hr';
     
-    const ctaUrl = quiz?.cta_url || 'https://sparkly.hr';
+    const { data: liveCta, error: liveCtaError } = await supabase
+      .from('cta_templates')
+      .select('cta_url')
+      .eq('quiz_id', quizId)
+      .eq('is_live', true)
+      .maybeSingle();
+    
+    if (!liveCtaError && liveCta?.cta_url) {
+      ctaUrl = liveCta.cta_url;
+      console.log('Using CTA URL from live cta_templates:', ctaUrl);
+    } else {
+      // Priority 2: Fallback to quizzes table
+      const { data: quiz } = await supabase
+        .from('quizzes')
+        .select('cta_url')
+        .eq('id', quizId)
+        .maybeSingle();
+      
+      if (quiz?.cta_url) {
+        ctaUrl = quiz.cta_url;
+        console.log('Using CTA URL from quizzes table (fallback):', ctaUrl);
+      }
+    }
 
     // Fetch all questions for this quiz (via pages)
     const { data: pages } = await supabase
