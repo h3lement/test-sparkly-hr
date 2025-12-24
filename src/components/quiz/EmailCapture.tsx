@@ -6,6 +6,7 @@ import { useLanguage, TranslationKey } from './LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import confetti from 'canvas-confetti';
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255, { message: "Email must be less than 255 characters" });
 
@@ -75,7 +76,44 @@ export function EmailCapture() {
     ) || resultLevels[resultLevels.length - 1];
 
     try {
-      const { error } = await supabase.functions.invoke('send-quiz-results', {
+      // PRIORITY 1: Save lead to database FIRST (most important)
+      console.log('Saving lead to database...');
+      const { data: insertedLead, error: insertError } = await supabase
+        .from('quiz_leads')
+        .insert({
+          email: validation.data,
+          score: totalScore,
+          total_questions: maxScore,
+          result_category: t(result.titleKey),
+          openness_score: openMindednessScore ?? null,
+          language: language,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('Error saving lead:', insertError);
+        toast({
+          title: t('emailError'),
+          description: 'Failed to save your results. Please try again.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const quizLeadId = insertedLead?.id;
+      console.log('Lead saved successfully with ID:', quizLeadId);
+
+      // PRIORITY 2: Trigger background email preview pre-generation (fire and forget)
+      if (quizLeadId) {
+        supabase.functions.invoke('pregenerate-email-preview', {
+          body: { leadId: quizLeadId, leadType: 'quiz' }
+        }).catch(err => console.warn('Email preview pregeneration error:', err));
+      }
+
+      // PRIORITY 3: Queue emails via edge function (fire and forget)
+      supabase.functions.invoke('send-quiz-results', {
         body: {
           email: validation.data,
           totalScore,
@@ -85,19 +123,34 @@ export function EmailCapture() {
           insights: result.insightKeys.map(key => t(key)),
           language,
           opennessScore: openMindednessScore,
+          existingLeadId: quizLeadId,
         },
-      });
+      }).catch(err => console.error('Email sending error:', err));
 
-      if (error) {
-        console.error('Error sending results:', error);
-        toast({
-          title: t('emailError'),
-          description: 'Failed to send results. Please try again.',
-          variant: 'destructive',
+      // Fire confetti celebration
+      const end = Date.now() + 800;
+      const colors = ['#4f46e5', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+
+      (function frame() {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.6 },
+          colors: colors
         });
-        setIsSubmitting(false);
-        return;
-      }
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.6 },
+          colors: colors
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
 
       toast({
         title: t('emailSuccess'),

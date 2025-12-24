@@ -472,6 +472,8 @@ interface QuizResultsRequest {
   opennessTitle?: string;
   opennessDescription?: string;
   quizId?: string;
+  quizSlug?: string;
+  existingLeadId?: string; // If provided, skip lead creation (lead already saved by client)
   templateOverride?: {
     sender_name?: string;
     sender_email?: string;
@@ -1544,6 +1546,7 @@ const handler = async (req: Request): Promise<Response> => {
       opennessTitle = '',
       opennessDescription = '',
       quizId,
+      existingLeadId,
       isTest = false,
       templateOverride 
     }: QuizResultsRequest & { isTest?: boolean } = body;
@@ -1560,9 +1563,10 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // PRIORITY 1: Store lead in database IMMEDIATELY (fast operation)
-    let quizLeadId: string | null = null;
+    // Skip if existingLeadId is provided (lead already saved by client)
+    let quizLeadId: string | null = existingLeadId || null;
 
-    if (!isTest) {
+    if (!isTest && !existingLeadId) {
       console.log("Storing lead in database (priority 1)...");
       const { data: insertedLead, error: insertError } = await supabase.from("quiz_leads").insert({
         email,
@@ -1595,6 +1599,8 @@ const handler = async (req: Request): Promise<Response> => {
           }).catch(err => console.warn('Email preview pregeneration trigger error:', err));
         }
       }
+    } else if (existingLeadId) {
+      console.log("Using existing lead ID from client:", existingLeadId);
     }
 
     // For test emails, wait for the email to complete
