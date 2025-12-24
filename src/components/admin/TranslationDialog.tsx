@@ -74,15 +74,20 @@ export function TranslationDialog({
     (lang) => lang.code !== primaryLanguage
   );
 
-  // Default to a safe selection to avoid long-running requests that can time out
+  // Default to RU+UK (when available) to match the common workflow, otherwise fall back to first option
   useEffect(() => {
-    if (open) {
-      const defaultLang = availableLanguages[0]?.code;
-      setSelectedLanguages(defaultLang ? [defaultLang] : []);
-      setSelectAll(false);
-      setSafeMode(true);
-      setIncludeUiText(true);
-    }
+    if (!open) return;
+
+    const preferred = ["ru", "uk"].filter((code) =>
+      availableLanguages.some((l) => l.code === code)
+    );
+
+    const fallback = availableLanguages[0]?.code;
+
+    setSelectedLanguages(preferred.length > 0 ? preferred : (fallback ? [fallback] : []));
+    setSelectAll(false);
+    setSafeMode(true);
+    setIncludeUiText(true);
   }, [open, primaryLanguage]);
 
   const handleSelectAll = (checked: boolean) => {

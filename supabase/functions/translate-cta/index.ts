@@ -40,17 +40,35 @@ const ALL_TARGET_LANGUAGES = [
 const COST_PER_1K_INPUT_TOKENS = 0.000075;
 const COST_PER_1K_OUTPUT_TOKENS = 0.0003;
 
+function resolveTargetLanguages(sourceLanguage: string, selected?: string[]) {
+  const allTargets = ALL_TARGET_LANGUAGES.filter((l) => l.code !== sourceLanguage);
+  if (selected && selected.length > 0) {
+    return allTargets.filter((l) => selected.includes(l.code));
+  }
+  return allTargets;
+}
+
 interface TranslateRequest {
-  quizId: string;
+  quizId?: string;
+  ctaTemplateId?: string;
   sourceLanguage: string;
+  targetLanguages?: string[];
   regenerate?: boolean; // If true, regenerate all translations
-  sourceContent?: { // Content from the form to translate
+  sourceContent?: {
     cta_title: string;
     cta_description: string;
     cta_text: string;
     cta_retry_text: string;
   };
 }
+
+type CtaRow = {
+  id: string;
+  cta_title: Record<string, string> | null;
+  cta_description: Record<string, string> | null;
+  cta_text: Record<string, string> | null;
+  cta_retry_text: Record<string, string> | null;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -67,77 +85,104 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { quizId, sourceLanguage, regenerate = false, sourceContent }: TranslateRequest = await req.json();
-    console.log(`Starting CTA translation for quiz ${quizId} from ${sourceLanguage} (regenerate: ${regenerate})`);
+    const {
+      quizId,
+      ctaTemplateId,
+      sourceLanguage,
+      targetLanguages: selectedTargetLanguages,
+      regenerate = false,
+      sourceContent,
+    }: TranslateRequest = await req.json();
 
-    // Fetch quiz CTA data (for existing translations and to update)
-    const { data: quiz, error: quizError } = await supabase
-      .from("quizzes")
-      .select("id, cta_title, cta_description, cta_text, cta_retry_text")
-      .eq("id", quizId)
-      .single();
+    const isTemplate = Boolean(ctaTemplateId);
+    const entityId = ctaTemplateId || quizId;
 
-    if (quizError || !quiz) {
-      throw new Error("Quiz not found");
+    if (!entityId) {
+      throw new Error("Missing quizId or ctaTemplateId");
+    }
+
+    console.log(
+      `Starting CTA translation for ${isTemplate ? "cta_templates" : "quizzes"} ${entityId} from ${sourceLanguage} (regenerate: ${regenerate})`,
+    );
+
+    // Fetch CTA data
+    let row: CtaRow | null = null;
+
+    if (isTemplate) {
+      const { data, error } = await supabase
+        .from("cta_templates")
+        .select("id, cta_title, cta_description, cta_text, cta_retry_text")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      if (error) throw error;
+      row = data as unknown as CtaRow | null;
+    } else {
+      const { data, error } = await supabase
+        .from("quizzes")
+        .select("id, cta_title, cta_description, cta_text, cta_retry_text")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      if (error) throw error;
+      row = data as unknown as CtaRow | null;
+    }
+
+    if (!row) {
+      throw new Error("CTA source record not found");
     }
 
     // Use provided sourceContent if available, otherwise fall back to database
-    let sourceTitle: string;
-    let sourceDescription: string;
-    let sourceButtonText: string;
-    let sourceRetryText: string;
+    const sourceTitle = sourceContent?.cta_title ?? row.cta_title?.[sourceLanguage] ?? "";
+    const sourceDescription = sourceContent?.cta_description ?? row.cta_description?.[sourceLanguage] ?? "";
+    const sourceButtonText = sourceContent?.cta_text ?? row.cta_text?.[sourceLanguage] ?? "";
+    const sourceRetryText = sourceContent?.cta_retry_text ?? row.cta_retry_text?.[sourceLanguage] ?? "";
 
-    if (sourceContent && (sourceContent.cta_title || sourceContent.cta_description || sourceContent.cta_text || sourceContent.cta_retry_text)) {
-      // Use the content from the form (what user is currently editing)
-      sourceTitle = sourceContent.cta_title || "";
-      sourceDescription = sourceContent.cta_description || "";
-      sourceButtonText = sourceContent.cta_text || "";
-      sourceRetryText = sourceContent.cta_retry_text || "";
-      console.log("Using provided source content from form");
-    } else {
-      // Fall back to database content
-      sourceTitle = quiz.cta_title?.[sourceLanguage] || "";
-      sourceDescription = quiz.cta_description?.[sourceLanguage] || "";
-      sourceButtonText = quiz.cta_text?.[sourceLanguage] || "";
-      sourceRetryText = quiz.cta_retry_text?.[sourceLanguage] || "";
-      console.log("Using source content from database");
+    if (!sourceTitle.trim() && !sourceDescription.trim() && !sourceButtonText.trim() && !sourceRetryText.trim()) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `No CTA content found for source language ${sourceLanguage}`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    if (!sourceTitle && !sourceDescription && !sourceButtonText) {
-      return new Response(JSON.stringify({
-        success: false,
-        message: `No CTA content found for source language ${sourceLanguage}`,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Resolve target languages
+    let targetLanguages = resolveTargetLanguages(sourceLanguage, selectedTargetLanguages);
 
-    // Get target languages (exclude source)
-    // If regenerate is false, only translate missing languages
-    let targetLanguages = ALL_TARGET_LANGUAGES.filter(l => l.code !== sourceLanguage);
-    
+    // If regenerate is false, translate missing languages only
     if (!regenerate) {
-      // Filter to only languages that don't have translations yet
-      targetLanguages = targetLanguages.filter(l => {
-        const hasTitle = quiz.cta_title?.[l.code]?.trim();
-        const hasDesc = quiz.cta_description?.[l.code]?.trim();
-        const hasButton = quiz.cta_text?.[l.code]?.trim();
-        const hasRetry = quiz.cta_retry_text?.[l.code]?.trim();
+      targetLanguages = targetLanguages.filter((l) => {
+        const hasTitle = row?.cta_title?.[l.code]?.trim();
+        const hasDesc = row?.cta_description?.[l.code]?.trim();
+        const hasButton = row?.cta_text?.[l.code]?.trim();
+        const hasRetry = row?.cta_retry_text?.[l.code]?.trim();
         return !hasTitle || !hasDesc || !hasButton || !hasRetry;
       });
-      
+
       if (targetLanguages.length === 0) {
-        return new Response(JSON.stringify({
-          success: true,
-          message: "All languages already have translations",
-          translatedCount: 0,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "All selected languages already have translations",
+            translatedCount: 0,
+            costEur: 0,
+            updatedCtaTitle: { ...(row.cta_title || {}), [sourceLanguage]: sourceTitle },
+            updatedCtaDescription: { ...(row.cta_description || {}), [sourceLanguage]: sourceDescription },
+            updatedCtaText: { ...(row.cta_text || {}), [sourceLanguage]: sourceButtonText },
+            updatedCtaRetryText: { ...(row.cta_retry_text || {}), [sourceLanguage]: sourceRetryText },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
     }
 
-    // Build source content object for the prompt
+    const sourceLangName =
+      sourceLanguage === "en"
+        ? "English"
+        : ALL_TARGET_LANGUAGES.find((l) => l.code === sourceLanguage)?.name || sourceLanguage;
+
     const contentToTranslate = {
       cta_title: sourceTitle,
       cta_description: sourceDescription,
@@ -145,13 +190,11 @@ serve(async (req) => {
       cta_retry_text: sourceRetryText,
     };
 
-    console.log(`Translating CTA to ${targetLanguages.length} languages (regenerate: ${regenerate})...`);
-    console.log("Content to translate:", contentToTranslate);
+    console.log(`Translating CTA to ${targetLanguages.length} languages...`);
 
-    // Translate to all languages in one request
-    const prompt = `You are a professional translator. Translate the following CTA (Call-to-Action) content from ${
-      sourceLanguage === "en" ? "English" : ALL_TARGET_LANGUAGES.find(l => l.code === sourceLanguage)?.name || sourceLanguage
-    } to ALL of these languages: ${targetLanguages.map(l => l.name).join(", ")}.
+    const prompt = `You are a professional translator. Translate the following CTA (Call-to-Action) content from ${sourceLangName} to these languages: ${targetLanguages
+      .map((l) => `${l.code} (${l.name})`)
+      .join(", ")}.
 
 Return ONLY a valid JSON object with this structure:
 {
@@ -185,8 +228,11 @@ Important:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are a precise translator. Return only valid JSON without markdown formatting." },
-          { role: "user", content: prompt }
+          {
+            role: "system",
+            content: "You are a precise translator. Return only valid JSON without markdown formatting.",
+          },
+          { role: "user", content: prompt },
         ],
       }),
     });
@@ -199,16 +245,20 @@ Important:
 
     const data = await response.json();
     let content = data.choices?.[0]?.message?.content || "";
-    
+
     const outputTokenEstimate = Math.ceil(content.length / 4);
-    const costUsd = (inputTokenEstimate / 1000 * COST_PER_1K_INPUT_TOKENS) + 
-                   (outputTokenEstimate / 1000 * COST_PER_1K_OUTPUT_TOKENS);
+    const costUsd =
+      (inputTokenEstimate / 1000) * COST_PER_1K_INPUT_TOKENS +
+      (outputTokenEstimate / 1000) * COST_PER_1K_OUTPUT_TOKENS;
     const costEur = costUsd * 0.92;
 
-    // Clean up markdown code blocks if present
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-    let translations: Record<string, { cta_title: string; cta_description: string; cta_text: string; cta_retry_text: string }>;
+    let translations: Record<
+      string,
+      { cta_title?: string; cta_description?: string; cta_text?: string; cta_retry_text?: string }
+    >;
+
     try {
       translations = JSON.parse(content);
     } catch (parseError) {
@@ -217,64 +267,71 @@ Important:
       throw new Error("Failed to parse AI response");
     }
 
-    // Build update object
-    const updatedCtaTitle = { ...quiz.cta_title, [sourceLanguage]: sourceTitle };
-    const updatedCtaDescription = { ...quiz.cta_description, [sourceLanguage]: sourceDescription };
-    const updatedCtaText = { ...quiz.cta_text, [sourceLanguage]: sourceButtonText };
-    const updatedCtaRetryText = { ...quiz.cta_retry_text, [sourceLanguage]: sourceRetryText };
+    const updatedCtaTitle: Record<string, string> = { ...(row.cta_title || {}) };
+    const updatedCtaDescription: Record<string, string> = { ...(row.cta_description || {}) };
+    const updatedCtaText: Record<string, string> = { ...(row.cta_text || {}) };
+    const updatedCtaRetryText: Record<string, string> = { ...(row.cta_retry_text || {}) };
+
+    // Always persist source values too
+    updatedCtaTitle[sourceLanguage] = sourceTitle;
+    updatedCtaDescription[sourceLanguage] = sourceDescription;
+    updatedCtaText[sourceLanguage] = sourceButtonText;
+    updatedCtaRetryText[sourceLanguage] = sourceRetryText;
 
     let translatedCount = 0;
-    for (const [langCode, translation] of Object.entries(translations)) {
-      if (translation.cta_title) updatedCtaTitle[langCode] = translation.cta_title;
-      if (translation.cta_description) updatedCtaDescription[langCode] = translation.cta_description;
-      if (translation.cta_text) updatedCtaText[langCode] = translation.cta_text;
-      if (translation.cta_retry_text) updatedCtaRetryText[langCode] = translation.cta_retry_text;
+    for (const [langCode, t] of Object.entries(translations)) {
+      if (t.cta_title) updatedCtaTitle[langCode] = t.cta_title;
+      if (t.cta_description) updatedCtaDescription[langCode] = t.cta_description;
+      if (t.cta_text) updatedCtaText[langCode] = t.cta_text;
+      if (t.cta_retry_text) updatedCtaRetryText[langCode] = t.cta_retry_text;
       translatedCount++;
     }
 
-    console.log(`Translated to ${translatedCount} languages`);
+    const table = isTemplate ? "cta_templates" : "quizzes";
 
-    // Update quiz
     const { error: updateError } = await supabase
-      .from("quizzes")
+      .from(table)
       .update({
         cta_title: updatedCtaTitle,
         cta_description: updatedCtaDescription,
         cta_text: updatedCtaText,
         cta_retry_text: updatedCtaRetryText,
       })
-      .eq("id", quizId);
+      .eq("id", entityId);
 
     if (updateError) {
       console.error("Update error:", updateError);
       throw new Error("Failed to save translations");
     }
 
-    console.log(`CTA translation complete. Cost: €${costEur.toFixed(4)}`);
+    console.log(`CTA translation complete (${table}). Cost: €${costEur.toFixed(4)}`);
 
-    return new Response(JSON.stringify({
-      success: true,
-      translatedCount,
-      totalLanguages: targetLanguages.length,
-      inputTokens: inputTokenEstimate,
-      outputTokens: outputTokenEstimate,
-      costEur,
-      updatedCtaTitle,
-      updatedCtaDescription,
-      updatedCtaText,
-      updatedCtaRetryText,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        translatedCount,
+        totalLanguages: targetLanguages.length,
+        inputTokens: inputTokenEstimate,
+        outputTokens: outputTokenEstimate,
+        costEur,
+        updatedCtaTitle,
+        updatedCtaDescription,
+        updatedCtaText,
+        updatedCtaRetryText,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (error) {
     console.error("CTA translation error:", error);
-    return new Response(JSON.stringify({
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });
