@@ -65,6 +65,13 @@ const Admin = () => {
     setRefreshKey(prev => prev + 1);
   }, []);
 
+  // Redirect /admin to first menu item
+  useEffect(() => {
+    if (!urlTab) {
+      navigate("/admin/activity", { replace: true });
+    }
+  }, [urlTab, navigate]);
+
   // Sync tab with URL param
   useEffect(() => {
     if (urlTab && urlTab !== activeTab) {
