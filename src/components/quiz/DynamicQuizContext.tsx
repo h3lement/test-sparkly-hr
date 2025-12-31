@@ -94,10 +94,11 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
     return { id: 'global-om', question_type: 'open_mindedness' } as any;
   };
 
-  // Total question count for progress (excludes open-mindedness if disabled)
+  // Total question count for progress (includes open-mindedness if enabled)
   const getTotalQuestionCount = () => {
     const regularCount = questions.filter(q => q.question_type !== 'open_mindedness').length;
-    const hasOpenMindedness = quizData?.include_open_mindedness && questions.some(q => q.question_type === 'open_mindedness');
+    // OM is now global, so check the quiz setting directly
+    const hasOpenMindedness = !!quizData?.include_open_mindedness;
     return regularCount + (hasOpenMindedness ? 1 : 0);
   };
 
