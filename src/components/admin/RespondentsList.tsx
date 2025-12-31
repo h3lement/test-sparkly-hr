@@ -120,6 +120,7 @@ interface QuizAnswer {
 
 interface EmailLogStatus {
   lead_id: string;
+  quiz_id: string | null;
   email_type: string;
   recipient_email: string;
   status: string;
@@ -360,7 +361,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             supabase
               .from("email_logs")
               .select(
-                "quiz_lead_id, hypothesis_lead_id, email_type, recipient_email, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body"
+                "quiz_lead_id, hypothesis_lead_id, quiz_id, email_type, recipient_email, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body"
               )
               // Fetch only quiz-taker logs (not admin-notifications)
               .in("email_type", [
@@ -382,56 +383,59 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         { maxRetries: 2, retryDelay: 1000 }
       );
 
-      // Build a map of lead email addresses by ID (for verification)
-      const leadEmailById = new Map<string, string>();
-      (leadsRes.data || []).forEach((l) => leadEmailById.set(l.id, l.email?.toLowerCase()));
-      (hypothesisLeadsRes.data || []).forEach((l) => leadEmailById.set(l.id, l.email?.toLowerCase()));
+      // Build a map of lead email addresses and quiz_id by ID (for verification)
+      const leadMetaById = new Map<string, { emailLower: string | undefined; quizId: string | null }>();
+      (leadsRes.data || []).forEach((l) => leadMetaById.set(l.id, { emailLower: l.email?.toLowerCase(), quizId: l.quiz_id ?? null }));
+      (hypothesisLeadsRes.data || []).forEach((l) => leadMetaById.set(l.id, { emailLower: l.email?.toLowerCase(), quizId: l.quiz_id ?? null }));
 
-      // Build email-to-lead-ids map for fallback matching by recipient email
-      const emailToLeadIds = new Map<string, string[]>();
-      (leadsRes.data || []).forEach((l) => {
-        const em = l.email?.toLowerCase();
+      // Build (email + quiz) => lead IDs map for fallback matching by recipient email.
+      // This fixes cases where an email log references a different submission ID for the same email+quiz.
+      const emailQuizToLeadIds = new Map<string, string[]>();
+      const addLeadToIndex = (leadId: string, email: string | null | undefined, quizId: string | null) => {
+        const em = email?.toLowerCase();
         if (!em) return;
-        if (!emailToLeadIds.has(em)) emailToLeadIds.set(em, []);
-        emailToLeadIds.get(em)!.push(l.id);
-      });
-      (hypothesisLeadsRes.data || []).forEach((l) => {
-        const em = l.email?.toLowerCase();
-        if (!em) return;
-        if (!emailToLeadIds.has(em)) emailToLeadIds.set(em, []);
-        emailToLeadIds.get(em)!.push(l.id);
-      });
+        const key = `${em}::${quizId ?? ""}`;
+        if (!emailQuizToLeadIds.has(key)) emailQuizToLeadIds.set(key, []);
+        emailQuizToLeadIds.get(key)!.push(leadId);
+      };
+      (leadsRes.data || []).forEach((l) => addLeadToIndex(l.id, l.email, l.quiz_id ?? null));
+      (hypothesisLeadsRes.data || []).forEach((l) => addLeadToIndex(l.id, l.email, l.quiz_id ?? null));
 
       // Build email logs map:
-      // 1. First, try matching by quiz_lead_id / hypothesis_lead_id
-      // 2. For logs without lead_id, match by recipient_email to any lead with that email
+      // 1) Prefer direct association by quiz_lead_id / hypothesis_lead_id (with recipient verification)
+      // 2) ALSO associate to any other lead IDs with same recipient_email + quiz_id (covers dedup/unique-email views)
       const logsMap = new Map<string, EmailLogStatus>();
 
       (emailLogsRes.data || []).forEach((log) => {
         const directLeadId = log.quiz_lead_id || log.hypothesis_lead_id;
         const recipientLower = log.recipient_email?.toLowerCase();
+        const quizId = (log as any).quiz_id ?? null;
 
-        // Determine which lead IDs this log should be associated with
-        let targetLeadIds: string[] = [];
+        const targetLeadIds: string[] = [];
 
         if (directLeadId) {
-          // Verify the recipient matches the lead's email (skip if mismatch)
-          const expectedEmail = leadEmailById.get(directLeadId);
-          if (expectedEmail && recipientLower && recipientLower !== expectedEmail) {
-            return; // Skip - wrong recipient
+          const expected = leadMetaById.get(directLeadId);
+          if (expected?.emailLower && recipientLower && recipientLower !== expected.emailLower) {
+            return; // Skip - recipient doesn't match lead
           }
-          targetLeadIds = [directLeadId];
-        } else if (recipientLower && emailToLeadIds.has(recipientLower)) {
-          // Fallback: match by recipient email
-          targetLeadIds = emailToLeadIds.get(recipientLower) || [];
+          targetLeadIds.push(directLeadId);
         }
 
-        // Associate with each matching lead (first log wins per lead)
-        targetLeadIds.forEach((leadId) => {
-          if (logsMap.has(leadId)) return; // Already have a newer log
+        if (recipientLower) {
+          const key = `${recipientLower}::${quizId ?? ""}`;
+          const fallbackIds = emailQuizToLeadIds.get(key) || [];
+          for (const id of fallbackIds) {
+            if (!targetLeadIds.includes(id)) targetLeadIds.push(id);
+          }
+        }
+
+        for (const leadId of targetLeadIds) {
+          // emailLogsRes is ordered desc, so first one wins per lead (newest)
+          if (logsMap.has(leadId)) continue;
 
           logsMap.set(leadId, {
             lead_id: leadId,
+            quiz_id: quizId,
             email_type: log.email_type,
             recipient_email: log.recipient_email,
             status: log.status,
@@ -444,7 +448,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             subject: log.subject,
             html_body: log.html_body,
           });
-        });
+        }
       });
       setEmailLogs(logsMap);
 
