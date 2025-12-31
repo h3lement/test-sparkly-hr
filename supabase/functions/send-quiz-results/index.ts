@@ -524,7 +524,7 @@ async function fetchDynamicEmailContent(
       .from('quizzes')
       .select('slug, title, primary_language, cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
       .eq('id', quizId)
-      .single();
+      .maybeSingle();
     
     if (quizError || !quiz) {
       console.log('Could not fetch quiz info:', quizError?.message);
