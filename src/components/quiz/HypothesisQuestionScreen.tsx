@@ -453,8 +453,8 @@ export function HypothesisQuestionScreen() {
           })}
         </div>
 
-        {/* Mobile Bulk Actions - at bottom of card */}
-        <div className="md:hidden px-4 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
+        {/* Bulk Actions - at bottom of card (both mobile and desktop) */}
+        <div className="px-4 md:px-5 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
           <div className="flex gap-2">
             <Button
               size="sm"
