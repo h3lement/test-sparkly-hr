@@ -94,10 +94,9 @@ export function DynamicEmailCapture() {
         return;
       }
 
-      // PRIORITY 1: Fire insert WITHOUT waiting for returned ID (instant)
-      // The DB trigger will queue a backup email notification if edge function fails
-      console.log('Saving lead to database (fire-and-forget insert)...');
-      supabase
+      // PRIORITY 1: Insert lead and get the ID (wait for result to prevent duplicates)
+      console.log('Saving lead to database...');
+      const { data: insertedLead, error: insertError } = await supabase
         .from('quiz_leads')
         .insert({
           email: validation.data,
@@ -108,16 +107,18 @@ export function DynamicEmailCapture() {
           language: language,
           quiz_id: effectiveQuizId,
         })
-        .then(({ error: insertError }) => {
-          if (insertError) {
-            console.error('Lead insert error (will be handled by backup trigger):', insertError);
-          } else {
-            console.log('Lead saved successfully');
-          }
-        });
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('Lead insert error:', insertError);
+        // Continue anyway - edge function can create the lead as backup
+      } else {
+        console.log('Lead saved successfully with ID:', insertedLead?.id);
+      }
 
       // PRIORITY 2: Queue emails via edge function (fire and forget)
-      // Edge function will create the lead if it doesn't exist yet
+      // Pass existingLeadId to prevent duplicate insertion
       supabase.functions.invoke('send-quiz-results', {
         body: {
           email: validation.data,
@@ -133,6 +134,7 @@ export function DynamicEmailCapture() {
           opennessDescription: omResult ? getText(omResult.description) : '',
           quizId: effectiveQuizId,
           quizSlug: quizData?.slug,
+          existingLeadId: insertedLead?.id, // Prevent duplicate lead creation
         },
       }).catch(err => console.error('Email sending error:', err));
 
