@@ -87,10 +87,11 @@ export function DynamicQuizProvider({ children }: { children: ReactNode }) {
     return shuffledQuestions.length > 0 ? shuffledQuestions : questions.filter(q => q.question_type !== 'open_mindedness');
   };
 
-  // Get open mindedness question (only if enabled in quiz settings)
+  // Check if open-mindedness is enabled for this quiz
   const getOpenMindednessQuestion = () => {
+    // Return a truthy placeholder if enabled - actual OM data comes from global module
     if (!quizData?.include_open_mindedness) return undefined;
-    return questions.find(q => q.question_type === 'open_mindedness');
+    return { id: 'global-om', question_type: 'open_mindedness' } as any;
   };
 
   // Total question count for progress (excludes open-mindedness if disabled)
