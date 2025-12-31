@@ -454,36 +454,73 @@ export function HypothesisQuestionScreen() {
         </div>
 
         {/* Bulk Actions - at bottom of card (both mobile and desktop) */}
-        <div className="px-4 md:px-5 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
-              onClick={() => {
-                const newAnswers: PageAnswers = {};
-                pageQuestions.forEach(q => { newAnswers[q.id] = true; });
-                setPageAnswers(newAnswers);
-              }}
-            >
-              {t('allTrue', 'All True', 'Kaikki tosi')}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2.5 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
-              onClick={() => {
-                const newAnswers: PageAnswers = {};
-                pageQuestions.forEach(q => { newAnswers[q.id] = false; });
-                setPageAnswers(newAnswers);
-              }}
-            >
-              {t('allFalse', 'All False', 'Kaikki epätosi')}
-            </Button>
+        <div className="px-4 md:px-5 py-3 bg-muted/30 border-t border-border/50">
+          {/* Desktop: use same grid as rows to align buttons with answer column */}
+          <div className="hidden md:grid grid-cols-[1fr_1fr_180px] gap-3 items-center">
+            <div className="col-span-2 flex items-center">
+              {allQuestionsAnswered && (
+                <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ {t('readyToSubmit', 'Ready to submit!', 'Valmis lähetettäväksi!')}</span>
+              )}
+            </div>
+            <div className="flex justify-center items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = true; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                {t('allTrue', 'All True', 'Kaikki tosi')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2.5 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = false; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                {t('allFalse', 'All False', 'Kaikki epätosi')}
+              </Button>
+            </div>
           </div>
-          {allQuestionsAnswered && (
-            <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ {t('readyToSubmit', 'Ready to submit!', 'Valmis lähetettäväksi!')}</span>
-          )}
+          {/* Mobile: keep original layout */}
+          <div className="md:hidden flex items-center justify-between">
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = true; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                {t('allTrue', 'All True', 'Kaikki tosi')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2.5 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
+                onClick={() => {
+                  const newAnswers: PageAnswers = {};
+                  pageQuestions.forEach(q => { newAnswers[q.id] = false; });
+                  setPageAnswers(newAnswers);
+                }}
+              >
+                {t('allFalse', 'All False', 'Kaikki epätosi')}
+              </Button>
+            </div>
+            {allQuestionsAnswered && (
+              <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ {t('readyToSubmit', 'Ready to submit!', 'Valmis lähetettäväksi!')}</span>
+            )}
+          </div>
         </div>
       </div>
 
