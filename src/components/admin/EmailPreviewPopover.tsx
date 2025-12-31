@@ -180,8 +180,8 @@ export function EmailPreviewPopover({
                   Submitted: {formatTimestamp(leadCreatedAt)}
                 </span>
                 {hasStoredEmail && !canShowSentHtml && (
-                  <Badge variant="outline" className="text-xs">
-                    Prepared
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    Cached - click Regenerate for latest
                   </Badge>
                 )}
               </div>
