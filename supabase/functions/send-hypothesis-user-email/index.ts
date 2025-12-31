@@ -135,22 +135,7 @@ async function fetchDynamicCtaContent(
       }
     }
     
-    // Priority 2: Fetch live CTA template for this quiz (fallback)
-    if (!ctaTemplate) {
-      const { data: liveCta, error: liveCtaError } = await supabase
-        .from('cta_templates')
-        .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
-        .eq('quiz_id', quizId)
-        .eq('is_live', true)
-        .maybeSingle();
-      
-      if (!liveCtaError && liveCta) {
-        ctaTemplate = liveCta;
-        console.log('Using live CTA for quiz (fallback)');
-      } else if (liveCtaError) {
-        console.log('Error fetching live CTA template:', liveCtaError.message);
-      }
-    }
+    // Note: quiz_id column on cta_templates is deprecated - use quizzes.cta_template_id instead
 
     // Use CTA from cta_templates if available, fallback to quizzes table
     const ctaSource = ctaTemplate || quiz;

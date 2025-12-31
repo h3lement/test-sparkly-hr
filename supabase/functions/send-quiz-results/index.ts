@@ -519,10 +519,10 @@ async function fetchDynamicEmailContent(
   try {
     console.log(`Fetching dynamic content for quiz ${quizId}, score ${score}, language ${language}, ctaTemplateId ${ctaTemplateId || 'none'}`);
     
-    // Fetch quiz info for primary language
+    // Fetch quiz info for primary language AND the linked CTA template ID
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
-      .select('slug, title, primary_language, cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
+      .select('slug, title, primary_language, cta_template_id, cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
       .eq('id', quizId)
       .maybeSingle();
     
@@ -571,20 +571,19 @@ async function fetchDynamicEmailContent(
       }
     }
     
-    // Priority 2: Fetch live CTA template for this quiz (fallback)
-    if (!ctaTemplate) {
-      const { data: liveCta, error: liveCtaError } = await supabase
+    // Priority 2: Fetch CTA template linked to quiz via cta_template_id (correct relationship)
+    if (!ctaTemplate && quiz.cta_template_id) {
+      const { data: linkedCta, error: linkedCtaError } = await supabase
         .from('cta_templates')
         .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
-        .eq('quiz_id', quizId)
-        .eq('is_live', true)
+        .eq('id', quiz.cta_template_id)
         .maybeSingle();
       
-      if (!liveCtaError && liveCta) {
-        ctaTemplate = liveCta;
-        console.log('Using live CTA for quiz');
-      } else if (liveCtaError) {
-        console.log('Error fetching live CTA template:', liveCtaError.message);
+      if (!linkedCtaError && linkedCta) {
+        ctaTemplate = linkedCta;
+        console.log('Using CTA linked to quiz via cta_template_id:', quiz.cta_template_id);
+      } else if (linkedCtaError) {
+        console.log('Error fetching linked CTA template:', linkedCtaError.message);
       }
     }
 
