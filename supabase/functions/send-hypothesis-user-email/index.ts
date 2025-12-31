@@ -79,6 +79,7 @@ interface DynamicResultLevel {
   title: string;
   description: string;
   emoji: string;
+  color: string;
 }
 
 // Fetch dynamic CTA content from cta_templates table (matching send-quiz-results pattern)
@@ -182,6 +183,23 @@ async function fetchDynamicCtaContent(
   }
 }
 
+// Color class to hex color mapping for email rendering
+function colorClassToHex(colorClass: string | null): string {
+  const colorMap: Record<string, string> = {
+    'from-green-500 to-emerald-600': '#10b981',
+    'from-blue-500 to-indigo-600': '#3b82f6',
+    'from-yellow-500 to-orange-600': '#f59e0b',
+    'from-orange-500 to-red-600': '#f97316',
+    'from-red-500 to-rose-600': '#ef4444',
+    'from-purple-500 to-violet-600': '#8b5cf6',
+    'from-cyan-500 to-blue-600': '#06b6d4',
+    'from-emerald-500 to-green-600': '#10b981',
+  };
+  
+  if (!colorClass) return '#10b981'; // Default green
+  return colorMap[colorClass] || '#10b981';
+}
+
 // Fetch hypothesis result level from database based on score
 async function fetchHypothesisResultLevel(
   supabase: any,
@@ -204,7 +222,7 @@ async function fetchHypothesisResultLevel(
     // Fetch result level for this score
     const { data: resultLevel, error } = await supabase
       .from('hypothesis_result_levels')
-      .select('title, description, emoji')
+      .select('title, description, emoji, color_class')
       .eq('quiz_id', quizId)
       .lte('min_score', score)
       .gte('max_score', score)
@@ -225,9 +243,10 @@ async function fetchHypothesisResultLevel(
       title: getLocalizedValue(resultLevel.title, language, primaryLang, ''),
       description: getLocalizedValue(resultLevel.description, language, primaryLang, ''),
       emoji: resultLevel.emoji || '🏆',
+      color: colorClassToHex(resultLevel.color_class),
     };
     
-    console.log('Hypothesis result level fetched:', dynamicResult.title || '(none)');
+    console.log('Hypothesis result level fetched:', dynamicResult.title || '(none)', 'color:', dynamicResult.color);
     return dynamicResult;
   } catch (error: any) {
     console.error('Error in fetchHypothesisResultLevel:', error.message);
@@ -375,7 +394,7 @@ function buildEmailHtml(
   // Use dynamic result level if available, otherwise fallback
   const fallback = getAssessmentFallback();
   const assessment = dynamicResultLevel 
-    ? { label: dynamicResultLevel.title || fallback.label, emoji: dynamicResultLevel.emoji || fallback.emoji, color: fallback.color }
+    ? { label: dynamicResultLevel.title || fallback.label, emoji: dynamicResultLevel.emoji || fallback.emoji, color: dynamicResultLevel.color || fallback.color }
     : fallback;
 
   // Build response map for quick lookup
@@ -574,12 +593,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Check for duplicate - skip if user email already sent/queued for this lead
+    // Check both old "hypothesis_results" and new standardized "Quiz Taker" types
     if (leadId) {
       const { data: existingEmail } = await supabase
         .from("email_queue")
         .select("id")
         .eq("hypothesis_lead_id", leadId)
-        .eq("email_type", "hypothesis_results")
+        .in("email_type", ["hypothesis_results", "Quiz Taker"])
         .in("status", ["pending", "processing", "sent"])
         .limit(1)
         .maybeSingle();
@@ -597,7 +617,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from("email_logs")
         .select("id")
         .eq("hypothesis_lead_id", leadId)
-        .eq("email_type", "hypothesis_results")
+        .in("email_type", ["hypothesis_results", "Quiz Taker"])
         .limit(1)
         .maybeSingle();
 
@@ -668,13 +688,14 @@ const handler = async (req: Request): Promise<Response> => {
     const subject = `${emailQuizTitle} - ${score}/${totalQuestions}`;
 
     // Queue the email (will be sent by process-email-queue)
+    // Using standardized email_type "Quiz Taker" per system requirements
     const { error: queueError } = await supabase.from("email_queue").insert({
       recipient_email: email,
       sender_email: emailConfig.senderEmail,
       sender_name: emailConfig.senderName,
       subject: subject,
       html_body: htmlBody,
-      email_type: "hypothesis_results",
+      email_type: "Quiz Taker",
       hypothesis_lead_id: leadId || null,
       quiz_id: quizId || null,
       language: language,
