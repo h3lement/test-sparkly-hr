@@ -225,7 +225,7 @@ export function HypothesisQuestionScreen() {
       {/* Questions Card - Sparkly card style */}
       <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-lg">
         {/* Desktop Table Header - hidden on mobile */}
-        <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-4 bg-sparkly-blush border-b border-border/50 text-center">
+        <div className="hidden md:grid grid-cols-[1fr_1fr_180px] gap-2 px-5 py-4 bg-sparkly-blush border-b border-border/50 text-center">
           <div className="flex items-center justify-center gap-2">
             <span className="text-xl">👩</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">{t('women', 'Women', 'Naiset')} 50+</span>
@@ -257,7 +257,7 @@ export function HypothesisQuestionScreen() {
         </div>
 
         {/* Status Bar with Bulk Actions - Desktop only */}
-        <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
+        <div className="hidden md:grid grid-cols-[1fr_1fr_180px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/50 items-center">
           <div className="col-span-2 flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               {tFmt(
@@ -327,7 +327,7 @@ export function HypothesisQuestionScreen() {
                 style={{ animationDelay: `${idx * 0.05}s` }}
               >
                 {/* Desktop Layout: 3-column grid */}
-                <div className="hidden md:grid grid-cols-[1fr_1fr_140px] gap-3 px-5 py-4 items-start">
+                <div className="hidden md:grid grid-cols-[1fr_1fr_180px] gap-3 px-5 py-4 items-start">
                   {/* Women Hypothesis */}
                   <div className="p-3 bg-pink-50/80 dark:bg-pink-950/20 rounded-xl border border-pink-200/50 dark:border-pink-800/30">
                     <p className="text-sm leading-relaxed font-medium text-foreground">
