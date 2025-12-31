@@ -59,17 +59,17 @@ export function EmailPreviewPopover({
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  // Priority: 1) Sent email from logs, 2) Stored on lead, 3) Regenerated
+  // Priority: 1) Sent email from logs, 2) Regenerated (latest), 3) Stored on lead
   const canShowSentHtml = Boolean(emailLog?.html_body);
   const hasStoredEmail = Boolean(storedEmailHtml);
-  
-  const displayHtml = canShowSentHtml 
-    ? emailLog!.html_body! 
-    : (storedEmailHtml || regeneratedHtml);
-  
-  const displaySubject = canShowSentHtml 
-    ? emailLog?.subject 
-    : (storedEmailSubject || regeneratedSubject || "Email Preview");
+
+  const displayHtml = canShowSentHtml
+    ? emailLog!.html_body!
+    : (regeneratedHtml ?? storedEmailHtml);
+
+  const displaySubject = canShowSentHtml
+    ? emailLog?.subject
+    : (regeneratedSubject ?? storedEmailSubject ?? "Email Preview");
 
   const hasContent = Boolean(displayHtml);
 
@@ -179,11 +179,15 @@ export function EmailPreviewPopover({
                 <span className="text-xs text-muted-foreground">
                   Submitted: {formatTimestamp(leadCreatedAt)}
                 </span>
-                {hasStoredEmail && !canShowSentHtml && (
+                {!canShowSentHtml && regeneratedHtml ? (
+                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                    Latest preview
+                  </Badge>
+                ) : hasStoredEmail && !canShowSentHtml ? (
                   <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                     Cached - click Regenerate for latest
                   </Badge>
-                )}
+                ) : null}
               </div>
               {!canShowSentHtml && (
                 <Button
