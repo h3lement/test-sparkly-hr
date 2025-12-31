@@ -17,9 +17,13 @@ export function DynamicResultsScreen() {
   } = useDynamicQuiz();
   const { language, t } = useLanguage();
 
+  // Get quiz primary language for better fallback chain
+  const primaryLanguage = quizData?.primary_language || 'en';
+  
   const getText = (textObj: Record<string, string> | undefined, fallback: string = '') => {
     if (!textObj) return fallback;
-    return textObj[language] || textObj['en'] || fallback;
+    // Fallback chain: current language → quiz primary language → English → fallback
+    return textObj[language] || textObj[primaryLanguage] || textObj['en'] || fallback;
   };
   
   const result = resultLevels.find(

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface QuizData {
   id: string;
   slug: string;
+  primary_language: string;
   title: Record<string, string>;
   description: Record<string, string>;
   badge_text: Record<string, string>;
@@ -131,6 +132,7 @@ export function useQuizData(slug: string): UseQuizDataReturn {
         setQuiz({
           id: quizData.id,
           slug: quizData.slug,
+          primary_language: quizData.primary_language || 'en',
           title: quizData.title as Record<string, string>,
           description: quizData.description as Record<string, string>,
           badge_text: quizData.badge_text as Record<string, string>,
