@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,15 +61,6 @@ async function getEmailConfig(supabase: any): Promise<EmailConfig> {
   return defaults;
 }
 
-// Encode subject line for UTF-8 support (RFC 2047)
-function encodeSubject(subject: string): string {
-  if (!/^[\x00-\x7F]*$/.test(subject)) {
-    const encoded = btoa(unescape(encodeURIComponent(subject)));
-    return `=?UTF-8?B?${encoded}?=`;
-  }
-  return subject;
-}
-
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -99,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const body: HypothesisAdminEmailRequest = await req.json();
-    const { email, score, totalQuestions, quizId, quizTitle, language, feedbackNewLearnings, feedbackActionPlan, leadId } = body;
+    const { email, score, totalQuestions, quizId, quizTitle, language, leadId } = body;
 
     console.log("Sending hypothesis admin email for:", email);
 
@@ -169,62 +159,110 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const percentage = Math.round((score / totalQuestions) * 100);
+    // Fetch the user email content from the lead record (same email user received)
+    let userEmailHtml: string | null = null;
+    let userEmailSubject: string | null = null;
+    
+    if (leadId) {
+      const { data: leadData } = await supabase
+        .from("hypothesis_leads")
+        .select("email_html, email_subject")
+        .eq("id", leadId)
+        .maybeSingle();
+      
+      if (leadData) {
+        userEmailHtml = leadData.email_html;
+        userEmailSubject = leadData.email_subject;
+        console.log("Found user email content on lead record");
+      }
+    }
+
+    // If no user email content found, try to fetch from email_queue/email_logs
+    if (!userEmailHtml && leadId) {
+      // Check email_queue first (if user email is still pending)
+      const { data: queuedEmail } = await supabase
+        .from("email_queue")
+        .select("html_body, subject")
+        .eq("hypothesis_lead_id", leadId)
+        .in("email_type", ["hypothesis_results", "Quiz Taker"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (queuedEmail) {
+        userEmailHtml = queuedEmail.html_body;
+        userEmailSubject = queuedEmail.subject;
+        console.log("Found user email content in email_queue");
+      } else {
+        // Check email_logs if already sent
+        const { data: sentEmail } = await supabase
+          .from("email_logs")
+          .select("html_body, subject")
+          .eq("hypothesis_lead_id", leadId)
+          .in("email_type", ["hypothesis_results", "Quiz Taker"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (sentEmail) {
+          userEmailHtml = sentEmail.html_body;
+          userEmailSubject = sentEmail.subject;
+          console.log("Found user email content in email_logs");
+        }
+      }
+    }
+
+    // Build admin email subject with "Admin Copy" prefix
     const safeEmail = escapeHtml(email);
-    const safeQuizTitle = escapeHtml(quizTitle);
-    const safeFeedbackLearnings = feedbackNewLearnings ? escapeHtml(feedbackNewLearnings) : 'Not provided';
-    const safeFeedbackPlan = feedbackActionPlan ? escapeHtml(feedbackActionPlan) : 'Not provided';
+    const percentage = Math.round((score / totalQuestions) * 100);
+    const baseSubject = userEmailSubject || `${escapeHtml(quizTitle)} - ${score}/${totalQuestions}`;
+    const adminEmailSubject = `[Admin Copy] ${baseSubject} (from ${safeEmail})`;
 
-    const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
+    // Use the same HTML content as user email, or fall back to a simple notification
+    let adminEmailHtml = userEmailHtml;
+    
+    if (!adminEmailHtml) {
+      // Fallback: build a simple notification if user email content not found
+      console.log("User email content not found, using fallback admin template");
+      const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
+      const safeQuizTitle = escapeHtml(quizTitle);
+      
+      adminEmailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
+              <h1 style="color: #1f2937; font-size: 24px; margin: 0;">New Hypothesis Quiz Submission</h1>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">(User email content not available)</p>
+            </div>
+            
+            <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+              <p style="margin: 0 0 8px 0;"><strong>Quiz:</strong> ${safeQuizTitle}</p>
+              <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${safeEmail}</p>
+              <p style="margin: 0 0 8px 0;"><strong>Score:</strong> ${score} / ${totalQuestions} (${percentage}%)</p>
+              <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
+            </div>
+            
+            <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 12px;">© 2026 Sparkly.hr</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    }
 
-    const adminEmailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
-            <h1 style="color: #1f2937; font-size: 24px; margin: 0;">New Hypothesis Quiz Submission</h1>
-          </div>
-          
-          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <p style="margin: 0 0 8px 0;"><strong>Quiz:</strong> ${safeQuizTitle}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${safeEmail}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Score:</strong> ${score} / ${totalQuestions} (${percentage}%)</p>
-            <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
-          </div>
-          
-          <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">User Feedback:</h3>
-          
-          <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-            <p style="margin: 0 0 8px 0; color: #92400e; font-weight: 600;">New Learnings:</p>
-            <p style="margin: 0; color: #78350f; white-space: pre-wrap;">${safeFeedbackLearnings}</p>
-          </div>
-          
-          <div style="background: #d1fae5; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-            <p style="margin: 0 0 8px 0; color: #065f46; font-weight: 600;">Action Plan:</p>
-            <p style="margin: 0; color: #064e3b; white-space: pre-wrap;">${safeFeedbackPlan}</p>
-          </div>
-          
-          <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 12px;">&copy; 2025 Sparkly.hr</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const adminEmailSubject = `New Hypothesis Lead: ${safeEmail} - ${percentage}%`;
-
-    // Queue the email
+    // Queue the admin email with the same content as user email
     const { error: queueError } = await supabase.from("email_queue").insert({
       recipient_email: "mikk@sparkly.hr",
       sender_email: emailConfig.senderEmail,
-      sender_name: `${emailConfig.senderName} Quiz`,
+      sender_name: emailConfig.senderName,
       subject: adminEmailSubject,
       html_body: adminEmailHtml,
       email_type: "quiz_result_admin",
@@ -242,7 +280,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log("Hypothesis admin email queued successfully");
+    console.log("Hypothesis admin email queued successfully (same content as user email)");
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

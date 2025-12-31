@@ -362,14 +362,12 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
               .select(
                 "quiz_lead_id, hypothesis_lead_id, email_type, recipient_email, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body"
               )
-              // Fetch both quiz-taker + admin-notification logs; we'll pick the quiz-taker one per lead below.
+              // Fetch only quiz-taker logs (not admin-notifications)
               .in("email_type", [
                 "quiz_result_user",
                 "quiz_results", // legacy
                 "hypothesis_results", // legacy
                 "hypothesis_result_user",
-                "quiz_result_admin",
-                "hypothesis_admin",
               ])
               .order("created_at", { ascending: false }),
           ]);
@@ -384,48 +382,68 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
         { maxRetries: 2, retryDelay: 1000 }
       );
 
-      // Build email logs map by lead_id (use most recent QUIZ-TAKER email per lead)
+      // Build a map of lead email addresses by ID (for verification)
       const leadEmailById = new Map<string, string>();
-      (leadsRes.data || []).forEach((l) => leadEmailById.set(l.id, l.email));
-      (hypothesisLeadsRes.data || []).forEach((l) => leadEmailById.set(l.id, l.email));
+      (leadsRes.data || []).forEach((l) => leadEmailById.set(l.id, l.email?.toLowerCase()));
+      (hypothesisLeadsRes.data || []).forEach((l) => leadEmailById.set(l.id, l.email?.toLowerCase()));
 
-      const quizTakerEmailTypes = new Set<string>([
-        "quiz_result_user",
-        "quiz_results", // legacy
-        "hypothesis_results", // legacy
-        "hypothesis_result_user",
-      ]);
+      // Build email-to-lead-ids map for fallback matching by recipient email
+      const emailToLeadIds = new Map<string, string[]>();
+      (leadsRes.data || []).forEach((l) => {
+        const em = l.email?.toLowerCase();
+        if (!em) return;
+        if (!emailToLeadIds.has(em)) emailToLeadIds.set(em, []);
+        emailToLeadIds.get(em)!.push(l.id);
+      });
+      (hypothesisLeadsRes.data || []).forEach((l) => {
+        const em = l.email?.toLowerCase();
+        if (!em) return;
+        if (!emailToLeadIds.has(em)) emailToLeadIds.set(em, []);
+        emailToLeadIds.get(em)!.push(l.id);
+      });
 
+      // Build email logs map:
+      // 1. First, try matching by quiz_lead_id / hypothesis_lead_id
+      // 2. For logs without lead_id, match by recipient_email to any lead with that email
       const logsMap = new Map<string, EmailLogStatus>();
+
       (emailLogsRes.data || []).forEach((log) => {
-        const leadId = log.quiz_lead_id || log.hypothesis_lead_id;
-        if (!leadId || logsMap.has(leadId)) return;
+        const directLeadId = log.quiz_lead_id || log.hypothesis_lead_id;
+        const recipientLower = log.recipient_email?.toLowerCase();
 
-        // Never show admin-notification emails in respondents list previews
-        if (!quizTakerEmailTypes.has(log.email_type)) return;
+        // Determine which lead IDs this log should be associated with
+        let targetLeadIds: string[] = [];
 
-        const expectedRecipient = leadEmailById.get(leadId);
-        if (
-          expectedRecipient &&
-          log.recipient_email &&
-          log.recipient_email.toLowerCase() !== expectedRecipient.toLowerCase()
-        ) {
-          return;
+        if (directLeadId) {
+          // Verify the recipient matches the lead's email (skip if mismatch)
+          const expectedEmail = leadEmailById.get(directLeadId);
+          if (expectedEmail && recipientLower && recipientLower !== expectedEmail) {
+            return; // Skip - wrong recipient
+          }
+          targetLeadIds = [directLeadId];
+        } else if (recipientLower && emailToLeadIds.has(recipientLower)) {
+          // Fallback: match by recipient email
+          targetLeadIds = emailToLeadIds.get(recipientLower) || [];
         }
 
-        logsMap.set(leadId, {
-          lead_id: leadId,
-          email_type: log.email_type,
-          recipient_email: log.recipient_email,
-          status: log.status,
-          delivery_status: log.delivery_status,
-          opened_at: log.opened_at,
-          clicked_at: log.clicked_at,
-          bounced_at: log.bounced_at,
-          delivered_at: log.delivered_at,
-          created_at: log.created_at,
-          subject: log.subject,
-          html_body: log.html_body,
+        // Associate with each matching lead (first log wins per lead)
+        targetLeadIds.forEach((leadId) => {
+          if (logsMap.has(leadId)) return; // Already have a newer log
+
+          logsMap.set(leadId, {
+            lead_id: leadId,
+            email_type: log.email_type,
+            recipient_email: log.recipient_email,
+            status: log.status,
+            delivery_status: log.delivery_status,
+            opened_at: log.opened_at,
+            clicked_at: log.clicked_at,
+            bounced_at: log.bounced_at,
+            delivered_at: log.delivered_at,
+            created_at: log.created_at,
+            subject: log.subject,
+            html_body: log.html_body,
+          });
         });
       });
       setEmailLogs(logsMap);

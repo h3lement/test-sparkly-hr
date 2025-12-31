@@ -2262,52 +2262,10 @@ const handler = async (req: Request): Promise<Response> => {
           console.log("Background task: User email already queued/sent for lead:", quizLeadId);
         }
 
-        // Queue admin notification email
-        const adminTrans = emailTranslations.en;
-        const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
-        const safeEmail = escapeHtml(email);
-        // Use dynamic result title/insights for admin email too
-        const adminResultTitle = dynamicContentBg?.resultTitle || resultTitle;
-        const adminInsights = dynamicContentBg?.insights?.length ? dynamicContentBg.insights : insights;
-        const safeResultTitleAdmin = escapeHtml(adminResultTitle);
-        const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
-        const safeInsightsAdmin = adminInsights.map((insight: string) => escapeHtml(String(insight)));
-        const insightsList = safeInsightsAdmin.map((insight: string, i: number) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
-
-        const adminEmailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
-            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-              <div style="text-align: center; margin-bottom: 30px;">
-                <img src="${logoUrl}" alt="Sparkly.hr" style="height: 40px; margin-bottom: 16px;" />
-                <h1 style="color: #1f2937; font-size: 24px; margin: 0;">${adminTrans.newQuizSubmission}</h1>
-              </div>
-              
-              <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.userEmail}:</strong> ${safeEmail}</p>
-                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.score}:</strong> ${totalScore} / ${maxScore}</p>
-                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.resultCategory}:</strong> ${safeResultTitleAdmin}</p>
-                <p style="margin: 0 0 8px 0;"><strong>${adminTrans.leadershipOpenMindedness}:</strong> ${opennessScore !== undefined && opennessScore !== null ? `${opennessScore} / ${opennessMaxScore}` : 'N/A'}${safeOpennessTitle ? ` - ${safeOpennessTitle}` : ''}</p>
-                <p style="margin: 0;"><strong>Language:</strong> ${language.toUpperCase()}</p>
-              </div>
-              
-              <h3 style="color: #1f2937; font-size: 16px; margin-bottom: 12px;">${adminTrans.keyInsights}:</h3>
-              <ul style="color: #6b7280; line-height: 1.8; padding-left: 20px; margin-bottom: 20px;">
-                ${insightsList}
-              </ul>
-              
-              <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <p style="color: #9ca3af; font-size: 12px;">© 2026 Sparkly.hr</p>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        // Queue admin notification email - SAME content as user email
+        // Admin receives the same beautiful email the quiz taker gets
+        const finalResultTitleAdmin = dynamicContentBg?.resultTitle || resultTitle;
+        const adminEmailSubject = `[Admin Copy] ${emailSubjectBg}: ${escapeHtml(finalResultTitleAdmin)} (from ${escapeHtml(email)})`;
 
         // Check for duplicate admin email before queuing
         const { data: existingAdminEmail } = await supabase
@@ -2326,17 +2284,15 @@ const handler = async (req: Request): Promise<Response> => {
           .eq("email_type", "quiz_result_admin")
           .limit(1)
           .maybeSingle();
-
-        const adminEmailSubject = `New Quiz Lead: ${safeEmail} - ${safeResultTitleAdmin}`;
         
         if (!existingAdminEmail && !existingAdminLog) {
-          console.log("Background task: Queuing admin email to: mikk@sparkly.hr");
+          console.log("Background task: Queuing admin email (same as user) to: mikk@sparkly.hr");
           const { error: adminQueueError } = await supabase.from("email_queue").insert({
             recipient_email: "mikk@sparkly.hr",
             sender_email: senderEmail,
-            sender_name: `${senderName} Quiz`,
+            sender_name: senderName,
             subject: adminEmailSubject,
-            html_body: adminEmailHtml,
+            html_body: emailHtml, // Same HTML as user email
             email_type: "quiz_result_admin",
             quiz_lead_id: quizLeadId,
             quiz_id: quizId || null,
