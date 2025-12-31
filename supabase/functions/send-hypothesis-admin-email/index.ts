@@ -113,12 +113,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Check for duplicate - skip if admin email already sent/queued for this lead
+    // Check both legacy "quiz_result_admin" and standardized "Admin Notification" types
     if (leadId) {
       const { data: existingEmail } = await supabase
         .from("email_queue")
         .select("id")
         .eq("hypothesis_lead_id", leadId)
-        .eq("email_type", "quiz_result_admin")
+        .in("email_type", ["quiz_result_admin", "Admin Notification"])
         .in("status", ["pending", "processing", "sent"])
         .limit(1)
         .maybeSingle();
@@ -136,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from("email_logs")
         .select("id")
         .eq("hypothesis_lead_id", leadId)
-        .eq("email_type", "quiz_result_admin")
+        .in("email_type", ["quiz_result_admin", "Admin Notification"])
         .limit(1)
         .maybeSingle();
 
@@ -180,11 +181,12 @@ const handler = async (req: Request): Promise<Response> => {
     // If no user email content found, try to fetch from email_queue/email_logs
     if (!userEmailHtml && leadId) {
       // Check email_queue first (if user email is still pending)
+      // Include all possible hypothesis email types
       const { data: queuedEmail } = await supabase
         .from("email_queue")
         .select("html_body, subject")
         .eq("hypothesis_lead_id", leadId)
-        .in("email_type", ["hypothesis_results", "Quiz Taker"])
+        .in("email_type", ["hypothesis_results", "Quiz Taker", "quiz_result_user"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -192,14 +194,14 @@ const handler = async (req: Request): Promise<Response> => {
       if (queuedEmail) {
         userEmailHtml = queuedEmail.html_body;
         userEmailSubject = queuedEmail.subject;
-        console.log("Found user email content in email_queue");
+        console.log("Found user email content in email_queue, type check included Quiz Taker");
       } else {
         // Check email_logs if already sent
         const { data: sentEmail } = await supabase
           .from("email_logs")
           .select("html_body, subject")
           .eq("hypothesis_lead_id", leadId)
-          .in("email_type", ["hypothesis_results", "Quiz Taker"])
+          .in("email_type", ["hypothesis_results", "Quiz Taker", "quiz_result_user"])
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -207,7 +209,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (sentEmail) {
           userEmailHtml = sentEmail.html_body;
           userEmailSubject = sentEmail.subject;
-          console.log("Found user email content in email_logs");
+          console.log("Found user email content in email_logs, type check included Quiz Taker");
         }
       }
     }
@@ -259,13 +261,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Queue the admin email with the same content as user email
+    // Using standardized "Admin Notification" email type per system requirements
     const { error: queueError } = await supabase.from("email_queue").insert({
       recipient_email: "mikk@sparkly.hr",
       sender_email: emailConfig.senderEmail,
       sender_name: emailConfig.senderName,
       subject: adminEmailSubject,
       html_body: adminEmailHtml,
-      email_type: "quiz_result_admin",
+      email_type: "Admin Notification",
       hypothesis_lead_id: leadId || null,
       quiz_id: quizId || null,
       language: language,
