@@ -65,8 +65,25 @@ export function DynamicEmailCapture() {
       : 4;
 
     try {
-      // Validate quiz_id exists (required by RLS policy)
-      if (!quizData?.id) {
+      // Resolve quiz_id (required by DB policy) - recover by slug if context isn't hydrated
+      let effectiveQuizId: string | undefined = quizData?.id;
+
+      if (!effectiveQuizId && quizData?.slug) {
+        const { data: quizRow, error: quizLookupError } = await supabase
+          .from('quizzes')
+          .select('id')
+          .eq('slug', quizData.slug)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (quizLookupError) {
+          console.error('Quiz lookup error:', quizLookupError);
+        }
+
+        effectiveQuizId = quizRow?.id;
+      }
+
+      if (!effectiveQuizId) {
         console.error('Quiz ID is missing - cannot save lead');
         toast({
           title: t('emailError'),
@@ -88,19 +105,50 @@ export function DynamicEmailCapture() {
           result_category: result ? getText(result.title) : 'Your Results',
           openness_score: openMindednessScore ?? null,
           language: language,
-          quiz_id: quizData.id,
+          quiz_id: effectiveQuizId,
         })
         .select('id')
         .single();
 
       if (insertError) {
         console.error('Error saving lead:', insertError);
-        toast({
-          title: t('emailError'),
-          description: 'Failed to save your results. Please try again.',
-          variant: 'destructive',
+
+        // Backup path: queue via backend even if direct insert fails
+        const { error: fallbackError } = await supabase.functions.invoke('send-quiz-results', {
+          body: {
+            email: validation.data,
+            totalScore,
+            maxScore,
+            resultTitle: result ? getText(result.title) : 'Your Results',
+            resultDescription: result ? getText(result.description) : '',
+            insights: result?.insights?.map(i => getText(i)) || [],
+            language,
+            opennessScore: openMindednessScore,
+            opennessMaxScore: omMaxScore,
+            opennessTitle: omResult ? getText(omResult.title) : '',
+            opennessDescription: omResult ? getText(omResult.description) : '',
+            quizId: effectiveQuizId,
+            quizSlug: quizData?.slug,
+          },
         });
-        setIsSubmitting(false);
+
+        if (fallbackError) {
+          console.error('Backup save failed:', fallbackError);
+          toast({
+            title: t('emailError'),
+            description: 'Failed to save your results. Please try again.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        toast({
+          title: t('emailSuccess'),
+          description: t('emailSuccessDesc'),
+        });
+
+        setCurrentStep('results');
         return;
       }
 
@@ -128,7 +176,7 @@ export function DynamicEmailCapture() {
           opennessMaxScore: omMaxScore,
           opennessTitle: omResult ? getText(omResult.title) : '',
           opennessDescription: omResult ? getText(omResult.description) : '',
-          quizId: quizData?.id,
+          quizId: effectiveQuizId,
           quizSlug: quizData?.slug,
           // Pass leadId so edge function doesn't create duplicate lead
           existingLeadId: quizLeadId,
