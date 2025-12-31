@@ -62,7 +62,105 @@ function getLocalizedValue(
   return jsonObj[language] || jsonObj[primaryLanguage] || jsonObj['en'] || fallback;
 }
 
-// Translations for hypothesis quiz emails
+// Dynamic CTA content structure
+interface DynamicCtaContent {
+  ctaTitle: string;
+  ctaDescription: string;
+  ctaButtonText: string;
+  ctaUrl: string;
+}
+
+// Fetch dynamic CTA content from cta_templates table (matching send-quiz-results pattern)
+async function fetchDynamicCtaContent(
+  supabase: any,
+  quizId: string,
+  language: string
+): Promise<DynamicCtaContent> {
+  const defaults: DynamicCtaContent = {
+    ctaTitle: '',
+    ctaDescription: '',
+    ctaButtonText: '',
+    ctaUrl: 'https://sparkly.hr',
+  };
+
+  try {
+    console.log(`Fetching dynamic CTA for quiz ${quizId}, language ${language}`);
+    
+    // Fetch quiz info with cta_template_id
+    const { data: quiz, error: quizError } = await supabase
+      .from('quizzes')
+      .select('slug, primary_language, cta_template_id, cta_title, cta_description, cta_text, cta_url')
+      .eq('id', quizId)
+      .maybeSingle();
+    
+    if (quizError || !quiz) {
+      console.log('Could not fetch quiz info:', quizError?.message);
+      return defaults;
+    }
+    
+    const primaryLang = quiz.primary_language || 'en';
+    console.log(`Quiz ${quiz.slug} - primary language: ${primaryLang}, cta_template_id: ${quiz.cta_template_id || 'none'}`);
+    
+    let ctaTemplate = null;
+    
+    // Priority 1: Fetch CTA template linked to quiz via cta_template_id
+    if (quiz.cta_template_id) {
+      const { data: linkedCta, error: linkedCtaError } = await supabase
+        .from('cta_templates')
+        .select('cta_title, cta_description, cta_text, cta_url')
+        .eq('id', quiz.cta_template_id)
+        .maybeSingle();
+      
+      if (!linkedCtaError && linkedCta) {
+        ctaTemplate = linkedCta;
+        console.log('Using CTA linked to quiz via cta_template_id:', quiz.cta_template_id);
+      } else if (linkedCtaError) {
+        console.log('Error fetching linked CTA template:', linkedCtaError.message);
+      }
+    }
+    
+    // Priority 2: Fetch live CTA template for this quiz (fallback)
+    if (!ctaTemplate) {
+      const { data: liveCta, error: liveCtaError } = await supabase
+        .from('cta_templates')
+        .select('cta_title, cta_description, cta_text, cta_url')
+        .eq('quiz_id', quizId)
+        .eq('is_live', true)
+        .maybeSingle();
+      
+      if (!liveCtaError && liveCta) {
+        ctaTemplate = liveCta;
+        console.log('Using live CTA for quiz (fallback)');
+      } else if (liveCtaError) {
+        console.log('Error fetching live CTA template:', liveCtaError.message);
+      }
+    }
+
+    // Use CTA from cta_templates if available, fallback to quizzes table
+    const ctaSource = ctaTemplate || quiz;
+    
+    const dynamicCta: DynamicCtaContent = {
+      ctaTitle: getLocalizedValue(ctaSource.cta_title, language, primaryLang, ''),
+      ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, ''),
+      ctaButtonText: getLocalizedValue(ctaSource.cta_text, language, primaryLang, ''),
+      ctaUrl: ctaSource.cta_url || 'https://sparkly.hr',
+    };
+    
+    console.log('Dynamic CTA fetched successfully:', {
+      ctaTitle: dynamicCta.ctaTitle || '(none)',
+      ctaButtonText: dynamicCta.ctaButtonText || '(none)',
+      ctaUrl: dynamicCta.ctaUrl,
+      ctaSource: ctaTemplate ? 'cta_templates' : 'quizzes',
+    });
+    
+    return dynamicCta;
+  } catch (error: any) {
+    console.error('Error in fetchDynamicCtaContent:', error.message);
+    return defaults;
+  }
+}
+
+// Translations for hypothesis quiz emails (fallback when no dynamic CTA)
 const emailTranslations: Record<string, {
   subject: string;
   yourResults: string;
@@ -184,7 +282,7 @@ function buildEmailHtml(
   totalQuestions: number,
   questions: QuestionData[],
   responses: ResponseData[],
-  ctaUrl: string,
+  dynamicCta: DynamicCtaContent,
   opennessScore?: number | null
 ): string {
   const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
@@ -338,9 +436,9 @@ function buildEmailHtml(
               <tr>
                 <td style="padding: 16px 40px 40px 40px;">
                   <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 32px; text-align: center; border: 1px solid #e9d5ff;">
-                    <h3 style="color: #6d28d9; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(trans.readyToLearnMore)}</h3>
-                    <p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(trans.ctaDescription)}</p>
-                    <a href="${ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(trans.visitSparkly)}</a>
+                    <h3 style="color: #6d28d9; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(dynamicCta.ctaTitle || trans.readyToLearnMore)}</h3>
+                    <p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(dynamicCta.ctaDescription || trans.ctaDescription)}</p>
+                    <a href="${dynamicCta.ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(dynamicCta.ctaButtonText || trans.visitSparkly)}</a>
                   </div>
                 </td>
               </tr>
@@ -433,32 +531,8 @@ const handler = async (req: Request): Promise<Response> => {
     const emailConfig = await getEmailConfig(supabase);
     const trans = emailTranslations[language] || emailTranslations['en'];
 
-    // Priority 1: Fetch live CTA template for this quiz
-    let ctaUrl = 'https://sparkly.hr';
-    
-    const { data: liveCta, error: liveCtaError } = await supabase
-      .from('cta_templates')
-      .select('cta_url')
-      .eq('quiz_id', quizId)
-      .eq('is_live', true)
-      .maybeSingle();
-    
-    if (!liveCtaError && liveCta?.cta_url) {
-      ctaUrl = liveCta.cta_url;
-      console.log('Using CTA URL from live cta_templates:', ctaUrl);
-    } else {
-      // Priority 2: Fallback to quizzes table
-      const { data: quiz } = await supabase
-        .from('quizzes')
-        .select('cta_url')
-        .eq('id', quizId)
-        .maybeSingle();
-      
-      if (quiz?.cta_url) {
-        ctaUrl = quiz.cta_url;
-        console.log('Using CTA URL from quizzes table (fallback):', ctaUrl);
-      }
-    }
+    // Fetch dynamic CTA content (matching send-quiz-results pattern)
+    const dynamicCta = await fetchDynamicCtaContent(supabase, quizId, language);
 
     // Fetch all questions for this quiz (via pages)
     const { data: pages } = await supabase
@@ -491,7 +565,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to fetch responses');
     }
 
-    // Build email HTML
+    // Build email HTML with dynamic CTA
     const htmlBody = buildEmailHtml(
       trans,
       language,
@@ -499,7 +573,7 @@ const handler = async (req: Request): Promise<Response> => {
       totalQuestions,
       questions || [],
       responses || [],
-      ctaUrl,
+      dynamicCta,
       opennessScore
     );
 
