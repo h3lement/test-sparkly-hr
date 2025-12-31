@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.translate-quiz-basics]
 verify_jwt = true
+
+[functions.translate-result-levels]
+verify_jwt = false
