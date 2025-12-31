@@ -186,35 +186,33 @@ export function useHypothesisQuizPublic(slug: string) {
     enabled: !!pagesQuery.data?.length,
   });
 
-  // Fetch open mindedness question if enabled
+  // Fetch open mindedness question from global module if enabled
   const openMindednessQuery = useQuery({
-    queryKey: ['hypothesis-open-mindedness', quizQuery.data?.id],
+    queryKey: ['hypothesis-open-mindedness-global', quizQuery.data?.id],
     queryFn: async () => {
       if (!quizQuery.data?.id || !quizQuery.data.include_open_mindedness) return null;
 
-      // Fetch the open_mindedness question
-      const { data: questionData, error: questionError } = await supabase
-        .from('quiz_questions')
+      // Fetch global open-mindedness module
+      const { data: moduleData, error: moduleError } = await supabase
+        .from('global_open_mindedness_module')
         .select('id, question_text')
-        .eq('quiz_id', quizQuery.data.id)
-        .eq('question_type', 'open_mindedness')
+        .limit(1)
         .maybeSingle();
 
-      if (questionError) throw questionError;
-      if (!questionData) return null;
+      if (moduleError) throw moduleError;
+      if (!moduleData) return null;
 
-      // Fetch answers for this question
+      // Fetch global open-mindedness answers
       const { data: answersData, error: answersError } = await supabase
-        .from('quiz_answers')
+        .from('global_open_mindedness_answers')
         .select('id, answer_text, answer_order, score_value')
-        .eq('question_id', questionData.id)
         .order('answer_order');
 
       if (answersError) throw answersError;
 
       return {
-        id: questionData.id,
-        question_text: questionData.question_text as Record<string, string>,
+        id: moduleData.id,
+        question_text: moduleData.question_text as Record<string, string>,
         answers: (answersData || []).map(a => ({
           id: a.id,
           answer_text: a.answer_text as Record<string, string>,
@@ -226,12 +224,41 @@ export function useHypothesisQuizPublic(slug: string) {
     enabled: !!quizQuery.data?.id && quizQuery.data.include_open_mindedness,
   });
 
+  // Fetch open-mindedness result levels
+  const omResultLevelsQuery = useQuery({
+    queryKey: ['hypothesis-om-result-levels', quizQuery.data?.id],
+    queryFn: async () => {
+      if (!quizQuery.data?.id) return [];
+
+      const { data, error } = await supabase
+        .from('open_mindedness_result_levels')
+        .select('*')
+        .eq('quiz_id', quizQuery.data.id)
+        .order('min_score', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(level => ({
+        id: level.id,
+        quiz_id: level.quiz_id,
+        min_score: level.min_score,
+        max_score: level.max_score,
+        title: level.title as Record<string, string>,
+        description: level.description as Record<string, string>,
+        emoji: level.emoji || '🧠',
+        color_class: level.color_class || 'from-blue-500 to-indigo-600',
+      }));
+    },
+    enabled: !!quizQuery.data?.id,
+  });
+
   return {
     quiz: quizQuery.data,
     pages: pagesQuery.data || [],
     questions: questionsQuery.data || [],
     openMindednessQuestion: openMindednessQuery.data || null,
-    loading: quizQuery.isLoading || pagesQuery.isLoading || questionsQuery.isLoading || openMindednessQuery.isLoading,
-    error: quizQuery.error || pagesQuery.error || questionsQuery.error || openMindednessQuery.error,
+    openMindednessResultLevels: omResultLevelsQuery.data || [],
+    loading: quizQuery.isLoading || pagesQuery.isLoading || questionsQuery.isLoading || openMindednessQuery.isLoading || omResultLevelsQuery.isLoading,
+    error: quizQuery.error || pagesQuery.error || questionsQuery.error || openMindednessQuery.error || omResultLevelsQuery.error,
   };
 }

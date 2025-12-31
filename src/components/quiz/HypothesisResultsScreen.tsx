@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useHypothesisQuiz } from './HypothesisQuizContext';
 import { useLanguage } from './LanguageContext';
-import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, XCircle, RotateCcw, ExternalLink, TrendingUp, Award, Lightbulb, ChevronDown, ChevronUp, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useUiTranslations } from '@/hooks/useUiTranslations';
@@ -28,6 +28,9 @@ export function HypothesisResultsScreen() {
     quizData,
     feedbackNewLearnings,
     feedbackActionPlan,
+    hasOpenMindedness,
+    calculateOpenMindednessScore,
+    openMindednessResultLevels,
   } = useHypothesisQuiz();
   const { language } = useLanguage();
   const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({});
@@ -43,8 +46,8 @@ export function HypothesisResultsScreen() {
 
   const t = (key: string, fallback: string) => getTranslation(key, fallback);
 
-  const labelCorrect = language === 'fi' ? 'Oikein' : 'Correct';
-  const labelIncorrect = language === 'fi' ? 'Väärin' : 'Incorrect';
+  const labelCorrect = t('correct', language === 'fi' ? 'Oikein' : (language === 'et' ? 'Õige' : 'Correct'));
+  const labelIncorrect = t('incorrect', language === 'fi' ? 'Väärin' : (language === 'et' ? 'Vale' : 'Incorrect'));
 
 
   const { correct, total } = calculateScore();
@@ -83,6 +86,30 @@ export function HypothesisResultsScreen() {
   const resultLevel = getResultLevel();
   const sortedPages = [...pages].sort((a, b) => a.page_number - b.page_number);
 
+  // Calculate and get Open-Mindedness result
+  const omScore = hasOpenMindedness ? calculateOpenMindednessScore() : 0;
+  const omMaxScore = 4; // Standard OM max score
+  const getOmResultLevel = () => {
+    if (!hasOpenMindedness) return null;
+    const dbLevel = openMindednessResultLevels.find(
+      level => omScore >= level.min_score && omScore <= level.max_score
+    );
+    if (dbLevel) {
+      return {
+        title: dbLevel.title[language] || dbLevel.title['en'] || 'Your Open-Mindedness',
+        description: dbLevel.description[language] || dbLevel.description['en'] || '',
+        emoji: dbLevel.emoji,
+        colorClass: dbLevel.color_class,
+      };
+    }
+    // Fallback
+    if (omScore === 4) return { title: t('highlyOpenMinded', 'Highly Open-Minded'), description: t('omHighDesc', 'You embrace diverse approaches to understanding people.'), emoji: '🌟', colorClass: 'from-emerald-500 to-green-600' };
+    if (omScore >= 2) return { title: t('moderatelyOpenMinded', 'Moderately Open-Minded'), description: t('omModerateDesc', 'You consider alternative assessment methods.'), emoji: '⚡', colorClass: 'from-amber-500 to-orange-600' };
+    if (omScore === 1) return { title: t('somewhatRigid', 'Somewhat Rigid'), description: t('omLowDesc', 'You prefer traditional approaches to assessment.'), emoji: '🔥', colorClass: 'from-rose-500 to-red-600' };
+    return { title: t('veryRigid', 'Very Rigid'), description: t('omVeryLowDesc', 'You rely solely on conventional methods.'), emoji: '🚨', colorClass: 'from-red-600 to-rose-700' };
+  };
+  const omResultLevel = getOmResultLevel();
+
   // Group responses by page
   const getPageStats = (pageId: string) => {
     const pageQuestions = questions.filter(q => q.page_id === pageId);
@@ -114,6 +141,26 @@ export function HypothesisResultsScreen() {
           {resultLevel.description}
         </p>
       </div>
+
+      {/* Open-Mindedness Results Section */}
+      {hasOpenMindedness && omResultLevel && (
+        <div className="bg-card border border-border/50 rounded-2xl p-6 mb-8 shadow-md">
+          <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2 mb-4">
+            <Brain className="w-5 h-5 text-indigo-500" />
+            {t('openMindednessResults', 'Open-Mindedness Assessment')}
+          </h2>
+          <div className={cn("rounded-xl p-5 text-center bg-gradient-to-r", omResultLevel.colorClass)}>
+            <span className="text-4xl block mb-2">{omResultLevel.emoji}</span>
+            <h3 className="text-xl font-bold text-white mb-2">{omResultLevel.title}</h3>
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-2 mb-3">
+              <span className="text-lg font-bold text-white">{omScore}/{omMaxScore}</span>
+            </div>
+            <p className="text-white/90 text-sm leading-relaxed max-w-md mx-auto">
+              {omResultLevel.description}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* User Reflections - Sparkly card style */}
       {(feedbackNewLearnings || feedbackActionPlan) && (

@@ -58,13 +58,14 @@ function HypothesisQuizContent({ languageFromUrl }: HypothesisQuizContentProps) 
   const navigate = useNavigate();
   const slug = quizSlug || '';
 
-  const { quiz, pages, questions, openMindednessQuestion, loading, error } = useHypothesisQuizPublic(slug);
+  const { quiz, pages, questions, openMindednessQuestion, openMindednessResultLevels, loading, error } = useHypothesisQuizPublic(slug);
   const {
     currentStep,
     setQuizData,
     setPages,
     setQuestions,
     setOpenMindednessQuestion,
+    setOpenMindednessResultLevels,
     setCurrentStep,
     setCurrentPageIndex,
     setCurrentQuestionIndex,
@@ -97,7 +98,8 @@ function HypothesisQuizContent({ languageFromUrl }: HypothesisQuizContentProps) 
     if (pages.length) setPages(pages);
     if (questions.length) setQuestions(questions);
     if (openMindednessQuestion) setOpenMindednessQuestion(openMindednessQuestion);
-  }, [quiz, pages, questions, openMindednessQuestion, setQuizData, setPages, setQuestions, setOpenMindednessQuestion, setQuizId]);
+    if (openMindednessResultLevels.length) setOpenMindednessResultLevels(openMindednessResultLevels);
+  }, [quiz, pages, questions, openMindednessQuestion, openMindednessResultLevels, setQuizData, setPages, setQuestions, setOpenMindednessQuestion, setOpenMindednessResultLevels, setQuizId]);
 
   // In preview mode, apply the URL step directly (supports q1..qN page shortcuts)
   useEffect(() => {
