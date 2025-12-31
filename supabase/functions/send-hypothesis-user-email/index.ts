@@ -261,6 +261,7 @@ const emailTranslations: Record<string, {
   visitSparkly: string;
   openMindedness: string;
   openMindednessScore: string;
+  tryAgain: string;
 }> = {
   en: {
     subject: 'Your 50+ Workforce Quiz Results',
@@ -281,6 +282,7 @@ const emailTranslations: Record<string, {
     visitSparkly: 'Visit Sparkly.hr',
     openMindedness: 'Open-Mindedness',
     openMindednessScore: 'Your openness to diverse assessment methods',
+    tryAgain: 'Try again',
   },
   et: {
     subject: 'Sinu 50+ tööjõu kviiside tulemused',
@@ -301,6 +303,7 @@ const emailTranslations: Record<string, {
     visitSparkly: 'Külasta Sparkly.hr',
     openMindedness: 'Avatud mõtlemine',
     openMindednessScore: 'Sinu avatus erinevatele hindamismeetoditele',
+    tryAgain: 'Proovi uuesti',
   },
   de: {
     subject: 'Ihre 50+ Arbeitskraft-Quiz-Ergebnisse',
@@ -321,6 +324,7 @@ const emailTranslations: Record<string, {
     visitSparkly: 'Besuchen Sie Sparkly.hr',
     openMindedness: 'Aufgeschlossenheit',
     openMindednessScore: 'Ihre Offenheit für verschiedene Bewertungsmethoden',
+    tryAgain: 'Erneut versuchen',
   },
 };
 
@@ -538,7 +542,7 @@ function buildEmailHtml(
                   <a href="https://sparkly.hr" target="_blank">
                     <img src="${logoUrl}" alt="Sparkly.hr" style="height: 28px; margin-bottom: 8px; opacity: 0.8;" />
                   </a>
-                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2026 Sparkly.hr</p>
                 </td>
               </tr>
             </table>
