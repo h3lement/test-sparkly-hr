@@ -43,6 +43,17 @@ export interface OpenMindednessQuestionData {
   answers: OpenMindednessAnswer[];
 }
 
+export interface OpenMindednessResultLevel {
+  id: string;
+  quiz_id: string;
+  min_score: number;
+  max_score: number;
+  title: Record<string, string>;
+  description: Record<string, string>;
+  emoji: string;
+  color_class: string;
+}
+
 export interface QuizData {
   id: string;
   slug: string;
@@ -87,6 +98,8 @@ interface HypothesisQuizContextType {
   setOpenMindednessAnswers: (answers: OpenMindednessAnswers) => void;
   hasOpenMindedness: boolean;
   calculateOpenMindednessScore: () => number;
+  openMindednessResultLevels: OpenMindednessResultLevel[];
+  setOpenMindednessResultLevels: (levels: OpenMindednessResultLevel[]) => void;
   
   // Quiz state
   currentStep: 'welcome' | 'quiz' | 'mindedness' | 'email' | 'results';
@@ -132,7 +145,7 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
   // Open Mindedness state
   const [openMindednessQuestion, setOpenMindednessQuestion] = useState<OpenMindednessQuestionData | null>(null);
   const [openMindednessAnswers, setOpenMindednessAnswers] = useState<OpenMindednessAnswers>({});
-  
+  const [openMindednessResultLevels, setOpenMindednessResultLevels] = useState<OpenMindednessResultLevel[]>([]);
   const [currentStep, setCurrentStep] = useState<'welcome' | 'quiz' | 'mindedness' | 'email' | 'results'>('welcome');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -226,6 +239,8 @@ export function HypothesisQuizProvider({ children }: { children: ReactNode }) {
         setOpenMindednessQuestion,
         openMindednessAnswers,
         setOpenMindednessAnswers,
+        openMindednessResultLevels,
+        setOpenMindednessResultLevels,
         hasOpenMindedness,
         calculateOpenMindednessScore,
         currentStep,
