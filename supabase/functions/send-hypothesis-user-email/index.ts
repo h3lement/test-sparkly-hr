@@ -68,6 +68,17 @@ interface DynamicCtaContent {
   ctaDescription: string;
   ctaButtonText: string;
   ctaUrl: string;
+  ctaRetryText: string;
+  ctaRetryUrl: string;
+  quizTitle: string;
+  quizSlug: string;
+}
+
+// Dynamic result level from database
+interface DynamicResultLevel {
+  title: string;
+  description: string;
+  emoji: string;
 }
 
 // Fetch dynamic CTA content from cta_templates table (matching send-quiz-results pattern)
@@ -81,6 +92,10 @@ async function fetchDynamicCtaContent(
     ctaDescription: '',
     ctaButtonText: '',
     ctaUrl: 'https://sparkly.hr',
+    ctaRetryText: '',
+    ctaRetryUrl: '',
+    quizTitle: '',
+    quizSlug: '',
   };
 
   try {
@@ -89,7 +104,7 @@ async function fetchDynamicCtaContent(
     // Fetch quiz info with cta_template_id
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
-      .select('slug, primary_language, cta_template_id, cta_title, cta_description, cta_text, cta_url')
+      .select('slug, title, primary_language, cta_template_id, cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
       .eq('id', quizId)
       .maybeSingle();
     
@@ -107,7 +122,7 @@ async function fetchDynamicCtaContent(
     if (quiz.cta_template_id) {
       const { data: linkedCta, error: linkedCtaError } = await supabase
         .from('cta_templates')
-        .select('cta_title, cta_description, cta_text, cta_url')
+        .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
         .eq('id', quiz.cta_template_id)
         .maybeSingle();
       
@@ -123,7 +138,7 @@ async function fetchDynamicCtaContent(
     if (!ctaTemplate) {
       const { data: liveCta, error: liveCtaError } = await supabase
         .from('cta_templates')
-        .select('cta_title, cta_description, cta_text, cta_url')
+        .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
         .eq('quiz_id', quizId)
         .eq('is_live', true)
         .maybeSingle();
@@ -139,11 +154,18 @@ async function fetchDynamicCtaContent(
     // Use CTA from cta_templates if available, fallback to quizzes table
     const ctaSource = ctaTemplate || quiz;
     
+    // Build quiz URL for retry button fallback
+    const quizUrl = `https://itcnukhlqkrsirrznuig.lovable.app/q/${quiz.slug}`;
+    
     const dynamicCta: DynamicCtaContent = {
       ctaTitle: getLocalizedValue(ctaSource.cta_title, language, primaryLang, ''),
       ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, ''),
       ctaButtonText: getLocalizedValue(ctaSource.cta_text, language, primaryLang, ''),
       ctaUrl: ctaSource.cta_url || 'https://sparkly.hr',
+      ctaRetryText: getLocalizedValue(ctaSource.cta_retry_text, language, primaryLang, ''),
+      ctaRetryUrl: ctaSource.cta_retry_url || quizUrl,
+      quizTitle: getLocalizedValue(quiz.title, language, primaryLang, 'Quiz'),
+      quizSlug: quiz.slug,
     };
     
     console.log('Dynamic CTA fetched successfully:', {
@@ -160,7 +182,59 @@ async function fetchDynamicCtaContent(
   }
 }
 
-// Translations for hypothesis quiz emails (fallback when no dynamic CTA)
+// Fetch hypothesis result level from database based on score
+async function fetchHypothesisResultLevel(
+  supabase: any,
+  quizId: string,
+  score: number,
+  language: string
+): Promise<DynamicResultLevel | null> {
+  try {
+    console.log(`Fetching hypothesis result level for quiz ${quizId}, score ${score}, language ${language}`);
+    
+    // Fetch quiz primary language first
+    const { data: quiz } = await supabase
+      .from('quizzes')
+      .select('primary_language')
+      .eq('id', quizId)
+      .maybeSingle();
+    
+    const primaryLang = quiz?.primary_language || 'en';
+    
+    // Fetch result level for this score
+    const { data: resultLevel, error } = await supabase
+      .from('hypothesis_result_levels')
+      .select('title, description, emoji')
+      .eq('quiz_id', quizId)
+      .lte('min_score', score)
+      .gte('max_score', score)
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.log('Error fetching hypothesis result level:', error.message);
+      return null;
+    }
+    
+    if (!resultLevel) {
+      console.log(`No hypothesis result level found for score ${score}`);
+      return null;
+    }
+    
+    const dynamicResult: DynamicResultLevel = {
+      title: getLocalizedValue(resultLevel.title, language, primaryLang, ''),
+      description: getLocalizedValue(resultLevel.description, language, primaryLang, ''),
+      emoji: resultLevel.emoji || '🏆',
+    };
+    
+    console.log('Hypothesis result level fetched:', dynamicResult.title || '(none)');
+    return dynamicResult;
+  } catch (error: any) {
+    console.error('Error in fetchHypothesisResultLevel:', error.message);
+    return null;
+  }
+}
+
 const emailTranslations: Record<string, {
   subject: string;
   yourResults: string;
@@ -283,13 +357,14 @@ function buildEmailHtml(
   questions: QuestionData[],
   responses: ResponseData[],
   dynamicCta: DynamicCtaContent,
+  dynamicResultLevel: DynamicResultLevel | null,
   opennessScore?: number | null
 ): string {
   const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
   const percentage = Math.round((score / totalQuestions) * 100);
   
-  // Get assessment category based on percentage
-  const getAssessment = () => {
+  // Get assessment category based on percentage (fallback if no dynamic result level)
+  const getAssessmentFallback = () => {
     if (percentage >= 90) return { label: "Bias Champion", emoji: "🏆", color: "#10b981" };
     if (percentage >= 70) return { label: "Bias Aware", emoji: "⭐", color: "#3b82f6" };
     if (percentage >= 50) return { label: "Bias Curious", emoji: "📚", color: "#f59e0b" };
@@ -297,7 +372,11 @@ function buildEmailHtml(
     return { label: "Bias Explorer", emoji: "🔍", color: "#ef4444" };
   };
   
-  const assessment = getAssessment();
+  // Use dynamic result level if available, otherwise fallback
+  const fallback = getAssessmentFallback();
+  const assessment = dynamicResultLevel 
+    ? { label: dynamicResultLevel.title || fallback.label, emoji: dynamicResultLevel.emoji || fallback.emoji, color: fallback.color }
+    : fallback;
 
   // Build response map for quick lookup
   const responseMap = new Map<string, ResponseData>();
@@ -438,7 +517,10 @@ function buildEmailHtml(
                   <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 32px; text-align: center; border: 1px solid #e9d5ff;">
                     <h3 style="color: #6d28d9; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${escapeHtml(dynamicCta.ctaTitle || trans.readyToLearnMore)}</h3>
                     <p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(dynamicCta.ctaDescription || trans.ctaDescription)}</p>
-                    <a href="${dynamicCta.ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(dynamicCta.ctaButtonText || trans.visitSparkly)}</a>
+                    <div style="display: inline-block;">
+                      <a href="${dynamicCta.ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(dynamicCta.ctaButtonText || trans.visitSparkly)}</a>
+                      ${dynamicCta.ctaRetryText ? `<a href="${dynamicCta.ctaRetryUrl}" style="display: inline-block; background: transparent; border: 2px solid #6d28d9; color: #6d28d9; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin-left: 12px;">${escapeHtml(dynamicCta.ctaRetryText)}</a>` : ''}
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -565,7 +647,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to fetch responses');
     }
 
-    // Build email HTML with dynamic CTA
+    // Fetch dynamic result level from database
+    const dynamicResultLevel = await fetchHypothesisResultLevel(supabase, quizId, score, language);
+
+    // Build email HTML with dynamic CTA and result level
     const htmlBody = buildEmailHtml(
       trans,
       language,
@@ -574,10 +659,13 @@ const handler = async (req: Request): Promise<Response> => {
       questions || [],
       responses || [],
       dynamicCta,
+      dynamicResultLevel,
       opennessScore
     );
 
-    const subject = `${trans.subject} - ${score}/${totalQuestions}`;
+    // Use quiz-specific subject if available
+    const emailQuizTitle = dynamicCta.quizTitle || trans.subject;
+    const subject = `${emailQuizTitle} - ${score}/${totalQuestions}`;
 
     // Queue the email (will be sent by process-email-queue)
     const { error: queueError } = await supabase.from("email_queue").insert({

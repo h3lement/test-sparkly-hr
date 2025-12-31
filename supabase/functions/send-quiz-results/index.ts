@@ -490,7 +490,11 @@ interface DynamicEmailContent {
   ctaDescription: string;
   ctaButtonText: string;
   ctaUrl: string;
+  ctaRetryText: string;
+  ctaRetryUrl: string;
   emoji: string;
+  quizTitle: string;
+  quizSlug: string;
 }
 
 // Helper function to get localized value with fallback chain
@@ -518,7 +522,7 @@ async function fetchDynamicEmailContent(
     // Fetch quiz info for primary language
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
-      .select('slug, primary_language, cta_title, cta_description, cta_text, cta_url')
+      .select('slug, title, primary_language, cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
       .eq('id', quizId)
       .single();
     
@@ -555,7 +559,7 @@ async function fetchDynamicEmailContent(
     if (ctaTemplateId) {
       const { data: linkedCta, error: linkedCtaError } = await supabase
         .from('cta_templates')
-        .select('cta_title, cta_description, cta_text, cta_url')
+        .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
         .eq('id', ctaTemplateId)
         .maybeSingle();
       
@@ -571,7 +575,7 @@ async function fetchDynamicEmailContent(
     if (!ctaTemplate) {
       const { data: liveCta, error: liveCtaError } = await supabase
         .from('cta_templates')
-        .select('cta_title, cta_description, cta_text, cta_url')
+        .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
         .eq('quiz_id', quizId)
         .eq('is_live', true)
         .maybeSingle();
@@ -602,6 +606,10 @@ async function fetchDynamicEmailContent(
       }).filter((i: string) => i.trim() !== '');
     }
     
+    // Build quiz URL for retry button fallback
+    const baseUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'https://sparkly.hr';
+    const quizUrl = `https://itcnukhlqkrsirrznuig.lovable.app/q/${quiz.slug}`;
+    
     // Build dynamic content with fallback chain
     const dynamicContent: DynamicEmailContent = {
       resultTitle: getLocalizedValue(resultLevel.title, language, primaryLang, 'Your Result'),
@@ -611,7 +619,11 @@ async function fetchDynamicEmailContent(
       ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, ''),
       ctaButtonText: getLocalizedValue(ctaSource.cta_text, language, primaryLang, 'Continue to Sparkly.hr'),
       ctaUrl: ctaSource.cta_url || 'https://sparkly.hr',
+      ctaRetryText: getLocalizedValue(ctaSource.cta_retry_text, language, primaryLang, ''),
+      ctaRetryUrl: ctaSource.cta_retry_url || quizUrl,
       emoji: resultLevel.emoji || '🌟',
+      quizTitle: getLocalizedValue(quiz.title, language, primaryLang, 'Quiz'),
+      quizSlug: quiz.slug,
     };
     
     console.log('Dynamic content fetched successfully:', {
@@ -698,6 +710,8 @@ function buildEmailHtmlDynamic(
   const finalCtaDescription = dynamicContent?.ctaDescription || trans.ctaDescription;
   const finalCtaButtonText = dynamicContent?.ctaButtonText || trans.visitSparkly;
   const finalCtaUrl = dynamicContent?.ctaUrl || 'https://sparkly.hr';
+  const finalCtaRetryText = dynamicContent?.ctaRetryText || '';
+  const finalCtaRetryUrl = dynamicContent?.ctaRetryUrl || '';
   const resultEmoji = dynamicContent?.emoji || '🎯';
   
   const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
@@ -709,6 +723,7 @@ function buildEmailHtmlDynamic(
   const safeCtaTitle = escapeHtml(finalCtaTitle);
   const safeCtaDescription = escapeHtml(finalCtaDescription);
   const safeCtaButtonText = escapeHtml(finalCtaButtonText);
+  const safeCtaRetryText = escapeHtml(finalCtaRetryText);
   
   // Build insights list with styled bullets
   const insightsHtml = safeInsights.length > 0 ? safeInsights.map(insight => `
@@ -741,16 +756,25 @@ function buildEmailHtmlDynamic(
     </div>
   ` : '';
 
+  // Retry button HTML (only if retry text is provided)
+  const retryButtonHtml = safeCtaRetryText ? `
+    <a href="${finalCtaRetryUrl}" style="display: inline-block; background: transparent; border: 2px solid #6d28d9; color: #6d28d9; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin-left: 12px;">${safeCtaRetryText}</a>
+  ` : '';
+
   // CTA section (only if there's a title or description)
   const ctaSection = (finalCtaTitle || finalCtaDescription) ? `
     <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 32px; margin-top: 28px; text-align: center; border: 1px solid #e9d5ff;">
       ${safeCtaTitle ? `<h3 style="color: #6d28d9; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${safeCtaTitle}</h3>` : ''}
       ${safeCtaDescription ? `<p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${safeCtaDescription}</p>` : ''}
-      <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+      <div style="display: inline-block;">
+        <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+        ${retryButtonHtml}
+      </div>
     </div>
   ` : `
     <div style="text-align: center; margin-top: 28px;">
       <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+      ${retryButtonHtml}
     </div>
   `;
 
@@ -1697,14 +1721,23 @@ const handler = async (req: Request): Promise<Response> => {
       const senderName = emailConfig.senderName;
       const senderEmail = emailConfig.senderEmail;
       const templateSubjects = templateData?.subjects as Record<string, string> || {};
-      const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
-
+      // Priority: template override > template subjects > quiz-specific subject > fallback
+      let emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || '';
+      
       // Fetch dynamic content for 50plus quiz (pass CTA template ID from email template)
       const ctaTemplateId = templateData?.cta_template_id as string | null;
       let dynamicContent: DynamicEmailContent | null = null;
       if (quizId) {
         dynamicContent = await fetchDynamicEmailContent(supabase, quizId, totalScore, language, ctaTemplateId);
+        // Use quiz title in subject if no template subject
+        if (!emailSubject && dynamicContent?.quizTitle) {
+          emailSubject = `${dynamicContent.quizTitle} - ${trans.yourResults}`;
+        }
       }
+      if (!emailSubject) {
+        emailSubject = trans.subject;
+      }
+
 
       const emailHtml = buildEmailHtmlDynamic(templateData, language, trans, {
         totalScore, maxScore, resultTitle, resultDescription, insights,
@@ -1783,21 +1816,29 @@ const handler = async (req: Request): Promise<Response> => {
         const senderName = emailConfig.senderName;
         const senderEmail = emailConfig.senderEmail;
         const templateSubjects = templateData?.subjects as Record<string, string> || {};
-        const emailSubject = templateOverride?.subject?.trim() || templateSubjects[language] || trans.subject;
+        // Priority: template override > template subjects > quiz-specific subject > fallback
+        let emailSubjectBg = templateOverride?.subject?.trim() || templateSubjects[language] || '';
 
-        console.log("Background task: Using email config:", { senderName, senderEmail, subject: emailSubject });
+        console.log("Background task: Using email config:", { senderName, senderEmail, subject: emailSubjectBg || 'pending' });
 
         // Fetch dynamic content for all quizzes (pass CTA template ID from email template)
-        const ctaTemplateId = templateData?.cta_template_id as string | null;
-        let dynamicContent: DynamicEmailContent | null = null;
+        const ctaTemplateIdBg = templateData?.cta_template_id as string | null;
+        let dynamicContentBg: DynamicEmailContent | null = null;
         if (quizId) {
-          dynamicContent = await fetchDynamicEmailContent(supabase, quizId, totalScore, language, ctaTemplateId);
+          dynamicContentBg = await fetchDynamicEmailContent(supabase, quizId, totalScore, language, ctaTemplateIdBg);
+          // Use quiz title in subject if no template subject
+          if (!emailSubjectBg && dynamicContentBg?.quizTitle) {
+            emailSubjectBg = `${dynamicContentBg.quizTitle} - ${trans.yourResults}`;
+          }
+        }
+        if (!emailSubjectBg) {
+          emailSubjectBg = trans.subject;
         }
 
         const emailHtml = buildEmailHtmlDynamic(templateData, language, trans, {
           totalScore, maxScore, resultTitle, resultDescription, insights,
           opennessScore, opennessMaxScore, opennessTitle, opennessDescription, email,
-          dynamicContent
+          dynamicContent: dynamicContentBg
         });
 
         // Check for duplicate user email before queuing
@@ -1819,8 +1860,8 @@ const handler = async (req: Request): Promise<Response> => {
           .maybeSingle();
 
         // Queue user email only if not already sent/queued
-        const finalResultTitle = dynamicContent?.resultTitle || resultTitle;
-        const userEmailSubject = `${emailSubject}: ${escapeHtml(finalResultTitle)}`;
+        const finalResultTitle = dynamicContentBg?.resultTitle || resultTitle;
+        const userEmailSubject = `${emailSubjectBg}: ${escapeHtml(finalResultTitle)}`;
         
         if (!existingUserEmail && !existingUserLog) {
           console.log("Background task: Queuing user email to:", email);
@@ -1865,12 +1906,12 @@ const handler = async (req: Request): Promise<Response> => {
         const logoUrl = "https://sparkly.hr/wp-content/uploads/2025/06/sparkly-logo.png";
         const safeEmail = escapeHtml(email);
         // Use dynamic result title/insights for admin email too
-        const adminResultTitle = dynamicContent?.resultTitle || resultTitle;
-        const adminInsights = dynamicContent?.insights?.length ? dynamicContent.insights : insights;
+        const adminResultTitle = dynamicContentBg?.resultTitle || resultTitle;
+        const adminInsights = dynamicContentBg?.insights?.length ? dynamicContentBg.insights : insights;
         const safeResultTitleAdmin = escapeHtml(adminResultTitle);
         const safeOpennessTitle = opennessTitle ? escapeHtml(opennessTitle) : '';
-        const safeInsightsAdmin = adminInsights.map(insight => escapeHtml(String(insight)));
-        const insightsList = safeInsightsAdmin.map((insight, i) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
+        const safeInsightsAdmin = adminInsights.map((insight: string) => escapeHtml(String(insight)));
+        const insightsList = safeInsightsAdmin.map((insight: string, i: number) => `<li style="margin-bottom: 8px;">${i + 1}. ${insight}</li>`).join("");
 
         const adminEmailHtml = `
           <!DOCTYPE html>
