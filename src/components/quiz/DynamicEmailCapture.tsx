@@ -65,6 +65,18 @@ export function DynamicEmailCapture() {
       : 4;
 
     try {
+      // Validate quiz_id exists (required by RLS policy)
+      if (!quizData?.id) {
+        console.error('Quiz ID is missing - cannot save lead');
+        toast({
+          title: t('emailError'),
+          description: 'Quiz data not loaded. Please refresh and try again.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // PRIORITY 1: Save lead to database FIRST (most important)
       console.log('Saving lead to database...');
       const { data: insertedLead, error: insertError } = await supabase
@@ -76,7 +88,7 @@ export function DynamicEmailCapture() {
           result_category: result ? getText(result.title) : 'Your Results',
           openness_score: openMindednessScore ?? null,
           language: language,
-          quiz_id: quizData?.id || null,
+          quiz_id: quizData.id,
         })
         .select('id')
         .single();
