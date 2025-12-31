@@ -94,9 +94,10 @@ export function DynamicEmailCapture() {
         return;
       }
 
-      // PRIORITY 1: Save lead to database FIRST (most important)
-      console.log('Saving lead to database...');
-      const { data: insertedLead, error: insertError } = await supabase
+      // PRIORITY 1: Fire insert WITHOUT waiting for returned ID (instant)
+      // The DB trigger will queue a backup email notification if edge function fails
+      console.log('Saving lead to database (fire-and-forget insert)...');
+      supabase
         .from('quiz_leads')
         .insert({
           email: validation.data,
@@ -107,62 +108,16 @@ export function DynamicEmailCapture() {
           language: language,
           quiz_id: effectiveQuizId,
         })
-        .select('id')
-        .single();
-
-      if (insertError) {
-        console.error('Error saving lead:', insertError);
-
-        // Backup path: queue via backend even if direct insert fails
-        const { error: fallbackError } = await supabase.functions.invoke('send-quiz-results', {
-          body: {
-            email: validation.data,
-            totalScore,
-            maxScore,
-            resultTitle: result ? getText(result.title) : 'Your Results',
-            resultDescription: result ? getText(result.description) : '',
-            insights: result?.insights?.map(i => getText(i)) || [],
-            language,
-            opennessScore: openMindednessScore,
-            opennessMaxScore: omMaxScore,
-            opennessTitle: omResult ? getText(omResult.title) : '',
-            opennessDescription: omResult ? getText(omResult.description) : '',
-            quizId: effectiveQuizId,
-            quizSlug: quizData?.slug,
-          },
+        .then(({ error: insertError }) => {
+          if (insertError) {
+            console.error('Lead insert error (will be handled by backup trigger):', insertError);
+          } else {
+            console.log('Lead saved successfully');
+          }
         });
 
-        if (fallbackError) {
-          console.error('Backup save failed:', fallbackError);
-          toast({
-            title: t('emailError'),
-            description: 'Failed to save your results. Please try again.',
-            variant: 'destructive',
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        toast({
-          title: t('emailSuccess'),
-          description: t('emailSuccessDesc'),
-        });
-
-        setCurrentStep('results');
-        return;
-      }
-
-      const quizLeadId = insertedLead?.id;
-      console.log('Lead saved successfully with ID:', quizLeadId);
-
-      // PRIORITY 2: Trigger background email preview pre-generation (fire and forget)
-      if (quizLeadId) {
-        supabase.functions.invoke('pregenerate-email-preview', {
-          body: { leadId: quizLeadId, leadType: 'quiz' }
-        }).catch(err => console.warn('Email preview pregeneration error:', err));
-      }
-
-      // PRIORITY 3: Queue emails via edge function (fire and forget - emails can be retried)
+      // PRIORITY 2: Queue emails via edge function (fire and forget)
+      // Edge function will create the lead if it doesn't exist yet
       supabase.functions.invoke('send-quiz-results', {
         body: {
           email: validation.data,
@@ -178,12 +133,10 @@ export function DynamicEmailCapture() {
           opennessDescription: omResult ? getText(omResult.description) : '',
           quizId: effectiveQuizId,
           quizSlug: quizData?.slug,
-          // Pass leadId so edge function doesn't create duplicate lead
-          existingLeadId: quizLeadId,
         },
       }).catch(err => console.error('Email sending error:', err));
 
-      // Fire confetti celebration
+      // Fire confetti celebration immediately
       const end = Date.now() + 800;
       const colors = ['#4f46e5', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
 
