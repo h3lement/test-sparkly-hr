@@ -2203,11 +2203,12 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
         // Check for duplicate user email before queuing
+        // Check both legacy "quiz_result_user" and standardized "Quiz Taker" types
         const { data: existingUserEmail } = await supabase
           .from("email_queue")
           .select("id")
           .eq("quiz_lead_id", quizLeadId)
-          .eq("email_type", "quiz_result_user")
+          .in("email_type", ["quiz_result_user", "Quiz Taker"])
           .in("status", ["pending", "processing", "sent"])
           .limit(1)
           .maybeSingle();
@@ -2216,7 +2217,7 @@ const handler = async (req: Request): Promise<Response> => {
           .from("email_logs")
           .select("id")
           .eq("quiz_lead_id", quizLeadId)
-          .eq("email_type", "quiz_result_user")
+          .in("email_type", ["quiz_result_user", "Quiz Taker"])
           .limit(1)
           .maybeSingle();
 
@@ -2226,13 +2227,14 @@ const handler = async (req: Request): Promise<Response> => {
         
         if (!existingUserEmail && !existingUserLog) {
           console.log("Background task: Queuing user email to:", email);
+          // Using standardized "Quiz Taker" email type per system requirements
           const { error: userQueueError } = await supabase.from("email_queue").insert({
             recipient_email: email,
             sender_email: senderEmail,
             sender_name: senderName,
             subject: userEmailSubject,
             html_body: emailHtml,
-            email_type: "quiz_result_user",
+            email_type: "Quiz Taker",
             quiz_lead_id: quizLeadId,
             quiz_id: quizId || null,
             language: language,
@@ -2268,11 +2270,12 @@ const handler = async (req: Request): Promise<Response> => {
         const adminEmailSubject = `[Admin Copy] ${emailSubjectBg}: ${escapeHtml(finalResultTitleAdmin)} (from ${escapeHtml(email)})`;
 
         // Check for duplicate admin email before queuing
+        // Check both legacy "quiz_result_admin" and standardized "Admin Notification" types
         const { data: existingAdminEmail } = await supabase
           .from("email_queue")
           .select("id")
           .eq("quiz_lead_id", quizLeadId)
-          .eq("email_type", "quiz_result_admin")
+          .in("email_type", ["quiz_result_admin", "Admin Notification"])
           .in("status", ["pending", "processing", "sent"])
           .limit(1)
           .maybeSingle();
@@ -2281,19 +2284,20 @@ const handler = async (req: Request): Promise<Response> => {
           .from("email_logs")
           .select("id")
           .eq("quiz_lead_id", quizLeadId)
-          .eq("email_type", "quiz_result_admin")
+          .in("email_type", ["quiz_result_admin", "Admin Notification"])
           .limit(1)
           .maybeSingle();
         
         if (!existingAdminEmail && !existingAdminLog) {
           console.log("Background task: Queuing admin email (same as user) to: mikk@sparkly.hr");
+          // Using standardized "Admin Notification" email type per system requirements
           const { error: adminQueueError } = await supabase.from("email_queue").insert({
             recipient_email: "mikk@sparkly.hr",
             sender_email: senderEmail,
             sender_name: senderName,
             subject: adminEmailSubject,
             html_body: emailHtml, // Same HTML as user email
-            email_type: "quiz_result_admin",
+            email_type: "Admin Notification",
             quiz_lead_id: quizLeadId,
             quiz_id: quizId || null,
             language: language,
