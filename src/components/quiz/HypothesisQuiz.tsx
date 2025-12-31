@@ -8,6 +8,7 @@ import { HypothesisResultsScreen } from './HypothesisResultsScreen';
 import { HypothesisOpenMindedness } from './HypothesisOpenMindedness';
 import { useHypothesisQuizPublic } from '@/hooks/useHypothesisQuizPublic';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
+import { useQuizDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useLanguage, type Language } from './LanguageContext';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
@@ -71,8 +72,12 @@ function HypothesisQuizContent({ languageFromUrl }: HypothesisQuizContentProps) 
     setCurrentQuestionIndex,
   } = useHypothesisQuiz();
 
-  const { setQuizId, setLanguage, dbTranslationsLoaded } = useLanguage();
+  const { setQuizId, setLanguage, language, dbTranslationsLoaded } = useLanguage();
   const [initialStepApplied, setInitialStepApplied] = useState(false);
+  
+  // Set document title based on quiz title
+  const quizTitle = quiz?.title?.[language] || quiz?.title?.['en'] || '';
+  useQuizDocumentTitle(quizTitle);
 
   // Apply language from URL path (e.g., /et/quiz-slug)
   useEffect(() => {

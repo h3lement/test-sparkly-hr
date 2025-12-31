@@ -11,6 +11,7 @@ import { EmotionalResultsScreen } from './EmotionalResultsScreen';
 import { HypothesisQuiz } from './HypothesisQuiz';
 import { useQuizData } from '@/hooks/useQuizData';
 import { useForceLightMode } from '@/hooks/useForceLightMode';
+import { useQuizDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useLanguage, languages, type Language } from './LanguageContext';
 import { Logo } from '@/components/Logo';
 import { Footer } from './Footer';
@@ -68,6 +69,10 @@ function StandardQuizContent({ slug, quizType, languageFromUrl }: StandardQuizCo
   } = useDynamicQuiz();
   const { setQuizId, setLanguage, language, dbTranslationsLoaded } = useLanguage();
   const [initialStepApplied, setInitialStepApplied] = useState(false);
+  
+  // Set document title based on quiz title
+  const quizTitle = quiz?.title?.[language] || quiz?.title?.['en'] || '';
+  useQuizDocumentTitle(quizTitle);
   
   // Apply language from URL path (e.g., /et/quiz-slug)
   useEffect(() => {
