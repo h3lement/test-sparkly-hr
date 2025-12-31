@@ -108,7 +108,7 @@ const DEFAULT_TEMPLATE = `<!DOCTYPE html>
       <a href="https://sparkly.hr" target="_blank">
         <img src="{{logoUrl}}" alt="Sparkly.hr" style="height: 32px; margin-bottom: 10px;" />
       </a>
-      <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+      <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2026 Sparkly.hr</p>
     </div>
   </div>
 </body>

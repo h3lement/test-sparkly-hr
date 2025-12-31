@@ -375,7 +375,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="color: #6b7280; line-height: 1.6;">Please visit <a href="https://sparkly.hr" style="color: #6d28d9;">sparkly.hr</a> for more information about your team's performance assessment.</p>
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2026 Sparkly.hr</p>
           </div>
         </div>
       </body>

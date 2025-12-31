@@ -354,7 +354,7 @@ function buildEmailHtml(
                   <a href="https://sparkly.hr" target="_blank">
                     <img src="${logoUrl}" alt="Sparkly.hr" style="height: 28px; margin-bottom: 8px; opacity: 0.8;" />
                   </a>
-                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2025 Sparkly.hr</p>
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">© 2026 Sparkly.hr</p>
                 </td>
               </tr>
             </table>
