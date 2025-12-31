@@ -141,7 +141,10 @@ async function fetchDynamicCtaContent(
     const ctaSource = ctaTemplate || quiz;
     
     // Build quiz URL for retry button fallback
-    const quizUrl = `https://itcnukhlqkrsirrznuig.lovable.app/q/${quiz.slug}`;
+    const baseUrl = Deno.env.get("PUBLIC_APP_URL")
+      || Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')
+      || 'https://sparkly.hr';
+    const quizUrl = `${baseUrl}/q/${quiz.slug}`;
     
     const dynamicCta: DynamicCtaContent = {
       ctaTitle: getLocalizedValue(ctaSource.cta_title, language, primaryLang, ''),
@@ -523,7 +526,7 @@ function buildEmailHtml(
                     <p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${escapeHtml(dynamicCta.ctaDescription || trans.ctaDescription)}</p>
                     <div style="display: inline-block;">
                       <a href="${dynamicCta.ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${escapeHtml(dynamicCta.ctaButtonText || trans.visitSparkly)}</a>
-                      ${dynamicCta.ctaRetryText ? `<a href="${dynamicCta.ctaRetryUrl}" style="display: inline-block; background: transparent; border: 2px solid #6d28d9; color: #6d28d9; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin-left: 12px;">${escapeHtml(dynamicCta.ctaRetryText)}</a>` : ''}
+                      <a href="${dynamicCta.ctaRetryUrl}" style="display: inline-block; background: transparent; border: 2px solid #6d28d9; color: #6d28d9; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin-left: 12px;">${escapeHtml(dynamicCta.ctaRetryText || trans.tryAgain)}</a>
                     </div>
                   </div>
                 </td>
