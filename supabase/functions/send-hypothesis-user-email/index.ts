@@ -285,8 +285,8 @@ const emailTranslations: Record<string, {
     tryAgain: 'Try again',
   },
   et: {
-    subject: 'Sinu 50+ tööjõu kviiside tulemused',
-    yourResults: 'Sinu kviisi tulemused',
+    subject: 'Sinu 50+ tööjõu küsitluse tulemused',
+    yourResults: 'Sinu küsitluse tulemused',
     correctAnswers: 'õiget vastust',
     outOf: 'vastusest',
     keyLearnings: 'Põhilised õppetunnid',
