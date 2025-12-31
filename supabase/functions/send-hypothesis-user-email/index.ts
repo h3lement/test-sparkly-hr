@@ -262,6 +262,7 @@ const emailTranslations: Record<string, {
   openMindedness: string;
   openMindednessScore: string;
   tryAgain: string;
+  hypothesis: string;
 }> = {
   en: {
     subject: 'Your 50+ Workforce Quiz Results',
@@ -283,6 +284,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Open-Mindedness',
     openMindednessScore: 'Your openness to diverse assessment methods',
     tryAgain: 'Try again',
+    hypothesis: 'Hypothesis',
   },
   et: {
     subject: 'Sinu 50+ tööjõu küsitluse tulemused',
@@ -304,6 +306,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Avatud mõtlemine',
     openMindednessScore: 'Sinu avatus erinevatele hindamismeetoditele',
     tryAgain: 'Proovi uuesti',
+    hypothesis: 'Hüpotees',
   },
   fi: {
     subject: 'Sinun 50+ työvoima -kyselysi tulokset',
@@ -325,6 +328,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Avoimuusarviointi',
     openMindednessScore: 'Avoimuutesi erilaisille arviointimenetelmille',
     tryAgain: 'Yritä uudelleen',
+    hypothesis: 'Hypoteesi',
   },
   de: {
     subject: 'Ihre 50+ Arbeitskraft-Quiz-Ergebnisse',
@@ -346,6 +350,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Aufgeschlossenheit',
     openMindednessScore: 'Ihre Offenheit für verschiedene Bewertungsmethoden',
     tryAgain: 'Erneut versuchen',
+    hypothesis: 'Hypothese',
   },
   fr: {
     subject: 'Vos résultats du quiz sur les 50+',
@@ -367,6 +372,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Ouverture d\'esprit',
     openMindednessScore: 'Votre ouverture aux méthodes d\'évaluation diverses',
     tryAgain: 'Réessayer',
+    hypothesis: 'Hypothèse',
   },
   es: {
     subject: 'Tus resultados del cuestionario 50+',
@@ -388,6 +394,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Apertura mental',
     openMindednessScore: 'Tu apertura a diversos métodos de evaluación',
     tryAgain: 'Intentar de nuevo',
+    hypothesis: 'Hipótesis',
   },
   it: {
     subject: 'I tuoi risultati del quiz 50+',
@@ -409,6 +416,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Apertura mentale',
     openMindednessScore: 'La tua apertura a diversi metodi di valutazione',
     tryAgain: 'Riprova',
+    hypothesis: 'Ipotesi',
   },
   pt: {
     subject: 'Seus resultados do quiz 50+',
@@ -430,6 +438,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Mente aberta',
     openMindednessScore: 'Sua abertura a diversos métodos de avaliação',
     tryAgain: 'Tentar novamente',
+    hypothesis: 'Hipótese',
   },
   nl: {
     subject: 'Uw 50+ quiz resultaten',
@@ -451,6 +460,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Ruimdenkendheid',
     openMindednessScore: 'Uw openheid voor diverse beoordelingsmethoden',
     tryAgain: 'Opnieuw proberen',
+    hypothesis: 'Hypothese',
   },
   pl: {
     subject: 'Twoje wyniki quizu 50+',
@@ -472,6 +482,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Otwartość umysłu',
     openMindednessScore: 'Twoja otwartość na różne metody oceny',
     tryAgain: 'Spróbuj ponownie',
+    hypothesis: 'Hipoteza',
   },
   cs: {
     subject: 'Vaše výsledky kvízu 50+',
@@ -493,6 +504,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Otevřenost mysli',
     openMindednessScore: 'Vaše otevřenost různým metodám hodnocení',
     tryAgain: 'Zkusit znovu',
+    hypothesis: 'Hypotéza',
   },
   sk: {
     subject: 'Vaše výsledky kvízu 50+',
@@ -514,6 +526,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Otvorenosť mysle',
     openMindednessScore: 'Vaša otvorenosť rôznym metódam hodnotenia',
     tryAgain: 'Skúsiť znova',
+    hypothesis: 'Hypotéza',
   },
   hu: {
     subject: 'Az Ön 50+ kvíz eredményei',
@@ -535,6 +548,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Nyitottság',
     openMindednessScore: 'Az Ön nyitottsága a különböző értékelési módszerekre',
     tryAgain: 'Próbálja újra',
+    hypothesis: 'Hipotézis',
   },
   ro: {
     subject: 'Rezultatele tale la chestionarul 50+',
@@ -556,6 +570,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Deschidere mentală',
     openMindednessScore: 'Deschiderea ta către diverse metode de evaluare',
     tryAgain: 'Încearcă din nou',
+    hypothesis: 'Ipoteză',
   },
   bg: {
     subject: 'Вашите резултати от теста 50+',
@@ -577,6 +592,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Отвореност на ума',
     openMindednessScore: 'Вашата отвореност към различни методи за оценка',
     tryAgain: 'Опитайте отново',
+    hypothesis: 'Хипотеза',
   },
   hr: {
     subject: 'Vaši rezultati kviza 50+',
@@ -598,6 +614,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Otvorenost uma',
     openMindednessScore: 'Vaša otvorenost za različite metode procjene',
     tryAgain: 'Pokušajte ponovo',
+    hypothesis: 'Hipoteza',
   },
   sl: {
     subject: 'Vaši rezultati kviza 50+',
@@ -619,6 +636,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Odprtost uma',
     openMindednessScore: 'Vaša odprtost za različne metode ocenjevanja',
     tryAgain: 'Poskusite znova',
+    hypothesis: 'Hipoteza',
   },
   lt: {
     subject: 'Jūsų 50+ apklausos rezultatai',
@@ -640,6 +658,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Atvirumas',
     openMindednessScore: 'Jūsų atvirumas įvairiems vertinimo metodams',
     tryAgain: 'Bandykite dar kartą',
+    hypothesis: 'Hipotezė',
   },
   lv: {
     subject: 'Jūsu 50+ aptaujas rezultāti',
@@ -661,6 +680,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Atvērtība',
     openMindednessScore: 'Jūsu atvērtība dažādām vērtēšanas metodēm',
     tryAgain: 'Mēģiniet vēlreiz',
+    hypothesis: 'Hipotēze',
   },
   uk: {
     subject: 'Ваші результати тесту 50+',
@@ -682,6 +702,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Відкритість',
     openMindednessScore: 'Ваша відкритість до різних методів оцінювання',
     tryAgain: 'Спробуйте ще раз',
+    hypothesis: 'Гіпотеза',
   },
   ru: {
     subject: 'Ваши результаты теста 50+',
@@ -703,6 +724,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Открытость ума',
     openMindednessScore: 'Ваша открытость к различным методам оценки',
     tryAgain: 'Попробовать снова',
+    hypothesis: 'Гипотеза',
   },
   sv: {
     subject: 'Dina 50+ quiz-resultat',
@@ -724,6 +746,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Öppenhet',
     openMindednessScore: 'Din öppenhet för olika bedömningsmetoder',
     tryAgain: 'Försök igen',
+    hypothesis: 'Hypotes',
   },
   no: {
     subject: 'Dine 50+ quiz-resultater',
@@ -745,6 +768,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Åpenhet',
     openMindednessScore: 'Din åpenhet for ulike vurderingsmetoder',
     tryAgain: 'Prøv igjen',
+    hypothesis: 'Hypotese',
   },
   da: {
     subject: 'Dine 50+ quiz-resultater',
@@ -766,6 +790,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Åbenhed',
     openMindednessScore: 'Din åbenhed over for forskellige vurderingsmetoder',
     tryAgain: 'Prøv igen',
+    hypothesis: 'Hypotese',
   },
   ja: {
     subject: 'あなたの50+クイズ結果',
@@ -787,6 +812,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'オープンマインド',
     openMindednessScore: '様々な評価方法への開放性',
     tryAgain: 'もう一度試す',
+    hypothesis: '仮説',
   },
   zh: {
     subject: '您的50+测验结果',
@@ -808,6 +834,7 @@ const emailTranslations: Record<string, {
     openMindedness: '开放心态',
     openMindednessScore: '您对不同评估方法的开放程度',
     tryAgain: '重试',
+    hypothesis: '假设',
   },
   ga: {
     subject: 'Do thorthaí quise 50+',
@@ -829,6 +856,7 @@ const emailTranslations: Record<string, {
     openMindedness: 'Oscailteacht intinne',
     openMindednessScore: 'D\'oscailteacht do mhodhanna measúnaithe éagsúla',
     tryAgain: 'Déan iarracht arís',
+    hypothesis: 'Hipitéis',
   },
 };
 
@@ -919,7 +947,7 @@ function buildEmailHtml(
         <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
           <div style="display: flex; align-items: center; margin-bottom: 16px;">
             <span style="background: ${isManCorrect && isWomanCorrect ? '#10b981' : isManCorrect || isWomanCorrect ? '#f59e0b' : '#ef4444'}; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; margin-right: 12px;">${index + 1}</span>
-            <span style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Question ${index + 1}</span>
+            <span style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${trans.hypothesis} ${index + 1}</span>
           </div>
           
           ${hypothesisMan ? `
