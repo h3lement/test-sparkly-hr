@@ -148,10 +148,13 @@ async function fetchDynamicEmailContent(
       if (!linkedCtaError && linkedCta) {
         ctaTemplate = linkedCta;
         console.log('Using CTA linked to quiz via cta_template_id:', quiz.cta_template_id);
+        console.log('CTA title from template:', JSON.stringify(linkedCta.cta_title));
       } else if (linkedCtaError) {
         console.log('Error fetching linked CTA template:', linkedCtaError.message);
       }
     }
+    
+    console.log('ctaSource is:', ctaTemplate ? 'CTA template' : 'quiz fallback');
 
     const ctaSource = ctaTemplate || quiz;
     
