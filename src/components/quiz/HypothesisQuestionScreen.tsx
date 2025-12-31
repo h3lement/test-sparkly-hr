@@ -455,11 +455,11 @@ export function HypothesisQuestionScreen() {
 
         {/* Bulk Actions - at bottom of card (both mobile and desktop) */}
         <div className="px-4 md:px-5 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button
               size="sm"
               variant="outline"
-              className="h-8 px-3 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
+              className="h-7 px-2.5 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-lg"
               onClick={() => {
                 const newAnswers: PageAnswers = {};
                 pageQuestions.forEach(q => { newAnswers[q.id] = true; });
@@ -471,7 +471,7 @@ export function HypothesisQuestionScreen() {
             <Button
               size="sm"
               variant="outline"
-              className="h-8 px-3 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
+              className="h-7 px-2.5 text-xs font-semibold border-orange-400/50 text-orange-600 hover:bg-orange-500/10 rounded-lg"
               onClick={() => {
                 const newAnswers: PageAnswers = {};
                 pageQuestions.forEach(q => { newAnswers[q.id] = false; });
@@ -482,7 +482,7 @@ export function HypothesisQuestionScreen() {
             </Button>
           </div>
           {allQuestionsAnswered && (
-            <span className="text-xs text-green-600 font-semibold">✓ {t('ready', 'Ready!', 'Valmis!')}</span>
+            <span className="text-sm text-green-600 font-semibold bg-green-500/10 px-3 py-1 rounded-full">✓ {t('readyToSubmit', 'Ready to submit!', 'Valmis lähetettäväksi!')}</span>
           )}
         </div>
       </div>
