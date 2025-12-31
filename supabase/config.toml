@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.translate-result-levels]
 verify_jwt = false
+
+[functions.translate-email-subjects]
+verify_jwt = false

@@ -38,17 +38,38 @@ const ALL_TARGET_LANGUAGES = [
 
 type AnyRecord = Record<string, any>;
 
+type ResultLevelRow = {
+  id: string;
+  quiz_id: string;
+  min_score: number;
+  max_score: number;
+  title: Record<string, string> | null;
+  description: Record<string, string> | null;
+  insights: unknown;
+  emoji: string | null;
+  color_class: string | null;
+};
+
 function isPlainObject(value: unknown): value is AnyRecord {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
 function pickSourceText(
-  obj: Record<string, string> | undefined,
+  obj: Record<string, string> | undefined | null,
   sourceLanguage: string,
   primaryLanguage: string,
 ): string | null {
   if (!obj) return null;
   return obj[sourceLanguage] || obj[primaryLanguage] || obj.en || null;
+}
+
+function safeParseJson<T>(raw: string): T | null {
+  try {
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(cleaned) as T;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -77,7 +98,6 @@ function normalizeInsights(
           return { [lang]: item };
         }
         if (isPlainObject(item)) {
-          // Ensure it is string-only values
           const out: Record<string, string> = {};
           for (const [k, v] of Object.entries(item)) {
             if (typeof v === "string" && v.trim().length > 0) out[k] = v;
@@ -135,9 +155,7 @@ function hasInsightCoverage(insights: Array<Record<string, string>>, lang: strin
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -153,11 +171,9 @@ serve(async (req) => {
       targetLanguageCodes,
     }: { quizId: string; sourceLanguage?: string; targetLanguageCodes?: string[] } = await req.json();
 
-    console.log(
-      `translate-result-levels: quizId=${quizId} sourceLanguage=${sourceLanguage} targetLanguageCodes=${
-        Array.isArray(targetLanguageCodes) ? targetLanguageCodes.join(",") : "(all)"
-      }`,
-    );
+    const targetLanguageSet = Array.isArray(targetLanguageCodes) && targetLanguageCodes.length > 0
+      ? new Set(targetLanguageCodes)
+      : null;
 
     // Fetch quiz primary language (for better source selection)
     const { data: quizRow, error: quizErr } = await supabase
@@ -184,141 +200,144 @@ serve(async (req) => {
       });
     }
 
-    const targetLanguageSet = Array.isArray(targetLanguageCodes) && targetLanguageCodes.length > 0
-      ? new Set(targetLanguageCodes)
-      : null;
-
     const targetLanguages = ALL_TARGET_LANGUAGES
       .filter((l) => l.code !== sourceLanguage)
       .filter((l) => (targetLanguageSet ? targetLanguageSet.has(l.code) : true));
+
+    // Prepare mutable updates per level and normalize insights once
+    const perLevel = (levels as ResultLevelRow[]).map((level) => {
+      const normalizedInsights = normalizeInsights(level.insights, sourceLanguage, primaryLanguage);
+      return {
+        level,
+        updatedTitle: { ...(level.title || {}) } as Record<string, string>,
+        updatedDescription: { ...(level.description || {}) } as Record<string, string>,
+        updatedInsights: normalizedInsights.map((i) => ({ ...i })) as Array<Record<string, string>>,
+        normalizedShapeDiffers: JSON.stringify(level.insights ?? null) !== JSON.stringify(normalizedInsights),
+        changed: false,
+      };
+    });
 
     const results = {
       levelsUpdated: 0,
       failed: 0,
       skipped: 0,
+      languagesProcessed: 0,
       details: [] as string[],
     };
 
-    for (const level of levels) {
-      const normalizedInsights = normalizeInsights(level.insights, sourceLanguage, primaryLanguage);
+    const sourceLangName = ALL_TARGET_LANGUAGES.find((l) => l.code === sourceLanguage)?.name || "Source";
 
-      const updatedTitle: Record<string, string> = { ...(level.title || {}) };
-      const updatedDescription: Record<string, string> = { ...(level.description || {}) };
-      const updatedInsights: Array<Record<string, string>> = normalizedInsights.map((i) => ({ ...i }));
+    // Translate per-language (one AI call per target language)
+    for (const lang of targetLanguages) {
+      const items: Array<{ key: string; text: string }> = [];
 
-      const sourceTitle = pickSourceText(level.title, sourceLanguage, primaryLanguage);
-      const sourceDescription = pickSourceText(level.description, sourceLanguage, primaryLanguage);
+      for (const entry of perLevel) {
+        const { level, updatedTitle, updatedDescription, updatedInsights } = entry;
 
-      // If there is no source title/description, we can still translate insights if we have any.
-      const hasAnySourceInsight = updatedInsights.some((i) => pickSourceText(i, sourceLanguage, primaryLanguage));
+        const srcTitle = pickSourceText(level.title, sourceLanguage, primaryLanguage);
+        const srcDesc = pickSourceText(level.description, sourceLanguage, primaryLanguage);
 
-      if (!sourceTitle && !sourceDescription && !hasAnySourceInsight) {
-        results.skipped++;
-        results.details.push(`Level ${level.id}: skipped (no source content)`);
-        continue;
-      }
+        if (srcTitle && !updatedTitle[lang.code]) {
+          items.push({ key: `${level.id}.title`, text: srcTitle });
+        }
 
-      let changed = false;
+        if (srcDesc && !updatedDescription[lang.code]) {
+          items.push({ key: `${level.id}.description`, text: srcDesc });
+        }
 
-      for (const lang of targetLanguages) {
-        const needsTitle = !!sourceTitle && !updatedTitle?.[lang.code];
-        const needsDescription = !!sourceDescription && !updatedDescription?.[lang.code];
         const needsInsights = !hasInsightCoverage(updatedInsights, lang.code);
-
-        if (!needsTitle && !needsDescription && !needsInsights) continue;
-
-        const textsToTranslate: { path: string; text: string }[] = [];
-
-        if (needsTitle && sourceTitle) textsToTranslate.push({ path: "title", text: sourceTitle });
-        if (needsDescription && sourceDescription) textsToTranslate.push({ path: "description", text: sourceDescription });
-
         if (needsInsights) {
-          updatedInsights.forEach((insightObj, idx) => {
-            const already = insightObj?.[lang.code];
+          updatedInsights.forEach((insObj, idx) => {
+            const already = insObj?.[lang.code];
             if (typeof already === "string" && already.trim().length > 0) return;
 
-            const src = pickSourceText(insightObj, sourceLanguage, primaryLanguage);
-            if (src) textsToTranslate.push({ path: `insight.${idx}`, text: src });
+            const src = pickSourceText(insObj, sourceLanguage, primaryLanguage);
+            if (src) items.push({ key: `${level.id}.insight.${idx}`, text: src });
           });
         }
-
-        if (textsToTranslate.length === 0) continue;
-
-        const sourceLangName =
-          ALL_TARGET_LANGUAGES.find((l) => l.code === sourceLanguage)?.name || "Source language";
-
-        const prompt = `You are a professional translator. Translate the following texts from ${sourceLangName} to ${lang.name}.
-
-Return ONLY a JSON object where keys are the text paths and values are the translations.
-Keep the translations natural and appropriate for a professional quiz/assessment results context.
-Maintain meaning, tone, and punctuation.
-
-Texts to translate:\n${JSON.stringify(textsToTranslate, null, 2)}`;
-
-        try {
-          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
-              messages: [
-                { role: "system", content: "You are a precise translator. Return only valid JSON without markdown." },
-                { role: "user", content: prompt },
-              ],
-            }),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Translation API error (${lang.code}):`, errorText);
-            results.failed++;
-            continue;
-          }
-
-          const data = await response.json();
-          let content = data.choices?.[0]?.message?.content || "";
-          content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
-          const parsed = JSON.parse(content);
-
-          if (needsTitle && typeof parsed.title === "string") {
-            updatedTitle[lang.code] = parsed.title;
-            changed = true;
-          }
-
-          if (needsDescription && typeof parsed.description === "string") {
-            updatedDescription[lang.code] = parsed.description;
-            changed = true;
-          }
-
-          const insightKeys = Object.keys(parsed).filter((k) => k.startsWith("insight."));
-          for (const key of insightKeys) {
-            const idx = Number(key.split(".")[1]);
-            const value = parsed[key];
-            if (Number.isFinite(idx) && typeof value === "string") {
-              if (!updatedInsights[idx]) updatedInsights[idx] = {};
-              updatedInsights[idx][lang.code] = value;
-              changed = true;
-            }
-          }
-        } catch (e) {
-          console.error(`Failed translating/parsing for ${lang.code} level ${level.id}:`, e);
-          results.failed++;
-        }
-
-        // small delay to reduce rate-limit pressure
-        await new Promise((resolve) => setTimeout(resolve, 150));
       }
 
-      // Persist only if anything changed OR if we normalized shape (insights)
-      const normalizedShapeDiffers = JSON.stringify(level.insights ?? null) !== JSON.stringify(updatedInsights);
+      if (items.length === 0) continue;
+
+      const prompt = `You are a professional translator. Translate the following texts from ${sourceLangName} to ${lang.name}.\n\nReturn ONLY valid JSON mapping each key to its translated string.\nKeep the translations natural and appropriate for a professional quiz/assessment results context.\n\nItems:\n${JSON.stringify(items, null, 2)}`;
+
+      try {
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: "You are a precise translator. Return only JSON without markdown." },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Translation API error (${lang.code}):`, errorText);
+          results.failed++;
+          continue;
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        const parsed = safeParseJson<Record<string, string>>(content);
+
+        if (!parsed) {
+          console.error(`Failed to parse translation JSON for ${lang.code}`);
+          results.failed++;
+          continue;
+        }
+
+        // Apply translations back into per-level structures
+        for (const entry of perLevel) {
+          const { level, updatedTitle, updatedDescription, updatedInsights } = entry;
+
+          const tTitle = parsed[`${level.id}.title`];
+          if (typeof tTitle === "string" && tTitle.trim().length > 0 && !updatedTitle[lang.code]) {
+            updatedTitle[lang.code] = tTitle;
+            entry.changed = true;
+          }
+
+          const tDesc = parsed[`${level.id}.description`];
+          if (typeof tDesc === "string" && tDesc.trim().length > 0 && !updatedDescription[lang.code]) {
+            updatedDescription[lang.code] = tDesc;
+            entry.changed = true;
+          }
+
+          for (let i = 0; i < updatedInsights.length; i++) {
+            const tIns = parsed[`${level.id}.insight.${i}`];
+            if (typeof tIns === "string" && tIns.trim().length > 0) {
+              if (!updatedInsights[i]) updatedInsights[i] = {};
+              if (!updatedInsights[i][lang.code] || updatedInsights[i][lang.code].trim().length === 0) {
+                updatedInsights[i][lang.code] = tIns;
+                entry.changed = true;
+              }
+            }
+          }
+        }
+
+        results.languagesProcessed++;
+      } catch (e) {
+        console.error(`Translation error for ${lang.code}:`, e);
+        results.failed++;
+      }
+
+      // gentle pacing
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    // Persist changes
+    for (const entry of perLevel) {
+      const { level, updatedTitle, updatedDescription, updatedInsights, changed, normalizedShapeDiffers } = entry;
 
       if (!changed && !normalizedShapeDiffers) {
         results.skipped++;
-        results.details.push(`Level ${level.id}: skipped (already complete)`);
         continue;
       }
 
@@ -337,11 +356,8 @@ Texts to translate:\n${JSON.stringify(textsToTranslate, null, 2)}`;
         results.details.push(`Level ${level.id}: update failed (${updateError.message})`);
       } else {
         results.levelsUpdated++;
-        results.details.push(`Level ${level.id}: updated`);
       }
     }
-
-    console.log(`translate-result-levels done:`, results);
 
     return new Response(JSON.stringify({ success: true, ...results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
