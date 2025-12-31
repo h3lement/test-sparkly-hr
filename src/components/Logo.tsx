@@ -1,32 +1,32 @@
-import { Link } from 'react-router-dom';
 import sparklyLogo from '@/assets/sparkly-logo.png';
 
 interface LogoProps {
   quizSlug?: string;
+  onLogoClick?: () => void;
 }
 
-export function Logo({ quizSlug }: LogoProps) {
-  const handleClick = () => {
-    // If we have a quiz slug, scroll to top to reset the quiz view
-    if (quizSlug) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+export function Logo({ quizSlug, onLogoClick }: LogoProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    if (onLogoClick) {
+      e.preventDefault();
+      onLogoClick();
     }
   };
 
-  // If we have a quiz slug, link back to the quiz start
+  // If we have a quiz slug, clicking resets the quiz
   if (quizSlug) {
     return (
-      <Link 
-        to={`/${quizSlug}`}
+      <button 
         onClick={handleClick}
         aria-label="Go back to quiz start"
+        className="block mx-auto"
       >
         <img 
           src={sparklyLogo} 
           alt="Sparkly.hr" 
           className="h-16 sm:h-[4.5rem] mx-auto object-contain hover:opacity-80 transition-opacity cursor-pointer"
         />
-      </Link>
+      </button>
     );
   }
 
