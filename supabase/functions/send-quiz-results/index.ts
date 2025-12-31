@@ -401,6 +401,7 @@ const emailTranslations: Record<string, {
   wantToImprove: string;
   ctaDescription: string;
   visitSparkly: string;
+  tryAgain: string;
   newQuizSubmission: string;
   userEmail: string;
   score: string;
@@ -417,6 +418,7 @@ const emailTranslations: Record<string, {
     wantToImprove: 'Ready for Precise Employee Assessment?',
     ctaDescription: 'This quiz provides a general overview. For accurate, in-depth analysis of your team\'s performance and actionable improvement strategies, continue with professional testing.',
     visitSparkly: 'Continue to Sparkly.hr',
+    tryAgain: 'Try again',
     newQuizSubmission: 'New Quiz Submission',
     userEmail: 'User Email',
     score: 'Score',
@@ -433,6 +435,7 @@ const emailTranslations: Record<string, {
     wantToImprove: 'Valmis täpseks töötajate hindamiseks?',
     ctaDescription: 'See küsimustik annab üldise ülevaate. Täpse ja põhjaliku analüüsi ning praktiliste parendusstrateegiate saamiseks jätka professionaalse testimisega.',
     visitSparkly: 'Jätka Sparkly.hr lehele',
+    tryAgain: 'Proovi uuesti',
     newQuizSubmission: 'Uus küsitluse vastus',
     userEmail: 'Kasutaja e-post',
     score: 'Skoor',
@@ -449,6 +452,7 @@ const emailTranslations: Record<string, {
     wantToImprove: 'Bereit für eine präzise Mitarbeiterbewertung?',
     ctaDescription: 'Dieses Quiz bietet einen allgemeinen Überblick. Für eine genaue, tiefgehende Analyse der Leistung Ihres Teams und umsetzbare Verbesserungsstrategien, fahren Sie mit professionellen Tests fort.',
     visitSparkly: 'Weiter zu Sparkly.hr',
+    tryAgain: 'Erneut versuchen',
     newQuizSubmission: 'Neue Quiz-Einreichung',
     userEmail: 'Benutzer-E-Mail',
     score: 'Punktzahl',
@@ -606,8 +610,10 @@ async function fetchDynamicEmailContent(
     }
     
     // Build quiz URL for retry button fallback
-    const baseUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'https://sparkly.hr';
-    const quizUrl = `https://itcnukhlqkrsirrznuig.lovable.app/q/${quiz.slug}`;
+    const baseUrl = Deno.env.get("PUBLIC_APP_URL")
+      || Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')
+      || 'https://sparkly.hr';
+    const quizUrl = `${baseUrl}/q/${quiz.slug}`;
     
     // Build dynamic content with fallback chain
     const dynamicContent: DynamicEmailContent = {
@@ -709,7 +715,7 @@ function buildEmailHtmlDynamic(
   const finalCtaDescription = dynamicContent?.ctaDescription || trans.ctaDescription;
   const finalCtaButtonText = dynamicContent?.ctaButtonText || trans.visitSparkly;
   const finalCtaUrl = dynamicContent?.ctaUrl || 'https://sparkly.hr';
-  const finalCtaRetryText = dynamicContent?.ctaRetryText || '';
+  const finalCtaRetryText = dynamicContent?.ctaRetryText || trans.tryAgain;
   const finalCtaRetryUrl = dynamicContent?.ctaRetryUrl || '';
   const resultEmoji = dynamicContent?.emoji || '🎯';
   
@@ -755,11 +761,10 @@ function buildEmailHtmlDynamic(
     </div>
   ` : '';
 
-  // Retry button HTML (only if retry text is provided)
-  const retryButtonHtml = safeCtaRetryText ? `
+  // Retry button HTML (always show with fallback label when URL is available)
+  const retryButtonHtml = finalCtaRetryUrl ? `
     <a href="${finalCtaRetryUrl}" style="display: inline-block; background: transparent; border: 2px solid #6d28d9; color: #6d28d9; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin-left: 12px;">${safeCtaRetryText}</a>
   ` : '';
-
   // CTA section (only if there's a title or description)
   const ctaSection = (finalCtaTitle || finalCtaDescription) ? `
     <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 32px; margin-top: 28px; text-align: center; border: 1px solid #e9d5ff;">
