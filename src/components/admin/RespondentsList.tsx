@@ -974,20 +974,18 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
                         </Badge>
                       </AdminTableCell>
                       <AdminTableCell className="w-10 text-center">
-                        {lead.email_html ? (
-                          <EmailPreviewPopover
-                            leadId={lead.id}
-                            leadCreatedAt={lead.created_at}
-                            leadType={lead.leadType}
-                            emailLog={emailLogs.get(lead.id)}
-                            emailStatusLabel={emailStatus.label}
-                            emailStatusColor={emailStatus.color}
-                            EmailIcon={Eye}
-                            storedEmailHtml={lead.email_html}
-                            storedEmailSubject={lead.email_subject}
-                            iconOnly
-                          />
-                        ) : null}
+                        <EmailPreviewPopover
+                          leadId={lead.id}
+                          leadCreatedAt={lead.created_at}
+                          leadType={lead.leadType}
+                          emailLog={emailLogs.get(lead.id)}
+                          emailStatusLabel={emailStatus.label}
+                          emailStatusColor={emailStatus.color}
+                          EmailIcon={Eye}
+                          storedEmailHtml={lead.email_html}
+                          storedEmailSubject={lead.email_subject}
+                          iconOnly
+                        />
                       </AdminTableCell>
                       <AdminTableCell style={{ width: Math.max(columnWidths.emailStatus, 110), minWidth: Math.max(columnWidths.emailStatus, 110) }} align="center">
                         <EmailPreviewPopover
