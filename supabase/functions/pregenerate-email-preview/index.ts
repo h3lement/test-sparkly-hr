@@ -89,6 +89,9 @@ interface DynamicEmailContent {
   ctaDescription: string;
   ctaButtonText: string;
   ctaUrl: string;
+  ctaRetryText: string;
+  ctaRetryUrl: string;
+  quizSlug: string;
   emoji: string;
 }
 
@@ -100,12 +103,14 @@ async function fetchDynamicEmailContent(
   language: string
 ): Promise<DynamicEmailContent | null> {
   try {
-    // Fetch quiz info for primary language
+    console.log(`Fetching dynamic content for quiz ${quizId}, score ${score}, language ${language}`);
+    
+    // Fetch quiz info for primary language AND the linked CTA template ID
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
-      .select('slug, primary_language, cta_title, cta_description, cta_text, cta_url')
+      .select('slug, primary_language, cta_template_id, cta_title, cta_description, cta_text, cta_url')
       .eq('id', quizId)
-      .single();
+      .maybeSingle();
     
     if (quizError || !quiz) {
       console.log('Could not fetch quiz info:', quizError?.message);
@@ -134,13 +139,24 @@ async function fetchDynamicEmailContent(
       return null;
     }
 
-    // Fetch live CTA template for this quiz
-    const { data: ctaTemplate } = await supabase
-      .from('cta_templates')
-      .select('cta_title, cta_description, cta_text, cta_url')
-      .eq('quiz_id', quizId)
-      .eq('is_live', true)
-      .maybeSingle();
+    // Fetch CTA template linked to quiz via cta_template_id (correct relationship)
+    let ctaTemplate = null;
+    if (quiz.cta_template_id) {
+      const { data: linkedCta, error: linkedCtaError } = await supabase
+        .from('cta_templates')
+        .select('cta_title, cta_description, cta_text, cta_url, cta_retry_text, cta_retry_url')
+        .eq('id', quiz.cta_template_id)
+        .maybeSingle();
+      
+      if (!linkedCtaError && linkedCta) {
+        ctaTemplate = linkedCta;
+        console.log('Using CTA linked to quiz via cta_template_id:', quiz.cta_template_id);
+      } else if (linkedCtaError) {
+        console.log('Error fetching linked CTA template:', linkedCtaError.message);
+      }
+    }
+    
+    console.log('ctaSource is:', ctaTemplate ? 'CTA template' : 'quiz fallback');
 
     const ctaSource = ctaTemplate || quiz;
     
@@ -164,6 +180,9 @@ async function fetchDynamicEmailContent(
       ctaDescription: getLocalizedValue(ctaSource.cta_description, language, primaryLang, ''),
       ctaButtonText: getLocalizedValue(ctaSource.cta_text, language, primaryLang, 'Continue to Sparkly.hr'),
       ctaUrl: ctaSource.cta_url || 'https://sparkly.hr',
+      ctaRetryText: getLocalizedValue(ctaSource.cta_retry_text, language, primaryLang, ''),
+      ctaRetryUrl: ctaSource.cta_retry_url || '',
+      quizSlug: quiz.slug || '',
       emoji: resultLevel.emoji || '🌟',
     };
   } catch (error: any) {
@@ -226,6 +245,17 @@ function buildEmailHtml(
   const finalCtaUrl = dynamicContent?.ctaUrl || 'https://sparkly.hr';
   const resultEmoji = dynamicContent?.emoji || '🎯';
   
+  // Try Again button - use CTA retry text/url or fallback to quiz URL
+  const retryTranslations: Record<string, string> = {
+    en: 'Try Again',
+    et: 'Proovi uuesti',
+    de: 'Erneut versuchen',
+    fi: 'Yritä uudelleen',
+  };
+  const retryButtonText = dynamicContent?.ctaRetryText || retryTranslations[language] || retryTranslations['en'];
+  const quizSlug = dynamicContent?.quizSlug || '';
+  const retryUrl = dynamicContent?.ctaRetryUrl || (quizSlug ? `https://quiz.sparkly.hr/${quizSlug}` : 'https://quiz.sparkly.hr');
+  
   // Use the result title as header if dynamic content is available, otherwise fall back to generic translation
   const headerTitle = dynamicContent?.resultTitle ? `${resultEmoji} ${dynamicContent.resultTitle}` : trans.yourResults;
   
@@ -238,6 +268,7 @@ function buildEmailHtml(
   const safeCtaTitle = escapeHtml(finalCtaTitle);
   const safeCtaDescription = escapeHtml(finalCtaDescription);
   const safeCtaButtonText = escapeHtml(finalCtaButtonText);
+  const safeRetryButtonText = escapeHtml(retryButtonText);
   
   // Build insights list
   const insightsHtml = safeInsights.length > 0 ? safeInsights.map(insight => `
@@ -270,16 +301,20 @@ function buildEmailHtml(
     </div>
   ` : '';
 
-  // CTA section
+  // CTA section with Try Again button
   const ctaSection = (finalCtaTitle || finalCtaDescription) ? `
     <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 32px; margin-top: 28px; text-align: center; border: 1px solid #e9d5ff;">
       ${safeCtaTitle ? `<h3 style="color: #6d28d9; font-size: 20px; margin: 0 0 12px 0; font-weight: 600;">${safeCtaTitle}</h3>` : ''}
       ${safeCtaDescription ? `<p style="color: #7c3aed; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${safeCtaDescription}</p>` : ''}
-      <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+      <div style="display: inline-block;">
+        <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; margin-right: 12px;">${safeCtaButtonText}</a>
+        <a href="${retryUrl}" style="display: inline-block; background: transparent; color: #6d28d9; padding: 14px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; border: 2px solid #6d28d9;">${safeRetryButtonText}</a>
+      </div>
     </div>
   ` : `
     <div style="text-align: center; margin-top: 28px;">
-      <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">${safeCtaButtonText}</a>
+      <a href="${finalCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, #6d28d9, #7c3aed); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; margin-right: 12px;">${safeCtaButtonText}</a>
+      <a href="${retryUrl}" style="display: inline-block; background: transparent; color: #6d28d9; padding: 14px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; border: 2px solid #6d28d9;">${safeRetryButtonText}</a>
     </div>
   `;
 
