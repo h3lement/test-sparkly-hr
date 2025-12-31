@@ -142,10 +142,17 @@ function StandardQuizContent({ slug, quizType, languageFromUrl }: StandardQuizCo
   // Use custom results screen for emotional quiz type
   const ResultsComponent = quizType === 'emotional' ? EmotionalResultsScreen : DynamicResultsScreen;
 
+  const handleLogoClick = () => {
+    // Reset quiz to beginning
+    setCurrentStep('welcome');
+    setCurrentQuestion(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="pt-6 pb-4 px-4">
-        <Logo quizSlug={slug} />
+        <Logo quizSlug={slug} onLogoClick={handleLogoClick} />
       </header>
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-3xl">
