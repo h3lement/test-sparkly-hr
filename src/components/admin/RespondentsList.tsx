@@ -358,7 +358,7 @@ export function RespondentsList({ highlightedLeadId, onHighlightCleared, onViewE
             supabase
               .from("email_logs")
               .select("quiz_lead_id, hypothesis_lead_id, status, delivery_status, opened_at, clicked_at, bounced_at, delivered_at, created_at, subject, html_body")
-              .in("email_type", ["quiz_result_user", "hypothesis_result_user"])
+              .in("email_type", ["quiz_result_user", "quiz_results", "hypothesis_result_user", "hypothesis_results"])
               .order("created_at", { ascending: false }),
           ]);
           
