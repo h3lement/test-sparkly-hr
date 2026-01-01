@@ -55,8 +55,13 @@ export function HypothesisEmailCapture() {
     const opennessScore = shouldIncludeOm ? calculateOpenMindednessScore() : null;
 
     try {
+      // IMPORTANT: avoid post-insert SELECT (blocked by RLS for anonymous users).
+      // Generate an id client-side so we can reference it without reading back the row.
+      const leadId = crypto.randomUUID();
+
       // Save lead to database
-      const { data: insertedLead, error } = await supabase.from('hypothesis_leads').insert({
+      const { error } = await supabase.from('hypothesis_leads').insert({
+        id: leadId,
         quiz_id: quizData?.id,
         session_id: sessionId,
         email: validation.data,
@@ -64,7 +69,7 @@ export function HypothesisEmailCapture() {
         total_questions: total,
         language,
         openness_score: opennessScore,
-      }).select('id').single();
+      });
 
       if (error) {
         console.error('Error saving lead:', error);
@@ -78,42 +83,50 @@ export function HypothesisEmailCapture() {
       }
 
       // Trigger background email preview pre-generation (fire and forget)
-      if (insertedLead?.id) {
-        supabase.functions.invoke('pregenerate-email-preview', {
-          body: { leadId: insertedLead.id, leadType: 'hypothesis' }
-        }).catch(err => console.warn('Email preview pregeneration error:', err));
-      }
-      const quizTitle = typeof quizData?.title === 'object' && quizData.title !== null 
-        ? (quizData.title as Record<string, string>)[language] || (quizData.title as Record<string, string>)['en'] || 'Quiz'
-        : String(quizData?.title || 'Quiz');
-      
+      supabase.functions
+        .invoke('pregenerate-email-preview', {
+          body: { leadId, leadType: 'hypothesis' },
+        })
+        .catch((err) => console.warn('Email preview pregeneration error:', err));
+
+      const quizTitle =
+        typeof quizData?.title === 'object' && quizData.title !== null
+          ? (quizData.title as Record<string, string>)[language] ||
+            (quizData.title as Record<string, string>)['en'] ||
+            'Quiz'
+          : String(quizData?.title || 'Quiz');
+
       // Send admin notification email
-      supabase.functions.invoke('send-hypothesis-admin-email', {
-        body: {
-          email: validation.data,
-          score: correct,
-          totalQuestions: total,
-          quizId: quizData?.id,
-          quizTitle,
-          language,
-          leadId: insertedLead?.id,
-        }
-      }).catch(err => console.error('Admin email notification error:', err));
+      supabase.functions
+        .invoke('send-hypothesis-admin-email', {
+          body: {
+            email: validation.data,
+            score: correct,
+            totalQuestions: total,
+            quizId: quizData?.id,
+            quizTitle,
+            language,
+            leadId,
+          },
+        })
+        .catch((err) => console.error('Admin email notification error:', err));
 
       // Send user results email with correct answers
-      supabase.functions.invoke('send-hypothesis-user-email', {
-        body: {
-          email: validation.data,
-          score: correct,
-          totalQuestions: total,
-          quizId: quizData?.id,
-          quizTitle,
-          language,
-          sessionId,
-          leadId: insertedLead?.id,
-          opennessScore,
-        }
-      }).catch(err => console.error('User email notification error:', err));
+      supabase.functions
+        .invoke('send-hypothesis-user-email', {
+          body: {
+            email: validation.data,
+            score: correct,
+            totalQuestions: total,
+            quizId: quizData?.id,
+            quizTitle,
+            language,
+            sessionId,
+            leadId,
+            opennessScore,
+          },
+        })
+        .catch((err) => console.error('User email notification error:', err));
 
       // Fire confetti celebration
       const end = Date.now() + 800;
