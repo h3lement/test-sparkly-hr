@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronRight, ClipboardList, Lightbulb, Heart, Globe } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
-import { useLanguage } from "@/components/quiz/LanguageContext";
+import { useLanguage, languages } from "@/components/quiz/LanguageContext";
 import { useForceLightMode } from "@/hooks/useForceLightMode";
 
 interface Quiz {
@@ -19,35 +19,6 @@ interface Quiz {
   badge_text: Json;
   display_order?: number;
 }
-
-const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "et", label: "Eesti" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
-  { code: "es", label: "Español" },
-  { code: "it", label: "Italiano" },
-  { code: "pl", label: "Polski" },
-  { code: "nl", label: "Nederlands" },
-  { code: "pt", label: "Português" },
-  { code: "sv", label: "Svenska" },
-  { code: "fi", label: "Suomi" },
-  { code: "da", label: "Dansk" },
-  { code: "ro", label: "Română" },
-  { code: "el", label: "Ελληνικά" },
-  { code: "cs", label: "Čeština" },
-  { code: "hu", label: "Magyar" },
-  { code: "bg", label: "Български" },
-  { code: "sk", label: "Slovenčina" },
-  { code: "hr", label: "Hrvatski" },
-  { code: "lt", label: "Lietuvių" },
-  { code: "sl", label: "Slovenščina" },
-  { code: "lv", label: "Latviešu" },
-  { code: "ga", label: "Gaeilge" },
-  { code: "mt", label: "Malti" },
-  { code: "ru", label: "Русский" },
-  { code: "uk", label: "Українська" },
-];
 
 export default function AllQuizzes() {
   // Force light mode on public site
@@ -193,9 +164,9 @@ export default function AllQuizzes() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
+                {languages.map((lang) => (
                   <SelectItem key={lang.code} value={lang.code}>
-                    {lang.label}
+                    {lang.nativeName}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -10,7 +10,8 @@ interface LanguageOption {
   nativeName: string;
 }
 
-export const languages: LanguageOption[] = [
+// Language data (unsorted, canonical order)
+const languageData: LanguageOption[] = [
   { code: 'bg', name: 'Bulgarian', nativeName: 'Български' },
   { code: 'cs', name: 'Czech', nativeName: 'Čeština' },
   { code: 'da', name: 'Danish', nativeName: 'Dansk' },
@@ -39,6 +40,11 @@ export const languages: LanguageOption[] = [
   { code: 'sv', name: 'Swedish', nativeName: 'Svenska' },
   { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
 ];
+
+// Export languages sorted alphabetically by nativeName
+export const languages: LanguageOption[] = [...languageData].sort((a, b) =>
+  a.nativeName.localeCompare(b.nativeName)
+);
 
 // All supported language codes for detection
 const SUPPORTED_LANGUAGE_CODES: Language[] = [
