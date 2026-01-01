@@ -41,9 +41,9 @@ const languageData: LanguageOption[] = [
   { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
 ];
 
-// Export languages sorted alphabetically by nativeName
+// Export languages sorted alphabetically by nativeName using Unicode-aware sorting
 export const languages: LanguageOption[] = [...languageData].sort((a, b) =>
-  a.nativeName.localeCompare(b.nativeName)
+  a.nativeName.localeCompare(b.nativeName, 'en', { sensitivity: 'base' })
 );
 
 // All supported language codes for detection
