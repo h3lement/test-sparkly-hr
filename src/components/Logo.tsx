@@ -13,6 +13,17 @@ export function Logo({ quizSlug, onLogoClick }: LogoProps) {
     }
   };
 
+  const logoContent = (
+    <div className="flex flex-col items-center">
+      <img 
+        src={sparklyLogo} 
+        alt="Sparkly.hr" 
+        className="h-16 sm:h-[4.5rem] mx-auto object-contain hover:opacity-80 transition-opacity cursor-pointer"
+      />
+      <span className="text-xs text-muted-foreground mt-1 tracking-wide">Testing portal</span>
+    </div>
+  );
+
   // If we have a quiz slug, clicking resets the quiz
   if (quizSlug) {
     return (
@@ -21,11 +32,7 @@ export function Logo({ quizSlug, onLogoClick }: LogoProps) {
         aria-label="Go back to quiz start"
         className="block mx-auto"
       >
-        <img 
-          src={sparklyLogo} 
-          alt="Sparkly.hr" 
-          className="h-16 sm:h-[4.5rem] mx-auto object-contain hover:opacity-80 transition-opacity cursor-pointer"
-        />
+        {logoContent}
       </button>
     );
   }
@@ -35,12 +42,9 @@ export function Logo({ quizSlug, onLogoClick }: LogoProps) {
     <a 
       href="https://team-test.sparkly.hr/"
       aria-label="Go to home page"
+      className="block mx-auto"
     >
-      <img 
-        src={sparklyLogo} 
-        alt="Sparkly.hr" 
-        className="h-16 sm:h-[4.5rem] mx-auto object-contain hover:opacity-80 transition-opacity cursor-pointer"
-      />
+      {logoContent}
     </a>
   );
 }
