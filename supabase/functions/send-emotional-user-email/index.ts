@@ -616,7 +616,18 @@ const handler = async (req: Request): Promise<Response> => {
     // Queue admin notification email (same content)
     const adminEmailSubject = `[Admin Copy] ${emailSubject} (from ${escapeHtml(email)})`;
 
-    // Check for duplicate admin email
+    // Get admin notification email from settings
+    const { data: adminEmailSetting } = await supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "admin_notification_email")
+      .maybeSingle();
+    
+    const adminRecipient = adminEmailSetting?.setting_value || "mikk@sparkly.hr";
+
+    // Check for duplicate admin email - check by recipient + quiz_id + recent time window
+    let shouldSendAdmin = true;
+    
     if (quizLeadId) {
       const { data: existingAdminEmail } = await supabase
         .from("email_queue")
@@ -635,25 +646,47 @@ const handler = async (req: Request): Promise<Response> => {
         .limit(1)
         .maybeSingle();
 
-      if (!existingAdminEmail && !existingAdminLog) {
-        const { error: adminQueueError } = await supabase.from("email_queue").insert({
-          recipient_email: "mikk@sparkly.hr",
-          sender_email: emailConfig.senderEmail,
-          sender_name: emailConfig.senderName,
-          subject: adminEmailSubject,
-          html_body: emailHtml,
-          email_type: "Admin Notification",
-          quiz_lead_id: quizLeadId,
-          quiz_id: quizId,
-          language: language,
-          reply_to_email: emailConfig.replyToEmail || null,
-        });
+      if (existingAdminEmail || existingAdminLog) {
+        shouldSendAdmin = false;
+        console.log("Admin email already sent for lead:", quizLeadId);
+      }
+    } else {
+      // No lead ID - check by email + quiz + time window (last 60 seconds) to prevent duplicates
+      const recentTime = new Date(Date.now() - 60000).toISOString();
+      const { data: recentAdminEmail } = await supabase
+        .from("email_queue")
+        .select("id")
+        .eq("quiz_id", quizId)
+        .eq("email_type", "Admin Notification")
+        .ilike("subject", `%${email}%`)
+        .gte("created_at", recentTime)
+        .limit(1)
+        .maybeSingle();
 
-        if (adminQueueError) {
-          console.error("Error queuing admin email:", adminQueueError);
-        } else {
-          console.log("Admin email queued successfully");
-        }
+      if (recentAdminEmail) {
+        shouldSendAdmin = false;
+        console.log("Recent admin email already queued for:", email);
+      }
+    }
+
+    if (shouldSendAdmin) {
+      const { error: adminQueueError } = await supabase.from("email_queue").insert({
+        recipient_email: adminRecipient,
+        sender_email: emailConfig.senderEmail,
+        sender_name: emailConfig.senderName,
+        subject: adminEmailSubject,
+        html_body: emailHtml,
+        email_type: "Admin Notification",
+        quiz_lead_id: quizLeadId || null,
+        quiz_id: quizId,
+        language: language,
+        reply_to_email: emailConfig.replyToEmail || null,
+      });
+
+      if (adminQueueError) {
+        console.error("Error queuing admin email:", adminQueueError);
+      } else {
+        console.log("Admin email queued successfully to:", adminRecipient);
       }
     }
 
