@@ -352,13 +352,14 @@ export function AdminSidebar({
             href="https://sparkly.hr" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center"
+            className="flex flex-col"
           >
             <img 
               src={sparklyLogo} 
               alt="Sparkly.hr" 
               className="h-8 object-contain hover:opacity-80 transition-opacity"
             />
+            <span className="text-[10px] text-muted-foreground tracking-wide">Testing portal</span>
           </a>
         )}
         <div className="flex items-center gap-1">
