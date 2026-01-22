@@ -10,6 +10,18 @@ import confetti from 'canvas-confetti';
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email address" }).max(255);
 
+// Determine which edge function to call based on quiz type
+function getEmailFunctionName(quizType: string | undefined): string {
+  switch (quizType) {
+    case 'emotional':
+      return 'send-emotional-user-email';
+    case 'hypothesis':
+      return 'send-hypothesis-user-email';
+    default:
+      return 'send-quiz-results';
+  }
+}
+
 export function DynamicEmailCapture() {
   const { 
     email, 
@@ -118,24 +130,39 @@ export function DynamicEmailCapture() {
       }
 
       // PRIORITY 2: Queue emails via edge function (fire and forget)
-      // Pass existingLeadId to prevent duplicate insertion
-      supabase.functions.invoke('send-quiz-results', {
-        body: {
-          email: validation.data,
-          totalScore,
-          maxScore,
-          resultTitle: result ? getText(result.title) : 'Your Results',
-          resultDescription: result ? getText(result.description) : '',
-          insights: result?.insights?.map(i => getText(i)) || [],
-          language,
-          opennessScore: openMindednessScore,
-          opennessMaxScore: omMaxScore,
-          opennessTitle: omResult ? getText(omResult.title) : '',
-          opennessDescription: omResult ? getText(omResult.description) : '',
-          quizId: effectiveQuizId,
-          quizSlug: quizData?.slug,
-          existingLeadId: insertedLead?.id, // Prevent duplicate lead creation
-        },
+      // Route to appropriate edge function based on quiz type
+      const emailFunctionName = getEmailFunctionName(quizData?.quiz_type);
+      console.log('Using email function:', emailFunctionName, 'for quiz type:', quizData?.quiz_type);
+      
+      // Build request body based on quiz type
+      const emailRequestBody = quizData?.quiz_type === 'emotional' 
+        ? {
+            email: validation.data,
+            averageScore: totalScore / (answers.length || 12), // Calculate average for emotional quiz
+            emotionalLevel: Math.round(totalScore / (answers.length || 12)),
+            quizId: effectiveQuizId,
+            language,
+            existingLeadId: insertedLead?.id,
+          }
+        : {
+            email: validation.data,
+            totalScore,
+            maxScore,
+            resultTitle: result ? getText(result.title) : 'Your Results',
+            resultDescription: result ? getText(result.description) : '',
+            insights: result?.insights?.map(i => getText(i)) || [],
+            language,
+            opennessScore: openMindednessScore,
+            opennessMaxScore: omMaxScore,
+            opennessTitle: omResult ? getText(omResult.title) : '',
+            opennessDescription: omResult ? getText(omResult.description) : '',
+            quizId: effectiveQuizId,
+            quizSlug: quizData?.slug,
+            existingLeadId: insertedLead?.id,
+          };
+      
+      supabase.functions.invoke(emailFunctionName, {
+        body: emailRequestBody,
       }).catch(err => console.error('Email sending error:', err));
 
       // Fire confetti celebration immediately
